@@ -39,7 +39,7 @@ Welcome to Skeleton project, which built with MVVM architecture and Jetpack Comp
 
 - Clone the Repository:
 ```
-git clone https://github.com/MostafaNabilShehataAbdellatif/EducationSISKotlinJetpackArchitecture.git
+git clone https://github.com/Sirius-ITS/Oman-MTCIT.git
 ```
 buildConfigField("String", "API_KEY", "\"<Add your API Key>\"")
 ```

@@ -16,11 +16,11 @@ plugins {
 }
 
 android {
-    namespace = "com.informatique.educationComposeVersion"
+    namespace = "com.informatique.mtcit"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.informatique.educationComposeVersion"
+        applicationId = "com.informatique.mtcit"
         minSdk = 24  // Updated from 21 to 24 to support required APIs
         targetSdk = 35
         versionCode = 1

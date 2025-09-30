@@ -49,7 +49,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="msauth"
-                    android:host="com.informatique.educationcomposeversion"
+                    android:host="com.informatique.mtcit"
                     android:path="/4+mQOaoKbNwaDiuEIZ5aHJtHOac=" />
             </intent-filter>
         </activity>

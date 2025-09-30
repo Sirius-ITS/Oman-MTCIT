@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "EducationSISKotlinJetpackArchitecture"
+rootProject.name = "MTCIT Oman App"
 include(":app")
