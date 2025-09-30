@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="grey">#808080</color>
+    <color name="app_bar">#F2ECF6</color>
+    <color name="app_bar_title">#8D8791</color>
+    <color name="login_button">#ffca40</color>
+    <color name="system_bar">#006dfe</color>
+    <color name="absence">#512de5</color>
+    <color name="fees">#ff5152</color>
+    <color name="bottom_navigation">#036eff</color>
+    <color name="exam">#fbb830</color>
+    <color name="transcript">#0c9869</color>
+    <color name="background">#ebebeb</color>
+    <color name="text_field_label">#146cd7</color>
+</resources>
