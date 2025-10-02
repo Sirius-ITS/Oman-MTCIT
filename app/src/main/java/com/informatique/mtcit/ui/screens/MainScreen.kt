@@ -106,7 +106,7 @@ fun MainScreen(sharedUserViewModel: SharedUserViewModel) {
             composable(BottomScreen.Home.route ,
                 enterTransition = { defaultEnterTransition() },
                 exitTransition = { defaultExitTransition() }
-            ) { HomeScreen(navController = navController, sharedUserViewModel = sharedUserViewModel) }
+            ) { HomeScreen(navController = navController, sharedUserViewModel = sharedUserViewModel ) }
 
 
             composable(BottomScreen.Profile.route ,
