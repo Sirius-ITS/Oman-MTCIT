@@ -41,11 +41,16 @@ fun DynamicStepper(
 ) {
     val scrollState = rememberScrollState()
 
-    // Auto-scroll to current step when it changes
+    // Auto-scroll to current step when it changes - improved calculation
     LaunchedEffect(currentStep) {
-        if (steps.size > 4) { // Adjusted threshold since steps are now more compact
-            val stepWidth = 70 // Reduced width per step
-            val targetScroll = (currentStep * stepWidth).coerceAtLeast(0)
+        if (steps.size > 3) { // Start scrolling when more than 3 steps
+            val stepWidth = 85 // Total width per step (including connectors)
+            val containerWidth = 300 // Approximate visible container width
+            val targetPosition = (currentStep * stepWidth) - (containerWidth / 3)
+            val maxScroll = scrollState.maxValue
+            val targetScroll = targetPosition.coerceIn(0, maxScroll)
+
+            // Smooth animated scroll to center the current step
             scrollState.animateScrollTo(targetScroll)
         }
     }
@@ -54,8 +59,8 @@ fun DynamicStepper(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(scrollState)
-            .padding(horizontal = 8.dp, vertical = 12.dp), // Reduced vertical padding
-        horizontalArrangement = Arrangement.spacedBy(0.dp), // Remove spacing to control manually
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
         verticalAlignment = Alignment.Top
     ) {
         steps.forEachIndexed { index, stepTitle ->

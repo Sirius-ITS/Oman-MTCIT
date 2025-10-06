@@ -30,8 +30,16 @@ data class ShipRegistrationState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val isLoading: Boolean = false,
     val isInitialized: Boolean = false,
-    val canProceedToNext: Boolean = false
+    val canProceedToNext: Boolean = false,
+    val selectedFiles: Map<String, String> = emptyMap() // fieldId -> fileUri
 )
+
+// Navigation events for file operations
+sealed class FileNavigationEvent {
+    data class OpenFilePicker(val fieldId: String, val allowedTypes: List<String>) : FileNavigationEvent()
+    data class ViewFile(val fileUri: String, val fileType: String) : FileNavigationEvent()
+    data class RemoveFile(val fieldId: String) : FileNavigationEvent()
+}
 
 @HiltViewModel
 class ShipRegistrationViewModel @Inject constructor(
@@ -48,6 +56,10 @@ class ShipRegistrationViewModel @Inject constructor(
     // Company lookup loading state
     private val _companyLookupLoading = MutableStateFlow<Set<String>>(emptySet())
     val companyLookupLoading: StateFlow<Set<String>> = _companyLookupLoading.asStateFlow()
+
+    // File navigation events
+    private val _fileNavigationEvent = MutableStateFlow<FileNavigationEvent?>(null)
+    val fileNavigationEvent: StateFlow<FileNavigationEvent?> = _fileNavigationEvent.asStateFlow()
 
     // We need access to context for localization
     private var contextProvider: (() -> android.content.Context)? = null
@@ -76,7 +88,7 @@ class ShipRegistrationViewModel @Inject constructor(
     private fun createAllRegistrationSteps(): List<StepData> {
         return listOf(
             createUnitDataStep(),
-            createMarineUnitDimensionsStep(),
+//            createMarineUnitDimensionsStep(),
             createOwnerInformationStep(),
             createDocumentationStep(),
             createReviewStep()
@@ -300,7 +312,22 @@ class ShipRegistrationViewModel @Inject constructor(
     private fun createDocumentationStep(): StepData = StepData(
         titleRes = R.string.documents,
         descriptionRes = R.string.documents_description,
-        fields = emptyList() // Will be implemented later
+        fields = listOf(
+            FormField.FileUpload(
+                id = "shipbuildingCertificate",
+                labelRes = R.string.shipbuilding_certificate_or_sale_contract,
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                maxSizeMB = 5,
+                mandatory = true
+            ),
+            FormField.FileUpload(
+                id = "inspectionDocuments",
+                labelRes = R.string.inspection_documents,
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                maxSizeMB = 5,
+                mandatory = true
+            )
+        )
     )
 
     private fun createReviewStep(): StepData = StepData(
@@ -585,5 +612,42 @@ class ShipRegistrationViewModel @Inject constructor(
 
     fun isFieldLoading(fieldId: String): Boolean {
         return fieldId in _companyLookupLoading.value
+    }
+
+    // File navigation methods
+    fun openFilePicker(fieldId: String, allowedTypes: List<String>) {
+        _fileNavigationEvent.value = FileNavigationEvent.OpenFilePicker(fieldId, allowedTypes)
+    }
+
+    fun viewFile(fileUri: String, fileType: String) {
+        _fileNavigationEvent.value = FileNavigationEvent.ViewFile(fileUri, fileType)
+    }
+
+    fun removeFile(fieldId: String) {
+        _fileNavigationEvent.value = FileNavigationEvent.RemoveFile(fieldId)
+    }
+
+    fun onFileSelected(fieldId: String, fileUri: String) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val newSelectedFiles = currentState.selectedFiles.toMutableMap()
+
+            // Update selected files
+            newSelectedFiles[fieldId] = fileUri
+
+            _uiState.value = currentState.copy(selectedFiles = newSelectedFiles)
+        }
+    }
+
+    fun onFileRemoved(fieldId: String) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val newSelectedFiles = currentState.selectedFiles.toMutableMap()
+
+            // Remove the file
+            newSelectedFiles.remove(fieldId)
+
+            _uiState.value = currentState.copy(selectedFiles = newSelectedFiles)
+        }
     }
 }

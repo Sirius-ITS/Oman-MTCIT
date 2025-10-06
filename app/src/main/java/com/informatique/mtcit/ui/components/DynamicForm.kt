@@ -15,7 +15,10 @@ fun DynamicStepForm(
     onFieldChange: (String, String, Boolean?) -> Unit,
     onCompanyRegistrationFocusLost: (String) -> Unit = {},
     isFieldLoading: (String) -> Boolean = { false },
-    showConditionalFields: (String) -> Boolean = { true }
+    showConditionalFields: (String) -> Boolean = { true },
+    onOpenFilePicker: ((String, List<String>) -> Unit)? = null,
+    onViewFile: ((String, String) -> Unit)? = null,
+    onRemoveFile: ((String) -> Unit)? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -104,7 +107,11 @@ fun DynamicStepForm(
                             error = field.error,
                             allowedTypes = field.allowedTypes,
                             maxSizeMB = field.maxSizeMB,
-                            mandatory = field.mandatory
+                            mandatory = field.mandatory,
+                            fieldId = field.id,
+                            onOpenFilePicker = onOpenFilePicker,
+                            onViewFile = onViewFile,
+                            onRemoveFile = onRemoveFile
                         )
                     }
                 }

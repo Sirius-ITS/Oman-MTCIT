@@ -150,9 +150,10 @@
     <string name="qatar">قطر</string>
     <string name="oman">عمان</string>
     <string name="other">أخرى</string>
-    <string name="remove_file">إزالة الملف</string>
+    <string name="remove_file">إزالة</string>
     <string name="file_upload_instructions">اضغط لرفع الملف (%s) - حد أقصى %dMB</string>
     <string name="choose_file">اختر ملف</string>
+    <string name="view_file">عرض</string>
 
     <!-- Owner Information Fields - Arabic -->
     <string name="owner_info_description">يرجى تقديم معلومات المالك الكاملة للوحدة البحرية</string>
@@ -242,6 +243,8 @@
     <string name="terms_agreement">أوافق على الشروط والأحكام لتسجيل الوحدات البحرية</string>
     <string name="data_accuracy">أتعهد بصحة جميع البيانات والمعلومات المقدمة</string>
     <string name="legal_responsibility">أتحمل المسؤولية القانونية الكاملة عن صحة المعلومات</string>
+    <string name="shipbuilding_certificate_or_sale_contract">شهادة بناء السفينة او عقد البيع حالة الشراء</string>
+    <string name="inspection_documents">مستندات المعاينة</string>
 
     <string name="marine_unit_Dimentions">الأبعاد الخاصة بالوحدة البحرية</string>
 

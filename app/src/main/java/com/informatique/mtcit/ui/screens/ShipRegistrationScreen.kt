@@ -1,5 +1,10 @@
 package com.informatique.mtcit.ui.screens
 
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +26,7 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.*
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.ShipRegistrationViewModel
+import com.informatique.mtcit.ui.viewmodels.FileNavigationEvent
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 
@@ -33,7 +39,84 @@ fun ShipRegistrationScreen(
     val viewModel: ShipRegistrationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
+    val fileNavigationEvent by viewModel.fileNavigationEvent.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // State for file operations
+    var showFilePicker by remember { mutableStateOf(false) }
+    var showPdfViewer by remember { mutableStateOf(false) }
+    var currentFilePickerField by remember { mutableStateOf("") }
+    var currentFilePickerTypes by remember { mutableStateOf(listOf<String>()) }
+    var currentViewerFileUri by remember { mutableStateOf<Uri?>(null) }
+    var currentViewerTitle by remember { mutableStateOf("") }
+
+    // File picker launcher
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+                viewModel.onFileSelected(currentFilePickerField, it.toString())
+                viewModel.onFieldValueChange(currentFilePickerField, it.toString())
+            } catch (e: Exception) {
+                Toast.makeText(context, "Error selecting file: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Handle file navigation events
+    LaunchedEffect(fileNavigationEvent) {
+        fileNavigationEvent?.let { event ->
+            when (event) {
+                is FileNavigationEvent.OpenFilePicker -> {
+                    currentFilePickerField = event.fieldId
+                    currentFilePickerTypes = event.allowedTypes
+
+                    // Launch file picker directly
+                    val mimeTypes = event.allowedTypes.map { type ->
+                        when (type.lowercase()) {
+                            "pdf" -> "application/pdf"
+                            "jpg", "jpeg" -> "image/jpeg"
+                            "png" -> "image/png"
+                            "doc" -> "application/msword"
+                            "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            else -> "application/*"
+                        }
+                    }.toTypedArray()
+
+                    filePickerLauncher.launch(mimeTypes)
+                }
+
+                is FileNavigationEvent.ViewFile -> {
+                    val uri = Uri.parse(event.fileUri)
+                    when {
+                        event.fileType.contains("pdf") -> {
+                            currentViewerFileUri = uri
+                            currentViewerTitle = "PDF Document"
+                            showPdfViewer = true
+                        }
+                        event.fileType.startsWith("image/") -> {
+                            // For images, open with external app or show in full screen
+                            openFileOutsideApp(context, uri, event.fileType)
+                        }
+                        else -> {
+                            // For other files, open with external app
+                            openFileOutsideApp(context, uri, event.fileType)
+                        }
+                    }
+                }
+
+                is FileNavigationEvent.RemoveFile -> {
+                    viewModel.onFileRemoved(event.fieldId)
+                    viewModel.onFieldValueChange(event.fieldId, "")
+                }
+            }
+        }
+    }
 
     // Provide context to ViewModel for localization
     LaunchedEffect(Unit) {
@@ -171,6 +254,15 @@ fun ShipRegistrationScreen(
                                         uiState.formData["isCompany"] == "true"
                                     else -> true
                                 }
+                            },
+                            onOpenFilePicker = { fieldId, allowedTypes ->
+                                viewModel.openFilePicker(fieldId, allowedTypes)
+                            },
+                            onViewFile = { fileUri, fileType ->
+                                viewModel.viewFile(fileUri, fileType)
+                            },
+                            onRemoveFile = { fieldId ->
+                                viewModel.removeFile(fieldId)
                             }
                         )
                     }
@@ -192,6 +284,15 @@ fun ShipRegistrationScreen(
             },
             canProceed = uiState.canProceedToNext,
             isSubmitting = submissionState is UIState.Loading
+        )
+    }
+
+    // PDF Viewer Dialog
+    if (showPdfViewer && currentViewerFileUri != null) {
+        PdfViewerDialog(
+            uri = currentViewerFileUri!!,
+            title = currentViewerTitle,
+            onDismiss = { showPdfViewer = false }
         )
     }
 }
@@ -303,4 +404,41 @@ private fun NavigationBottomBar(
             }
         }
     }
+}
+
+@Composable
+private fun PdfViewerDialog(
+    uri: Uri,
+    title: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                PdfViewerScreen(
+                    fileUri = uri,
+                    title = title,
+                    onBack = onDismiss,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }

@@ -2,15 +2,13 @@ package com.informatique.mtcit.worker
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.graphics.createBitmap
 
 class PdfBitmapConverter(
     private val context: Context
@@ -31,16 +29,7 @@ class PdfBitmapConverter(
                         return@withContext (0 until pageCount).map { index ->
                             async {
                                 openPage(index).use { page ->
-                                    val bitmap = Bitmap.createBitmap(
-                                        page.width,
-                                        page.height,
-                                        Bitmap.Config.ARGB_8888
-                                    )
-
-                                    val canvas = Canvas(bitmap).apply {
-                                        drawColor(Color.WHITE)
-                                        drawBitmap(bitmap, 0f, 0f, null)
-                                    }
+                                    val bitmap = createBitmap(page.width, page.height)
 
                                     page.render(
                                         bitmap,

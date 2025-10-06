@@ -213,7 +213,7 @@
     <string name="select_proof_type">Select proof type</string>
     <string name="country_of_creation">Country of creation</string>
     <string name="continue_button">Continue</string>
-    <string name="remove_file">Remove file</string>
+    <string name="remove_file">Remove</string>
     <string name="file_upload_instructions">Click to upload file (%s) - max %dMB</string>
     <string name="choose_file">Choose file</string>
 
@@ -245,7 +245,12 @@
     <string name="enter_partnership_registration_number">Enter partnership registration number</string>
     <string name="upload_required_documents">Upload Required Documents</string>
     <string name="file_format_info">Only pdf, jpg or png files. Max 5MB size.</string>
-    
+
+    <!-- Documentation Step Strings -->
+    <string name="view_file">View</string>
+    <string name="shipbuilding_certificate_or_sale_contract">Shipbuilding certificate or contract of sale in case of purchas</string>
+    <string name="inspection_documents">Inspection documents</string>
+
     <string name="marine_unit_Dimentions">Dimensions of the marine unit</string>
 
 </resources>
