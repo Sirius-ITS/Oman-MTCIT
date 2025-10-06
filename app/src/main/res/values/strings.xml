@@ -245,5 +245,7 @@
     <string name="enter_partnership_registration_number">Enter partnership registration number</string>
     <string name="upload_required_documents">Upload Required Documents</string>
     <string name="file_format_info">Only pdf, jpg or png files. Max 5MB size.</string>
+    
+    <string name="marine_unit_Dimentions">Dimensions of the marine unit</string>
 
 </resources>

@@ -76,6 +76,7 @@ class ShipRegistrationViewModel @Inject constructor(
     private fun createAllRegistrationSteps(): List<StepData> {
         return listOf(
             createUnitDataStep(),
+            createMarineUnitDimensionsStep(),
             createOwnerInformationStep(),
             createDocumentationStep(),
             createReviewStep()
@@ -190,6 +191,12 @@ class ShipRegistrationViewModel @Inject constructor(
                 mandatory = false
             )
         )
+    )
+
+    private fun createMarineUnitDimensionsStep(): StepData = StepData(
+        titleRes = R.string.marine_unit_Dimentions,
+        descriptionRes = R.string.marine_unit_Dimentions,
+        fields = emptyList() // Will be implemented later
     )
 
     private fun createOwnerInformationStep(): StepData = StepData(

@@ -39,11 +39,23 @@ fun DynamicStepper(
     completedSteps: Set<Int> = emptySet(),
     onStepClick: (Int) -> Unit = {},
 ) {
+    val scrollState = rememberScrollState()
+
+    // Auto-scroll to current step when it changes
+    LaunchedEffect(currentStep) {
+        if (steps.size > 4) { // Adjusted threshold since steps are now more compact
+            val stepWidth = 70 // Reduced width per step
+            val targetScroll = (currentStep * stepWidth).coerceAtLeast(0)
+            scrollState.animateScrollTo(targetScroll)
+        }
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .horizontalScroll(scrollState)
+            .padding(horizontal = 8.dp, vertical = 12.dp), // Reduced vertical padding
+        horizontalArrangement = Arrangement.spacedBy(0.dp), // Remove spacing to control manually
         verticalAlignment = Alignment.Top
     ) {
         steps.forEachIndexed { index, stepTitle ->
@@ -54,31 +66,35 @@ fun DynamicStepper(
                 else -> StepState.UPCOMING
             }
 
-            // Each step item with proper weight distribution
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Each step with connector integrated
+            Row(
+                verticalAlignment = Alignment.Top
             ) {
-                StepItem(
-                    stepNumber = index + 1,
-                    title = stepTitle,
-                    stepState = stepState,
-                    isClickable = index <= currentStep || index in completedSteps,
-                    onClick = { onStepClick(index) }
-                )
-            }
-
-            // Connector between steps (except for the last step)
-            if (index < steps.size - 1) {
+                // Step item
                 Column(
-                    modifier = Modifier.padding(top = 16.dp),
+                    modifier = Modifier.width(65.dp), // Reduced from 80dp to 65dp
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    StepConnector(
-                        isCompleted = index < currentStep && index in completedSteps,
-                        isActive = index == currentStep - 1,
-                        modifier = Modifier.width(32.dp)
+                    StepItem(
+                        stepNumber = index + 1,
+                        title = stepTitle,
+                        stepState = stepState,
+                        isClickable = index <= currentStep || index in completedSteps,
+                        onClick = { onStepClick(index) }
                     )
+                }
+
+                // Connector line positioned at center of circle (except for last step)
+                if (index < steps.size - 1) {
+                    Box(
+                        modifier = Modifier.padding(top = 18.dp) // 18dp = circle center (36dp/2)
+                    ) {
+                        StepConnector(
+                            isCompleted = index < currentStep && index in completedSteps,
+                            isActive = index == currentStep - 1,
+                            modifier = Modifier.width(20.dp) // Increased width to nearly touch circles
+                        )
+                    }
                 }
             }
         }
@@ -136,7 +152,7 @@ private fun StepItem(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp)) // Reduced spacer height
 
         // Step Title with better text handling
         Text(
@@ -149,7 +165,7 @@ private fun StepItem(
             },
             fontWeight = if (stepState == StepState.CURRENT) FontWeight.Bold else FontWeight.Normal,
             textAlign = TextAlign.Center,
-            maxLines = 3,
+            maxLines = 2, // Increased max lines to 2 for wrapping
             lineHeight = 14.sp,
             modifier = Modifier.width(60.dp)
         )
