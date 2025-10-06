@@ -101,13 +101,23 @@ fun ShipRegistrationScreen(
             }
 
             // Modern Stepper using ViewModel data
-            DynamicStepper(
-                steps = uiState.steps.map { it.titleRes },
-                currentStep = uiState.currentStep,
-                completedSteps = uiState.completedSteps,
-                onStepClick = viewModel::goToStep,
-                modifier = Modifier.padding(16.dp)
-            )
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                DynamicStepper(
+                    steps = uiState.steps.map { localizedApp(it.titleRes) },
+                    currentStep = uiState.currentStep,
+                    completedSteps = uiState.completedSteps,
+                    onStepClick = viewModel::goToStep,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
 
             // Form Content Card using ViewModel data
             val currentStepData = uiState.steps.getOrNull(uiState.currentStep)
@@ -115,7 +125,7 @@ fun ShipRegistrationScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 2.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
                     ),
@@ -126,7 +136,7 @@ fun ShipRegistrationScreen(
                     ) {
                         // Step Header
                         Text(
-                            text = currentStepData.titleRes,
+                            text = localizedApp(currentStepData.titleRes),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -134,17 +144,17 @@ fun ShipRegistrationScreen(
                         )
 
                         Text(
-                            text = currentStepData.descriptionRes,
+                            text = localizedApp(currentStepData.descriptionRes),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.secondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(bottom = 24.dp)
                         )
 
                         // Convert ViewModel StepData to Component StepData for DynamicStepForm
                         // Now we only need to update field values and errors, labels are already correct
                         val componentStepData = ViewModelStepData(
-                            descriptionRes = "step_${currentStepData.hashCode()}",
                             titleRes = currentStepData.titleRes,
+                            descriptionRes = currentStepData.descriptionRes,
                             fields = currentStepData.fields.map { field ->
                                 updateFieldWithFormData(field, uiState.formData, uiState.fieldErrors)
                             }

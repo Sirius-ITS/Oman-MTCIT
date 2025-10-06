@@ -47,9 +47,10 @@ fun DynamicStepper(
         verticalAlignment = Alignment.Top
     ) {
         steps.forEachIndexed { index, stepTitle ->
-            val stepState = when (index) {
-                in completedSteps -> StepState.COMPLETED
-                currentStep -> StepState.CURRENT
+            // Fixed logic: current step should NEVER be COMPLETED, only previous steps
+            val stepState = when {
+                index < currentStep && index in completedSteps -> StepState.COMPLETED
+                index == currentStep -> StepState.CURRENT
                 else -> StepState.UPCOMING
             }
 
@@ -74,7 +75,7 @@ fun DynamicStepper(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     StepConnector(
-                        isCompleted = index in completedSteps && (index + 1) in completedSteps,
+                        isCompleted = index < currentStep && index in completedSteps,
                         isActive = index == currentStep - 1,
                         modifier = Modifier.width(32.dp)
                     )

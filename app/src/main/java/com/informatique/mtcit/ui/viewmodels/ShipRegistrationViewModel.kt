@@ -17,8 +17,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class StepData(
-    val titleRes: String,
-    val descriptionRes: String,
+    val titleRes: Int,
+    val descriptionRes: Int,
     val fields: List<FormField>
 )
 
@@ -87,218 +87,218 @@ class ShipRegistrationViewModel @Inject constructor(
     }
 
     private fun createUnitDataStep(): StepData = StepData(
-        titleRes = localizedString(R.string.unit_data),
-        descriptionRes = localizedString(R.string.unit_data_description),
+        titleRes = R.string.unit_data,
+        descriptionRes = R.string.unit_data_description,
         fields = listOf(
             FormField.DropDown(
-                id = localizedString(R.string.select_unit_type),
-                label = localizedString(R.string.select_unit_type_placeholder),
-                options = listOf(
-                    localizedString(R.string.ship),
-                    localizedString(R.string.marine_unit),
-                    localizedString(R.string.yacht),
-                    localizedString(R.string.boat)
+                id = "unitType",
+                labelRes = R.string.select_unit_type_placeholder,
+                optionRes = listOf(
+                    R.string.ship,
+                    R.string.marine_unit,
+                    R.string.yacht,
+                    R.string.boat
                 ),
                 mandatory = true
             ),
             FormField.TextField(
-                id = localizedString(R.string.call_sign),
-                label = localizedString(R.string.call_sign),
+                id = "callSign",
+                labelRes = R.string.call_sign,
                 mandatory = true
             ),
             FormField.TextField(
-                id = localizedString(R.string.imo_number),
-                label = localizedString(R.string.imo_number),
+                id = "imoNumber",
+                labelRes = R.string.imo_number,
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
-                id = localizedString(R.string.mmsi_number),
-                label = localizedString(R.string.mmsi_number),
+                id = "mmsi",
+                labelRes = R.string.mmsi_number,
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.DropDown(
-                id = localizedString(R.string.registration_port),
-                label = localizedString(R.string.registration_port),
-                options = listOf(
-                    localizedString(R.string.sohar_port),
-                    localizedString(R.string.salalah_port),
-                    localizedString(R.string.muscat_port),
-                    localizedString(R.string.duqm_port),
-                    localizedString(R.string.shinas_port)
+                id = "registrationPort",
+                labelRes = R.string.registration_port,
+                optionRes = listOf(
+                    R.string.sohar_port,
+                    R.string.salalah_port,
+                    R.string.muscat_port,
+                    R.string.duqm_port,
+                    R.string.shinas_port
                 ),
                 mandatory = true
             ),
             FormField.TextField(
-                id = localizedString(R.string.ship_manufacturer),
-                label = localizedString(R.string.ship_manufacturer),
+                id = "shipManufacturer",
+                labelRes = R.string.ship_manufacturer,
                 mandatory = true
             ),
             FormField.TextField(
-                id = localizedString(R.string.ship_manufacture_year),
-                label = localizedString(R.string.ship_manufacture_year),
+                id = "manufacturerYear",
+                labelRes = R.string.ship_manufacture_year,
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.DropDown(
-                id = localizedString(R.string.proof_type),
-                label = localizedString(R.string.proof_type),
-                options = listOf(
-                    localizedString(R.string.ownership_certificate),
-                    localizedString(R.string.sale_contract),
-                    localizedString(R.string.registration_document),
-                    localizedString(R.string.other)
+                id = "proofType",
+                labelRes = R.string.proof_type,
+                optionRes = listOf(
+                    R.string.ownership_certificate,
+                    R.string.sale_contract,
+                    R.string.registration_document,
+                    R.string.other
                 ),
                 mandatory = true
             ),
             FormField.FileUpload(
-                id = localizedString(R.string.proof_document),
-                label = localizedString(R.string.proof_document),
+                id = "proofDocument",
+                labelRes = R.string.proof_document,
                 allowedTypes = listOf("pdf", "jpg", "png"),
                 mandatory = true
             ),
             FormField.DatePicker(
-                id = localizedString(R.string.construction_end_date),
-                label = localizedString(R.string.construction_end_date),
+                id = "constructionEndDate",
+                labelRes = R.string.construction_end_date,
+                allowPastDates = false,
+                mandatory = true
+            ),
+            FormField.DatePicker(
+                id = "constructionStartDate",
+                labelRes = R.string.construction_start_date,
                 allowPastDates = true,
                 mandatory = true
             ),
             FormField.DatePicker(
-                id = localizedString(R.string.construction_start_date),
-                label = localizedString(R.string.construction_start_date),
-                allowPastDates = true,
-                mandatory = true
-            ),
-            FormField.DatePicker(
-                id = localizedString(R.string.first_registration_date_optional),
-                label = localizedString(R.string.first_registration_date_optional),
-                allowPastDates = true,
-                mandatory = true
+                id = "firstRegistrationDate",
+                labelRes = R.string.first_registration_date_optional,
+                allowPastDates = false,
+                mandatory = false
             ),
             FormField.DropDown(
-                id = localizedString(R.string.building_country_optional),
-                label = localizedString(R.string.building_country_optional),
-                options = listOf(
-                    localizedString(R.string.uae),
-                    localizedString(R.string.saudi),
-                    localizedString(R.string.kuwait),
-                    localizedString(R.string.bahrain),
-                    localizedString(R.string.qatar),
-                    localizedString(R.string.oman)
+                id = "registrationCountry",
+                labelRes = R.string.building_country_optional,
+                optionRes = listOf(
+                    R.string.uae,
+                    R.string.saudi,
+                    R.string.kuwait,
+                    R.string.bahrain,
+                    R.string.qatar,
+                    R.string.oman
                 ),
-                mandatory = true
+                mandatory = false
             )
         )
     )
 
     private fun createOwnerInformationStep(): StepData = StepData(
-        titleRes = localizedString(R.string.owner_info),
-        descriptionRes = localizedString(R.string.owner_info_description),
+        titleRes = R.string.owner_info,
+        descriptionRes = R.string.owner_info_description,
         fields = listOf(
             FormField.CheckBox(
                 id = "isCompany",
-                label = localizedString(R.string.is_company),
+                labelRes = R.string.is_company,
                 mandatory = false
             ),
             FormField.TextField(
                 id = "ownerFullName",
-                label = localizedString(R.string.owner_full_name),
+                labelRes = R.string.owner_full_name,
                 mandatory = true
             ),
             FormField.DropDown(
                 id = "ownerNationality",
-                label = localizedString(R.string.owner_nationality),
-                options = listOf(
-                    localizedString(R.string.uae),
-                    localizedString(R.string.saudi),
-                    localizedString(R.string.kuwait),
-                    localizedString(R.string.bahrain),
-                    localizedString(R.string.qatar),
-                    localizedString(R.string.oman),
-                    localizedString(R.string.other)
+                labelRes = R.string.owner_nationality,
+                optionRes = listOf(
+                    R.string.uae,
+                    R.string.saudi,
+                    R.string.kuwait,
+                    R.string.bahrain,
+                    R.string.qatar,
+                    R.string.oman,
+                    R.string.other
                 ),
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerIdNumber",
-                label = localizedString(R.string.owner_id_number),
+                labelRes = R.string.owner_id_number,
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerPassportNumber",
-                label = localizedString(R.string.owner_passport_number),
+                labelRes = R.string.owner_passport_number,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerEmail",
-                label = localizedString(R.string.email),
+                labelRes = R.string.email,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerMobile",
-                label = localizedString(R.string.owner_mobile),
+                labelRes = R.string.owner_mobile,
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerAddress",
-                label = localizedString(R.string.owner_address),
+                labelRes = R.string.owner_address,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerCity",
-                label = localizedString(R.string.owner_city),
+                labelRes = R.string.owner_city,
                 mandatory = true
             ),
             FormField.DropDown(
                 id = "ownerCountry",
-                label = localizedString(R.string.country),
-                options = listOf(
-                    localizedString(R.string.uae),
-                    localizedString(R.string.saudi),
-                    localizedString(R.string.kuwait),
-                    localizedString(R.string.bahrain),
-                    localizedString(R.string.qatar),
-                    localizedString(R.string.oman)
+                labelRes = R.string.country,
+                optionRes = listOf(
+                    R.string.uae,
+                    R.string.saudi,
+                    R.string.kuwait,
+                    R.string.bahrain,
+                    R.string.qatar,
+                    R.string.oman
                 ),
                 mandatory = true
             ),
             FormField.TextField(
                 id = "ownerPostalCode",
-                label = localizedString(R.string.owner_postal_code),
+                labelRes = R.string.owner_postal_code,
                 isNumeric = true,
                 mandatory = false
             ),
             FormField.TextField(
                 id = "companyRegistrationNumber",
-                label = localizedString(R.string.company_registration_number),
+                labelRes = R.string.company_registration_number,
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "companyName",
-                label = localizedString(R.string.company_name),
+                labelRes = R.string.company_name,
                 mandatory = false
             ),
             FormField.TextField(
                 id = "companyType",
-                label = localizedString(R.string.owner_type),
+                labelRes = R.string.owner_type,
                 mandatory = false
             )
         )
     )
 
     private fun createDocumentationStep(): StepData = StepData(
-        titleRes = localizedString(R.string.documents),
-        descriptionRes = localizedString(R.string.documents_description),
+        titleRes = R.string.documents,
+        descriptionRes = R.string.documents_description,
         fields = emptyList() // Will be implemented later
     )
 
     private fun createReviewStep(): StepData = StepData(
-        titleRes = localizedString(R.string.review),
-        descriptionRes = localizedString(R.string.step_placeholder_content),
+        titleRes = R.string.review,
+        descriptionRes = R.string.step_placeholder_content,
         fields = emptyList() // Will be implemented later
     )
 
