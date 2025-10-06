@@ -3,6 +3,7 @@ package com.informatique.mtcit.di.module
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.work.WorkManager
+import com.informatique.mtcit.business.validation.FormValidator
 import com.informatique.mtcit.common.Const
 import com.informatique.mtcit.common.dispatcher.DefaultDispatcherProvider
 import com.informatique.mtcit.common.dispatcher.DispatcherProvider
@@ -33,6 +34,10 @@ class ApplicationModule {
     @Singleton
     @Provides
     fun provideGsonConverterFactory(): GsonConverterFactory = GsonConverterFactory.create()
+
+    @Provides
+    @Singleton
+    fun provideFormValidator(): FormValidator = FormValidator()
 
     @ApiKey
     @Provides

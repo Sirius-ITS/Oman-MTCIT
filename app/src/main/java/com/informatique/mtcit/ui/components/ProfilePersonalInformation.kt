@@ -11,11 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.Divider
-import androidx.compose.material.Switch
-import androidx.compose.material.SwitchDefaults
-import androidx.compose.material.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +50,7 @@ fun ProfilePersonalInformation(
 
     Card(
         shape = RoundedCornerShape(14.dp),
-        elevation = 2.dp,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
@@ -83,11 +84,11 @@ fun ProfilePersonalInformation(
             ProfileInfoRow(localizedApp( R.string.college),  college)
             ProfileInfoRow(localizedApp( R.string.major),  major)
 
-            Divider(modifier = Modifier.padding(vertical = 2.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
             ProfileSettingItem(text = localizedApp( R.string.change_password) , onClick = {
                 navController.navigate("changepasswordscreen")
             })
-            Divider(modifier = Modifier.padding(vertical = 2.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
             var isNotificationOn by remember { mutableStateOf(true) }
             Row(
                 modifier = Modifier.fillMaxWidth(),

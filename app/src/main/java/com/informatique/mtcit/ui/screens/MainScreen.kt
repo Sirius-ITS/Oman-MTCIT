@@ -1,10 +1,7 @@
 package com.informatique.mtcit.ui.screens
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -15,17 +12,21 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.BottomNavigation
-import androidx.compose.material.BottomNavigationItem
-import androidx.compose.material.Icon
-import androidx.compose.material.LocalContentColor
-import androidx.compose.material.Scaffold
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,52 +36,34 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.google.accompanist.navigation.animation.AnimatedNavHost
-import com.google.accompanist.navigation.animation.composable
-import com.google.accompanist.navigation.animation.rememberAnimatedNavController
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.navigation.compose.rememberNavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.bottomNav.BottomScreen
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
-@RequiresApi(Build.VERSION_CODES.N)
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(sharedUserViewModel: SharedUserViewModel) {
-    val navController = rememberAnimatedNavController()
+    val navController = rememberNavController()
 
     val bottomNavItems = listOf(
         BottomScreen.Home,
-        BottomScreen.Profile
+        BottomScreen.Profile,
+        BottomScreen.ShipRegistration
     )
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val systemUiController = rememberSystemUiController()
-    val headerColor = colorResource(id = R.color.system_bar)
-
-    BottomNavigation {
-        bottomNavItems.forEach { screen ->
-            BottomNavigationItem(
-                icon = { Icon(painterResource(id = screen.icon), contentDescription = null) },
-                label = { Text(text = localizedApp( screen.titleRes)) },
-                selected = currentRoute == screen.route,
-                onClick = { navController.navigate(screen.route) }
-            )
-        }
-    }
-
-    SideEffect {
-        systemUiController.setStatusBarColor(
-            color = headerColor,
-            darkIcons = true
-        )
-    }
     Scaffold(
+        modifier = Modifier.fillMaxSize(), // Remove status bar padding
         bottomBar = {
+            // Only show main bottom navigation for main screens, not for ship registration
             if (currentRoute in bottomNavItems.map { it.route }) {
                 AppBottomNavigation(
                     items = bottomNavItems,
@@ -97,31 +80,48 @@ fun MainScreen(sharedUserViewModel: SharedUserViewModel) {
                 )
             }
         }
-    ) {padding ->
-        AnimatedNavHost(
+    ) { paddingValues ->
+        NavHost(
             navController = navController,
             startDestination = BottomScreen.Home.route,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues), // Use paddingValues to respect the main bottom bar when it's shown
+            enterTransition = { defaultEnterTransition() },
+            exitTransition = { defaultExitTransition() }
         ) {
-            composable(BottomScreen.Home.route ,
+            composable(
+                route = BottomScreen.Home.route,
                 enterTransition = { defaultEnterTransition() },
                 exitTransition = { defaultExitTransition() }
-            ) { HomeScreen(navController = navController, sharedUserViewModel = sharedUserViewModel) }
+            ) {
+                HomeScreen(navController = navController, sharedUserViewModel = sharedUserViewModel)
+            }
 
-
-            composable(BottomScreen.Profile.route ,
+            composable(
+                route = BottomScreen.Profile.route,
                 enterTransition = { defaultEnterTransition() },
                 exitTransition = { defaultExitTransition() }
-            ) { ProfileScreen(navController = navController,sharedUserViewModel = sharedUserViewModel) }
+            ) {
+                ProfileScreen(navController = navController, sharedUserViewModel = sharedUserViewModel)
+            }
 
+            composable(
+                route = BottomScreen.ShipRegistration.route,
+                enterTransition = { defaultEnterTransition() },
+                exitTransition = { defaultExitTransition() }
+            ) {
+                // For ship registration, we pass paddingValues as zero since main bottom bar is hidden
+                ShipRegistrationStepperScreen(navController = navController, sharedUserViewModel = sharedUserViewModel)
+            }
 
-            composable("languagescreen",
+            composable(
+                route = "languagescreen",
                 enterTransition = { defaultEnterTransition2() },
                 exitTransition = { defaultExitTransition2() }
             ) {
                 LanguageScreen(navController = navController)
             }
-
         }
     }
 }
@@ -132,52 +132,64 @@ fun AppBottomNavigation(
     currentRoute: String?,
     onNavigate: (String) -> Unit
 ) {
-    BottomNavigation(
-        backgroundColor = Color.White,
-        modifier = Modifier.height(70.dp)
+    NavigationBar(
+        containerColor = Color.White,
+        contentColor = Color.DarkGray,
+        modifier = Modifier
+            .height(80.dp)
+            .fillMaxWidth()
     ) {
         items.forEach { screen ->
             val isSelected = currentRoute == screen.route
-            BottomNavigationItem(
+            NavigationBarItem(
                 selected = isSelected,
-                alwaysShowLabel = true,
-                onClick = {   if (currentRoute != screen.route) {
-                    onNavigate(screen.route)
-                } },
-
+                onClick = {
+                    if (currentRoute != screen.route) {
+                        onNavigate(screen.route)
+                    }
+                },
                 icon = {
                     val scale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.2f else 1f,
-                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                        targetValue = if (isSelected) 1.15f else 1f,
+                        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+                        label = "IconScale"
                     )
                     Icon(
                         painter = painterResource(id = screen.icon),
                         contentDescription = screen.route,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier
+                            .size(28.dp)
                             .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                        },
-                        tint = LocalContentColor.current
-
+                                scaleX = scale
+                                scaleY = scale
+                            }
                     )
                 },
                 label = {
-                    Text(text = localizedApp(screen.titleRes) , fontSize = 9.sp , maxLines = 1)
+                    Text(
+                        text = localizedApp(screen.titleRes),
+                        fontSize = 10.sp,
+                        maxLines = 1
+                    )
                 },
-                selectedContentColor = colorResource(id = R.color.bottom_navigation),
-                unselectedContentColor = Color.DarkGray
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = colorResource(id = R.color.bottom_navigation),
+                    selectedTextColor = colorResource(id = R.color.bottom_navigation),
+                    unselectedIconColor = Color.Gray,
+                    unselectedTextColor = Color.Gray,
+                    indicatorColor = Color.Transparent
+                )
             )
         }
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
+// Updated animation functions to work with modern navigation
 fun defaultEnterTransition(): EnterTransition {
     return fadeIn(
         animationSpec = tween(
             durationMillis = 380,
-            easing = { fraction -> fraction * fraction * (3 - 2 * fraction) } // Smoothstep
+            easing = { fraction -> fraction * fraction * (3 - 2 * fraction) }
         )
     ) + slideInHorizontally(
         initialOffsetX = { it / 7 },
@@ -188,7 +200,6 @@ fun defaultEnterTransition(): EnterTransition {
     )
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 fun defaultExitTransition(): ExitTransition {
     return fadeOut(
         animationSpec = tween(
@@ -204,7 +215,6 @@ fun defaultExitTransition(): ExitTransition {
     )
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 fun defaultEnterTransition2(): EnterTransition {
     return slideInHorizontally(
         initialOffsetX = { -it },
@@ -220,7 +230,6 @@ fun defaultEnterTransition2(): EnterTransition {
     )
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 fun defaultExitTransition2(): ExitTransition {
     return slideOutHorizontally(
         targetOffsetX = { it },
@@ -235,5 +244,3 @@ fun defaultExitTransition2(): ExitTransition {
         )
     )
 }
-
-

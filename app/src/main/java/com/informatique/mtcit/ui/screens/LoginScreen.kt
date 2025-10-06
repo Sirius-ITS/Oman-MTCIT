@@ -3,15 +3,18 @@ package com.informatique.mtcit.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.IconButton
-import androidx.compose.material.TextField
-import androidx.compose.material.TextFieldDefaults
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -50,7 +53,6 @@ import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun LoginScreen(
     navController: NavController,
@@ -80,144 +82,169 @@ fun LoginScreen(
         modifier = Modifier.fillMaxSize(),
         color = colorResource(id = R.color.background)
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
-                .padding(start = 15.dp, end = 15.dp, top = 15.dp, bottom = 15.dp)
+                .padding(start = 15.dp, end = 15.dp, bottom = 15.dp) // Remove status bar padding
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.moodle),
-                contentDescription = null,
-                modifier = Modifier.size(260.dp)
-            )
+            item {
+                Image(
+                    painter = painterResource(id = R.drawable.moodle),
+                    contentDescription = null,
+                    modifier = Modifier.size(260.dp)
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-            TextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text(mContext.getString(R.string.username), style = MaterialTheme.typography.labelLarge, color = if (isUsernameFocused) colorResource(id = R.color.text_field_label) else Color.Gray) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged {
-                        isUsernameFocused = it.isFocused
-                    },
-                colors = TextFieldDefaults.textFieldColors(
-                    backgroundColor = colorResource(id = R.color.background),
-                    focusedLabelColor = colorResource(id = R.color.text_field_label),
-                    unfocusedLabelColor = Color.Gray,
-                    focusedIndicatorColor = colorResource(id = R.color.text_field_label),
-                    unfocusedIndicatorColor = Color.Gray,
-                    cursorColor = colorResource(id = R.color.text_field_label)
-                ),
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Black
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(38.dp))
-
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text(mContext.getString(R.string.password), style = MaterialTheme.typography.labelLarge, color = if (isPasswordFocused) colorResource(id = R.color.text_field_label) else Color.Gray) },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged {
-                        isPasswordFocused = it.isFocused
-                    },
-                colors = TextFieldDefaults.textFieldColors(
-                    backgroundColor = colorResource(id = R.color.background),
-                    focusedLabelColor = colorResource(id = R.color.text_field_label),
-                    unfocusedLabelColor = Color.Gray,
-                    focusedIndicatorColor = colorResource(id = R.color.text_field_label),
-                    unfocusedIndicatorColor = Color.Gray,
-                    cursorColor = colorResource(id = R.color.text_field_label),
-                    textColor = colorResource(id = R.color.text_field_label)
-                ),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Image(
-                            painter = if (passwordVisible) hidePasswordIcon else showPasswordIcon,
-                            contentDescription = if (passwordVisible) "إخفاء كلمة المرور" else "إظهار كلمة المرور",
-                            modifier = Modifier.size(24.dp),
-                            colorFilter = ColorFilter.tint(colorResource(id = R.color.grey))
+                TextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = {
+                        Text(
+                            mContext.getString(R.string.username),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isUsernameFocused) colorResource(id = R.color.text_field_label) else Color.Gray
                         )
-                    }
-                },
-                textStyle = TextStyle(
-                    fontSize = 16.sp,
-                    color = Color.Black
-                ),
-                singleLine = true
-            )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged {
+                            isUsernameFocused = it.isFocused
+                        },
+                    colors = TextFieldDefaults.colors(  // Note: .colors() not .textFieldColors()
+                        focusedContainerColor = colorResource(id = R.color.background),
+                        unfocusedContainerColor = colorResource(id = R.color.background),
+                        focusedTextColor = colorResource(id = R.color.text_field_label),
+                        unfocusedTextColor = colorResource(id = R.color.text_field_label),
+                        focusedLabelColor = colorResource(id = R.color.text_field_label),
+                        unfocusedLabelColor = Color.Gray,
+                        focusedIndicatorColor = colorResource(id = R.color.text_field_label),
+                        unfocusedIndicatorColor = Color.Gray,
+                        cursorColor = colorResource(id = R.color.text_field_label)
+                    ),
+                    textStyle = TextStyle(
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    ),
+                    singleLine = true
+                )
 
-            Spacer(modifier = Modifier.height(52.dp))
+                Spacer(modifier = Modifier.height(38.dp))
 
-            CommonButton(text = mContext.getString(R.string.login), true, colorResource(id = R.color.login_button)) {
-                loginViewModel.login(username, password)
-            }
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = {
+                        Text(
+                            mContext.getString(R.string.password),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (isPasswordFocused) colorResource(id = R.color.text_field_label) else Color.Gray
+                        )
+                    },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged {
+                            isPasswordFocused = it.isFocused
+                        },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = colorResource(id = R.color.background),
+                        unfocusedContainerColor = colorResource(id = R.color.background),
+                        focusedTextColor = colorResource(id = R.color.text_field_label),
+                        unfocusedTextColor = colorResource(id = R.color.text_field_label),
+                        focusedLabelColor = colorResource(id = R.color.text_field_label),
+                        unfocusedLabelColor = Color.Gray,
+                        focusedIndicatorColor = colorResource(id = R.color.text_field_label),
+                        unfocusedIndicatorColor = Color.Gray,
+                        cursorColor = colorResource(id = R.color.text_field_label),
+                    ),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Image(
+                                painter = if (passwordVisible) hidePasswordIcon else showPasswordIcon,
+                                contentDescription = if (passwordVisible) "إخفاء كلمة المرور" else "إظهار كلمة المرور",
+                                modifier = Modifier.size(24.dp),
+                                colorFilter = ColorFilter.tint(colorResource(id = R.color.grey))
+                            )
+                        }
+                    },
+                    textStyle = TextStyle(
+                        fontSize = 16.sp,
+                        color = Color.Black
+                    ),
+                    singleLine = true
+                )
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(52.dp))
 
-            CommonButton(text = mContext.getString(R.string.forgotpass), true, Color.White) {
-                navController.navigate("forgot_password")
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CommonButton(text = "Microsoft Azure", true, Color.White) {
-                navController.navigate("microsoft_azure")
-            }
-
-            when (loginUiState) {
-                is UIState.Loading -> {
-                    ShowLoading()
+                CommonButton(
+                    text = mContext.getString(R.string.login),
+                    true,
+                    colorResource(id = R.color.login_button)
+                ) {
+                    loginViewModel.login(username, password)
                 }
-                is UIState.Failure -> {
-                    var errorText = localizedApp(R.string.something_went_wrong)
-                    if ((loginUiState as UIState.Failure<LoginResponse>).throwable is NoInternetException) {
-                        errorText = localizedApp(R.string.no_internet_available)
-                    }
-                    ShowError(
-                        text = errorText,
-                        retryEnabled = true
-                    ) {
-                        loginViewModel.login(username, password)
-                    }
-                }
-                is UIState.Success -> {
-                    val response = (loginUiState as UIState.Success<LoginResponse>).data
-                    if (response.result != "Ok") {
-                        ShowError(text = response.details.toString())
-                    } else {
-                        response.cardProfile?.let { profile ->
-                            sharedUserViewModel.setCardProfile(profile)
 
-                            response.userMainData?.let { userMainData ->
-                                sharedUserViewModel.setUserMainData(userMainData)
-                            }
-                            LaunchedEffect(profile) {
-                                navController.navigate("main") {
-                                    popUpTo("login") { inclusive = true }
-                                }
-                            }
-                        } ?: run {
-                            ShowError(text = "لم يتم استلام بيانات المستخدم بشكل صحيح.")
+                Spacer(modifier = Modifier.height(10.dp))
+
+                CommonButton(text = mContext.getString(R.string.forgotpass), true, Color.White) {
+                    navController.navigate("forgot_password")
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                CommonButton(text = "Microsoft Azure", true, Color.White) {
+                    navController.navigate("microsoft_azure")
+                }
+
+                when (loginUiState) {
+                    is UIState.Loading -> {
+                        ShowLoading()
+                    }
+
+                    is UIState.Failure -> {
+                        var errorText = localizedApp(R.string.something_went_wrong)
+                        if ((loginUiState as UIState.Failure<LoginResponse>).throwable is NoInternetException) {
+                            errorText = localizedApp(R.string.no_internet_available)
+                        }
+                        ShowError(
+                            text = errorText,
+                            retryEnabled = true
+                        ) {
+                            loginViewModel.login(username, password)
                         }
                     }
-                }
 
-                is UIState.Empty -> {
-                    // Optionally show something if needed
-                }
+                    is UIState.Success -> {
+                        val response = (loginUiState as UIState.Success<LoginResponse>).data
+                        if (response.result != "Ok") {
+                            ShowError(text = response.details.toString())
+                        } else {
+                            response.cardProfile?.let { profile ->
+                                sharedUserViewModel.setCardProfile(profile)
 
-                is UIState.Error -> {
-                    ShowError(text = (loginUiState as UIState.Error).message)
+                                response.userMainData?.let { userMainData ->
+                                    sharedUserViewModel.setUserMainData(userMainData)
+                                }
+                                LaunchedEffect(profile) {
+                                    navController.navigate("main") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                }
+                            } ?: run {
+                                ShowError(text = "لم يتم استلام بيانات المستخدم بشكل صحيح.")
+                            }
+                        }
+                    }
+
+                    is UIState.Empty -> {
+                        // Optionally show something if needed
+                    }
+
+                    is UIState.Error -> {
+                        ShowError(text = (loginUiState as UIState.Error).message)
+                    }
                 }
             }
         }

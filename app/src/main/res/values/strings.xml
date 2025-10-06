@@ -61,6 +61,7 @@
     <string name="log_out">Log out</string>
     <string name="profile">Profile</string>
     <string name="home">Home</string>
+    <string name="ship_registration">Ship registration</string>
     <string name="courses">Courses</string>
     <string name="ask">Ask</string>
     <string name="bottom_schedule">Schedule</string>
@@ -81,8 +82,168 @@
     <string name="study">Study</string>
     <string name="otherfees">Other Fees</string>
     <string name="news_not_available">News not available</string>
+    <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">Issuance of a temporary registration certificate for a vessel or marine unit</string>
+    <string name="ship_info">Ship Information</string>
+    <string name="owner_info">Owner Information</string>
+    <string name="documents">Documents</string>
+    <string name="technical_details">Technical Details</string>
+    <string name="insurance">Insurance</string>
+    <string name="review">Review</string>
+    <string name="confirmation">Confirmation</string>
+    <string name="step_x_of_y">Step %1$d of %2$d</string>
+    <string name="unit_data">Unit Details</string>
+    <string name="unit_data_description">Please provide complete information about the ship or marine unit\nto facilitate request processing and necessary procedures</string>
+    <string name="select_unit_type">Select Unit Type</string>
+    <string name="select_unit_type_placeholder">Choose unit type</string>
+    <string name="ship">Ship</string>
+    <string name="marine_unit">Marine Unit</string>
+    <string name="yacht">Yacht</string>
+    <string name="boat">Boat</string>
+    <string name="call_sign">Call Sign</string>
+    <string name="imo_number">IMO Number</string>
+    <string name="registration_port">Registration Port</string>
+    <string name="dammam_port">Dammam Port</string>
+    <string name="jeddah_port">Jeddah Port</string>
+    <string name="jubail_port">Jubail Port</string>
+    <string name="yanbu_port">Yanbu Port</string>
+    <string name="mmsi_number">Maritime ID (MMSI)</string>
+    <string name="ship_manufacturer">Ship Manufacture</string>
+    <string name="ship_manufacture_year">Ship Manufacture Year</string>
+    <string name="maritime_activity">Maritime Activity</string>
+    <string name="building_dock_optional">Building Dock (Optional)</string>
+    <string name="proof_document">Proof Document</string>
+    <string name="proof_type">Proof Type</string>
+    <string name="ownership_certificate">Ownership Certificate</string>
+    <string name="sale_contract">Sale Contract</string>
+    <string name="registration_document">Registration Document</string>
+    <string name="other">Other</string>
+    <string name="construction_end_date">Construction End Date</string>
+    <string name="construction_start_date">Construction Start Date</string>
+    <string name="date_format_placeholder">dd/mm/yyyy</string>
+    <string name="building_country_optional">Building Country (Optional)</string>
+    <string name="first_registration_date_optional">First Registration Date (Optional)</string>
+    <string name="uae">UAE</string>
+    <string name="saudi">Saudi Arabia</string>
+    <string name="kuwait">Kuwait</string>
+    <string name="bahrain">Bahrain</string>
+    <string name="qatar">Qatar</string>
+    <string name="oman">Oman</string>
+    <string name="next_button">Next</string>
+    <string name="back_button">Back</string>
+    <string name="submit_button">Submit</string>
+    <string name="step_2_title">Step 2: Owner Information</string>
+    <string name="step_3_title">Step 3: Documents</string>
+    <string name="step_4_title">Step 4: Technical Details</string>
+    <string name="step_5_title">Step 5: Insurance</string>
+    <string name="step_6_title">Step 6: Review</string>
+    <string name="step_7_title">Step 7: Final Confirmation</string>
+    <string name="step_placeholder_content">Content for this step will be added here</string>
+    <string name="step_progress">Step %1$d of %2$d</string>
 
+    <!-- Missing Ship Registration String Resources - English -->
+    <string name="vessel_name">Vessel Name</string>
+    <string name="sohar_port">Sohar Port</string>
+    <string name="salalah_port">Salalah Port</string>
+    <string name="muscat_port">Muscat Port</string>
+    <string name="duqm_port">Duqm Port</string>
+    <string name="shinas_port">Shinas Port</string>
 
+    <!-- Owner Information -->
+    <string name="owner_info_description">Please provide complete owner information for the marine unit</string>
+    <string name="is_company">Is this a company?</string>
+    <string name="owner_full_name">Owner Full Name</string>
+    <string name="owner_nationality">Owner Nationality</string>
+    <string name="owner_id_number">Owner ID Number</string>
+    <string name="owner_passport_number">Owner Passport Number</string>
+    <string name="owner_mobile">Owner Mobile Number</string>
+    <string name="owner_address">Owner Address</string>
+    <string name="owner_city">Owner City</string>
+    <string name="owner_postal_code">Postal Code</string>
+    <string name="owner_email">Email</string>
+    <string name="owner_country">Country</string>
+    <string name="company_name">Company Name</string>
+    <string name="company_registration_number">Company Registration Number</string>
+    <string name="ownership_percentage">Ownership Percentage (%)</string>
+    <string name="ownership_documents">Ownership Documents</string>
 
+    <!-- Technical Specifications -->
+    <string name="technical_specs">Technical Specifications</string>
+    <string name="technical_specs_description">Detailed technical information about the marine unit</string>
+    <string name="vessel_length">Vessel Length (meters)</string>
+    <string name="vessel_width">Vessel Width (meters)</string>
+    <string name="vessel_depth">Vessel Depth (meters)</string>
+    <string name="gross_tonnage">Gross Tonnage (tons)</string>
+    <string name="net_tonnage">Net Tonnage (tons)</string>
+    <string name="engine_power">Engine Power (HP)</string>
+    <string name="engine_number">Engine Number</string>
+    <string name="fuel_type">Fuel Type</string>
+    <string name="diesel">Diesel</string>
+    <string name="gasoline">Gasoline</string>
+    <string name="electric">Electric</string>
+    <string name="hybrid">Hybrid</string>
+    <string name="max_speed">Maximum Speed (knots)</string>
+    <string name="passenger_capacity">Passenger Capacity</string>
+    <string name="crew_capacity">Crew Capacity</string>
+    <string name="hull_material">Hull Material</string>
+    <string name="steel">Steel</string>
+    <string name="aluminum">Aluminum</string>
+    <string name="fiberglass">Fiberglass</string>
+    <string name="wood">Wood</string>
+    <string name="technical_documents">Technical Documents</string>
+
+    <!-- Documentation -->
+    <string name="documents_description">Upload all required documents and certificates</string>
+    <string name="identity_document">Identity Document/Passport Copy</string>
+    <string name="vessel_photos">Vessel Photos</string>
+    <string name="safety_certificate">Marine Safety Certificate</string>
+    <string name="insurance_document">Marine Insurance Document</string>
+    <string name="registration_fees_receipt">Registration Fees Receipt</string>
+    <string name="terms_agreement">I agree to the terms and conditions for marine unit registration</string>
+    <string name="data_accuracy">I certify that all provided data and information is accurate</string>
+    <string name="legal_responsibility">I assume full legal responsibility for the accuracy of the information</string>
+
+    <!-- Additional strings that exist in Arabic file but missing in English -->
+    <string name="enter_call_sign">Enter call sign</string>
+    <string name="enter_imo_number">Enter vessel international ID number</string>
+    <string name="select_registration_port">Select registration port</string>
+    <string name="enter_total_length">Enter total length in meters</string>
+    <string name="enter_ship_manufacture_year">Enter ship manufacture year</string>
+    <string name="select_maritime_activity">Select maritime activity</string>
+    <string name="enter_shipyard_name">Enter shipyard name</string>
+    <string name="select_proof_type">Select proof type</string>
+    <string name="country_of_creation">Country of creation</string>
+    <string name="continue_button">Continue</string>
+    <string name="remove_file">Remove file</string>
+    <string name="file_upload_instructions">Click to upload file (%s) - max %dMB</string>
+    <string name="choose_file">Choose file</string>
+
+    <!-- Owner Information detailed fields -->
+    <string name="owner_information">Owner Information</string>
+    <string name="owner_information_description">Please provide complete owner information for the marine unit</string>
+    <string name="enter_owner_full_name">Enter owner full name</string>
+    <string name="select_nationality">Select nationality</string>
+    <string name="enter_owner_id_number">Enter ID number</string>
+    <string name="enter_owner_passport_number">Enter passport number</string>
+    <string name="enter_owner_mobile">Enter mobile number</string>
+    <string name="enter_owner_address">Enter address</string>
+    <string name="enter_owner_city">Enter city</string>
+    <string name="select_owner_country">Select country</string>
+    <string name="enter_owner_postal_code">Enter postal code</string>
+    <string name="enter_company_name">Enter company name</string>
+    <string name="enter_company_registration_number">Enter registration number</string>
+
+    <!-- Dynamic Owner Information Fields -->
+    <string name="owner_type">Owner Type</string>
+    <string name="select_owner_type">Select owner type</string>
+    <string name="individual">Individual</string>
+    <string name="company">Company</string>
+    <string name="partnership">Partnership</string>
+    <string name="enter_ownership_percentage">Enter ownership percentage</string>
+    <string name="partnership_name">Partnership Name</string>
+    <string name="enter_partnership_name">Enter partnership name</string>
+    <string name="partnership_registration_number">Partnership Registration Number</string>
+    <string name="enter_partnership_registration_number">Enter partnership registration number</string>
+    <string name="upload_required_documents">Upload Required Documents</string>
+    <string name="file_format_info">Only pdf, jpg or png files. Max 5MB size.</string>
 
 </resources>

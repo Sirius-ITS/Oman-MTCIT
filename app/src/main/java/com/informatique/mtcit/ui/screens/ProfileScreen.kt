@@ -1,30 +1,31 @@
 package com.informatique.mtcit.ui.screens
 
 import android.content.Intent
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Card
-import androidx.compose.material.Divider
-import androidx.compose.material.Text
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,15 +37,15 @@ import com.informatique.mtcit.ui.components.ProfileHeader
 import com.informatique.mtcit.ui.components.ProfilePersonalInformation
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
+import androidx.compose.ui.platform.LocalConfiguration
 
 
-@RequiresApi(Build.VERSION_CODES.N)
 @Composable
 fun ProfileScreen(
     navController: NavController,
     sharedUserViewModel: SharedUserViewModel
 ) {
-    val currentLanguageCode = LocalContext.current.resources.configuration.locales[0].language
+    val currentLanguageCode = LocalConfiguration.current.locales[0].language
     val cardProfile by sharedUserViewModel.cardProfile.collectAsState()
     var studintame : String?
     var studintid : String?
@@ -76,7 +77,7 @@ fun ProfileScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorResource(id = R.color.background)),
+            .background(color = colorResource(id = R.color.white))
     ) {
         // 🟦 Header Section
         item {
@@ -149,7 +150,9 @@ fun ProfileSettingsCard(
 ) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        elevation = 2.dp,
+        elevation = CardDefaults.cardElevation( // Fixed: Use cardElevation instead of direct Dp
+            defaultElevation = 2.dp
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp)
@@ -169,7 +172,7 @@ fun ProfileSettingsCard(
             // rate app (does nothing now)
             ProfileSettingItem(text = localizedApp( R.string.rate_this_app)) {}
 
-            Divider(modifier = Modifier.padding())
+            HorizontalDivider(modifier = Modifier.padding())
 
             // change language
             ProfileSettingItem(
@@ -177,7 +180,7 @@ fun ProfileSettingsCard(
                 onClick = onChangeLanguageClick
             )
 
-            Divider(modifier = Modifier.padding())
+            HorizontalDivider(modifier = Modifier.padding())
 
             // log out
             ProfileSettingItem(
@@ -187,4 +190,3 @@ fun ProfileSettingsCard(
         }
     }
 }
-

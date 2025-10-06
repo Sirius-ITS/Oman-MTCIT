@@ -14,4 +14,9 @@
     <color name="transcript">#0c9869</color>
     <color name="background">#ebebeb</color>
     <color name="text_field_label">#146cd7</color>
+
+    <!-- Splash Screen Colors -->
+    <color name="splash_background">#FFFFFF</color>
+    <color name="warm_yellow">#FFC107</color>
+    <color name="splash_icon_tint">#036eff</color>
 </resources>

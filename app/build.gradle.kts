@@ -1,38 +1,30 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.21")
-    }
-}
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
-    kotlin("android")
-    kotlin("kapt")
-    id("dagger.hilt.android.plugin")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
     namespace = "com.informatique.mtcit"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.informatique.mtcit"
-        minSdk = 24  // Updated from 21 to 24 to support required APIs
-        targetSdk = 35
+        minSdk = 26
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.informatique.mtcit.HiltTestRunner" // For Hilt testing
     }
 
     buildTypes {
         debug {
             buildConfigField("String", "API_KEY", "\"51563d451c6f724bd8ab8b996d791403\"")
-            //FIXME remove the string and add your api key
         }
         release {
             isMinifyEnabled = false
@@ -43,130 +35,126 @@ android {
             )
         }
     }
+
     buildFeatures {
         buildConfig = true
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.7"  // This version is compatible with Kotlin 1.8.21
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true // For Java 8+ features on older Android
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    kapt {
-        correctErrorTypes = true
-        arguments {
-            arg("dagger.hilt.android.internal.disableAndroidSuperclassValidation", "true")
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
         }
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.7.10"
     }
 }
 
 dependencies {
-    val kotlinVersion = "1.8.21"
-    val hiltVersion = "2.48"
-    val lifecycleVersion = "2.6.2"
-    val coroutinesVersion = "1.7.3"
+    val hiltVersion = "2.54"
+    val lifecycleVersion = "2.9.4"
+    val coroutinesVersion = "1.9.0"
+    val roomVersion = "2.8.1"
+    val composeBom = platform("androidx.compose:compose-bom:2024.10.00")
 
-    implementation("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    // Core & Desugaring
+    implementation("androidx.core:core-ktx:1.13.1") // Updated for WindowInsetsControllerCompat support
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation("org.jetbrains.kotlin:kotlin-metadata-jvm:2.1.0")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:$hiltVersion")
-    kapt("com.google.dagger:hilt-android-compiler:$hiltVersion")
-    implementation("androidx.hilt:hilt-navigation-compose:1.1.0")
-    kapt("androidx.hilt:hilt-compiler:1.1.0")
+    ksp("com.google.dagger:hilt-compiler:$hiltVersion")
+    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+    ksp("androidx.hilt:hilt-compiler:1.3.0")
 
-    // AndroidX + Lifecycle
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    // Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycleVersion")
     implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:$lifecycleVersion")
-    kapt("androidx.lifecycle:lifecycle-compiler:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
 
     // Retrofit
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.5.0")
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Material Design & Compose
-    implementation("androidx.compose.material3:material3:1.1.2")
-    implementation("androidx.compose.material3:material3-window-size-class:1.1.2")
-    implementation("com.google.android.material:material:1.10.0")
-    implementation("androidx.core:core-splashscreen:1.0.1")
-
-    // Navigation Components
-    implementation("androidx.navigation:navigation-fragment-ktx:2.6.0")
-    implementation("androidx.navigation:navigation-ui-ktx:2.6.0")
-
-
-    // paging 3
-    implementation("androidx.paging:paging-runtime-ktx:3.2.1")
-    implementation("androidx.paging:paging-compose:3.3.0-alpha02")
-
-
-    // compose
-    implementation("androidx.activity:activity-compose:1.7.2")
-    implementation(platform("androidx.compose:compose-bom:2023.03.00"))
-    testImplementation(platform("androidx.compose:compose-bom:2023.03.00"))
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3-window-size-class")
+    implementation("androidx.compose.material:material-icons-extended")
+    implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3:1.1.2")
-    implementation("androidx.compose.material:material:1.5.4")
-    implementation("io.coil-kt:coil-compose:2.4.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
-    implementation("androidx.navigation:navigation-compose:2.6.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
-    implementation("androidx.datastore:datastore-preferences:1.1.0")
-    testImplementation("androidx.compose.ui:ui-test-junit4")
+    implementation("androidx.activity:activity-compose:1.11.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Splash Screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
+    // Accompanist
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
+    implementation("com.google.accompanist:accompanist-navigation-animation:0.36.0")
+
+    // Navigation
+    implementation("androidx.navigation:navigation-fragment-ktx:2.9.5")
+    implementation("androidx.navigation:navigation-ui-ktx:2.9.5")
+    implementation("androidx.navigation:navigation-compose:2.9.5")
+
+    // Paging 3
+    implementation("androidx.paging:paging-runtime-ktx:3.3.6")
+    implementation("androidx.paging:paging-compose:3.3.6")
+
+    // Room
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
+    implementation("androidx.hilt:hilt-work:1.3.0")
+    ksp("androidx.hilt:hilt-compiler:1.3.0")
+
+    // DataStore
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
+
+    // Tests
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
+    testImplementation("app.cash.turbine:turbine:1.1.0")
+
+    // Hilt Testing
+    testImplementation("com.google.dagger:hilt-android-testing:$hiltVersion")
+    kspTest("com.google.dagger:hilt-compiler:$hiltVersion")
+
+    // Compose Test
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
-    // Test
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("androidx.test.ext:junit:1.1.5")
-    testImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    testImplementation("org.mockito:mockito-core:5.3.1")
-    testImplementation("androidx.arch.core:core-testing:2.2.0")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
-    testImplementation("app.cash.turbine:turbine:0.12.1")
-
-    // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
-    implementation("androidx.hilt:hilt-work:1.1.0")
-    kapt("androidx.hilt:hilt-compiler:1.1.0")
-
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
-    implementation("com.microsoft.identity.client:msal:1.4.0")
-
-    // datastore
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-
-    // nav animation
-    implementation("com.google.accompanist:accompanist-navigation-animation:0.31.3-beta")
-
-    // Room
-    val roomVersion = "2.6.0"
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    kapt("androidx.room:room-compiler:$roomVersion")
-}
-// for making apk
-configurations.all {
-    exclude(group = "junit", module = "junit")
-    exclude(group = "org.hamcrest", module = "hamcrest-core")
+    // Android Test
+    androidTestImplementation("com.google.dagger:hilt-android-testing:$hiltVersion")
+    kspAndroidTest("com.google.dagger:hilt-compiler:$hiltVersion")
 }

@@ -5,7 +5,7 @@ import com.informatique.mtcit.BuildConfig
 object Const {
     const val API_KEY = BuildConfig.API_KEY
     //{"UserName":" 2420302","Password":"Sue@68193"}
-    const val BASE_URL = "http://192.168.1.60:3002/"
+    const val BASE_URL = "http://192.168.1.21:3002/"
     const val DB_NAME = "article_db"
     //WorkManager and Notification
     const val MORNING_UPDATE_TIME = 5

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="@color/warm_yellow"
+        android:pathData="M60,10C32.4,10 10,32.4 10,60s22.4,50 50,50s50,-22.4 50,-50S87.6,10 60,10z"/>
+
+    <!-- Ship/Marine icon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,50h60v8h-60z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,42h50l-5,8h-40z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,30h4v12h-4z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45,35h30v3h-30z"/>
+
+    <!-- Waves -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M20,70C25,67 30,73 35,70C40,67 45,73 50,70C55,67 60,73 65,70C70,67 75,73 80,70C85,67 90,73 95,70C100,67 105,73 110,70v20H20z"/>
+</vector>
+

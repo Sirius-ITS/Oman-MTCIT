@@ -3,14 +3,17 @@ package com.informatique.mtcit.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,9 +30,10 @@ fun HomeHeader(title: String , personVictor : ImageVector , notificationVector :
         modifier = Modifier
             .fillMaxWidth()
             .height(170.dp)
-            .background(color = colorResource(id = R.color.system_bar) , RoundedCornerShape(bottomStart = 42.dp, bottomEnd = 42.dp)), // Blue
+            .background(color = colorResource(id = R.color.system_bar) , RoundedCornerShape(bottomStart = 42.dp, bottomEnd = 42.dp))
+            .windowInsetsPadding(WindowInsets.statusBars), // Add status bar padding
     ) {
-        Row(modifier = Modifier.padding(start = 20.dp, top = 20.dp)) {
+        Row(modifier = Modifier.padding(start = 20.dp, top = 8.dp)) { // Reduced top padding from 20dp to 8dp
             Icon(
                 imageVector = notificationVector,
                 contentDescription = "Profile",
