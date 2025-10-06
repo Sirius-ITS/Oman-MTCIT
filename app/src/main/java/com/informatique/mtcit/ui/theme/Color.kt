@@ -14,3 +14,16 @@ val LightGrayBackground = Color(0xFFEBEBEB)
 val blue = Color(0xFF0000FF)
 val white = Color(0xFFFFFFFF)
 val lightBlue = Color(0xFF128EFF)
+
+
+// Custom (optional)
+val SuccessLight = Color(0xFF00C853)
+val WarningLight = Color(0xFFFFC107)
+val ErrorLight = Color(0xFFD50000)
+val backgroundLightt = Color(0xFFFFFFFF)
+
+// Custom (optional)
+val SuccessDark = Color(0xFF43A047)
+val WarningDark = Color(0xFFFFD54F)
+val ErrorDark = Color(0xFFDD2C00)
+val backgroundDarkk = Color(0xFF121212)

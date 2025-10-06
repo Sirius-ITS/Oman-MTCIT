@@ -30,14 +30,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.navigation.animation.composable
 import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.data.datastorehelper.TokenManager
 import com.informatique.mtcit.ui.base.BaseActivity
 import com.informatique.mtcit.ui.screens.LoginScreen
 import com.informatique.mtcit.ui.screens.MainScreen
+import com.informatique.mtcit.ui.screens.defaultEnterTransition2
+import com.informatique.mtcit.ui.screens.settings.SettingsScreen
 import com.informatique.mtcit.ui.theme.AppTheme
+import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
+import com.informatique.mtcit.viewmodel.ThemeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
 
@@ -71,14 +76,18 @@ class LandingActivity: BaseActivity() {
         setContent {
             val languageViewModel: LanguageViewModel = hiltViewModel()
             val sharedUserViewModel: SharedUserViewModel = hiltViewModel()
+            val themeViewModel: ThemeViewModel = hiltViewModel()
+
+
             val lang by languageViewModel.languageFlow.collectAsState(initial = "en")
             val currentLocale = Locale(lang)
+            val themeOption by themeViewModel.theme.collectAsState(initial = ThemeOption.SYSTEM_DEFAULT)
 
             CompositionLocalProvider(
                 LocalLayoutDirection provides if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr,
                 LocalAppLocale provides currentLocale
             ) {
-                AppTheme {
+                AppTheme(themeOption = themeOption) {
                     // Remove Scaffold padding to allow edge-to-edge content
                     Surface(
                         modifier = Modifier.fillMaxSize()
@@ -102,6 +111,17 @@ class LandingActivity: BaseActivity() {
                                     val sharedUserViewModel: SharedUserViewModel =
                                         hiltViewModel(LocalContext.current as ComponentActivity)
                                     LoginScreen(navController, sharedUserViewModel)
+                                }
+                                // ⚙️ شاشة الإعدادات (اختيار الثيم)
+                                composable(
+                                    "settings_screen",
+                                    enterTransition = { defaultEnterTransition2() }
+                                ) {
+                                    SettingsScreen(
+                                        navController = navController,
+                                        sharedUserViewModel = sharedUserViewModel,
+                                        viewModel = themeViewModel
+                                    )
                                 }
 
                                 composable("main") {
