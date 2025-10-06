@@ -166,6 +166,10 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("androidx.compose.ui:ui-test-junit4")
+
+    // material 3
+    implementation("androidx.compose.material3:material3:1.3.0")
+
 }
 
 // for making apk

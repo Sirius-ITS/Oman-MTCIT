@@ -6,7 +6,7 @@ sealed class FormField(
     open val label: String,
     open val value: String = "",
     open val error: String? = null,
-    open val mandatory: Boolean = false // ✅ الفلاج الجديد (true = إجباري, false = اختياري)
+    open val mandatory: Boolean = false
 
 
 ) {
@@ -43,7 +43,7 @@ sealed class FormField(
         override val id: String,
         override val label: String,
         override val value: String = "",
-        val allowPastDates: Boolean = true, // ✅ الفلاج الجديد
+        val allowPastDates: Boolean = true,
         override val error: String? = null,
         override val mandatory: Boolean = false
     ) : FormField(id, label, value, error)
