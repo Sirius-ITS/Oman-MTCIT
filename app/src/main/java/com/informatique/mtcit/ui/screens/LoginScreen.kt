@@ -78,11 +78,7 @@ fun LoginScreen(
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.mipmap.ic_launcher),
-                contentDescription = null,
-                modifier = Modifier.size(260.dp)
-            )
+
 
             Spacer(modifier = Modifier.height(8.dp))
 

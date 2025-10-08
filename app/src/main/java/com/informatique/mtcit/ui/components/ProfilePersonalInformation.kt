@@ -58,7 +58,7 @@ fun ProfilePersonalInformation(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Image(
-                painter = painterResource(id = R.drawable.profile),
+                painter = painterResource(id = R.drawable.ic_favourite),
                 contentDescription = "Profile Picture",
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)

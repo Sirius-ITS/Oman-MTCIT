@@ -41,11 +41,7 @@ fun LanguageScreen(navController: NavController,
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.moodle),
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(250.dp)
-                )
+
                 Spacer(modifier = Modifier.height(16.dp))
                 CommonButton(
                     text = "العربية",
