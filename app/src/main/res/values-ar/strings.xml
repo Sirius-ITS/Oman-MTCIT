@@ -198,6 +198,7 @@
     <string name="partnership_registration_number">رقم تسجيل الشراكة</string>
     <string name="enter_partnership_registration_number">أدخل رقم تسجيل الشراكة</string>
     <string name="upload_required_documents">تحميل المستندات المطلوبة</string>
+    <string name="field_required_error">هذا الحقل مطلوب</string>
     <string name="file_format_info">فقط ملفات pdf أو jpg أو png. بحجم 5 ميجابايت أو أقل.</string>
 
     <!-- Missing Ship Registration String Resources - Arabic -->

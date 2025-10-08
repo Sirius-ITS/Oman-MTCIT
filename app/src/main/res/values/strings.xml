@@ -244,6 +244,7 @@
     <string name="partnership_registration_number">Partnership Registration Number</string>
     <string name="enter_partnership_registration_number">Enter partnership registration number</string>
     <string name="upload_required_documents">Upload Required Documents</string>
+    <string name="field_required_error">This field is required</string>
     <string name="file_format_info">Only pdf, jpg or png files. Max 5MB size.</string>
 
     <!-- Documentation Step Strings -->

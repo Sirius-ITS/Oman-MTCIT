@@ -60,7 +60,7 @@ fun DynamicStepper(
             .fillMaxWidth()
             .horizontalScroll(scrollState)
             .padding(horizontal = 8.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(0.dp),
+        horizontalArrangement = Arrangement.Center, // Changed from spacedBy(0.dp) to Center
         verticalAlignment = Alignment.Top
     ) {
         steps.forEachIndexed { index, stepTitle ->

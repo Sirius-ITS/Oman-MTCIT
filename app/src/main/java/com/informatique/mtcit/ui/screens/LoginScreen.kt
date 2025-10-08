@@ -49,8 +49,8 @@ fun LoginScreen(
     var isUsernameFocused by remember { mutableStateOf(false) }
     var isPasswordFocused by remember { mutableStateOf(false) }
     var passwordVisible by remember { mutableStateOf(false) }
-    val showPasswordIcon = painterResource(id = R.drawable.baseline_visibility_24)
-    val hidePasswordIcon = painterResource(id = R.drawable.outline_visibility_off_24)
+    val showPasswordIcon = painterResource(id = R.drawable.ic_favourite)
+    val hidePasswordIcon = painterResource(id = R.drawable.ic_favourite)
     val systemUiController = rememberSystemUiController()
     val extraColors = LocalExtraColors.current
     val headerColor = extraColors.background
@@ -79,7 +79,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Image(
-                painter = painterResource(id = R.drawable.moodle),
+                painter = painterResource(id = R.mipmap.ic_launcher),
                 contentDescription = null,
                 modifier = Modifier.size(260.dp)
             )

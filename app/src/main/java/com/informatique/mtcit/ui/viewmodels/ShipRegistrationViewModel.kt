@@ -2,11 +2,15 @@ package com.informatique.mtcit.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.informatique.mtcit.business.validation.FormValidator
 import com.informatique.mtcit.business.company.CompanyLookupUseCase
 import com.informatique.mtcit.business.company.CompanyLookupParams
 import com.informatique.mtcit.business.BusinessState
+import com.informatique.mtcit.business.usecases.FormValidationUseCase
+import com.informatique.mtcit.business.usecases.StepNavigationUseCase
+import com.informatique.mtcit.common.AppError
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.common.ResourceProvider
+import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.R
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,8 +34,7 @@ data class ShipRegistrationState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val isLoading: Boolean = false,
     val isInitialized: Boolean = false,
-    val canProceedToNext: Boolean = false,
-    val selectedFiles: Map<String, String> = emptyMap() // fieldId -> fileUri
+    val canProceedToNext: Boolean = false
 )
 
 // Navigation events for file operations
@@ -43,8 +46,11 @@ sealed class FileNavigationEvent {
 
 @HiltViewModel
 class ShipRegistrationViewModel @Inject constructor(
-    private val validator: FormValidator,
-    private val companyLookupUseCase: CompanyLookupUseCase
+    private val resourceProvider: ResourceProvider,
+    private val validationUseCase: FormValidationUseCase,
+    private val navigationUseCase: StepNavigationUseCase,
+    private val companyLookupUseCase: CompanyLookupUseCase,
+    private val repository: ShipRegistrationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ShipRegistrationState())
@@ -61,11 +67,11 @@ class ShipRegistrationViewModel @Inject constructor(
     private val _fileNavigationEvent = MutableStateFlow<FileNavigationEvent?>(null)
     val fileNavigationEvent: StateFlow<FileNavigationEvent?> = _fileNavigationEvent.asStateFlow()
 
-    // We need access to context for localization
-    private var contextProvider: (() -> android.content.Context)? = null
+    // Error state
+    private val _error = MutableStateFlow<AppError?>(null)
+    val error: StateFlow<AppError?> = _error.asStateFlow()
 
-    fun setContextProvider(provider: () -> android.content.Context) {
-        contextProvider = provider
+    init {
         initializeShipRegistration()
     }
 
@@ -80,7 +86,7 @@ class ShipRegistrationViewModel @Inject constructor(
                 steps = steps,
                 isLoading = false,
                 isInitialized = true,
-                canProceedToNext = validateCurrentStep(0, steps, emptyMap())
+                canProceedToNext = navigationUseCase.canProceedToNext(0, steps, emptyMap())
             )
         }
     }
@@ -93,10 +99,6 @@ class ShipRegistrationViewModel @Inject constructor(
             createDocumentationStep(),
             createReviewStep()
         )
-    }
-
-    private fun localizedString(resId: Int): String {
-        return contextProvider?.invoke()?.getString(resId) ?: ""
     }
 
     private fun createUnitDataStep(): StepData = StepData(
@@ -168,7 +170,7 @@ class ShipRegistrationViewModel @Inject constructor(
             FormField.FileUpload(
                 id = "proofDocument",
                 labelRes = R.string.proof_document,
-                allowedTypes = listOf("pdf", "jpg", "png"),
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"),
                 mandatory = true
             ),
             FormField.DatePicker(
@@ -316,14 +318,14 @@ class ShipRegistrationViewModel @Inject constructor(
             FormField.FileUpload(
                 id = "shipbuildingCertificate",
                 labelRes = R.string.shipbuilding_certificate_or_sale_contract,
-                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"),
                 maxSizeMB = 5,
                 mandatory = true
             ),
             FormField.FileUpload(
                 id = "inspectionDocuments",
                 labelRes = R.string.inspection_documents,
-                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"),
                 maxSizeMB = 5,
                 mandatory = true
             )
@@ -333,7 +335,7 @@ class ShipRegistrationViewModel @Inject constructor(
     private fun createReviewStep(): StepData = StepData(
         titleRes = R.string.review,
         descriptionRes = R.string.step_placeholder_content,
-        fields = emptyList() // Will be implemented later
+        fields = emptyList()
     )
 
     fun onFieldValueChange(fieldId: String, value: String, checked: Boolean? = null) {
@@ -352,7 +354,7 @@ class ShipRegistrationViewModel @Inject constructor(
             _uiState.value = currentState.copy(
                 formData = newFormData,
                 fieldErrors = newFieldErrors,
-                canProceedToNext = validateCurrentStep(
+                canProceedToNext = navigationUseCase.canProceedToNext(
                     currentState.currentStep,
                     currentState.steps,
                     newFormData
@@ -369,7 +371,6 @@ class ShipRegistrationViewModel @Inject constructor(
     private fun handleOwnerTypeChange(ownerType: String, formData: MutableMap<String, String>) {
         when (ownerType) {
             "فرد" -> {
-                // Clear company fields
                 formData.remove("companyName")
                 formData.remove("companyRegistrationNumber")
             }
@@ -377,12 +378,10 @@ class ShipRegistrationViewModel @Inject constructor(
                 // Company fields will be shown and are required
             }
             "شراكة" -> {
-                // Clear company fields
                 formData.remove("companyName")
                 formData.remove("companyRegistrationNumber")
             }
         }
-
         _uiState.value = _uiState.value.copy(formData = formData)
     }
 
@@ -391,27 +390,29 @@ class ShipRegistrationViewModel @Inject constructor(
             val currentState = _uiState.value
 
             if (validateAndCompleteCurrentStep()) {
-                val nextStep = currentState.currentStep + 1
-                val newCompletedSteps = currentState.completedSteps + currentState.currentStep
+                navigationUseCase.getNextStep(currentState.currentStep, currentState.steps.size)?.let { nextStep ->
+                    val newCompletedSteps = currentState.completedSteps + currentState.currentStep
 
-                _uiState.value = currentState.copy(
-                    currentStep = nextStep,
-                    completedSteps = newCompletedSteps,
-                    canProceedToNext = if (nextStep < currentState.steps.size) {
-                        validateCurrentStep(nextStep, currentState.steps, currentState.formData)
-                    } else false
-                )
+                    _uiState.value = currentState.copy(
+                        currentStep = nextStep,
+                        completedSteps = newCompletedSteps,
+                        canProceedToNext = navigationUseCase.canProceedToNext(
+                            nextStep,
+                            currentState.steps,
+                            currentState.formData
+                        )
+                    )
+                }
             }
         }
     }
 
     fun previousStep() {
         val currentState = _uiState.value
-        if (currentState.currentStep > 0) {
-            val prevStep = currentState.currentStep - 1
+        navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
             _uiState.value = currentState.copy(
                 currentStep = prevStep,
-                canProceedToNext = validateCurrentStep(
+                canProceedToNext = navigationUseCase.canProceedToNext(
                     prevStep,
                     currentState.steps,
                     currentState.formData
@@ -422,11 +423,16 @@ class ShipRegistrationViewModel @Inject constructor(
 
     fun goToStep(stepIndex: Int) {
         val currentState = _uiState.value
-        if (stepIndex in 0 until currentState.steps.size &&
-            (stepIndex <= currentState.currentStep || stepIndex in currentState.completedSteps)) {
+        if (navigationUseCase.canJumpToStep(
+                stepIndex,
+                currentState.currentStep,
+                currentState.completedSteps,
+                currentState.steps.size
+            )
+        ) {
             _uiState.value = currentState.copy(
                 currentStep = stepIndex,
-                canProceedToNext = validateCurrentStep(
+                canProceedToNext = navigationUseCase.canProceedToNext(
                     stepIndex,
                     currentState.steps,
                     currentState.formData
@@ -444,60 +450,11 @@ class ShipRegistrationViewModel @Inject constructor(
         val currentState = _uiState.value
         val currentStepData = currentState.steps.getOrNull(currentState.currentStep) ?: return false
 
-        val (isValid, errors) = validateStepFields(currentStepData, currentState.formData)
+        val (isValid, errors) = validationUseCase.validateStep(currentStepData, currentState.formData)
 
         _uiState.value = currentState.copy(fieldErrors = errors)
 
         return isValid
-    }
-
-    private fun validateCurrentStep(stepIndex: Int, steps: List<StepData>, formData: Map<String, String>): Boolean {
-        val stepData = steps.getOrNull(stepIndex) ?: return false
-        val (isValid, _) = validateStepFields(stepData, formData)
-        return isValid
-    }
-
-    private fun validateStepFields(stepData: StepData, formData: Map<String, String>): Pair<Boolean, Map<String, String>> {
-        val errors = mutableMapOf<String, String>()
-        var isValid = true
-
-        stepData.fields.forEach { field ->
-            if (field.mandatory && shouldValidateField(field, formData)) {
-                val value = formData[field.id] ?: ""
-
-                when {
-                    value.isEmpty() || (field is FormField.CheckBox && value != "true") -> {
-                        errors[field.id] = "هذا الحقل مطلوب"
-                        isValid = false
-                    }
-                    field.id == "email" && value.isNotEmpty() && !isValidEmail(value) -> {
-                        errors[field.id] = "يرجى إدخال بريد إلكتروني صحيح"
-                        isValid = false
-                    }
-                    field.id == "phone" && !isValidPhone(value) -> {
-                        errors[field.id] = "يرجى إدخال رقم هاتف صحيح"
-                        isValid = false
-                    }
-                }
-            }
-        }
-
-        return isValid to errors
-    }
-
-    private fun shouldValidateField(field: FormField, formData: Map<String, String>): Boolean {
-        return when (field.id) {
-            "companyName", "companyRegistrationNumber" -> formData["owner_type"] == "شركة"
-            else -> true
-        }
-    }
-
-    private fun isValidEmail(email: String): Boolean {
-        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
-    }
-
-    private fun isValidPhone(phone: String): Boolean {
-        return phone.length >= 8 && phone.all { it.isDigit() }
     }
 
     fun submitForm() {
@@ -505,24 +462,31 @@ class ShipRegistrationViewModel @Inject constructor(
             _submissionState.value = UIState.Loading
 
             try {
-                // Simulate form submission
-                kotlinx.coroutines.delay(2000)
-
                 val currentState = _uiState.value
-                val allFormData = currentState.formData
+                val result = repository.submitRegistration(currentState.formData)
 
-                // Here you would call your actual API to submit the form
-                // val result = shipRegistrationRepository.submitRegistration(allFormData)
-
-                _submissionState.value = UIState.Success(true)
+                result.fold(
+                    onSuccess = {
+                        _submissionState.value = UIState.Success(true)
+                    },
+                    onFailure = { exception ->
+                        _submissionState.value = UIState.Failure(exception)
+                        _error.value = AppError.Submission(exception.message ?: "Unknown error")
+                    }
+                )
             } catch (e: Exception) {
                 _submissionState.value = UIState.Failure(e)
+                _error.value = AppError.Submission(e.message ?: "Unknown error")
             }
         }
     }
 
     fun resetSubmissionState() {
         _submissionState.value = UIState.Empty
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 
     fun isStepCompleted(stepIndex: Int): Boolean {
@@ -539,10 +503,8 @@ class ShipRegistrationViewModel @Inject constructor(
         if (registrationNumber.isBlank()) return
 
         viewModelScope.launch {
-            // Add loading state for this field
             _companyLookupLoading.value = _companyLookupLoading.value + "companyRegistrationNumber"
 
-            // Clear previous errors for company fields
             val currentState = _uiState.value
             val newFieldErrors = currentState.fieldErrors.toMutableMap()
             newFieldErrors.remove("companyRegistrationNumber")
@@ -552,22 +514,19 @@ class ShipRegistrationViewModel @Inject constructor(
             _uiState.value = currentState.copy(fieldErrors = newFieldErrors)
 
             try {
-                val result = companyLookupUseCase(
-                    CompanyLookupParams(registrationNumber)
-                )
+                val result = companyLookupUseCase(CompanyLookupParams(registrationNumber))
 
                 when (result) {
                     is BusinessState.Success -> {
                         val companyData = result.data.result
                         if (companyData != null) {
-                            // Update form data with company information
                             val newFormData = currentState.formData.toMutableMap()
                             newFormData["companyName"] = companyData.arabicCommercialName
                             newFormData["companyType"] = companyData.commercialRegistrationEntityType
 
                             _uiState.value = _uiState.value.copy(
                                 formData = newFormData,
-                                canProceedToNext = validateCurrentStep(
+                                canProceedToNext = navigationUseCase.canProceedToNext(
                                     currentState.currentStep,
                                     currentState.steps,
                                     newFormData
@@ -577,11 +536,9 @@ class ShipRegistrationViewModel @Inject constructor(
                     }
 
                     is BusinessState.Error -> {
-                        // Show error inline with the field
                         val newErrors = _uiState.value.fieldErrors.toMutableMap()
                         newErrors["companyRegistrationNumber"] = result.message
 
-                        // Clear company fields if there was an error
                         val newFormData = _uiState.value.formData.toMutableMap()
                         newFormData.remove("companyName")
                         newFormData.remove("companyType")
@@ -590,21 +547,19 @@ class ShipRegistrationViewModel @Inject constructor(
                             fieldErrors = newErrors,
                             formData = newFormData
                         )
+                        _error.value = AppError.CompanyLookup(result.message)
                     }
 
                     is BusinessState.Loading -> {
-                        // Loading state is already handled by _companyLookupLoading
-                        // No additional action needed here
+                        // Handled by _companyLookupLoading
                     }
                 }
             } catch (e: Exception) {
-                // Handle unexpected errors
                 val newErrors = _uiState.value.fieldErrors.toMutableMap()
                 newErrors["companyRegistrationNumber"] = "حدث خطأ أثناء البحث عن الشركة"
-
                 _uiState.value = _uiState.value.copy(fieldErrors = newErrors)
+                _error.value = AppError.CompanyLookup(e.message ?: "Unknown error")
             } finally {
-                // Remove loading state
                 _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
             }
         }
@@ -625,29 +580,5 @@ class ShipRegistrationViewModel @Inject constructor(
 
     fun removeFile(fieldId: String) {
         _fileNavigationEvent.value = FileNavigationEvent.RemoveFile(fieldId)
-    }
-
-    fun onFileSelected(fieldId: String, fileUri: String) {
-        viewModelScope.launch {
-            val currentState = _uiState.value
-            val newSelectedFiles = currentState.selectedFiles.toMutableMap()
-
-            // Update selected files
-            newSelectedFiles[fieldId] = fileUri
-
-            _uiState.value = currentState.copy(selectedFiles = newSelectedFiles)
-        }
-    }
-
-    fun onFileRemoved(fieldId: String) {
-        viewModelScope.launch {
-            val currentState = _uiState.value
-            val newSelectedFiles = currentState.selectedFiles.toMutableMap()
-
-            // Remove the file
-            newSelectedFiles.remove(fieldId)
-
-            _uiState.value = currentState.copy(selectedFiles = newSelectedFiles)
-        }
     }
 }

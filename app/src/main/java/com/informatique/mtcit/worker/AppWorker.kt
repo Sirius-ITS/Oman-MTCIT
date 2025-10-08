@@ -71,7 +71,7 @@ class AppWorker @AssistedInject constructor(
         // Build the notification
         val notification =
             NotificationCompat.Builder(applicationContext, Const.NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_news)
+                .setSmallIcon(R.mipmap.ic_launcher_round)
                 .setContentText(Const.NOTIFICATION_CONTENT_TEXT)
                 .setContentTitle(Const.NOTIFICATION_CONTENT_TITLE)
                 .setContentIntent(pendingIntent)

@@ -1,5 +1,6 @@
 package com.informatique.mtcit.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -30,6 +31,19 @@ import com.informatique.mtcit.ui.viewmodels.FileNavigationEvent
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 
+// Helper function to open file with external app
+fun openFileOutsideApp(context: Context, uri: Uri, mimeType: String) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShipRegistrationScreen(
@@ -43,12 +57,8 @@ fun ShipRegistrationScreen(
     val context = LocalContext.current
 
     // State for file operations
-    var showFilePicker by remember { mutableStateOf(false) }
-    var showPdfViewer by remember { mutableStateOf(false) }
     var currentFilePickerField by remember { mutableStateOf("") }
     var currentFilePickerTypes by remember { mutableStateOf(listOf<String>()) }
-    var currentViewerFileUri by remember { mutableStateOf<Uri?>(null) }
-    var currentViewerTitle by remember { mutableStateOf("") }
 
     // File picker launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -60,7 +70,6 @@ fun ShipRegistrationScreen(
                     it,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-                viewModel.onFileSelected(currentFilePickerField, it.toString())
                 viewModel.onFieldValueChange(currentFilePickerField, it.toString())
             } catch (e: Exception) {
                 Toast.makeText(context, "Error selecting file: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -84,6 +93,8 @@ fun ShipRegistrationScreen(
                             "png" -> "image/png"
                             "doc" -> "application/msword"
                             "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            "xls" -> "application/vnd.ms-excel"
+                            "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             else -> "application/*"
                         }
                     }.toTypedArray()
@@ -93,34 +104,14 @@ fun ShipRegistrationScreen(
 
                 is FileNavigationEvent.ViewFile -> {
                     val uri = Uri.parse(event.fileUri)
-                    when {
-                        event.fileType.contains("pdf") -> {
-                            currentViewerFileUri = uri
-                            currentViewerTitle = "PDF Document"
-                            showPdfViewer = true
-                        }
-                        event.fileType.startsWith("image/") -> {
-                            // For images, open with external app or show in full screen
-                            openFileOutsideApp(context, uri, event.fileType)
-                        }
-                        else -> {
-                            // For other files, open with external app
-                            openFileOutsideApp(context, uri, event.fileType)
-                        }
-                    }
+                    openFileOutsideApp(context, uri, event.fileType)
                 }
 
                 is FileNavigationEvent.RemoveFile -> {
-                    viewModel.onFileRemoved(event.fieldId)
                     viewModel.onFieldValueChange(event.fieldId, "")
                 }
             }
         }
-    }
-
-    // Provide context to ViewModel for localization
-    LaunchedEffect(Unit) {
-        viewModel.setContextProvider { context }
     }
 
     // Handle submission result
@@ -150,6 +141,32 @@ fun ShipRegistrationScreen(
 
     // Main UI - Remove Scaffold and use Column directly for edge-to-edge content
     Column(modifier = Modifier.fillMaxSize()) {
+        // Top Header with Back Button and Title
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { navController.navigateUp() },
+                modifier = Modifier.padding(end = 8.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = localizedApp(R.string.back_button),
+                    tint = MaterialTheme.colorScheme.secondary
+                )
+            }
+            Text(
+                text = localizedApp(R.string.issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
         // Main content area
         Column(
             modifier = Modifier
@@ -157,32 +174,6 @@ fun ShipRegistrationScreen(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Top Header with Back Button and Title
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { navController.navigateUp() },
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = localizedApp(R.string.back_button),
-                        tint = MaterialTheme.colorScheme.secondary
-                    )
-                }
-                Text(
-                    text = localizedApp(R.string.issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
             // Modern Stepper using ViewModel data
             Card(
                 modifier = Modifier
@@ -234,7 +225,6 @@ fun ShipRegistrationScreen(
                         )
 
                         // Convert ViewModel StepData to Component StepData for DynamicStepForm
-                        // Now we only need to update field values and errors, labels are already correct
                         val componentStepData = ViewModelStepData(
                             titleRes = currentStepData.titleRes,
                             descriptionRes = currentStepData.descriptionRes,
@@ -284,15 +274,6 @@ fun ShipRegistrationScreen(
             },
             canProceed = uiState.canProceedToNext,
             isSubmitting = submissionState is UIState.Loading
-        )
-    }
-
-    // PDF Viewer Dialog
-    if (showPdfViewer && currentViewerFileUri != null) {
-        PdfViewerDialog(
-            uri = currentViewerFileUri!!,
-            title = currentViewerTitle,
-            onDismiss = { showPdfViewer = false }
         )
     }
 }
@@ -404,41 +385,4 @@ private fun NavigationBottomBar(
             }
         }
     }
-}
-
-@Composable
-private fun PdfViewerDialog(
-    uri: Uri,
-    title: String,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(400.dp)
-            ) {
-                PdfViewerScreen(
-                    fileUri = uri,
-                    title = title,
-                    onBack = onDismiss,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        }
-    )
 }

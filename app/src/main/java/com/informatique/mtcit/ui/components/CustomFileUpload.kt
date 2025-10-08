@@ -1,7 +1,6 @@
 package com.informatique.mtcit.ui.components
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -266,18 +265,5 @@ private fun getFileName(context: Context, uri: Uri): String? {
         }
     } catch (e: Exception) {
         uri.lastPathSegment
-    }
-}
-
-// Helper function to open file with external app
-private fun openFileWithIntent(context: Context, uri: Uri, mimeType: String) {
-    try {
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, mimeType)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        context.startActivity(intent)
-    } catch (e: Exception) {
-        Toast.makeText(context, "No app found to open this file", Toast.LENGTH_SHORT).show()
     }
 }

@@ -3,14 +3,14 @@
     <font
         android:fontStyle="normal"
         android:fontWeight="400"
-        android:font="@font/lusail_regular" />
+        android:font="@font/ge_ss_two_regular" />
     <font
         android:fontStyle="normal"
         android:fontWeight="500"
-        android:font="@font/lusail_medium" />
+        android:font="@font/ge_ss_two_medium" />
     <font
         android:fontStyle="normal"
         android:fontWeight="700"
-        android:font="@font/lusail_bold" />
+        android:font="@font/ge_ss_two_bold" />
 </font-family>
 
