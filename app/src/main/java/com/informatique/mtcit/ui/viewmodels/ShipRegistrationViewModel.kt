@@ -55,7 +55,7 @@ class ShipRegistrationViewModel @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val navigationUseCase: StepNavigationUseCase,
     private val companyLookupUseCase: CompanyLookupUseCase,
-    private val repository: ShipRegistrationRepository
+    private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo
 ) : ViewModel() {
 
@@ -491,20 +491,6 @@ class ShipRegistrationViewModel @Inject constructor(
         _submissionState.value = UIState.Empty
     }
 
-    fun clearError() {
-        _error.value = null
-    }
-
-    fun isStepCompleted(stepIndex: Int): Boolean {
-        return stepIndex in _uiState.value.completedSteps
-    }
-
-    fun getTotalSteps(): Int = _uiState.value.steps.size
-
-    fun getCurrentStep(): Int = _uiState.value.currentStep
-
-    fun getAllFormData(): Map<String, String> = _uiState.value.formData
-
     fun onCompanyRegistrationNumberFocusLost(registrationNumber: String) {
         //if (registrationNumber.isBlank()) return
 
@@ -558,12 +544,13 @@ class ShipRegistrationViewModel @Inject constructor(
 
                                 _uiState.value = _uiState.value.copy(
                                     formData = newFormData,
-                                    canProceedToNext = validateCurrentStep(
+                                    canProceedToNext = navigationUseCase.canProceedToNext(
                                         currentState.currentStep,
                                         currentState.steps,
                                         newFormData
                                     )
                                 )
+
 
                                 _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
                             }
