@@ -17,7 +17,7 @@ import androidx.work.WorkerParameters
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.Const
 import com.informatique.mtcit.common.Const.NOTIFICATION_ID
-import com.informatique.mtcit.data.network.ApiInterface
+// import com.informatique.mtcit.data.network.ApiInterface
 import com.informatique.mtcit.ui.LandingActivity
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -26,7 +26,7 @@ import dagger.assisted.AssistedInject
 class AppWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted private val workerParameters: WorkerParameters,
-    private val network: ApiInterface
+    //private val network: ApiInterface
 ) : CoroutineWorker(context, workerParameters) {
 
     override suspend fun doWork(): Result {

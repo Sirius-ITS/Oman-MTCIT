@@ -1,129 +1,142 @@
 package com.informatique.mtcit.data.model.companyModels
 
-import com.google.gson.annotations.SerializedName
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
+@Serializable
 data class CompanyLookupResponse(
-    @SerializedName("result")
+    @SerialName("result")
     val result: CompanyResult? = null,
-    @SerializedName("message")
+    @SerialName("message")
     val message: String? = null
 )
 
+@Serializable
 data class CompanyResult(
-    @SerializedName("arabicCommercialName")
+    @SerialName("arabicCommercialName")
     val arabicCommercialName: String,
-    @SerializedName("commercialRegistrationEntityType")
+    @SerialName("commercialRegistrationEntityType")
     val commercialRegistrationEntityType: String,
-    @SerializedName("commercialRegistrationCode")
+    @SerialName("commercialRegistrationCode")
     val commercialRegistrationCode: String,
-    @SerializedName("location")
+    @SerialName("location")
     val location: String,
-    @SerializedName("creationDate")
+    @SerialName("creationDate")
     val creationDate: String,
-    @SerializedName("expiryDate")
+    @SerialName("expiryDate")
     val expiryDate: String,
-    @SerializedName("companyStartDate")
+    @SerialName("companyStartDate")
     val companyStartDate: String,
-    @SerializedName("branchesCount")
+    @SerialName("branchesCount")
     val branchesCount: String,
-    @SerializedName("addressPOBox")
+    @SerialName("addressPOBox")
     val addressPOBox: String,
-    @SerializedName("telephone")
+    @SerialName("telephone")
     val telephone: String,
-    @SerializedName("companyCapital")
+    @SerialName("companyCapital")
     val companyCapital: String,
-    @SerializedName("humanPartners")
+    @SerialName("humanPartners")
     val humanPartners: List<HumanPartner>? = null,
-    @SerializedName("establishmentPartners")
+    @SerialName("establishmentPartners")
     val establishmentPartners: List<EstablishmentPartner>? = null,
-    @SerializedName("signatories")
+    @SerialName("signatories")
     val signatories: List<Signatory>? = null,
-    @SerializedName("activities")
+    @SerialName("activities")
     val activities: List<Activity>? = null,
-    @SerializedName("statuses")
+    @SerialName("statuses")
     val statuses: Status? = null,
-    @SerializedName("branches")
+    @SerialName("branches")
     val branches: List<Branch>? = null,
-    @SerializedName("status")
+    @SerialName("status")
     val status: Boolean,
 )
 
+@Serializable
 data class HumanPartner(
-    @SerializedName("nameAr")
+    @SerialName("nameAr")
     val nameAr: String,
-    @SerializedName("nationality")
+    @SerialName("nationality")
     val nationality: String,
-    @SerializedName("nIN")
+    @SerialName("nIN")
     val nIN: String,
-    @SerializedName("percentage")
+    @SerialName("percentage")
     val percentage: String,
-    @SerializedName("nINType")
+    @SerialName("nINType")
     val nINType: NINType,
-    @SerializedName("partnerType")
+    @SerialName("partnerType")
     val partnerType: PartnerType
 )
 
+@Serializable
 data class EstablishmentPartner(
-    @SerializedName("commercialNameAr")
+    @SerialName("commercialNameAr")
     val commercialNameAr: String,
-    @SerializedName("nationality")
+    @SerialName("nationality")
     val nationality: String,
-    @SerializedName("commercialRegistrationCode")
+    @SerialName("commercialRegistrationCode")
     val commercialRegistrationCode: String,
-    @SerializedName("percentage")
+    @SerialName("percentage")
     val percentage: String,
-    @SerializedName("partnerType")
+    @SerialName("partnerType")
     val partnerType: PartnerType
 )
 
+@Serializable
 data class Signatory(
-    @SerializedName("nameAr")
+    @SerialName("nameAr")
     val nameAr: String,
-    @SerializedName("nationality")
+    @SerialName("nationality")
     val nationality: String,
-    @SerializedName("nIN")
+    @SerialName("nIN")
     val nIN: String,
-    @SerializedName("nINType")
+    @SerialName("nINType")
     val nINType: NINType,
-    @SerializedName("partnerType")
+    @SerialName("partnerType")
     val partnerType: PartnerType
 )
 
+@Serializable
 data class Activity(
-    @SerializedName("title")
+    @SerialName("title")
     val title: String,
-    @SerializedName("activitySerial")
+    @SerialName("activitySerial")
     val activitySerial: String,
-    @SerializedName("cost")
+    @SerialName("cost")
     val cost: String
 )
 
+@Serializable
 data class NINType(
-    @SerializedName("Code")
+    @SerialName("Code")
     val code: String,
-    @SerializedName("description")
+    @SerialName("description")
     val description: String
 )
 
+@Serializable
 data class PartnerType(
-    @SerializedName("code")
+    @SerialName("code")
     val code: String,
-    @SerializedName("description")
+    @SerialName("description")
     val description: String
 )
 
+@Serializable
 data class Status(
-    @SerializedName("code")
+    @SerialName("code")
     val code: String,
-    @SerializedName("description")
+    @SerialName("description")
     val description: String
 )
 
+@Serializable
 data class Branch(
-    @SerializedName("nameAr")
+    @SerialName("nameAr")
     val nameAr: String,
-    @SerializedName("serialNumber")
+    @SerialName("serialNumber")
     val serialNumber: String,
-    @SerializedName("statuses")
+    @SerialName("statuses")
     val statuses: Status
 )

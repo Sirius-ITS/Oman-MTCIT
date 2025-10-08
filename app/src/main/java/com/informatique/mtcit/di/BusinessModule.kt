@@ -1,5 +1,6 @@
 package com.informatique.mtcit.di
 
+/*
 import com.informatique.mtcit.business.auth.AuthRepository
 import com.informatique.mtcit.data.repository.AuthRepositoryImpl
 import dagger.Binds
@@ -17,3 +18,4 @@ abstract class BusinessModule {
         authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
 }
+*/
