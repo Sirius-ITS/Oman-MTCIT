@@ -9,10 +9,15 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.R
+import com.informatique.mtcit.business.company.CompanyRepository
+import com.informatique.mtcit.ui.repo.CompanyRepo
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -43,8 +48,9 @@ sealed class FileNavigationEvent {
 
 @HiltViewModel
 class ShipRegistrationViewModel @Inject constructor(
-    private val validator: FormValidator,
-    private val companyLookupUseCase: CompanyLookupUseCase
+    // private val validator: FormValidator,
+    // private val companyLookupUseCase: CompanyLookupUseCase
+    private val companyRepository: CompanyRepo
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ShipRegistrationState())
@@ -536,77 +542,150 @@ class ShipRegistrationViewModel @Inject constructor(
     fun getAllFormData(): Map<String, String> = _uiState.value.formData
 
     fun onCompanyRegistrationNumberFocusLost(registrationNumber: String) {
-        if (registrationNumber.isBlank()) return
+        //if (registrationNumber.isBlank()) return
+
+        // Validate registration number
+        if (registrationNumber.isBlank()) {
+            val newErrors = _uiState.value.fieldErrors.toMutableMap()
+            newErrors["companyRegistrationNumber"] = "رقم السجل التجاري مطلوب"
+            _uiState.value = _uiState.value.copy(fieldErrors = newErrors)
+            return
+        }
+
+        if (registrationNumber.length < 3) {
+            val newErrors = _uiState.value.fieldErrors.toMutableMap()
+            newErrors["companyRegistrationNumber"] = "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام"
+            _uiState.value = _uiState.value.copy(fieldErrors = newErrors)
+            return
+        }
+
+        // Add loading state for this field
+        _companyLookupLoading.value = _companyLookupLoading.value + "companyRegistrationNumber"
+
+        // Clear previous errors for company fields
+        val currentState = _uiState.value
+        val newFieldErrors = currentState.fieldErrors.toMutableMap()
+        newFieldErrors.remove("companyRegistrationNumber")
+        newFieldErrors.remove("companyName")
+        newFieldErrors.remove("companyType")
+
+        _uiState.value = currentState.copy(fieldErrors = newFieldErrors)
 
         viewModelScope.launch {
-            // Add loading state for this field
-            _companyLookupLoading.value = _companyLookupLoading.value + "companyRegistrationNumber"
+            companyRepository.fetchCompanyLookup(registrationNumber)
+                .flowOn(Dispatchers.IO)
+                .catch { it ->
+                    // Handle unexpected errors
+                    val newErrors = _uiState.value.fieldErrors.toMutableMap()
+                    newErrors["companyRegistrationNumber"] = "حدث خطأ أثناء البحث عن الشركة" + it.message
+                    _uiState.value = _uiState.value.copy(fieldErrors = newErrors)
 
-            // Clear previous errors for company fields
-            val currentState = _uiState.value
-            val newFieldErrors = currentState.fieldErrors.toMutableMap()
-            newFieldErrors.remove("companyRegistrationNumber")
-            newFieldErrors.remove("companyName")
-            newFieldErrors.remove("companyType")
+                    _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
+                }
+                .collect {
+                    when (it) {
+                        is BusinessState.Success -> {
+                            val companyData = it.data.result
+                            if (companyData != null) {
+                                // Update form data with company information
+                                val newFormData = currentState.formData.toMutableMap()
+                                newFormData["companyName"] = companyData.arabicCommercialName
+                                newFormData["companyType"] = companyData.commercialRegistrationEntityType
 
-            _uiState.value = currentState.copy(fieldErrors = newFieldErrors)
+                                _uiState.value = _uiState.value.copy(
+                                    formData = newFormData,
+                                    canProceedToNext = validateCurrentStep(
+                                        currentState.currentStep,
+                                        currentState.steps,
+                                        newFormData
+                                    )
+                                )
 
-            try {
-                val result = companyLookupUseCase(
-                    CompanyLookupParams(registrationNumber)
-                )
+                                _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
+                            }
+                        }
 
-                when (result) {
-                    is BusinessState.Success -> {
-                        val companyData = result.data.result
-                        if (companyData != null) {
-                            // Update form data with company information
-                            val newFormData = currentState.formData.toMutableMap()
-                            newFormData["companyName"] = companyData.arabicCommercialName
-                            newFormData["companyType"] = companyData.commercialRegistrationEntityType
+                        is BusinessState.Error -> {
+                            // Show error inline with the field
+                            val newErrors = _uiState.value.fieldErrors.toMutableMap()
+                            newErrors["companyRegistrationNumber"] = it.message
+
+                            // Clear company fields if there was an error
+                            val newFormData = _uiState.value.formData.toMutableMap()
+                            newFormData.remove("companyName")
+                            newFormData.remove("companyType")
 
                             _uiState.value = _uiState.value.copy(
-                                formData = newFormData,
-                                canProceedToNext = validateCurrentStep(
-                                    currentState.currentStep,
-                                    currentState.steps,
-                                    newFormData
-                                )
+                                fieldErrors = newErrors,
+                                formData = newFormData
                             )
+
+                            _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
+                        }
+
+                        is BusinessState.Loading -> {
+                            // Loading state is already handled by _companyLookupLoading
+                            // No additional action needed here
                         }
                     }
-
-                    is BusinessState.Error -> {
-                        // Show error inline with the field
-                        val newErrors = _uiState.value.fieldErrors.toMutableMap()
-                        newErrors["companyRegistrationNumber"] = result.message
-
-                        // Clear company fields if there was an error
-                        val newFormData = _uiState.value.formData.toMutableMap()
-                        newFormData.remove("companyName")
-                        newFormData.remove("companyType")
-
-                        _uiState.value = _uiState.value.copy(
-                            fieldErrors = newErrors,
-                            formData = newFormData
-                        )
-                    }
-
-                    is BusinessState.Loading -> {
-                        // Loading state is already handled by _companyLookupLoading
-                        // No additional action needed here
-                    }
                 }
-            } catch (e: Exception) {
-                // Handle unexpected errors
-                val newErrors = _uiState.value.fieldErrors.toMutableMap()
-                newErrors["companyRegistrationNumber"] = "حدث خطأ أثناء البحث عن الشركة"
 
-                _uiState.value = _uiState.value.copy(fieldErrors = newErrors)
-            } finally {
-                // Remove loading state
-                _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
-            }
+//            try {
+//                val result = companyLookupUseCase(
+//                    CompanyLookupParams(registrationNumber)
+//                )
+//
+//                when (result) {
+//                    is BusinessState.Success -> {
+//                        val companyData = result.data.result
+//                        if (companyData != null) {
+//                            // Update form data with company information
+//                            val newFormData = currentState.formData.toMutableMap()
+//                            newFormData["companyName"] = companyData.arabicCommercialName
+//                            newFormData["companyType"] = companyData.commercialRegistrationEntityType
+//
+//                            _uiState.value = _uiState.value.copy(
+//                                formData = newFormData,
+//                                canProceedToNext = validateCurrentStep(
+//                                    currentState.currentStep,
+//                                    currentState.steps,
+//                                    newFormData
+//                                )
+//                            )
+//                        }
+//                    }
+//
+//                    is BusinessState.Error -> {
+//                        // Show error inline with the field
+//                        val newErrors = _uiState.value.fieldErrors.toMutableMap()
+//                        newErrors["companyRegistrationNumber"] = result.message
+//
+//                        // Clear company fields if there was an error
+//                        val newFormData = _uiState.value.formData.toMutableMap()
+//                        newFormData.remove("companyName")
+//                        newFormData.remove("companyType")
+//
+//                        _uiState.value = _uiState.value.copy(
+//                            fieldErrors = newErrors,
+//                            formData = newFormData
+//                        )
+//                    }
+//
+//                    is BusinessState.Loading -> {
+//                        // Loading state is already handled by _companyLookupLoading
+//                        // No additional action needed here
+//                    }
+//                }
+//            } catch (e: Exception) {
+//                // Handle unexpected errors
+//                val newErrors = _uiState.value.fieldErrors.toMutableMap()
+//                newErrors["companyRegistrationNumber"] = "حدث خطأ أثناء البحث عن الشركة"
+//
+//                _uiState.value = _uiState.value.copy(fieldErrors = newErrors)
+//            } finally {
+//                // Remove loading state
+//                _companyLookupLoading.value = _companyLookupLoading.value - "companyRegistrationNumber"
+//            }
         }
     }
 

@@ -4,10 +4,16 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.base.BaseUseCase
 import com.informatique.mtcit.business.validation.LoginValidator
 import com.informatique.mtcit.data.model.loginModels.LoginResponse
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
 
+@Serializable
 data class LoginParams(
+    @SerialName("UserName")
     val username: String,
+
+    @SerialName("Password")
     val password: String
 )
 

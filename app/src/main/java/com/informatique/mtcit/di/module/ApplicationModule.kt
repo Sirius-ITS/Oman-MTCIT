@@ -5,14 +5,11 @@ import android.content.SharedPreferences
 import androidx.work.WorkManager
 import com.informatique.mtcit.business.validation.FormValidator
 import com.informatique.mtcit.common.Const
-import com.informatique.mtcit.common.dispatcher.DefaultDispatcherProvider
 import com.informatique.mtcit.common.dispatcher.DispatcherProvider
 import com.informatique.mtcit.common.logger.AppLogger
 import com.informatique.mtcit.common.logger.Logger
 import com.informatique.mtcit.common.networkhelper.NetworkHelper
 import com.informatique.mtcit.common.networkhelper.NetworkHelperImpl
-import com.informatique.mtcit.data.network.ApiInterface
-import com.informatique.mtcit.data.network.ApiKeyInterceptor
 import com.informatique.mtcit.di.ApiKey
 import com.informatique.mtcit.di.BaseUrl
 import com.informatique.mtcit.di.DbName
@@ -22,18 +19,11 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 class ApplicationModule {
-
-    @Singleton
-    @Provides
-    fun provideGsonConverterFactory(): GsonConverterFactory = GsonConverterFactory.create()
 
     @Provides
     @Singleton
@@ -50,27 +40,6 @@ class ApplicationModule {
     @DbName
     @Provides
     fun provideDbName(): String = Const.DB_NAME
-
-    @Singleton
-    @Provides
-    fun provideNetworkService(
-        @BaseUrl baseUrl: String,
-        gsonFactory: GsonConverterFactory,
-        apiKeyInterceptor: ApiKeyInterceptor
-    ): ApiInterface {
-        val client = OkHttpClient
-            .Builder()
-            .addInterceptor(apiKeyInterceptor)
-            .build()
-
-        return Retrofit
-            .Builder()
-            .client(client) //adding client to intercept all responses
-            .baseUrl(baseUrl)
-            .addConverterFactory(gsonFactory)
-            .build()
-            .create(ApiInterface::class.java)
-    }
 
     @Provides
     @Singleton

@@ -4,18 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.auth.LoginParams
-import com.informatique.mtcit.business.auth.LoginUseCase
+import com.informatique.mtcit.business.validation.LoginValidator
 import com.informatique.mtcit.common.NoInternetException
 import com.informatique.mtcit.common.networkhelper.NetworkHelper
 import com.informatique.mtcit.data.model.loginModels.CardProfile
 import com.informatique.mtcit.data.model.loginModels.LoginResponse
 import com.informatique.mtcit.data.model.loginModels.UserMainData
-import com.informatique.mtcit.di.IoDispatcher
 import com.informatique.mtcit.ui.base.UIState
+import com.informatique.mtcit.ui.repo.LoginRepo
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -24,9 +26,12 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val loginUseCase: LoginUseCase,
+    private val loginValidator: LoginValidator,
     private val networkHelper: NetworkHelper,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    private val loginRepo: LoginRepo
+
+//    private val loginUseCase: LoginUseCase,
+//    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<UIState<LoginResponse>>(UIState.Empty)
@@ -36,7 +41,37 @@ class LoginViewModel @Inject constructor(
 
     private val _cardProfile = MutableStateFlow<CardProfile?>(null)
 
-    fun login(username: String, password: String) = viewModelScope.launch(ioDispatcher) {
+    fun login(username: String, password: String){
+        if (!networkHelper.isNetworkConnected()) {
+            _loginState.value = UIState.Failure(NoInternetException())
+            return
+        }
+
+        val validationResult = loginValidator.validateCredentials(username, password)
+        if (!validationResult.isValid()) {
+            _loginState.value = UIState.Error((validationResult.getErrorMessage() ?: "Validation failed"))
+            return
+        }
+
+        _loginState.value = UIState.Loading
+
+        viewModelScope.launch {
+            loginRepo.onLogin(LoginParams(username, password))
+                .flowOn(Dispatchers.IO)
+                .catch {
+                    _loginState.value = UIState.Error((it.message ?: ""))
+                }
+                .collect {
+                    when (it) {
+                        is BusinessState.Success -> handleLoginSuccess(it.data)
+                        is BusinessState.Error ->_loginState.value = UIState.Error((it.message))
+                        BusinessState.Loading -> _loginState.value = UIState.Loading
+                    }
+                }
+        }
+    }
+
+    /*fun login(username: String, password: String) = viewModelScope.launch(Dispatchers.IO) {
         try {
             if (!networkHelper.isNetworkConnected()) {
                 _loginState.value = UIState.Failure(NoInternetException())
@@ -44,6 +79,8 @@ class LoginViewModel @Inject constructor(
             }
 
             _loginState.value = UIState.Loading
+
+
 
             when (val result = loginUseCase(LoginParams(username, password))) {
                 is BusinessState.Success -> handleLoginSuccess(result.data)
@@ -53,7 +90,7 @@ class LoginViewModel @Inject constructor(
         } catch (e: Exception) {
             _loginState.value = UIState.Error((e.message.toString()))
         }
-    }
+    }*/
 
     private fun handleLoginSuccess(response: LoginResponse) {
         _loginState.value = UIState.Success(response)

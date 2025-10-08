@@ -1,6 +1,6 @@
 package com.informatique.mtcit.di
 
-import com.informatique.mtcit.business.company.CompanyRepository
+/*import com.informatique.mtcit.business.company.CompanyRepository
 import com.informatique.mtcit.data.repository.CompanyRepositoryImpl
 import dagger.Binds
 import dagger.Module
@@ -17,4 +17,4 @@ abstract class CompanyModule {
     abstract fun bindCompanyRepository(
         companyRepositoryImpl: CompanyRepositoryImpl
     ): CompanyRepository
-}
+}*/
