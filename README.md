@@ -9,8 +9,7 @@ Welcome to Skeleton project, which built with MVVM architecture and Jetpack Comp
 - **MVVM architecture** for a clean and scalable codebase
 - **Kotlin** and **Kotlin DSL**
 - **Dagger Hilt** for efficient dependency injection.
-- **Retrofit** for seamless networking
-- **Room DB** for local storage
+- **Ktor** for seamless networking
 - **Coroutines** and **Flow** for asynchronous programming
 - **StateFlow** for streamlined state management
 - **Pagination** to efficiently load and display 
@@ -29,9 +28,8 @@ Welcome to Skeleton project, which built with MVVM architecture and Jetpack Comp
 
 - Jetpack Compose for UI: Modern UI toolkit for building native Android UIs
 - Coil for Image Loading: Efficiently loads and caches images
-- Retrofit for Networking: A type-safe HTTP client for smooth network requests
+- Ktor for Networking: A type-safe HTTP client for smooth network requests
 - Dagger Hilt for Dependency Injection: Simplifies dependency injection
-- Room for Database: A SQLite object mapping library for local data storage
 - Paging Compose for Pagination: Simplifies the implementation of paginated lists
 - Mockito, JUnit, Turbine for Testing: Ensures the reliability of the application
 

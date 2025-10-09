@@ -1,12 +1,10 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.devtools.ksp")
-    id("com.google.dagger.hilt.android")
-    id("org.jetbrains.kotlin.plugin.serialization")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt.dagger)
 }
 
 android {
@@ -20,16 +18,12 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "com.informatique.mtcit.HiltTestRunner" // For Hilt testing
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
-        debug {
-            buildConfigField("String", "API_KEY", "\"51563d451c6f724bd8ab8b996d791403\"")
-        }
         release {
             isMinifyEnabled = false
-            buildConfigField("String", "API_KEY", "\"51563d451c6f724bd8ab8b996d791403\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -37,131 +31,91 @@ android {
         }
     }
 
-    buildFeatures {
-        buildConfig = true
-        compose = true
-    }
-
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true // For Java 8+ features on older Android
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
+            optIn.add("kotlin.RequiresOptIn")
+            freeCompilerArgs.addAll(listOf("-Xcontext-parameters", "-Xinline-classes"))
         }
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.7.10"
+    buildFeatures {
+        compose = true
     }
 }
 
 dependencies {
-    val hiltVersion = "2.54"
-    val lifecycleVersion = "2.9.4"
-    val coroutinesVersion = "1.9.0"
-    val roomVersion = "2.8.1"
-    val composeBom = platform("androidx.compose:compose-bom:2024.10.00")
 
-    implementation(composeBom)
-    androidTestImplementation(composeBom)
+    coreLibraryDesugaring(libs.android.desugar.sdk)
 
-    // Core & Desugaring
-    implementation("androidx.core:core-ktx:1.13.1") // Updated for WindowInsetsControllerCompat support
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-    implementation("org.jetbrains.kotlin:kotlin-metadata-jvm:2.1.0")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3.windowsize)
 
-    // Hilt
-    implementation("com.google.dagger:hilt-android:$hiltVersion")
-    ksp("com.google.dagger:hilt-compiler:$hiltVersion")
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-    ksp("androidx.hilt:hilt-compiler:1.3.0")
+    implementation(libs.androidx.material)
+    implementation(libs.androidx.material.icons)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.foundation)
+    implementation(libs.androidx.constrainlayout)
+    implementation(libs.androidx.navigation)
 
-    // Lifecycle
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycleVersion")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:$lifecycleVersion")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
+    implementation(libs.androidx.viewmodel.ktx)
+    implementation(libs.androidx.viewmodel.livedata.ktx)
+    implementation(libs.androidx.viewmodel.savedstate)
+    implementation(libs.androidx.viewmodel)
+    implementation(libs.androidx.runtime)
 
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutinesVersion")
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
 
-    // Retrofit
-    implementation("io.ktor:ktor-client-core:3.3.0")
-    implementation("io.ktor:ktor-client-android:3.3.0")
-    implementation("io.ktor:ktor-client-content-negotiation:3.3.0")
-    implementation("io.ktor:ktor-client-logging:3.3.0")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.3.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.datastore.preferences)
 
-    implementation("org.slf4j:slf4j-api:2.0.17")
-    implementation("org.slf4j:slf4j-simple:2.0.17")
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.core)
 
-    // Material Design & Compose
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material3:material3-window-size-class")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("com.google.android.material:material:1.13.0")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.activity:activity-compose:1.11.0")
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation(libs.kotlin.metadata.jvm)
 
-    // Splash Screen
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation(libs.hilt.dagger.android)
+    implementation(libs.hilt.dagger.navigation)
+    implementation(libs.hilt.dagger.work)
+    kapt(libs.hilt.dagger.compiler)
 
-    // Accompanist
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.36.0")
-    implementation("com.google.accompanist:accompanist-navigation-animation:0.36.0")
+    implementation(libs.ktor.core)
+    implementation(libs.ktor.client)
+    implementation(libs.ktor.client.cn)
+    implementation(libs.ktor.client.logging)
+    implementation(libs.ktor.json)
+    implementation(libs.kotlinx.json)
 
-    // Navigation
-    implementation("androidx.navigation:navigation-fragment-ktx:2.9.5")
-    implementation("androidx.navigation:navigation-ui-ktx:2.9.5")
-    implementation("androidx.navigation:navigation-compose:2.9.5")
+    implementation(libs.slf4j.api)
+    implementation(libs.slf4j.simple)
 
-    // Paging 3
-    implementation("androidx.paging:paging-runtime-ktx:3.3.6")
-    implementation("androidx.paging:paging-compose:3.3.6")
+    implementation(libs.coil)
+    implementation(libs.coil.network)
 
-    // Room
-    implementation("androidx.room:room-runtime:$roomVersion")
-    implementation("androidx.room:room-ktx:$roomVersion")
-    ksp("androidx.room:room-compiler:$roomVersion")
+    implementation(libs.google.ui.controller)
+    implementation(libs.google.navigation.animation)
 
-    // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.10.5")
-    implementation("androidx.hilt:hilt-work:1.3.0")
-    ksp("androidx.hilt:hilt-compiler:1.3.0")
+    testImplementation(libs.junit)
 
-    // DataStore
-    implementation("androidx.datastore:datastore-preferences:1.1.7")
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 
-    // Tests
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.3.0")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-    testImplementation("org.mockito:mockito-core:5.12.0")
-    testImplementation("androidx.arch.core:core-testing:2.2.0")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion")
-    testImplementation("app.cash.turbine:turbine:1.1.0")
-
-    // Hilt Testing
-    testImplementation("com.google.dagger:hilt-android-testing:$hiltVersion")
-    kspTest("com.google.dagger:hilt-compiler:$hiltVersion")
-
-    // Compose Test
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-tooling")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
-
-    // Android Test
-    androidTestImplementation("com.google.dagger:hilt-android-testing:$hiltVersion")
-    kspAndroidTest("com.google.dagger:hilt-compiler:$hiltVersion")
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

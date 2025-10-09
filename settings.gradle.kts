@@ -1,18 +1,30 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
+        gradlePluginPortal()
+    }
+
+    // VERY IMPORTANT FOR build.gradle file plugins
+    resolutionStrategy{
+        eachPlugin{
+            if (requested.id.id == "dagger.hilt.android.plugin"){
+                useModule("com.google.dagger:hilt-android-gradle-plugin:2.57.2")
+            }
+        }
     }
 }
-
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://pkgs.dev.azure.com/MicrosoftDeviceSDK/DuoSDK-Public/_packaging/Duo-SDK-Feed/maven/v1") }
-        maven { url = uri("https://pkgs.dev.azure.com/msalandroid/maven/") }
     }
 }
 
