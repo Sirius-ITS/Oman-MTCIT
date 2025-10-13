@@ -125,7 +125,7 @@ class LandingActivity: BaseActivity() {
                                 }
 
                                 composable("main") {
-                                    MainScreen(sharedUserViewModel)
+                                    MainScreen(sharedUserViewModel, themeViewModel)
                                 }
                             }
                         }

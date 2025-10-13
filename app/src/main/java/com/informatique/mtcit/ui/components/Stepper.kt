@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.informatique.mtcit.ui.theme.LocalExtraColors
 
 enum class StepState {
     COMPLETED, CURRENT, UPCOMING
@@ -114,6 +115,7 @@ private fun StepItem(
     isClickable: Boolean,
     onClick: () -> Unit
 ) {
+    val extraColors = LocalExtraColors.current
     Column(
         modifier = Modifier
             .clickable(enabled = isClickable) { onClick() }
@@ -123,9 +125,9 @@ private fun StepItem(
         // Step Circle
         val backgroundColor by animateColorAsState(
             targetValue = when (stepState) {
-                StepState.COMPLETED -> MaterialTheme.colorScheme.primary
-                StepState.CURRENT -> MaterialTheme.colorScheme.primary
-                StepState.UPCOMING -> MaterialTheme.colorScheme.outline
+                StepState.COMPLETED -> extraColors.blue3
+                StepState.CURRENT -> extraColors.blue3
+                StepState.UPCOMING -> extraColors.steppunselected
             },
             label = "StepBackgroundColor"
         )
@@ -148,8 +150,8 @@ private fun StepItem(
                 Text(
                     text = stepNumber.toString(),
                     color = when (stepState) {
-                        StepState.CURRENT -> MaterialTheme.colorScheme.onPrimary
-                        else -> MaterialTheme.colorScheme.onSurface
+                        StepState.CURRENT -> extraColors.white
+                        else -> extraColors.blue2
                     },
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold

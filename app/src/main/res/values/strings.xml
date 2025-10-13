@@ -254,4 +254,133 @@
 
     <string name="marine_unit_Dimentions">Dimensions of the marine unit</string>
 
+    <!-- Screen Titles for TopAppBar -->
+    <string name="main_screen_title">Main Screen</string>
+    <string name="home_title">Home</string>
+    <string name="profile_title">Profile</string>
+    <string name="ship_registration_title">Ship Registration</string>
+    <string name="language_title">Language Settings</string>
+    <string name="settings_title">Settings</string>
+
+    <!-- Transaction Categories -->
+    <string name="categories_title">التسجيل</string>
+    <string name="category_marine_unit_registrations">Marine Unit Registration</string>
+    <string name="category_marine_unit_registrations_desc">Issuing and managing registration and mortgage certificates</string>
+    <string name="category_navigation">Navigation</string>
+    <string name="category_navigation_desc">Issuing and managing navigation permits for ships and marine units</string>
+    <string name="category_ship_data_modifications">Ship Data Modifications</string>
+    <string name="category_ship_data_modifications_desc">Request modifications to ship information and data</string>
+
+    <!-- Category 1: Marine Unit Registration Transactions -->
+    <string name="transaction_temporary_registration_certificate">Issuance of Temporary Registration Certificate</string>
+    <string name="transaction_temporary_registration_certificate_desc">Issue a temporary registration certificate for a ship or marine unit</string>
+    <string name="transaction_permanent_registration_certificate">Issuance of Permanent Registration Certificate</string>
+    <string name="transaction_permanent_registration_certificate_desc">Issue a permanent registration certificate for ships or marine units</string>
+    <string name="transaction_suspend_permanent_registration">Suspend Permanent Registration Certificate</string>
+    <string name="transaction_suspend_permanent_registration_desc">Suspend the permanent registration certificate for ships or marine units</string>
+    <string name="transaction_cancel_permanent_registration">Cancel Permanent Registration Certificate</string>
+    <string name="transaction_cancel_permanent_registration_desc">Cancel the permanent registration certificate for ships or marine units</string>
+    <string name="transaction_mortgage_certificate">Issuance of Marine Unit Mortgage Certificate</string>
+    <string name="transaction_mortgage_certificate_desc">Issue a mortgage certificate for a marine unit</string>
+    <string name="transaction_release_mortgage">Release Marine Unit Mortgage</string>
+    <string name="transaction_release_mortgage_desc">Release the mortgage on a marine unit</string>
+
+    <!-- Category 2: Navigation Transactions -->
+    <string name="transaction_issue_navigation_permit">Issue Navigation Permit</string>
+    <string name="transaction_issue_navigation_permit_desc">Issue a navigation permit for ships and marine units</string>
+    <string name="transaction_renew_navigation_permit">Renew Navigation Permit</string>
+    <string name="transaction_renew_navigation_permit_desc">Renew the navigation permit for ships and marine units</string>
+    <string name="transaction_suspend_navigation_permit">Suspend Navigation Permit</string>
+    <string name="transaction_suspend_navigation_permit_desc">Suspend the navigation permit for ships and marine units</string>
+
+    <!-- Category 3: Ship Data Modification Transactions -->
+    <string name="transaction_ship_name_change">Ship Name Change</string>
+    <string name="transaction_ship_name_change_desc">Request to change the name of the ship or marine unit</string>
+    <string name="transaction_captain_name_change">Captain Name Change</string>
+    <string name="transaction_captain_name_change_desc">Request to change the captain\'s name of the ship or marine unit</string>
+    <string name="transaction_ship_activity_change">Ship Activity Change</string>
+    <string name="transaction_ship_activity_change_desc">Request to change the activity of the ship or marine unit</string>
+    <string name="transaction_ship_dimensions_change">Ship Dimensions Change</string>
+    <string name="transaction_ship_dimensions_change_desc">Request to change the dimensions of the ship or marine unit</string>
+    <string name="transaction_ship_engine_change">Ship Engine Change</string>
+    <string name="transaction_ship_engine_change_desc">Request to change the engine of the ship or marine unit</string>
+    <string name="transaction_ship_port_change">Ship Registration Port Change</string>
+    <string name="transaction_ship_port_change_desc">Request to change the registration port of the ship or marine unit</string>
+    <string name="transaction_ship_ownership_change">Ship Ownership Change</string>
+    <string name="transaction_ship_ownership_change_desc">Add partner / Remove partner / Transfer ownership of the ship or marine unit</string>
+
+    <!-- Additional String Resources for New Transaction Strategies -->
+
+    <!-- Previous Registration Info (Permanent Registration) -->
+    <string name="previous_registration_info">Previous Registration Information</string>
+    <string name="previous_registration_info_desc">Provide information about the vessel\'s previous registration</string>
+    <string name="previous_registration_number">Previous Registration Number</string>
+    <string name="enter_previous_registration_number">Enter previous registration number</string>
+    <string name="previous_registration_date">Previous Registration Date</string>
+    <string name="previous_registration_authority">Previous Registration Authority</string>
+    <string name="select_authority">Select registration authority</string>
+    <string name="previous_registration_certificate">Previous Registration Certificate</string>
+    <string name="permanent_registration_proof">Permanent Registration Proof</string>
+
+    <!-- Existing Registration Info (Suspend/Cancel) -->
+    <string name="existing_registration_info">Existing Registration Information</string>
+    <string name="existing_registration_info_desc">Enter details of the registration to be suspended</string>
+    <string name="registration_number">Registration Number</string>
+    <string name="enter_registration_number">Enter registration number</string>
+
+    <!-- Suspension Related -->
+    <string name="suspension_reason">Suspension Reason</string>
+    <string name="suspension_reason_desc">Explain why you need to suspend the registration</string>
+    <string name="reason_for_suspension">Reason for Suspension</string>
+    <string name="select_reason">Select reason</string>
+    <string name="additional_details">Additional Details</string>
+    <string name="enter_details">Enter additional details</string>
+    <string name="requested_suspension_date">Requested Suspension Date</string>
+    <string name="original_registration_certificate">Original Registration Certificate</string>
+    <string name="supporting_documents">Supporting Documents</string>
+
+    <!-- Cancellation Related -->
+    <string name="registration_to_cancel">Registration to Cancel</string>
+    <string name="registration_to_cancel_desc">Enter details of the registration to be cancelled</string>
+    <string name="cancellation_reason">Cancellation Reason</string>
+    <string name="cancellation_reason_desc">Explain why you need to cancel the registration</string>
+    <string name="reason_for_cancellation">Reason for Cancellation</string>
+    <string name="cancellation_details">Cancellation Details</string>
+    <string name="effective_date">Effective Date</string>
+    <string name="cancellation_proof">Cancellation Proof Document</string>
+
+    <!-- Bank/Mortgage Related -->
+    <string name="bank_information">Bank Information</string>
+    <string name="bank_information_desc">Provide complete information about the mortgaging bank</string>
+    <string name="bank_name">Bank Name</string>
+    <string name="enter_bank_name">Enter bank name</string>
+    <string name="bank_branch">Bank Branch</string>
+    <string name="enter_bank_branch">Enter bank branch</string>
+    <string name="bank_country">Bank Country</string>
+    <string name="mortgage_amount">Mortgage Amount</string>
+    <string name="enter_amount">Enter amount</string>
+    <string name="currency">Currency</string>
+    <string name="select_currency">Select currency</string>
+    <string name="mortgage_start_date">Mortgage Start Date</string>
+    <string name="mortgage_end_date">Mortgage End Date</string>
+    <string name="mortgage_terms">Mortgage Terms and Conditions</string>
+    <string name="enter_mortgage_terms">Enter mortgage terms</string>
+    <string name="mortgage_agreement">Mortgage Agreement</string>
+    <string name="bank_approval_letter">Bank Approval Letter</string>
+
+    <!-- Release Mortgage Related -->
+    <string name="mortgage_information">Mortgage Information</string>
+    <string name="mortgage_information_desc">Enter details of the mortgage to be released</string>
+    <string name="mortgage_reference_number">Mortgage Reference Number</string>
+    <string name="enter_mortgage_reference">Enter mortgage reference number</string>
+    <string name="mortgage_date">Mortgage Date</string>
+    <string name="bank_release_info">Bank Release Information</string>
+    <string name="bank_release_info_desc">Provide information from the bank about releasing the mortgage</string>
+    <string name="release_date">Release Date</string>
+    <string name="release_reason">Release Reason (Optional)</string>
+    <string name="enter_release_reason">Enter release reason</string>
+    <string name="original_mortgage_certificate">Original Mortgage Certificate</string>
+    <string name="bank_release_letter">Bank Release Letter</string>
+    <string name="payment_proof">Payment Proof/Clearance Document</string>
+
 </resources>

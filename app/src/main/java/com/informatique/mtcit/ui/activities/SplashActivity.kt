@@ -9,7 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +37,7 @@ class SplashActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
-        // For Android 9 and older, use Compose-based splash screen
+        // For Android 11 and older, use Compose-based splash screen
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
             setContent {
                 AppTheme {
@@ -59,20 +58,21 @@ class SplashActivity : ComponentActivity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
+                .background(Color(0xFFFFFFFF)), // Use your splash_background color
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.ic_splash_logo),
+                painter = painterResource(id = R.drawable.logo),
                 contentDescription = "MTCIT Logo",
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier
+                    .fillMaxSize(0.8f) // Increased to 80% of entire screen
             )
         }
     }
 
     private suspend fun performInitialization() {
-        // Simulate loading time for demo - remove or adjust in production
-        delay(2500)
+        // Simulate loading time - adjust as needed
+        delay(2000)
 
         // Add your actual initialization logic here:
         // - Load user preferences

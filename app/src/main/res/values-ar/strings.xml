@@ -249,4 +249,134 @@
 
     <string name="marine_unit_Dimentions">الأبعاد الخاصة بالوحدة البحرية</string>
 
+    <!-- Screen Titles for TopAppBar - Arabic -->
+    <string name="main_screen_title">الشاشة الرئيسية</string>
+    <string name="home_title">الرئيسية</string>
+    <string name="profile_title">الملف الشخصي</string>
+    <string name="ship_registration_title">تسجيل السفينة</string>
+    <string name="language_title">إعدادات اللغة</string>
+    <string name="settings_title">الإعدادات</string>
+
+    <!-- Transaction Categories - Arabic -->
+    <string name="categories_title">التسجيل</string>
+    <string name="category_marine_unit_registrations">تسجيل الوحدات البحرية</string>
+    <string name="category_marine_unit_registrations_desc">إصدار و إدارة شهادات التسجيل و الرهن</string>
+    <string name="category_navigation">الملاحة</string>
+    <string name="category_navigation_desc">إصدار و إدارة تصاريح الملاحة للسفن و الوحدات البحرية</string>
+    <string name="category_ship_data_modifications">تعديل بيانات السفينة</string>
+    <string name="category_ship_data_modifications_desc">طلب تعديلات على معلومات وبيانات السفينة</string>
+
+    <!-- Category 1: Marine Unit Registration Transactions - Arabic -->
+    <string name="transaction_temporary_registration_certificate">إصدار شهادة تسجيل سفينة أو وحدة بحرية مؤقتة</string>
+    <string name="transaction_temporary_registration_certificate_desc">إصدار شهادة تسجيل مؤقتة لسفينة أو وحدة بحرية</string>
+    <string name="transaction_permanent_registration_certificate">إصدار شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_permanent_registration_certificate_desc">إصدار شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_suspend_permanent_registration">تعطيل شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_suspend_permanent_registration_desc">تعطيل شهادة التسجيل الدائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_cancel_permanent_registration">شطب شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_cancel_permanent_registration_desc">شطب شهادة التسجيل الدائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_mortgage_certificate">إصدار شهادة رهن وحدة بحرية</string>
+    <string name="transaction_mortgage_certificate_desc">إصدار شهادة رهن لوحدة بحرية</string>
+    <string name="transaction_release_mortgage">فك رهن وحدة بحرية</string>
+    <string name="transaction_release_mortgage_desc">فك الرهن على وحدة بحرية</string>
+
+    <!-- Category 2: Navigation Transactions - Arabic -->
+    <string name="transaction_issue_navigation_permit">إصدار تصريح ملاحة للسفن و الوحدات البحرية</string>
+    <string name="transaction_issue_navigation_permit_desc">إصدار تصريح ملاحة للسفن و الوحدات البحرية</string>
+    <string name="transaction_renew_navigation_permit">تجديد تصريح ملاحة للسفن و الوحدات البحرية</string>
+    <string name="transaction_renew_navigation_permit_desc">تجديد تصريح الملاحة للسفن و الوحدات البحرية</string>
+    <string name="transaction_suspend_navigation_permit">إيقاف تصريح ملاحة للسفن و الوحدات البحرية</string>
+    <string name="transaction_suspend_navigation_permit_desc">إيقاف تصريح الملاحة للسفن و الوحدات البحرية</string>
+
+    <!-- Category 3: Ship Data Modification Transactions - Arabic -->
+    <string name="transaction_ship_name_change">طلب تغير اسم السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_name_change_desc">طلب تغيير اسم السفينة أو الوحدة البحرية</string>
+    <string name="transaction_captain_name_change">طلب تغير اسم ربان السفينة أو الوحدة البحرية</string>
+    <string name="transaction_captain_name_change_desc">طلب تغيير اسم ربان السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_activity_change">طلب تغير نشاط السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_activity_change_desc">طلب تغيير نشاط السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_dimensions_change">طلب تغير أبعاد السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_dimensions_change_desc">طلب تغيير أبعاد السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_engine_change">طلب تغير محرك السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_engine_change_desc">طلب تغيير محرك السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_port_change">طلب تغير ميناء تسجيل السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_port_change_desc">طلب تغيير ميناء تسجيل السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_ownership_change">طلب إضافة شريك / طلب إزالة شريك / نقل ملكية السفينة أو الوحدة البحرية</string>
+    <string name="transaction_ship_ownership_change_desc">إضافة شريك / إزالة شريك / نقل ملكية السفينة أو الوحدة البحرية</string>
+
+    <!-- Additional String Resources for New Transaction Strategies - Arabic -->
+
+    <!-- Previous Registration Info (Permanent Registration) -->
+    <string name="previous_registration_info">معلومات التسجيل السابق</string>
+    <string name="previous_registration_info_desc">قدم معلومات حول تسجيل السفينة السابق</string>
+    <string name="previous_registration_number">رقم التسجيل السابق</string>
+    <string name="enter_previous_registration_number">أدخل رقم التسجيل السابق</string>
+    <string name="previous_registration_date">تاريخ التسجيل السابق</string>
+    <string name="previous_registration_authority">جهة التسجيل السابقة</string>
+    <string name="select_authority">اختر جهة التسجيل</string>
+    <string name="previous_registration_certificate">شهادة التسجيل السابقة</string>
+    <string name="permanent_registration_proof">إثبات التسجيل الدائم</string>
+
+    <!-- Existing Registration Info (Suspend/Cancel) -->
+    <string name="existing_registration_info">معلومات التسجيل الحالي</string>
+    <string name="existing_registration_info_desc">أدخل تفاصيل التسجيل المراد تعطيله</string>
+    <string name="registration_number">رقم التسجيل</string>
+    <string name="enter_registration_number">أدخل رقم التسجيل</string>
+
+    <!-- Suspension Related -->
+    <string name="suspension_reason">سبب التعطيل</string>
+    <string name="suspension_reason_desc">اشرح سبب الحاجة لتعطيل التسجيل</string>
+    <string name="reason_for_suspension">سبب التعطيل</string>
+    <string name="select_reason">اختر السبب</string>
+    <string name="additional_details">تفاصيل إضافية</string>
+    <string name="enter_details">أدخل التفاصيل الإضافية</string>
+    <string name="requested_suspension_date">تاريخ التعطيل المطلوب</string>
+    <string name="original_registration_certificate">شهادة التسجيل الأصلية</string>
+    <string name="supporting_documents">المستندات الداعمة</string>
+
+    <!-- Cancellation Related -->
+    <string name="registration_to_cancel">التسجيل المراد شطبه</string>
+    <string name="registration_to_cancel_desc">أدخل تفاصيل التسجيل المراد شطبه</string>
+    <string name="cancellation_reason">سبب الشطب</string>
+    <string name="cancellation_reason_desc">اشرح سبب الحاجة لشطب التسجيل</string>
+    <string name="reason_for_cancellation">سبب الشطب</string>
+    <string name="cancellation_details">تفاصيل الشطب</string>
+    <string name="effective_date">تاريخ السريان</string>
+    <string name="cancellation_proof">مستند إثبات الشطب</string>
+
+    <!-- Bank/Mortgage Related -->
+    <string name="bank_information">معلومات البنك</string>
+    <string name="bank_information_desc">قدم معلومات كاملة عن البنك المرتهن</string>
+    <string name="bank_name">اسم البنك</string>
+    <string name="enter_bank_name">أدخل اسم البنك</string>
+    <string name="bank_branch">فرع البنك</string>
+    <string name="enter_bank_branch">أدخل فرع البنك</string>
+    <string name="bank_country">دولة البنك</string>
+    <string name="mortgage_amount">مبلغ الرهن</string>
+    <string name="enter_amount">أدخل المبلغ</string>
+    <string name="currency">العملة</string>
+    <string name="select_currency">اختر العملة</string>
+    <string name="mortgage_start_date">تاريخ بداية الرهن</string>
+    <string name="mortgage_end_date">تاريخ انتهاء الرهن</string>
+    <string name="mortgage_terms">شروط وأحكام الرهن</string>
+    <string name="enter_mortgage_terms">أدخل شروط الرهن</string>
+    <string name="mortgage_agreement">اتفاقية الرهن</string>
+    <string name="bank_approval_letter">خطاب موافقة البنك</string>
+
+    <!-- Release Mortgage Related -->
+    <string name="mortgage_information">معلومات الرهن</string>
+    <string name="mortgage_information_desc">أدخل تفاصيل الرهن المراد فكه</string>
+    <string name="mortgage_reference_number">الرقم المرجعي للرهن</string>
+    <string name="enter_mortgage_reference">أدخل الرقم المرجعي للرهن</string>
+    <string name="mortgage_date">تاريخ الرهن</string>
+    <string name="bank_release_info">معلومات فك الرهن من البنك</string>
+    <string name="bank_release_info_desc">قدم المعلومات من البنك حول فك الرهن</string>
+    <string name="release_date">تاريخ الفك</string>
+    <string name="release_reason">سبب الفك (اختياري)</string>
+    <string name="enter_release_reason">أدخل سبب الفك</string>
+    <string name="original_mortgage_certificate">شهادة الرهن الأصلية</string>
+    <string name="bank_release_letter">خطاب فك الرهن من البنك</string>
+    <string name="payment_proof">إثبات السداد / وثيقة التسوية</string>
+
+
 </resources>

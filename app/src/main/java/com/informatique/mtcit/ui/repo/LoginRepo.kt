@@ -21,7 +21,7 @@ class LoginRepo
 ) {
 
     fun onLogin(login: LoginParams): Flow<BusinessState<LoginResponse>> = flow {
-        val serviceState = repo.onPostAuth("students/Login", login)
+        val serviceState = repo.onPostAuth("students/login", login)
         when (serviceState) {
             is RepoServiceState.Success -> {
                 val response = serviceState.response

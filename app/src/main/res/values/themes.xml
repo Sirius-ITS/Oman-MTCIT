@@ -8,19 +8,13 @@
 
     <style name="Theme.AppTheme" parent="Base.Theme.AppTheme" />
 
-    <!-- Modern Splash Screen Theme for Android 12+ -->
-    <style name="Theme.MTCIT.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo_animated</item>
-        <item name="windowSplashScreenAnimationDuration">2000</item>
-        <item name="postSplashScreenTheme">@style/Theme.AppTheme</item>
-        <item name="android:windowBackground">@drawable/splash_background_compat</item>
-    </style>
-
-    <!-- Fallback theme for older Android versions -->
-    <style name="Theme.MTCIT.Splash.Compat" parent="Theme.AppCompat.Light.NoActionBar">
-        <item name="android:windowBackground">@drawable/splash_background_compat</item>
-        <item name="android:windowFullscreen">true</item>
+    <!-- Splash Screen Theme for Android versions below 12 (default) -->
+    <style name="Theme.MTCIT.Splash" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@color/splash_background</item>
+        <item name="android:navigationBarColor">@color/splash_background</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowContentOverlay">@null</item>

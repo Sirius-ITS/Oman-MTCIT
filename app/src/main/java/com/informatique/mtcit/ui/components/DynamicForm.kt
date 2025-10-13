@@ -13,7 +13,7 @@ import com.informatique.mtcit.ui.components.FocusAwareTextField
 fun DynamicStepForm(
     stepData: StepData,
     onFieldChange: (String, String, Boolean?) -> Unit,
-    onCompanyRegistrationFocusLost: (String) -> Unit = {},
+    onFieldFocusLost: (String, String) -> Unit = { _, _ -> },
     isFieldLoading: (String) -> Boolean = { false },
     showConditionalFields: (String) -> Boolean = { true },
     onOpenFilePicker: ((String, List<String>) -> Unit)? = null,
@@ -34,7 +34,7 @@ fun DynamicStepForm(
                             FocusAwareTextField(
                                 value = field.value,
                                 onValueChange = { onFieldChange(field.id, it, null) },
-                                onFocusLost = onCompanyRegistrationFocusLost,
+                                onFocusLost = { value -> onFieldFocusLost(field.id, value) },
                                 label = field.label,
                                 isPassword = field.isPassword,
                                 isNumeric = field.isNumeric,

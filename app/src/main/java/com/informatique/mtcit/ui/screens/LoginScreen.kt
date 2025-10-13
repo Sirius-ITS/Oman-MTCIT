@@ -2,22 +2,23 @@ package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -25,17 +26,17 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.NoInternetException
 import com.informatique.mtcit.data.model.loginModels.LoginResponse
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.components.AlertPopup
-import com.informatique.mtcit.ui.components.CommonButton
+import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navController: NavController,
@@ -45,151 +46,187 @@ fun LoginScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val loginUiState: UIState<LoginResponse> by loginViewModel.loginState.collectAsStateWithLifecycle()
-    val mContext = LocalContext.current
-    var isUsernameFocused by remember { mutableStateOf(false) }
-    var isPasswordFocused by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     var passwordVisible by remember { mutableStateOf(false) }
-    val showPasswordIcon = painterResource(id = R.drawable.ic_favourite)
-    val hidePasswordIcon = painterResource(id = R.drawable.ic_favourite)
-    val systemUiController = rememberSystemUiController()
-    val extraColors = LocalExtraColors.current
-    val headerColor = extraColors.background
 
     var showDialog by remember { mutableStateOf(false) }
     var dialogTitle by remember { mutableStateOf("") }
     var dialogMessage by remember { mutableStateOf("") }
     var dialogColor by remember { mutableStateOf(Color.Transparent) }
-    val context = LocalContext.current
+    var showSettings by remember { mutableStateOf(false) }
+    val extraColors = LocalExtraColors.current
 
-    SideEffect {
-        systemUiController.setStatusBarColor(
-            color = headerColor,
-            darkIcons = true
-        )
-    }
-
-    Surface(
+    Scaffold(
         modifier = Modifier.fillMaxSize(),
-        color = headerColor
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(start = 15.dp, end = 15.dp, top = 15.dp, bottom = 15.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            TextField(
-                value = username,
-                onValueChange = { username = it },
-                label = {
-                    Text(
-                        mContext.getString(R.string.username),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (isUsernameFocused)
-                            colorResource(id = R.color.text_field_label)
-                        else Color.Gray
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged { isUsernameFocused = it.isFocused },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = extraColors.background,
-                    unfocusedContainerColor = extraColors.background,
-                    focusedLabelColor = colorResource(id = R.color.text_field_label),
-                    unfocusedLabelColor = Color.Gray,
-                    focusedIndicatorColor = colorResource(id = R.color.text_field_label),
-                    unfocusedIndicatorColor = Color.Gray,
-                    cursorColor = colorResource(id = R.color.text_field_label)
-                ),
-                textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(38.dp))
-
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                label = {
-                    Text(
-                        mContext.getString(R.string.password),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (isPasswordFocused)
-                            colorResource(id = R.color.text_field_label)
-                        else Color.Gray
-                    )
-                },
-                visualTransformation = if (passwordVisible)
-                    VisualTransformation.None else PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged { isPasswordFocused = it.isFocused },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = extraColors.background,
-                    unfocusedContainerColor = extraColors.background,
-                    focusedLabelColor = colorResource(id = R.color.text_field_label),
-                    unfocusedLabelColor = Color.Gray,
-                    focusedIndicatorColor = colorResource(id = R.color.text_field_label),
-                    unfocusedIndicatorColor = Color.Gray,
-                    cursorColor = colorResource(id = R.color.text_field_label)
-                ),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Image(
-                            painter = if (passwordVisible) hidePasswordIcon else showPasswordIcon,
-                            contentDescription = if (passwordVisible) "إخفاء كلمة المرور" else "إظهار كلمة المرور",
-                            modifier = Modifier.size(24.dp),
-                            colorFilter = ColorFilter.tint(colorResource(id = R.color.grey))
+        topBar = {
+            TopAppBar(
+                title = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = localizedApp(R.string.login),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
                         )
                     }
                 },
-                textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
-                singleLine = true
+                navigationIcon = {
+                    IconButton(onClick = { }) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(80.dp)
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { showSettings = !showSettings },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (showSettings) Icons.Default.Close else Icons.Default.Settings,
+                            contentDescription = if (showSettings) "Close Settings" else "Settings",
+                            tint = extraColors.blue1,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = extraColors.blue1
+                )
             )
-
-            Spacer(modifier = Modifier.height(52.dp))
-
-            CommonButton(
-                text = mContext.getString(R.string.login),
-                true,
-                colorResource(id = R.color.login_button)
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                loginViewModel.login(username, password)
+                // Username Field
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text(localizedApp(R.string.username)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Username",
+                            tint = extraColors.blue1
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = extraColors.blue1,
+                        unfocusedBorderColor = colorResource(id = R.color.grey),
+                        focusedLabelColor = extraColors.blue1,
+                        unfocusedLabelColor = colorResource(id = R.color.grey),
+                        cursorColor = extraColors.blue1
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Password Field
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(localizedApp(R.string.password)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Password",
+                            tint = extraColors.blue1
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                tint = colorResource(id = R.color.grey)
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = extraColors.blue1,
+                        unfocusedBorderColor = colorResource(id = R.color.grey),
+                        focusedLabelColor = extraColors.blue1,
+                        unfocusedLabelColor = colorResource(id = R.color.grey),
+                        cursorColor = extraColors.blue1
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Login Button
+                Button(
+                    onClick = { loginViewModel.login(username, password) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = extraColors.blue1,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                ) {
+                    if (loginUiState is UIState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = localizedApp(R.string.login),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Forgot Password
+                TextButton(onClick = { /* TODO */ }) {
+                    Text(
+                        text = localizedApp(R.string.forgotpass),
+                        color = extraColors.blue2,
+                        fontSize = 14.sp
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CommonButton(text = "Theme option", true, Color.White) {
-                navController.navigate("settings_screen")
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            CommonButton(text = "Microsoft Azure", true, Color.White) {
-                navController.navigate("microsoft_azure")
-            }
-
-            // ✅ معالجة حالات الواجهة بشكل ثابت
+            // Handle Login States
             LaunchedEffect(loginUiState) {
                 when (loginUiState) {
                     is UIState.Failure -> {
-                        val errorText =
-                            if ((loginUiState as UIState.Failure<LoginResponse>).throwable is NoInternetException)
-                                context.getString(R.string.no_internet_available)
-                            else
-                                context.getString(R.string.something_went_wrong)
+                        val errorText = if ((loginUiState as UIState.Failure<LoginResponse>).throwable is NoInternetException)
+                            context.getString(R.string.no_internet_available)
+                        else
+                            context.getString(R.string.something_went_wrong)
 
                         dialogTitle = "Login Failed"
                         dialogMessage = errorText
-                        dialogColor = extraColors.error
-
-                        // ✅ إعادة إظهار الديالوج حتى لو نفس الخطأ
-                        showDialog = false
+                        dialogColor = extraColors.blue1
                         showDialog = true
                     }
 
@@ -198,8 +235,7 @@ fun LoginScreen(
                         if (response.result != "Ok") {
                             dialogTitle = "Login Failed"
                             dialogMessage = response.details ?: "Username or password incorrect"
-                            dialogColor = extraColors.error
-                            showDialog = false
+                            dialogColor = extraColors.blue1
                             showDialog = true
                         } else {
                             response.cardProfile?.let { profile ->
@@ -207,23 +243,9 @@ fun LoginScreen(
                                 response.userMainData?.let {
                                     sharedUserViewModel.setUserMainData(it)
                                 }
-
-                                dialogTitle = "Login Success"
-                                dialogMessage = "Welcome back!"
-                                dialogColor = extraColors.success
-                                showDialog = false
-                                showDialog = true
-
-                                // التنقل بعد نجاح الدخول
                                 navController.navigate("main") {
                                     popUpTo("login") { inclusive = true }
                                 }
-                            } ?: run {
-                                dialogTitle = "Login Failed"
-                                dialogMessage = "لم يتم استلام بيانات المستخدم بشكل صحيح."
-                                dialogColor = extraColors.error
-                                showDialog = false
-                                showDialog = true
                             }
                         }
                     }
@@ -231,8 +253,7 @@ fun LoginScreen(
                     is UIState.Error -> {
                         dialogTitle = "Login Failed"
                         dialogMessage = (loginUiState as UIState.Error<LoginResponse>).message
-                        dialogColor = extraColors.error
-                        showDialog = false
+                        dialogColor = extraColors.blue1
                         showDialog = true
                     }
 
@@ -240,7 +261,6 @@ fun LoginScreen(
                 }
             }
 
-            // ✅ عرض الـ Dialog في واجهة UI
             if (showDialog) {
                 AlertPopup(
                     title = dialogTitle,
