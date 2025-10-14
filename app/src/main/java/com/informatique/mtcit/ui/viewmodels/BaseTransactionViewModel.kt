@@ -73,6 +73,10 @@ abstract class BaseTransactionViewModel(
     // Current transaction strategy
     protected var currentStrategy: TransactionStrategy? = null
 
+    private val _showToastEvent = MutableStateFlow<String?>(null)
+    val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
+
+
     /**
      * Abstract method to create strategy for specific transaction type
      * Each category ViewModel implements this to create its own strategies
@@ -162,8 +166,28 @@ abstract class BaseTransactionViewModel(
             val currentState = _uiState.value
 
             if (validateAndCompleteCurrentStep()) {
-                navigationUseCase.getNextStep(currentState.currentStep, currentState.steps.size)?.let { nextStep ->
-                    val newCompletedSteps = currentState.completedSteps + currentState.currentStep
+                val currentStepIndex = currentState.currentStep
+                val currentStep = currentState.steps.getOrNull(currentStepIndex)
+                if (currentStep == null) return@launch
+
+                // 🔹 تحديد الـ fields الخاصة بالـ step الحالي
+                val currentStepFields = currentStep.fields.map { it.id }
+
+                // 🔹 فلترة الداتا اللي تخص الـ step الحالي فقط
+                val currentStepData = currentState.formData.filterKeys { it in currentStepFields }
+
+                // 🧠 حفظ الداتا في SharedSteps
+                SharedSteps.saveStepData("Step_${currentStepIndex + 1}", currentStepData)
+
+                // 🧾 عرض داتا الـ step الحالي في Toast
+                val dataSummary = currentStepData.entries.joinToString("\n") { (key, value) ->
+                    "$key: $value"
+                }
+                _showToastEvent.value = "Step ${currentStepIndex + 1} Data:\n$dataSummary"
+
+                // ✅ الانتقال للـ Step التالي
+                navigationUseCase.getNextStep(currentStepIndex, currentState.steps.size)?.let { nextStep ->
+                    val newCompletedSteps = currentState.completedSteps + currentStepIndex
 
                     _uiState.value = currentState.copy(
                         currentStep = nextStep,
@@ -178,6 +202,7 @@ abstract class BaseTransactionViewModel(
             }
         }
     }
+
 
     fun previousStep() {
         val currentState = _uiState.value
@@ -340,3 +365,30 @@ abstract class BaseTransactionViewModel(
         _fileNavigationEvent.value = FileNavigationEvent.RemoveFile(fieldId)
     }
 }
+// ****************************************************
+object SharedSteps {
+    val stepDataMap = mutableMapOf<String, Map<String, String>>() // كل step فيها key/value
+
+    fun saveStepData(stepName: String, fields: Map<String, String>) {
+        stepDataMap[stepName] = fields
+    }
+
+    fun reviewStep(): StepData {
+        val reviewFields = stepDataMap.flatMap { (stepName, fields) ->
+            fields.map { (key, value) ->
+                FormField.TextField(
+                    id = "$stepName-$key",
+                    label = "$stepName - $key",
+                    value = value
+                )
+            }
+        }
+
+        return StepData(
+            titleRes = com.informatique.mtcit.R.string.review,
+            descriptionRes = com.informatique.mtcit.R.string.step_placeholder_content,
+            fields = reviewFields
+        )
+    }
+}
+

@@ -383,4 +383,19 @@
     <string name="bank_release_letter">Bank Release Letter</string>
     <string name="payment_proof">Payment Proof/Clearance Document</string>
 
+
+        <!-- Review Step Strings -->
+        <string name="review_your_request">مراجعة طلبك</string>
+        <string name="review_description">يرجى مراجعة بياناتك والتأكد منها قبل الإرسال، حيث سيتم إعتمادها وإحالتها الى الجهة المختصة.</string>
+        <string name="review_step_title">مراجعة</string>
+        <string name="review_step_description">مراجعة جميع البيانات المدخلة</string>
+        <string name="edit_section">تعديل</string>
+        <string name="expand_section">توسيع</string>
+        <string name="collapse_section">طي</string>
+        <string name="file_attached">ملف مرفق</string>
+        <string name="no_file_attached">لا يوجد ملف مرفق</string>
+        <string name="yes">نعم</string>
+        <string name="no">لا</string>
+
+
 </resources>
