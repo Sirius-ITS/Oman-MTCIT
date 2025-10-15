@@ -20,7 +20,7 @@ fun DynamicStepForm(
     onOpenFilePicker: ((String, List<String>) -> Unit)? = null,
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
-    allSteps: List<StepData> = emptyList() // Add parameter to pass all steps for review
+    allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
 ) {
     // Detect Review Step: If no fields, show ReviewStepContent
     if (stepData.fields.isEmpty() && allSteps.isNotEmpty()) {
@@ -32,7 +32,7 @@ fun DynamicStepForm(
     } else {
         // Regular step - show form fields
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             stepData.fields.forEach { field ->

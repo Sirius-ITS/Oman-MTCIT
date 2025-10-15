@@ -83,28 +83,18 @@ fun TransactionFormContent(
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Modern Stepper
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = extraColors.grayCard
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                DynamicStepper(
-                    steps = uiState.steps.map { localizedApp(it.titleRes) },
-                    currentStep = uiState.currentStep,
-                    completedSteps = uiState.completedSteps,
-                    onStepClick = goToStep,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+            DynamicStepper(
+                steps = uiState.steps.map { localizedApp(it.titleRes) },
+                currentStep = uiState.currentStep,
+                completedSteps = uiState.completedSteps,
+                onStepClick = goToStep,
+                modifier = Modifier.padding(16.dp)
+            )
 
-            // Form Content Card
+            // Form Content
             val currentStepData = uiState.steps.getOrNull(uiState.currentStep)
             if (currentStepData != null) {
+                // Step Header Card
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -117,7 +107,6 @@ fun TransactionFormContent(
                     Column(
                         modifier = Modifier.padding(20.dp)
                     ) {
-                        // Step Header
                         Text(
                             text = localizedApp(currentStepData.titleRes),
                             style = MaterialTheme.typography.headlineSmall,
@@ -129,39 +118,38 @@ fun TransactionFormContent(
                         Text(
                             text = localizedApp(currentStepData.descriptionRes),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = extraColors.blue2,
-                            modifier = Modifier.padding(bottom = 24.dp)
-                        )
-
-                        // Convert ViewModel StepData to Component StepData
-                        val componentStepData = ViewModelStepData(
-                            titleRes = currentStepData.titleRes,
-                            descriptionRes = currentStepData.descriptionRes,
-                            fields = currentStepData.fields.map { field ->
-                                updateFieldWithFormData(field, uiState.formData, uiState.fieldErrors)
-                            }
-                        )
-
-                        DynamicStepForm(
-                            stepData = componentStepData,
-                            formData = uiState.formData, // Pass form data so OwnerList can retrieve total count
-                            onFieldChange = { fieldId, value, _ -> onFieldValueChange(fieldId, value) },
-                            onFieldFocusLost = { fieldId, value -> onFieldFocusLost(fieldId, value) },
-                            isFieldLoading = isFieldLoading,
-                            showConditionalFields = { fieldId ->
-                                when (fieldId) {
-                                    "companyName", "companyRegistrationNumber", "companyType" ->
-                                        uiState.formData["isCompany"] == "true"
-                                    else -> true
-                                }
-                            },
-                            onOpenFilePicker = onOpenFilePicker,
-                            onViewFile = onViewFile,
-                            onRemoveFile = onRemoveFile,
-                            allSteps = uiState.steps // Pass all steps for review
+                            color = extraColors.blue2
                         )
                     }
                 }
+
+                // Dynamic Form - Outside Card
+                val componentStepData = ViewModelStepData(
+                    titleRes = currentStepData.titleRes,
+                    descriptionRes = currentStepData.descriptionRes,
+                    fields = currentStepData.fields.map { field ->
+                        updateFieldWithFormData(field, uiState.formData, uiState.fieldErrors)
+                    }
+                )
+
+                DynamicStepForm(
+                    stepData = componentStepData,
+                    formData = uiState.formData,
+                    onFieldChange = { fieldId, value, _ -> onFieldValueChange(fieldId, value) },
+                    onFieldFocusLost = { fieldId, value -> onFieldFocusLost(fieldId, value) },
+                    isFieldLoading = isFieldLoading,
+                    showConditionalFields = { fieldId ->
+                        when (fieldId) {
+                            "companyName", "companyRegistrationNumber", "companyType" ->
+                                uiState.formData["isCompany"] == "true"
+                            else -> true
+                        }
+                    },
+                    onOpenFilePicker = onOpenFilePicker,
+                    onViewFile = onViewFile,
+                    onRemoveFile = onRemoveFile,
+                    allSteps = uiState.steps
+                )
             }
         }
 

@@ -52,7 +52,6 @@ fun ReviewStepContent(
         // Display each step as an expandable card
         Column(
             modifier = modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             steps.forEachIndexed { index, step ->
                 // Get fields for this step that have values
@@ -89,8 +88,8 @@ private fun ExpandableStepCard(
     var isExpanded by remember { mutableStateOf(isExpandedByDefault) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = extraColors.background),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp , vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.white),
         elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -123,18 +122,12 @@ private fun ExpandableStepCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // Expand/Collapse Icon
-                Surface(
-                    shape = CircleShape,
-                    color = extraColors.grayCard,
-                    modifier = Modifier.size(36.dp)
-                ) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
                         tint = extraColors.blue1,
                         modifier = Modifier.padding(6.dp)
                     )
-                }
             }
 
             // Expandable Content

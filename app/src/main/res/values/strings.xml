@@ -420,4 +420,8 @@
     <string name="file_type_not_supported_internal">This file type cannot be viewed internally.</string>
     <string name="open_with_external_app_question">Would you like to open this file with an external application?</string>
     <string name="open">Open</string>
+
+    // progress bar
+    <string name="step">Step</string>
+    <string name="of">of</string>
 </resources>
