@@ -65,4 +65,26 @@ sealed class FormField(
         override val error: String? = null,
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory)
+
+    /**
+     * Owner List Field - For managing multiple owners
+     * Value is stored as JSON string containing list of owners
+     *
+     * @param nationalities List of nationality options for dropdown
+     * @param countries List of country options for dropdown
+     * @param includeCompanyFields Whether to show company-specific fields
+     * @param totalCountFieldId ID of the field storing total owners count (optional)
+     */
+    data class OwnerList(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "[]", // JSON array of owners
+        val nationalities: List<String> = emptyList(),
+        val countries: List<String> = emptyList(),
+        val includeCompanyFields: Boolean = true,
+        val totalCountFieldId: String? = null, // Optional link to total count field
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory)
 }

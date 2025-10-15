@@ -2,18 +2,17 @@ package com.informatique.mtcit.ui.components
 
 import android.content.Context
 import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,9 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import androidx.compose.ui.unit.DpOffset
 import com.informatique.mtcit.R
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CustomFileUpload(
     value: String,
@@ -42,6 +42,7 @@ fun CustomFileUpload(
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
     var selectedMimeType by remember { mutableStateOf<String?>(null) }
     var fileName by remember { mutableStateOf("") }
+    var showMenu by remember { mutableStateOf(false) }
 
     // Update selectedUri when value changes (for persistence)
     LaunchedEffect(value) {
@@ -57,189 +58,198 @@ fun CustomFileUpload(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (error != null)
-                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                else
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
+        // Label
+        if (label.isNotEmpty()) {
+            Text(
+                text = if (mandatory) "$label *" else label,
+                style = MaterialTheme.typography.bodyMedium,
                 color = if (error != null)
                     MaterialTheme.colorScheme.error
                 else
-                    MaterialTheme.colorScheme.outline
+                    MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp)
             )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header with label and icon
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = if (value.isNotEmpty()) Icons.Default.Description else Icons.Default.AttachFile,
-                        contentDescription = null,
-                        tint = if (error != null)
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (mandatory) "$label *" else label,
-                        style = MaterialTheme.typography.bodyMedium,
+        }
+
+        if (selectedUri != null && value.isNotEmpty()) {
+            // File selected - show file card with dropdown menu
+            Box {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { showMenu = true },
+                            onLongClick = { showMenu = true }
+                        ),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
                         color = if (error != null)
                             MaterialTheme.colorScheme.error
                         else
-                            MaterialTheme.colorScheme.onSurface
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                     )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // File icon
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        // File name
+                        Text(
+                            text = fileName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (selectedUri != null && value.isNotEmpty()) {
-                    // File selected - show preview and actions
-                    Column {
-                        // File preview (for images) or file info
-                        when {
-                            selectedMimeType?.startsWith("image/") == true -> {
-                                AsyncImage(
-                                    model = selectedUri,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(120.dp)
-                                        .clickable {
-                                            onViewFile?.invoke(value, selectedMimeType ?: "image/*")
-                                        }
-                                )
-                            }
-                            else -> {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            onViewFile?.invoke(value, selectedMimeType ?: "application/*")
-                                        },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                    )
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Description,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = fileName,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Action buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // View button
-                            OutlinedButton(
-                                onClick = {
-                                    onViewFile?.invoke(value, selectedMimeType ?: "application/*")
-                                },
-                                modifier = Modifier.weight(1f)
+                // Dropdown menu
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    offset = DpOffset(0.dp, 4.dp)
+                ) {
+                    // View option
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Visibility,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = localizedApp(R.string.view_file),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                Text(localizedApp(R.string.view_file))
                             }
+                        },
+                        onClick = {
+                            showMenu = false
+                            onViewFile?.invoke(value, selectedMimeType ?: "application/*")
+                        }
+                    )
 
-                            // Remove button
-                            OutlinedButton(
-                                onClick = {
-                                    onRemoveFile?.invoke(fieldId)
-                                    onValueChange("")
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
+                    // Replace option
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
                                 )
+                                Text(localizedApp(R.string.replace_file))
+                            }
+                        },
+                        onClick = {
+                            showMenu = false
+                            onOpenFilePicker?.invoke(fieldId, allowedTypes)
+                        }
+                    )
+
+                    // Delete option
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = localizedApp(R.string.remove_file),
-                                    style = MaterialTheme.typography.bodySmall
+                                    text = localizedApp(R.string.delete_file),
+                                    color = MaterialTheme.colorScheme.error
                                 )
                             }
+                        },
+                        onClick = {
+                            showMenu = false
+                            onRemoveFile?.invoke(fieldId)
+                            onValueChange("")
                         }
-                    }
-                } else {
-                    // No file selected - show upload button
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                onOpenFilePicker?.invoke(fieldId, allowedTypes)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AttachFile,
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(localizedApp(R.string.choose_file))
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // File format info
-                        Text(
-                            text = localizedApp(R.string.file_format_info),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = localizedApp(R.string.file_upload_instructions + maxSizeMB),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    )
                 }
             }
+        } else {
+            // No file selected - show upload button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onOpenFilePicker?.invoke(fieldId, allowedTypes)
+                    },
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (error != null)
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = if (error != null)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Upload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = localizedApp(R.string.choose_file),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Helper text
+        if (error == null && value.isEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = localizedApp(R.string.file_format_info),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp)
+            )
         }
 
         // Error text
@@ -249,7 +259,7 @@ fun CustomFileUpload(
                 text = it,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp)
+                modifier = Modifier.padding(start = 4.dp)
             )
         }
     }

@@ -383,19 +383,32 @@
     <string name="bank_release_letter">Bank Release Letter</string>
     <string name="payment_proof">Payment Proof/Clearance Document</string>
 
+    <!-- Owner Info Step with Multiple Owners -->
+    <string name="total_owners_count">Total Number of Owners</string>
+    <string name="add_owner">Add Owner</string>
+    <string name="added_owners">Added Owners</string>
+    <string name="edit_owner">Edit Owner</string>
+    <string name="delete_owner">Delete Owner</string>
+    <string name="save_button">Save</string>
+    <string name="cancel_button">Cancel</string>
 
-        <!-- Review Step Strings -->
-        <string name="review_your_request">مراجعة طلبك</string>
-        <string name="review_description">يرجى مراجعة بياناتك والتأكد منها قبل الإرسال، حيث سيتم إعتمادها وإحالتها الى الجهة المختصة.</string>
-        <string name="review_step_title">مراجعة</string>
-        <string name="review_step_description">مراجعة جميع البيانات المدخلة</string>
-        <string name="edit_section">تعديل</string>
-        <string name="expand_section">توسيع</string>
-        <string name="collapse_section">طي</string>
-        <string name="file_attached">ملف مرفق</string>
-        <string name="no_file_attached">لا يوجد ملف مرفق</string>
-        <string name="yes">نعم</string>
-        <string name="no">لا</string>
+    <!-- Review Step -->
+    <string name="review_title">Review Your Information</string>
+    <string name="review_subtitle">Please review your data and confirm it before submission</string>
+    <string name="no_data_to_review">No data available for review</string>
+    <string name="review_your_request">Review Your Request</string>
+    <string name="review_description">Please review your data and confirm it before submission, as it will be approved and forwarded to the relevant authority.</string>
+    <string name="review_step_title">Review</string>
+    <string name="review_step_description">Review all entered data</string>
+    <string name="edit_section">Edit</string>
+    <string name="expand_section">Expand</string>
+    <string name="collapse_section">Collapse</string>
+    <string name="file_attached">File Attached</string>
+    <string name="no_file_attached">No File Attached</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
 
-
+    <!-- File Upload Actions -->
+    <string name="replace_file">Replace</string>
+    <string name="delete_file">Delete</string>
 </resources>

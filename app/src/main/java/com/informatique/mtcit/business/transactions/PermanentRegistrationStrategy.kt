@@ -65,10 +65,7 @@ class PermanentRegistrationStrategy @Inject constructor(
             SharedSteps.ownerInfoStep(
                 nationalities = countryOptions,
                 countries = countryOptions,
-                includeCompanyFields = true,
-                includePassportNumber = true,
-                includePostalCode = true,
-                includeEmail = true
+                includeCompanyFields = true
             ),
             // 🆕 NEW STEP: Previous Registration Information
             StepData(

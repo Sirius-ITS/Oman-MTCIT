@@ -44,18 +44,7 @@ class ShipNameChangeStrategy @Inject constructor(
             SharedSteps.ownerInfoStep(
                 nationalities = countryOptions,
                 countries = countryOptions,
-                includeCompanyFields = true,
-                includePassportNumber = false, // ❌ Name change doesn't need passport
-                includePostalCode = false,      // ❌ Not required for name change
-                includeEmail = true,
-                additionalFields = listOf(
-                    // ✅ Transaction-specific field for name change
-                    FormField.TextField(
-                        id = "reasonForNameChange",
-                        labelRes = R.string.owner_address, // TODO: Add proper string resource
-                        mandatory = true
-                    )
-                )
+                includeCompanyFields = true
             ),
 
             // ✅ Using SharedSteps.documentsStep with name-change-specific requirements

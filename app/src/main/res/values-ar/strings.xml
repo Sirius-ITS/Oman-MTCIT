@@ -249,6 +249,10 @@
 
     <string name="marine_unit_Dimentions">الأبعاد الخاصة بالوحدة البحرية</string>
 
+    <!-- File Upload Actions -->
+    <string name="replace_file">استبدال</string>
+    <string name="delete_file">حذف</string>
+
     <!-- Screen Titles for TopAppBar - Arabic -->
     <string name="main_screen_title">الشاشة الرئيسية</string>
     <string name="home_title">الرئيسية</string>
@@ -378,19 +382,30 @@
     <string name="bank_release_letter">خطاب فك الرهن من البنك</string>
     <string name="payment_proof">إثبات السداد / وثيقة التسوية</string>
 
+    <!-- Owner Info Step with Multiple Owners -->
+    <string name="total_owners_count">العدد الإجمالي للملاك</string>
+    <string name="add_owner">إضافة مالك</string>
+    <string name="added_owners">الملاك المضافون</string>
+    <string name="edit_owner">تعديل المالك</string>
+    <string name="delete_owner">حذف المالك</string>
+    <string name="save_button">حفظ</string>
+    <string name="cancel_button">إلغاء</string>
 
-        <!-- Review Step Strings -->
-        <string name="review_your_request">مراجعة طلبك</string>
-        <string name="review_description">يرجى مراجعة بياناتك والتأكد منها قبل الإرسال، حيث سيتم إعتمادها وإحالتها الى الجهة المختصة.</string>
-        <string name="review_step_title">مراجعة</string>
-        <string name="review_step_description">مراجعة جميع البيانات المدخلة</string>
-        <string name="edit_section">تعديل</string>
-        <string name="expand_section">توسيع</string>
-        <string name="collapse_section">طي</string>
-        <string name="file_attached">ملف مرفق</string>
-        <string name="no_file_attached">لا يوجد ملف مرفق</string>
-        <string name="yes">نعم</string>
-        <string name="no">لا</string>
+    <!-- Review Step -->
+    <string name="review_title">مراجعة البيانات</string>
+    <string name="review_subtitle">يرجى مراجعة بياناتك والتأكد منها قبل الإرسال</string>
+    <string name="no_data_to_review">لا توجد بيانات متاحة للمراجعة</string>
+    <string name="review_your_request">مراجعة طلبك</string>
+    <string name="review_description">يرجى مراجعة بياناتك والتأكد منها قبل الإرسال، حيث سيتم إعتمادها وإحالتها الى الجهة المختصة.</string>
+    <string name="review_step_title">مراجعة</string>
+    <string name="review_step_description">مراجعة جميع البيانات المدخلة</string>
+    <string name="edit_section">تعديل</string>
+    <string name="expand_section">توسيع</string>
+    <string name="collapse_section">طي</string>
+    <string name="file_attached">ملف مرفق</string>
+    <string name="no_file_attached">لا يوجد ملف مرفق</string>
+    <string name="yes">نعم</string>
+    <string name="no">لا</string>
 
 
 </resources>

@@ -15,6 +15,9 @@ import com.informatique.mtcit.ui.viewmodels.StepData
  */
 object SharedSteps {
 
+    // Special step ID to identify the owner info step with custom UI
+    const val STEP_ID_OWNER_INFO_MULTIPLE = "owner_info_multiple"
+
     /**
      * Unit Selection Step (Ship Information)
      * Used by: Ship Registration, Name Change, Dimension Change, etc.
@@ -190,152 +193,37 @@ object SharedSteps {
     }
 
     /**
-     * Owner Information Step
+     * Owner Information Step - WITH MULTIPLE OWNERS SUPPORT
      * Used by: All ship transactions (registration, name change, dimension change)
+     *
+     * This returns a step with OwnerList field type that will be handled generically by DynamicForm
+     * No special detection needed - it works like any other field type!
      *
      * @param nationalities List of countries for nationality dropdown
      * @param countries List of countries for address dropdown
      * @param includeCompanyFields Show company registration fields (default: true)
-     * @param includePassportNumber Show passport field (default: true)
-     * @param includePostalCode Show postal code field (default: true)
-     * @param includeEmail Show email field (default: true)
-     * @param additionalFields Add transaction-specific fields
      */
     fun ownerInfoStep(
         nationalities: List<String>,
         countries: List<String>,
-        includeCompanyFields: Boolean = true,
-        includePassportNumber: Boolean = true,
-        includePostalCode: Boolean = true,
-        includeEmail: Boolean = true,
-        additionalFields: List<FormField> = emptyList()
+        includeCompanyFields: Boolean = true
     ): StepData {
         val fields = mutableListOf<FormField>()
 
-        // Company checkbox (always included)
+        // Owner list field - this will be rendered as OwnerListManager component
+        // The OwnerListManager will display the total count input internally
         fields.add(
-            FormField.CheckBox(
-                id = "isCompany",
-                labelRes = R.string.is_company,
-                mandatory = false
-            )
-        )
-
-        // Core owner fields (always included)
-        fields.addAll(
-            listOf(
-                FormField.TextField(
-                    id = "ownerFullName",
-                    labelRes = R.string.owner_full_name,
-                    mandatory = true
-                ),
-                FormField.DropDown(
-                    id = "ownerNationality",
-                    labelRes = R.string.owner_nationality,
-                    options = nationalities,
-                    mandatory = true
-                ),
-                FormField.TextField(
-                    id = "ownerIdNumber",
-                    labelRes = R.string.owner_id_number,
-                    isNumeric = true,
-                    mandatory = true
-                )
-            )
-        )
-
-        // Optional: Passport Number
-        if (includePassportNumber) {
-            fields.add(
-                FormField.TextField(
-                    id = "ownerPassportNumber",
-                    labelRes = R.string.owner_passport_number,
-                    mandatory = true
-                )
-            )
-        }
-
-        // Optional: Email
-        if (includeEmail) {
-            fields.add(
-                FormField.TextField(
-                    id = "ownerEmail",
-                    labelRes = R.string.email,
-                    mandatory = true
-                )
-            )
-        }
-
-        // Contact fields (always included)
-        fields.add(
-            FormField.TextField(
-                id = "ownerMobile",
-                labelRes = R.string.owner_mobile,
-                isNumeric = true,
+            FormField.OwnerList(
+                id = "owners",
+                labelRes = R.string.owner_info,
+                value = "[]", // Empty array by default
+                nationalities = nationalities,
+                countries = countries,
+                includeCompanyFields = includeCompanyFields,
+                totalCountFieldId = "totalOwnersCount", // This tells OwnerListManager to show count input
                 mandatory = true
             )
         )
-
-        // Address fields (always included)
-        fields.addAll(
-            listOf(
-                FormField.TextField(
-                    id = "ownerAddress",
-                    labelRes = R.string.owner_address,
-                    mandatory = true
-                ),
-                FormField.TextField(
-                    id = "ownerCity",
-                    labelRes = R.string.owner_city,
-                    mandatory = true
-                ),
-                FormField.DropDown(
-                    id = "ownerCountry",
-                    labelRes = R.string.country,
-                    options = countries,
-                    mandatory = true
-                )
-            )
-        )
-
-        // Optional: Postal Code
-        if (includePostalCode) {
-            fields.add(
-                FormField.TextField(
-                    id = "ownerPostalCode",
-                    labelRes = R.string.owner_postal_code,
-                    isNumeric = true,
-                    mandatory = false
-                )
-            )
-        }
-
-        // Optional: Company Fields (shown conditionally via isCompany checkbox)
-        if (includeCompanyFields) {
-            fields.addAll(
-                listOf(
-                    FormField.TextField(
-                        id = "companyRegistrationNumber",
-                        labelRes = R.string.company_registration_number,
-                        isNumeric = true,
-                        mandatory = true
-                    ),
-                    FormField.TextField(
-                        id = "companyName",
-                        labelRes = R.string.company_name,
-                        mandatory = false
-                    ),
-                    FormField.TextField(
-                        id = "companyType",
-                        labelRes = R.string.owner_type,
-                        mandatory = false
-                    )
-                )
-            )
-        }
-
-        // Add transaction-specific fields
-        fields.addAll(additionalFields)
 
         return StepData(
             titleRes = R.string.owner_info,
@@ -392,4 +280,3 @@ data class DocumentConfig(
     val maxSizeMB: Int = 5,
     val mandatory: Boolean = true
 )
-

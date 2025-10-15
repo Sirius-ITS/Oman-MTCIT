@@ -69,9 +69,6 @@ class MortgageCertificateStrategy @Inject constructor(
                 nationalities = countryOptions,
                 countries = countryOptions,
                 includeCompanyFields = true,
-                includePassportNumber = true,
-                includePostalCode = true,
-                includeEmail = true
             ),
             // 🆕 Step 3: Bank Information (NEW STEP TYPE)
             StepData(

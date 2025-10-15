@@ -23,6 +23,7 @@ import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import kotlinx.serialization.json.Json
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -143,6 +144,7 @@ fun TransactionFormContent(
 
                         DynamicStepForm(
                             stepData = componentStepData,
+                            formData = uiState.formData, // Pass form data so OwnerList can retrieve total count
                             onFieldChange = { fieldId, value, _ -> onFieldValueChange(fieldId, value) },
                             onFieldFocusLost = { fieldId, value -> onFieldFocusLost(fieldId, value) },
                             isFieldLoading = isFieldLoading,
@@ -155,7 +157,8 @@ fun TransactionFormContent(
                             },
                             onOpenFilePicker = onOpenFilePicker,
                             onViewFile = onViewFile,
-                            onRemoveFile = onRemoveFile
+                            onRemoveFile = onRemoveFile,
+                            allSteps = uiState.steps // Pass all steps for review
                         )
                     }
                 }
@@ -289,6 +292,11 @@ private fun updateFieldWithFormData(
         is FormField.FileUpload -> field.copy(
             label = localizedLabel,
             value = value,
+            error = error
+        )
+        is FormField.OwnerList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" }, // Ensure valid JSON
             error = error
         )
     }

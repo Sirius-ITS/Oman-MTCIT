@@ -65,9 +65,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 nationalities = countryOptions,
                 countries = countryOptions,
                 includeCompanyFields = true,
-                includePassportNumber = true,
-                includePostalCode = true,
-                includeEmail = true
             ),
             SharedSteps.documentsStep(
                 requiredDocuments = listOf(
