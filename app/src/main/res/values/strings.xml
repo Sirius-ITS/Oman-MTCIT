@@ -411,4 +411,13 @@
     <!-- File Upload Actions -->
     <string name="replace_file">Replace</string>
     <string name="delete_file">Delete</string>
+
+    <!-- File Viewer Screen -->
+    <string name="file_viewer">File Viewer</string>
+    <string name="back">Back</string>
+    <string name="open_external_app">Open in External App</string>
+    <string name="unsupported_file_type">Unsupported File Type</string>
+    <string name="file_type_not_supported_internal">This file type cannot be viewed internally.</string>
+    <string name="open_with_external_app_question">Would you like to open this file with an external application?</string>
+    <string name="open">Open</string>
 </resources>

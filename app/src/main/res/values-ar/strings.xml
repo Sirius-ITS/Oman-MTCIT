@@ -408,4 +408,12 @@
     <string name="no">لا</string>
 
 
+    <!-- File Viewer Screen -->
+    <string name="file_viewer">عارض الملفات</string>
+    <string name="back">رجوع</string>
+    <string name="open_external_app">فتح في تطبيق خارجي</string>
+    <string name="unsupported_file_type">نوع ملف غير مدعوم</string>
+    <string name="file_type_not_supported_internal">لا يمكن عرض هذا النوع من الملفات داخلياً.</string>
+    <string name="open_with_external_app_question">هل ترغب في فتح هذا الملف باستخدام تطبيق خارجي؟</string>
+    <string name="open">فتح</string>
 </resources>

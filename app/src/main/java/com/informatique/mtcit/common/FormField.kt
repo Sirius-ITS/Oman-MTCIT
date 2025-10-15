@@ -59,7 +59,7 @@ sealed class FormField(
         override val label: String = "",
         override val labelRes: Int = 0,
         override val value: String = "",
-        val allowedTypes: List<String> = listOf("pdf", "jpg", "png"),
+        val allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
         val maxSizeMB: Int = 5,
         val selectedFiles: List<String> = emptyList(),
         override val error: String? = null,

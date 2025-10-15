@@ -93,7 +93,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                         id = "previousRegistrationCertificate",
                         labelRes = R.string.previous_registration_certificate,
                         mandatory = true,
-                        allowedTypes = listOf("pdf", "jpg", "png"),
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
                         maxSizeMB = 5
                     )
                 )

@@ -39,13 +39,13 @@ class ShipDimensionsChangeStrategy @Inject constructor(
                     DocumentConfig(
                         id = "engineeringReport",
                         labelRes = R.string.proof_document, // TODO: Add proper string resource
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
                         mandatory = true
                     ),
                     DocumentConfig(
                         id = "inspectionCertificate",
                         labelRes = R.string.inspection_documents,
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
                         mandatory = true
                     )
                 )

@@ -364,6 +364,10 @@ abstract class BaseTransactionViewModel(
     fun removeFile(fieldId: String) {
         _fileNavigationEvent.value = FileNavigationEvent.RemoveFile(fieldId)
     }
+
+    fun clearFileNavigationEvent() {
+        _fileNavigationEvent.value = null
+    }
 }
 // ****************************************************
 object SharedSteps {
@@ -391,4 +395,3 @@ object SharedSteps {
         )
     }
 }
-

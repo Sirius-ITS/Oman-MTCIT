@@ -47,7 +47,7 @@ class CaptainNameChangeStrategy @Inject constructor(
                     DocumentConfig(
                         id = "captainLicense",
                         labelRes = R.string.proof_document, // TODO: Add proper string resource for captain license
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
                         mandatory = true
                     ),
                     DocumentConfig(

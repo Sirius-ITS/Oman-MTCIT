@@ -5,8 +5,20 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Storage permissions for Android 12 and below (API 26-32) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
+    <!-- Media permissions for Android 13+ (API 33+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+    <!-- Critical: Selected Photos Access for Android 14+ (API 34+) -->
+    <!-- This allows partial access to media without requiring full permission -->
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+        android:minSdkVersion="34" />
 
     <application
         android:name="com.informatique.mtcit.MyApplication"
@@ -21,6 +33,7 @@
         android:theme="@style/Theme.AppTheme"
         android:usesCleartextTraffic="true"
         android:configChanges="fontScale"
+        android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
 
         <!-- Splash Activity as Launcher -->
@@ -41,6 +54,17 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:theme="@style/Theme.AppTheme" />
+
+        <!-- FileProvider for sharing files with external apps -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <provider
             android:name="androidx.startup.InitializationProvider"

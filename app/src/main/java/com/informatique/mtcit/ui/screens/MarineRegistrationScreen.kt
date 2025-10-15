@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.informatique.mtcit.ui.viewmodels.StepData
+import com.informatique.mtcit.util.UriPermissionManager
 
 
 /**
@@ -83,15 +84,32 @@ fun MarineRegistrationScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                viewModel.onFieldValueChange(currentFilePickerField, it.toString())
-            } catch (e: Exception) {
-                Toast.makeText(context, "Error selecting file: ${e.message}", Toast.LENGTH_SHORT)
-                    .show()
+            // Validate file type
+            val fileName = it.lastPathSegment ?: ""
+            val extension = fileName.substringAfterLast('.', "").lowercase()
+
+            if (currentFilePickerTypes.isEmpty() || currentFilePickerTypes.contains(extension)) {
+                // CRITICAL: Cache the URI immediately to preserve the permission
+                com.informatique.mtcit.util.UriCache.cacheUri(context, it)
+
+                // Use the new UriPermissionManager for proper permission handling
+                val result = UriPermissionManager.ensureReadPermission(context, it)
+
+                if (result.isSuccess) {
+                    viewModel.onFieldValueChange(currentFilePickerField, it.toString())
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Error selecting file: ${result.exceptionOrNull()?.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } else {
+                Toast.makeText(
+                    context,
+                    "Invalid file type. Allowed types: ${currentFilePickerTypes.joinToString(", ")}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -104,29 +122,42 @@ fun MarineRegistrationScreen(
                     currentFilePickerField = event.fieldId
                     currentFilePickerTypes = event.allowedTypes
 
-                    val mimeTypes = event.allowedTypes.map { type ->
-                        when (type.lowercase()) {
-                            "pdf" -> "application/pdf"
-                            "jpg", "jpeg" -> "image/jpeg"
-                            "png" -> "image/png"
-                            "doc" -> "application/msword"
-                            "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            "xls" -> "application/vnd.ms-excel"
-                            "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            else -> "application/*"
-                        }
-                    }.toTypedArray()
-
-                    filePickerLauncher.launch(mimeTypes)
+                    // Launch with "*/*" to show all files, validation happens after selection
+                    filePickerLauncher.launch(arrayOf("*/*"))
+                    viewModel.clearFileNavigationEvent()
                 }
 
                 is FileNavigationEvent.ViewFile -> {
                     val uri = event.fileUri.toUri()
-                    viewModel.openFileOutsideApp(context, uri, event.fileType)
+
+                    // CRITICAL: Grant permission to the current activity/context before navigation
+                    // This ensures the permission persists when navigating to FileViewerScreen
+                    try {
+                        // First, try to take persistent permission
+                        context.contentResolver.takePersistableUriPermission(
+                            uri,
+                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                        android.util.Log.d("MarineRegistration", "Took persistent permission for $uri")
+                    } catch (e: SecurityException) {
+                        // If persistent permission fails, the temporary permission from file picker should still work
+                        // But we need to ensure it's granted to the activity
+                        android.util.Log.w("MarineRegistration", "Could not take persistent permission, using temporary: ${e.message}")
+                    }
+
+                    val fileName = getFileNameFromUri(context, uri)
+
+                    // Navigate to internal file viewer
+                    val encodedUri = java.net.URLEncoder.encode(event.fileUri, "UTF-8")
+                    val encodedFileName = java.net.URLEncoder.encode(fileName ?: "File", "UTF-8")
+                    navController.navigate("file_viewer/$encodedUri/$encodedFileName")
+
+                    viewModel.clearFileNavigationEvent()
                 }
 
                 is FileNavigationEvent.RemoveFile -> {
                     viewModel.onFieldValueChange(event.fieldId, "")
+                    viewModel.clearFileNavigationEvent()
                 }
             }
         }
@@ -189,5 +220,20 @@ private fun getMarineRegistrationTitle(transactionType: TransactionType): String
         TransactionType.MORTGAGE_CERTIFICATE -> localizedApp(R.string.transaction_mortgage_certificate)
         TransactionType.RELEASE_MORTGAGE -> localizedApp(R.string.transaction_release_mortgage)
         else -> "Unknown Transaction"
+    }
+}
+
+/**
+ * Helper function to get file name from URI
+ */
+private fun getFileNameFromUri(context: android.content.Context, uri: android.net.Uri): String? {
+    return try {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            cursor.moveToFirst()
+            cursor.getString(nameIndex)
+        }
+    } catch (e: Exception) {
+        uri.lastPathSegment
     }
 }

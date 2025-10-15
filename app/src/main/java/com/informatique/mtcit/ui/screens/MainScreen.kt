@@ -1,5 +1,6 @@
 package com.informatique.mtcit.ui.screens
 
+import android.webkit.MimeTypeMap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -48,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +64,7 @@ import com.informatique.mtcit.ui.screens.settings.SettingsScreen
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -440,6 +443,69 @@ fun MainScreen(sharedUserViewModel: SharedUserViewModel, themeViewModel: ThemeVi
                             sharedUserViewModel = sharedUserViewModel
                         )
                     }
+
+                    // File Viewer Screen
+                    composable(
+                        route = "file_viewer/{fileUri}/{fileName}",
+                        enterTransition = { defaultEnterTransition() },
+                        exitTransition = { defaultExitTransition() }
+                    ) { backStackEntry ->
+                        val context = LocalContext.current
+                        val fileUri = backStackEntry.arguments?.getString("fileUri") ?: ""
+                        val fileName = backStackEntry.arguments?.getString("fileName")
+                        val decodedFileUri = java.net.URLDecoder.decode(fileUri, "UTF-8")
+                        val decodedFileName = fileName?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+
+                        // Don't block the UI with permission checks - they're already done during file selection
+                        // Just display the file viewer immediately
+
+                        FileViewerScreen(
+                            fileUri = decodedFileUri,
+                            fileName = decodedFileName,
+                            onNavigateBack = { navController.navigateUp() },
+                            onOpenExternal = {
+                                try {
+                                    // Use a helper to open with external app
+                                    val sourceUri = decodedFileUri.toUri()
+
+                                    // Copy file to shareable location and get FileProvider URI
+                                    val shareableUri = com.informatique.mtcit.util.FileShareHelper.getShareableUri(
+                                        context,
+                                        sourceUri,
+                                        decodedFileName
+                                    )
+
+                                    if (shareableUri != null) {
+                                        val mimeType = getMimeTypeFromUri(sourceUri, decodedFileName)
+
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                            setDataAndType(shareableUri, mimeType)
+                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+
+                                        // Use chooser to let user select which app to open with
+                                        val chooser = android.content.Intent.createChooser(intent, "Open with")
+                                        chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+
+                                        context.startActivity(chooser)
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Error preparing file for external app",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "No app found to open this file: ${e.message}",
+                                        android.widget.Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -579,6 +645,41 @@ fun getScreenTitle(route: String?): String {
         "languagescreen" -> localizedApp(R.string.language_title)
         "settings_screen" -> localizedApp(R.string.settings_title)
         else -> localizedApp(R.string.app_name)
+    }
+}
+
+// Helper function to get MIME type from file name or URI
+private fun getMimeTypeFromUri(uri: android.net.Uri, fileName: String?): String {
+    // Try to get MIME type from file extension
+    val extension = fileName?.substringAfterLast('.', "")?.lowercase()
+        ?: uri.path?.substringAfterLast('.', "")?.lowercase()
+
+    return when (extension) {
+        "pdf" -> "application/pdf"
+        "doc" -> "application/msword"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "xls" -> "application/vnd.ms-excel"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "ppt" -> "application/vnd.ms-powerpoint"
+        "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "txt" -> "text/plain"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "gif" -> "image/gif"
+        "bmp" -> "image/bmp"
+        "webp" -> "image/webp"
+        "mp4" -> "video/mp4"
+        "mp3" -> "audio/mpeg"
+        "zip" -> "application/zip"
+        "rar" -> "application/x-rar-compressed"
+        else -> {
+            // Try using MimeTypeMap as fallback
+            if (!extension.isNullOrEmpty()) {
+                MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "*/*"
+            } else {
+                "*/*"
+            }
+        }
     }
 }
 

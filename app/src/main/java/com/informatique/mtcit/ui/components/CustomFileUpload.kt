@@ -30,7 +30,7 @@ fun CustomFileUpload(
     onValueChange: (String) -> Unit,
     label: String,
     error: String? = null,
-    allowedTypes: List<String> = listOf("pdf", "jpg", "png"),
+    allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
     maxSizeMB: Int = 5,
     mandatory: Boolean = false,
     fieldId: String = "",

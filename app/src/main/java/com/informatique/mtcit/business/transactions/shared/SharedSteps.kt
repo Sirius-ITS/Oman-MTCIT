@@ -276,7 +276,7 @@ object SharedSteps {
 data class DocumentConfig(
     val id: String,
     val labelRes: Int,
-    val allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"),
+    val allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
     val maxSizeMB: Int = 5,
     val mandatory: Boolean = true
 )
