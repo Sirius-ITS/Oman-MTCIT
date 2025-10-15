@@ -407,5 +407,8 @@
     <string name="yes">نعم</string>
     <string name="no">لا</string>
 
+    // progress bar
+    <string name="step">خطوة</string>
+    <string name="of">من</string>
 
 </resources>

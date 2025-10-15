@@ -411,4 +411,8 @@
     <!-- File Upload Actions -->
     <string name="replace_file">Replace</string>
     <string name="delete_file">Delete</string>
+
+    // progress bar
+    <string name="step">Step</string>
+    <string name="of">of</string>
 </resources>
