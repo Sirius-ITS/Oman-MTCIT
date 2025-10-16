@@ -463,20 +463,13 @@ fun MainScreen(sharedUserViewModel: SharedUserViewModel, themeViewModel: ThemeVi
                             fileUri = decodedFileUri,
                             fileName = decodedFileName,
                             onNavigateBack = { navController.navigateUp() },
-                            onOpenExternal = {
+                            onOpenExternal = { shareableUri, fileName ->
                                 try {
-                                    // Use a helper to open with external app
-                                    val sourceUri = decodedFileUri.toUri()
-
-                                    // Copy file to shareable location and get FileProvider URI
-                                    val shareableUri = com.informatique.mtcit.util.FileShareHelper.getShareableUri(
-                                        context,
-                                        sourceUri,
-                                        decodedFileName
-                                    )
+                                    android.util.Log.d("MainScreen", "Opening external app with pre-cached URI")
 
                                     if (shareableUri != null) {
-                                        val mimeType = getMimeTypeFromUri(sourceUri, decodedFileName)
+                                        val mimeType = getMimeTypeFromUri(shareableUri, fileName)
+                                        android.util.Log.d("MainScreen", "Shareable URI: $shareableUri, mimeType: $mimeType")
 
                                         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
                                             setDataAndType(shareableUri, mimeType)
@@ -488,18 +481,30 @@ fun MainScreen(sharedUserViewModel: SharedUserViewModel, themeViewModel: ThemeVi
                                         val chooser = android.content.Intent.createChooser(intent, "Open with")
                                         chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
 
-                                        context.startActivity(chooser)
+                                        try {
+                                            context.startActivity(chooser)
+                                            android.util.Log.d("MainScreen", "Successfully started activity chooser")
+                                        } catch (e: android.content.ActivityNotFoundException) {
+                                            android.util.Log.e("MainScreen", "No app found to open this file type", e)
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "No app found to open this file type",
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                        }
                                     } else {
+                                        android.util.Log.e("MainScreen", "Shareable URI is null")
                                         android.widget.Toast.makeText(
                                             context,
-                                            "Error preparing file for external app",
+                                            "File not ready for external sharing. Please try again.",
                                             android.widget.Toast.LENGTH_LONG
                                         ).show()
                                     }
                                 } catch (e: Exception) {
+                                    android.util.Log.e("MainScreen", "Error opening external app: ${e.message}", e)
                                     android.widget.Toast.makeText(
                                         context,
-                                        "No app found to open this file: ${e.message}",
+                                        "Error: ${e.message}",
                                         android.widget.Toast.LENGTH_LONG
                                     ).show()
                                 }

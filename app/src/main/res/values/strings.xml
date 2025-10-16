@@ -263,7 +263,7 @@
     <string name="settings_title">Settings</string>
 
     <!-- Transaction Categories -->
-    <string name="categories_title">التسجيل</string>
+    <string name="categories_title">Registration</string>
     <string name="category_marine_unit_registrations">Marine Unit Registration</string>
     <string name="category_marine_unit_registrations_desc">Issuing and managing registration and mortgage certificates</string>
     <string name="category_navigation">Navigation</string>
