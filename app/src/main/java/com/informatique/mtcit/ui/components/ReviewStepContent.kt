@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.StepData
@@ -183,16 +184,6 @@ private fun ReviewFieldItem(
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        // Field Label
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.SemiBold
-            ),
-            color = extraColors.blue2,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
         // Handle special field types - check by field type
         when (field) {
             is com.informatique.mtcit.common.FormField.OwnerList -> {
@@ -202,11 +193,29 @@ private fun ReviewFieldItem(
 
             is com.informatique.mtcit.common.FormField.FileUpload -> {
                 // This is a file upload field - show filename
+                // Field Label
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = extraColors.blue2,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
                 DisplayFileAttachment(value, field, extraColors)
             }
 
             is com.informatique.mtcit.common.FormField.CheckBox -> {
                 // Display Yes/No for checkboxes
+                // Field Label
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = extraColors.blue2,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
                 DisplayRegularValue(
                     if (value == "true") localizedApp(R.string.yes) else localizedApp(R.string.no)
                 )
@@ -214,6 +223,15 @@ private fun ReviewFieldItem(
 
             else -> {
                 // Regular text display for TextField, DropDown, DatePicker
+                // Field Label
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = extraColors.blue2,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
                 DisplayRegularValue(value)
             }
         }
@@ -242,50 +260,11 @@ private fun DisplayOwnerListData(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             owners.forEachIndexed { index, owner ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = extraColors.background
-                    ),
-                    elevation = CardDefaults.cardElevation(2.dp),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "${localizedApp(R.string.owner_info)} ${index + 1}",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = extraColors.blue1,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-
-                        // Owner Details
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OwnerDetailRow(
-                                label = localizedApp(R.string.owner_full_name),
-                                value = owner.fullName
-                            )
-                            OwnerDetailRow(
-                                label = localizedApp(R.string.owner_nationality),
-                                value = owner.nationality
-                            )
-                            OwnerDetailRow(
-                                label = localizedApp(R.string.owner_id_number),
-                                value = owner.idNumber
-                            )
-                            if (owner.isCompany && owner.companyName.isNotBlank()) {
-                                OwnerDetailRow(
-                                    label = localizedApp(R.string.company_name),
-                                    value = owner.companyName
-                                )
-                            }
-                        }
-                    }
-                }
+                ExpandableOwnerReviewCard(
+                    owner = owner,
+                    index = index,
+                    extraColors = extraColors
+                )
             }
         }
     } else {
@@ -428,3 +407,178 @@ private fun DisplayRegularValue(value: String) {
         )
     }
 }
+
+@Composable
+private fun ExpandableOwnerReviewCard(
+    owner: OwnerData,
+    index: Int,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = extraColors.white
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Clickable Header Section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "${localizedApp(R.string.owner_info)} ${index + 1}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = extraColors.blue1,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = owner.fullName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = extraColors.blue2,
+                        fontSize = 14.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Expand/Collapse Icon
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = extraColors.blue1,
+                    modifier = Modifier.padding(6.dp)
+                )
+            }
+
+            // Animated Expandable Details
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        color = extraColors.blue2.copy(alpha = 0.2f),
+                        thickness = 1.dp
+                    )
+
+                    // Owner Details
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OwnerDetailRow(
+                            label = localizedApp(R.string.owner_full_name),
+                            value = owner.fullName
+                        )
+                        OwnerDetailRow(
+                            label = localizedApp(R.string.owner_nationality),
+                            value = owner.nationality
+                        )
+                        OwnerDetailRow(
+                            label = localizedApp(R.string.owner_id_number),
+                            value = owner.idNumber
+                        )
+                        if (owner.isCompany && owner.companyName.isNotBlank()) {
+                            OwnerDetailRow(
+                                label = localizedApp(R.string.company_name),
+                                value = owner.companyName
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+//@Composable
+//private fun DisplayOwnerListData(
+//    value: String,
+//    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+//) {
+//    val owners = remember(value) {
+//        try {
+//            Json.decodeFromString<List<OwnerData>>(value)
+//        } catch (_: Exception) {
+//            emptyList()
+//        }
+//    }
+//
+//    if (owners.isNotEmpty()) {
+//        Column(
+//            modifier = Modifier.fillMaxWidth(),
+//            verticalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            owners.forEachIndexed { index, owner ->
+//                Card(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    colors = CardDefaults.cardColors(
+//                        containerColor = extraColors.background
+//                    ),
+//                    elevation = CardDefaults.cardElevation(2.dp),
+//                    shape = RoundedCornerShape(8.dp)
+//                ) {
+//                    Column(modifier = Modifier.padding(16.dp)) {
+//                        Text(
+//                            text = "${localizedApp(R.string.owner_info)} ${index + 1}",
+//                            style = MaterialTheme.typography.titleSmall.copy(
+//                                fontWeight = FontWeight.Bold
+//                            ),
+//                            color = extraColors.blue1,
+//                            modifier = Modifier.padding(bottom = 12.dp)
+//                        )
+//
+//                        // Owner Details
+//                        Column(
+//                            modifier = Modifier.fillMaxWidth(),
+//                            verticalArrangement = Arrangement.spacedBy(8.dp)
+//                        ) {
+//                            OwnerDetailRow(
+//                                label = localizedApp(R.string.owner_full_name),
+//                                value = owner.fullName
+//                            )
+//                            OwnerDetailRow(
+//                                label = localizedApp(R.string.owner_nationality),
+//                                value = owner.nationality
+//                            )
+//                            OwnerDetailRow(
+//                                label = localizedApp(R.string.owner_id_number),
+//                                value = owner.idNumber
+//                            )
+//                            if (owner.isCompany && owner.companyName.isNotBlank()) {
+//                                OwnerDetailRow(
+//                                    label = localizedApp(R.string.company_name),
+//                                    value = owner.companyName
+//                                )
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    } else {
+//        // Fallback - if JSON parsing fails, show the raw value
+//        DisplayRegularValue(value)
+//    }
+//}
