@@ -137,7 +137,7 @@ object SharedSteps {
                     FormField.FileUpload(
                         id = "proofDocument",
                         labelRes = R.string.proof_document,
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx"),
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
                         mandatory = true
                     )
                 )
