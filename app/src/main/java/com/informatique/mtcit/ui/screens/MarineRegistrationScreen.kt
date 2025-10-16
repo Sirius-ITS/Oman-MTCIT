@@ -84,9 +84,9 @@ fun MarineRegistrationScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
-            // Validate file type
-            val fileName = it.lastPathSegment ?: ""
-            val extension = fileName.substringAfterLast('.', "").lowercase()
+            // Validate file type - Get actual filename from ContentResolver
+            val fileName = getFileNameFromUri(context, it)
+            val extension = fileName?.substringAfterLast('.', "")?.lowercase() ?: ""
 
             if (currentFilePickerTypes.isEmpty() || currentFilePickerTypes.contains(extension)) {
                 // CRITICAL: Cache the URI immediately to preserve the permission
