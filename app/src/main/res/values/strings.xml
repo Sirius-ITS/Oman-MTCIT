@@ -421,7 +421,37 @@
     <string name="open_with_external_app_question">Would you like to open this file with an external application?</string>
     <string name="open">Open</string>
 
-    // progress bar
+    <!-- progress bar -->
     <string name="step">Step</string>
     <string name="of">of</string>
+
+    <!-- New HomeScreen and TransactionList Resources -->
+    <string name="solutions_and_services">Solutions and Services</string>
+    <string name="choose_department_that_suits_your_needs">Choose the department that suits your needs</string>
+    <string name="institution">Institution</string>
+    <string name="organization">Organization</string>
+    <string name="select">Select</string>
+    <string name="services_available">services available</string>
+    <string name="available">Available</string>
+    <string name="steps">steps</string>
+
+    <!-- Main Categories -->
+    <string name="category_marine_affairs">Marine Affairs</string>
+    <string name="category_marine_affairs_desc">Ship registration, navigation, and data modifications</string>
+
+    <!-- New Main Categories -->
+    <string name="main_category_registration_department">Registration Department</string>
+    <string name="main_category_registration_department_desc">Marine unit registration and certificates</string>
+    <string name="main_category_seamen_affairs_department">Seamen\'s Affairs Department</string>
+    <string name="main_category_seamen_affairs_department_desc">Navigation permits and seamen services</string>
+    <string name="main_category_facilities_docks_department">Facilities and Docks Licensing Department</string>
+    <string name="main_category_facilities_docks_department_desc">Ship modifications and facility licensing</string>
+
+    <!-- Sub Categories -->
+    <string name="subcategory_registration">Registration Department</string>
+    <string name="subcategory_navigation">Navigation Affairs Department</string>
+    <string name="subcategory_ship_modifications">Ship Data Modifications Department</string>
+    <string name="subcategory_marine_unit_registration">Marine Unit Registration</string>
+    <string name="subcategory_navigation_permits">Navigation Permits</string>
+    <string name="subcategory_ship_data_modifications">Ship Data Modifications</string>
 </resources>

@@ -1,6 +1,8 @@
 package com.informatique.mtcit.di
 
 import com.informatique.mtcit.business.company.CompanyRepository
+import com.informatique.mtcit.data.repository.CategoriesRepository
+import com.informatique.mtcit.data.repository.CategoriesRepositoryImpl
 import com.informatique.mtcit.data.repository.CompanyRepositoryImpl
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepositoryImpl
@@ -46,4 +48,14 @@ abstract class RepositoryModule {
     abstract fun bindLookupRepository(
         impl: LookupRepositoryImpl
     ): LookupRepository
+
+    /**
+     * Binds CategoriesRepositoryImpl to CategoriesRepository interface
+     * Provides categories data for home screen
+     */
+    @Binds
+    @Singleton
+    abstract fun bindCategoriesRepository(
+        impl: CategoriesRepositoryImpl
+    ): CategoriesRepository
 }
