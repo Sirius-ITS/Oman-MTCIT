@@ -23,7 +23,6 @@ import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.theme.LocalExtraColors
-import kotlinx.serialization.json.Json
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -49,38 +48,56 @@ fun TransactionFormContent(
 ) {
     val extraColors = LocalExtraColors.current
 
-    Column(modifier = Modifier.fillMaxSize().background(extraColors.background)) {
-        // Top Header with Back Button and Title
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = { navController.navigateUp() },
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = localizedApp(R.string.back_button),
-                    tint = extraColors.blue1
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = extraColors.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = transactionTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = extraColors.blue1
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = localizedApp(R.string.back_button),
+                            tint = extraColors.blue1
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = extraColors.background
                 )
-            }
-            Text(
-                text = transactionTitle,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = extraColors.blue1,
-                modifier = Modifier.weight(1f)
+            )
+        },
+        bottomBar = {
+            // Bottom Navigation Bar
+            GenericNavigationBottomBar(
+                currentStep = uiState.currentStep,
+                totalSteps = uiState.steps.size,
+                onPreviousClick = previousStep,
+                onNextClick = {
+                    if (uiState.currentStep < uiState.steps.size - 1) {
+                        nextStep()
+                    } else {
+                        submitForm()
+                    }
+                },
+                canProceed = uiState.canProceedToNext,
+                isSubmitting = submissionState is UIState.Loading
             )
         }
-
+    ) { paddingValues ->
         // Main content area
         Column(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
+                .fillMaxSize()
+                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
             DynamicStepper(
@@ -152,22 +169,6 @@ fun TransactionFormContent(
                 )
             }
         }
-
-        // Bottom Navigation Bar
-        GenericNavigationBottomBar(
-            currentStep = uiState.currentStep,
-            totalSteps = uiState.steps.size,
-            onPreviousClick = previousStep,
-            onNextClick = {
-                if (uiState.currentStep < uiState.steps.size - 1) {
-                    nextStep()
-                } else {
-                    submitForm()
-                }
-            },
-            canProceed = uiState.canProceedToNext,
-            isSubmitting = submissionState is UIState.Loading
-        )
     }
 }
 

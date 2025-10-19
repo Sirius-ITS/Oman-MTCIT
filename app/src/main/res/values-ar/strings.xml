@@ -407,11 +407,11 @@
     <string name="yes">نعم</string>
     <string name="no">لا</string>
 
-    // progress bar
+    <!-- progress bar
     <string name="step">خطوة</string>
     <string name="of">من</string>
 
-    <!-- File Viewer Screen -->
+    <!- File Viewer Screen -->
     <string name="file_viewer">عارض الملفات</string>
     <string name="back">رجوع</string>
     <string name="open_external_app">فتح في تطبيق خارجي</string>
@@ -419,4 +419,34 @@
     <string name="file_type_not_supported_internal">لا يمكن عرض هذا النوع من الملفات داخلياً.</string>
     <string name="open_with_external_app_question">هل ترغب في فتح هذا الملف باستخدام تطبيق خارجي؟</string>
     <string name="open">فتح</string>
+
+    <!-- New HomeScreen and TransactionList Resources - Arabic -->
+    <string name="solutions_and_services">الحلول والخدمات</string>
+    <string name="choose_department_that_suits_your_needs">اختر القسم المناسب لاحتياجاتك</string>
+    <string name="institution">المستفيد</string>
+    <string name="organization">المؤسسة</string>
+    <string name="select">الاختيار</string>
+    <string name="services_available">خدمة متاحة</string>
+    <string name="available">متاح</string>
+    <string name="steps">خطوات</string>
+
+    <!-- Main Categories - Arabic -->
+    <string name="category_marine_affairs">شؤون البحارة</string>
+    <string name="category_marine_affairs_desc">تسجيل السفن والملاحة وتعديل البيانات</string>
+
+    <!-- New Main Categories - Arabic -->
+    <string name="main_category_registration_department">قسم التسجيل</string>
+    <string name="main_category_registration_department_desc">تسجيل الوحدات البحرية والشهادات</string>
+    <string name="main_category_seamen_affairs_department">قسم شؤون البحارة</string>
+    <string name="main_category_seamen_affairs_department_desc">تصاريح الملاحة وخدمات البحارة</string>
+    <string name="main_category_facilities_docks_department">قسم تراخيص المرافق والأرصفة</string>
+    <string name="main_category_facilities_docks_department_desc">تعديلات السفن وتراخيص المرافق</string>
+
+    <!-- Sub Categories - Arabic -->
+    <string name="subcategory_registration">قسم التسجيل</string>
+    <string name="subcategory_navigation">قسم شؤون البحارة</string>
+    <string name="subcategory_ship_modifications">قسم تراخيص المرافق والأرصفة</string>
+    <string name="subcategory_marine_unit_registration">تسجيل الوحدات البحرية</string>
+    <string name="subcategory_navigation_permits">تصاريح الملاحة</string>
+    <string name="subcategory_ship_data_modifications">تعديل بيانات السفينة</string>
 </resources>
