@@ -2,8 +2,12 @@ package com.informatique.mtcit.ui.components
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.util.Log
+import android.util.Xml
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -33,7 +37,14 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import androidx.core.graphics.createBitmap
+import com.informatique.mtcit.util.UriCache
 import com.informatique.mtcit.util.UriPermissionManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.xmlpull.v1.XmlPullParser
+import java.io.InputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 
 /**
  * Native file viewer using ONLY Android built-in APIs
@@ -57,12 +68,12 @@ fun NativeFileViewer(
     // CRITICAL: Get the cached URI which still has the permission attached
     val actualUri = remember(uri) {
         val uriString = uri.toString()
-        val cachedUri = com.informatique.mtcit.util.UriCache.getUri(uriString)
+        val cachedUri = UriCache.getUri(uriString)
         if (cachedUri != null) {
-            android.util.Log.d("NativeFileViewer", "Using cached URI with permission: $cachedUri")
+            Log.d("NativeFileViewer", "Using cached URI with permission: $cachedUri")
             cachedUri
         } else {
-            android.util.Log.d("NativeFileViewer", "No cached URI found, using provided URI: $uri")
+            Log.d("NativeFileViewer", "No cached URI found, using provided URI: $uri")
             uri
         }
     }
@@ -75,7 +86,7 @@ fun NativeFileViewer(
     // Ensure URI permission is granted before attempting to display the file
     LaunchedEffect(actualUri) {
         isCheckingPermission = true
-        android.util.Log.d("NativeFileViewer", "Checking permissions for URI: $actualUri")
+        Log.d("NativeFileViewer", "Checking permissions for URI: $actualUri")
 
         try {
             // Try to ensure we have read permission for this URI
@@ -83,7 +94,7 @@ fun NativeFileViewer(
             val result = UriPermissionManager.ensureReadPermission(context, actualUri)
 
             if (result.isFailure) {
-                android.util.Log.w("NativeFileViewer", "Could not take persistent permission: ${result.exceptionOrNull()?.message}")
+                Log.w("NativeFileViewer", "Could not take persistent permission: ${result.exceptionOrNull()?.message}")
             }
 
             // The real test: can we actually read from the URI?
@@ -93,19 +104,19 @@ fun NativeFileViewer(
                     true
                 } ?: false
             } catch (e: Exception) {
-                android.util.Log.e("NativeFileViewer", "Cannot read URI: ${e.message}", e)
+                Log.e("NativeFileViewer", "Cannot read URI: ${e.message}", e)
                 false
             }
 
             if (canRead) {
-                android.util.Log.d("NativeFileViewer", "URI is readable - permission granted")
+                Log.d("NativeFileViewer", "URI is readable - permission granted")
                 permissionGranted = true
             } else {
-                android.util.Log.e("NativeFileViewer", "URI is not readable - no permission or file not found")
+                Log.e("NativeFileViewer", "URI is not readable - no permission or file not found")
                 error = "Cannot access this file. Please try selecting it again from the file picker."
             }
         } catch (e: Exception) {
-            android.util.Log.e("NativeFileViewer", "Error checking permissions", e)
+            Log.e("NativeFileViewer", "Error checking permissions", e)
             error = "Error accessing file: ${e.message}"
         } finally {
             isCheckingPermission = false
@@ -277,42 +288,42 @@ private fun NativeImageViewer(
     // Load image directly from content URI using BitmapFactory
     LaunchedEffect(uri) {
         isLoading = true
-        android.util.Log.d("NativeImageViewer", "Starting to load image from URI: $uri")
+        Log.d("NativeImageViewer", "Starting to load image from URI: $uri")
 
         try {
             val loadedBitmap = withContext(Dispatchers.IO) {
-                android.util.Log.d("NativeImageViewer", "Opening input stream for image...")
+                Log.d("NativeImageViewer", "Opening input stream for image...")
 
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    android.util.Log.d("NativeImageViewer", "Decoding bitmap from stream...")
+                    Log.d("NativeImageViewer", "Decoding bitmap from stream...")
 
                     // Decode the bitmap from the input stream
-                    val options = android.graphics.BitmapFactory.Options().apply {
+                    val options = BitmapFactory.Options().apply {
                         inJustDecodeBounds = true // First, get dimensions without loading
                     }
 
                     // Get image dimensions
-                    android.graphics.BitmapFactory.decodeStream(inputStream, null, options)
+                    BitmapFactory.decodeStream(inputStream, null, options)
                     val imageWidth = options.outWidth
                     val imageHeight = options.outHeight
 
-                    android.util.Log.d("NativeImageViewer", "Image dimensions: ${imageWidth}x${imageHeight}")
+                    Log.d("NativeImageViewer", "Image dimensions: ${imageWidth}x${imageHeight}")
 
                     // Re-open stream for actual decoding (stream was consumed)
                     context.contentResolver.openInputStream(uri)?.use { newStream ->
                         // Calculate sample size for large images
-                        val sampleOptions = android.graphics.BitmapFactory.Options().apply {
+                        val sampleOptions = BitmapFactory.Options().apply {
                             inSampleSize = calculateInSampleSize(imageWidth, imageHeight, 2048, 2048)
-                            inPreferredConfig = android.graphics.Bitmap.Config.RGB_565 // Use less memory
+                            inPreferredConfig = Bitmap.Config.RGB_565 // Use less memory
                         }
 
-                        android.graphics.BitmapFactory.decodeStream(newStream, null, sampleOptions)
+                        BitmapFactory.decodeStream(newStream, null, sampleOptions)
                     } ?: throw Exception("Failed to re-open stream for decoding")
                 } ?: throw Exception("Cannot open input stream")
             }
 
             if (loadedBitmap != null) {
-                android.util.Log.d("NativeImageViewer", "Image loaded successfully: ${loadedBitmap.width}x${loadedBitmap.height}")
+                Log.d("NativeImageViewer", "Image loaded successfully: ${loadedBitmap.width}x${loadedBitmap.height}")
                 bitmap = loadedBitmap
                 isLoading = false
             } else {
@@ -320,7 +331,7 @@ private fun NativeImageViewer(
             }
 
         } catch (e: Exception) {
-            android.util.Log.e("NativeImageViewer", "Error loading image: ${e.message}", e)
+            Log.e("NativeImageViewer", "Error loading image: ${e.message}", e)
             errorMessage = "Failed to load image: ${e.message}"
             isLoading = false
             onError(errorMessage!!)
@@ -443,8 +454,8 @@ private fun NativeImageViewer(
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Black.copy(alpha = 0.6f)
                             )
-                        ) {
-                            Text("Reset Zoom", color = Color.White)
+                        ){
+                                Text("Reset Zoom", color = Color.White)
                         }
                     }
                 }
@@ -494,6 +505,12 @@ private fun NativePdfViewer(
     var pageBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
+    // Navigation button states
+    var isBackEnabled by remember { mutableStateOf(true) }
+    var isNextEnabled by remember { mutableStateOf(true) }
+    val debounceDuration = 400L // ms
+    val coroutineScope = rememberCoroutineScope()
+
     LaunchedEffect(uri, currentPage) {
         try {
             withContext(Dispatchers.IO) {
@@ -512,11 +529,11 @@ private fun NativePdfViewer(
                     val bitmap = createBitmap(
                         page.width * 3,
                         page.height * 3,
-                        android.graphics.Bitmap.Config.ARGB_8888 // Use ARGB for better quality
+                        Bitmap.Config.ARGB_8888 // Use ARGB for better quality
                     )
 
                     // Fill with white background
-                    val canvas = android.graphics.Canvas(bitmap)
+                    val canvas = Canvas(bitmap)
                     canvas.drawColor(android.graphics.Color.WHITE)
 
                     // Render page to bitmap with high quality
@@ -589,8 +606,17 @@ private fun NativePdfViewer(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             IconButton(
-                                onClick = { if (currentPage > 0) currentPage-- },
-                                enabled = currentPage > 0
+                                onClick = {
+                                    if (currentPage > 0 && isBackEnabled) {
+                                        currentPage--
+                                        isBackEnabled = false
+                                        coroutineScope.launch {
+                                            delay(debounceDuration)
+                                            isBackEnabled = true
+                                        }
+                                    }
+                                },
+                                enabled = currentPage > 0 && isBackEnabled
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -604,8 +630,17 @@ private fun NativePdfViewer(
                             )
 
                             IconButton(
-                                onClick = { if (currentPage < pageCount - 1) currentPage++ },
-                                enabled = currentPage < pageCount - 1
+                                onClick = {
+                                    if (currentPage < pageCount - 1 && isNextEnabled) {
+                                        currentPage++
+                                        isNextEnabled = false
+                                        coroutineScope.launch {
+                                            delay(debounceDuration)
+                                            isNextEnabled = true
+                                        }
+                                    }
+                                },
+                                enabled = currentPage < pageCount - 1 && isNextEnabled
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -634,23 +669,23 @@ private fun NativeTextViewer(
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(uri) {
-        android.util.Log.d("NativeTextViewer", "Starting to load text file from URI: $uri")
+        Log.d("NativeTextViewer", "Starting to load text file from URI: $uri")
         val startTime = System.currentTimeMillis()
 
         try {
             // Ensure this runs on IO thread
             val content = withContext(Dispatchers.IO) {
-                android.util.Log.d("NativeTextViewer", "Opening input stream...")
+                Log.d("NativeTextViewer", "Opening input stream...")
                 val inputStream = context.contentResolver.openInputStream(uri)
                     ?: throw Exception("Cannot open file - permission denied")
 
-                android.util.Log.d("NativeTextViewer", "Reading file content...")
+                Log.d("NativeTextViewer", "Reading file content...")
                 val reader = BufferedReader(InputStreamReader(inputStream))
                 val text = reader.readText()
                 reader.close()
 
                 val elapsed = System.currentTimeMillis() - startTime
-                android.util.Log.d("NativeTextViewer", "File loaded in ${elapsed}ms (${text.length} chars)")
+                Log.d("NativeTextViewer", "File loaded in ${elapsed}ms (${text.length} chars)")
                 text
             }
 
@@ -659,11 +694,11 @@ private fun NativeTextViewer(
             isLoading = false
 
         } catch (e: SecurityException) {
-            android.util.Log.e("NativeTextViewer", "SecurityException - Permission denied!", e)
+            Log.e("NativeTextViewer", "SecurityException - Permission denied!", e)
             isLoading = false
             onError("Permission denied reading file. Please select the file again.")
         } catch (e: Exception) {
-            android.util.Log.e("NativeTextViewer", "Error reading text file", e)
+            Log.e("NativeTextViewer", "Error reading text file", e)
             isLoading = false
             onError("Error reading text file: ${e.message}")
         }
@@ -826,7 +861,7 @@ private fun OfficeDocumentViewer(
 
     LaunchedEffect(uri) {
         isLoading = true
-        android.util.Log.d("OfficeDocumentViewer", "Starting to load office document: $fileName from URI: $uri")
+        Log.d("OfficeDocumentViewer", "Starting to load office document: $fileName from URI: $uri")
 
         try {
             val content = withContext(Dispatchers.IO) {
@@ -836,10 +871,10 @@ private fun OfficeDocumentViewer(
 
             documentContent = content
             isLoading = false
-            android.util.Log.d("OfficeDocumentViewer", "Document loaded successfully")
+            Log.d("OfficeDocumentViewer", "Document loaded successfully")
 
         } catch (e: Exception) {
-            android.util.Log.e("OfficeDocumentViewer", "Error loading document", e)
+            Log.e("OfficeDocumentViewer", "Error loading document", e)
             isLoading = false
             onError("Cannot display this document format. ${e.message}")
         }
@@ -935,7 +970,7 @@ private fun extractTextFromOfficeDocument(
     uri: Uri,
     fileName: String?
 ): String {
-    android.util.Log.d("extractText", "Extracting text from: $fileName")
+    Log.d("extractText", "Extracting text from: $fileName")
 
     return try {
         context.contentResolver.openInputStream(uri)?.use { inputStream ->
@@ -974,7 +1009,7 @@ private fun extractTextFromOfficeDocument(
             }
         } ?: throw Exception("Cannot open file stream")
     } catch (e: Exception) {
-        android.util.Log.e("extractText", "Error extracting text: ${e.message}", e)
+        Log.e("extractText", "Error extracting text: ${e.message}", e)
         "Error reading document: ${e.message}\n\nPlease tap 'Open in App' above to view this document in Microsoft Office, Google Docs, or another compatible app."
     }
 }
@@ -983,26 +1018,26 @@ private fun extractTextFromOfficeDocument(
  * Extract text from Word document (.docx)
  * DOCX files are ZIP archives containing XML files
  */
-private fun extractTextFromWordDocument(inputStream: java.io.InputStream): String {
+private fun extractTextFromWordDocument(inputStream: InputStream): String {
     return try {
         val textBuilder = StringBuilder()
-        val zipInputStream = java.util.zip.ZipInputStream(inputStream)
-        var entry: java.util.zip.ZipEntry?
+        val zipInputStream = ZipInputStream(inputStream)
+        var entry: ZipEntry?
 
         // DOCX files contain the main content in word/document.xml
         while (zipInputStream.nextEntry.also { entry = it } != null) {
             if (entry?.name == "word/document.xml") {
                 // Parse the XML to extract text
-                val xmlParser = android.util.Xml.newPullParser()
+                val xmlParser = Xml.newPullParser()
                 xmlParser.setInput(zipInputStream, "UTF-8")
 
                 var eventType = xmlParser.eventType
-                while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
-                    if (eventType == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG) {
                         // Text content is in <w:t> tags
                         if (xmlParser.name == "t") {
                             xmlParser.next()
-                            if (xmlParser.eventType == org.xmlpull.v1.XmlPullParser.TEXT) {
+                            if (xmlParser.eventType == XmlPullParser.TEXT) {
                                 textBuilder.append(xmlParser.text)
                             }
                         }
@@ -1035,7 +1070,7 @@ private fun extractTextFromWordDocument(inputStream: java.io.InputStream): Strin
             "tap 'Open in App' above."
         }
     } catch (e: Exception) {
-        android.util.Log.e("extractTextFromWord", "Error: ${e.message}", e)
+        Log.e("extractTextFromWord", "Error: ${e.message}", e)
         "📝 Microsoft Word Document\n\n" +
         "Could not extract text: ${e.message}\n\n" +
         "To view this document with full formatting, tap 'Open in App' above."
@@ -1046,11 +1081,11 @@ private fun extractTextFromWordDocument(inputStream: java.io.InputStream): Strin
  * Extract text from Excel document (.xlsx)
  * XLSX files are ZIP archives containing XML files
  */
-private fun extractTextFromExcelDocument(inputStream: java.io.InputStream): String {
+private fun extractTextFromExcelDocument(inputStream: InputStream): String {
     return try {
         val textBuilder = StringBuilder()
-        val zipInputStream = java.util.zip.ZipInputStream(inputStream)
-        var entry: java.util.zip.ZipEntry?
+        val zipInputStream = ZipInputStream(inputStream)
+        var entry: ZipEntry?
         var sheetCount = 0
 
         // XLSX files contain sheets in xl/worksheets/sheet*.xml
@@ -1062,16 +1097,16 @@ private fun extractTextFromExcelDocument(inputStream: java.io.InputStream): Stri
                 textBuilder.append("═══════════════════\n\n")
 
                 // Parse the XML to extract cell values
-                val xmlParser = android.util.Xml.newPullParser()
+                val xmlParser = Xml.newPullParser()
                 xmlParser.setInput(zipInputStream, "UTF-8")
 
                 var eventType = xmlParser.eventType
                 var rowNum = 0
                 var inValue = false
 
-                while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                while (eventType != XmlPullParser.END_DOCUMENT) {
                     when (eventType) {
-                        org.xmlpull.v1.XmlPullParser.START_TAG -> {
+                        XmlPullParser.START_TAG -> {
                             when (xmlParser.name) {
                                 "row" -> {
                                     rowNum++
@@ -1080,12 +1115,12 @@ private fun extractTextFromExcelDocument(inputStream: java.io.InputStream): Stri
                                 "v" -> inValue = true  // Cell value
                             }
                         }
-                        org.xmlpull.v1.XmlPullParser.TEXT -> {
+                        XmlPullParser.TEXT -> {
                             if (inValue) {
                                 textBuilder.append(xmlParser.text).append(" | ")
                             }
                         }
-                        org.xmlpull.v1.XmlPullParser.END_TAG -> {
+                        XmlPullParser.END_TAG -> {
                             if (xmlParser.name == "v") inValue = false
                         }
                     }
@@ -1111,7 +1146,7 @@ private fun extractTextFromExcelDocument(inputStream: java.io.InputStream): Stri
             "tap 'Open in App' above."
         }
     } catch (e: Exception) {
-        android.util.Log.e("extractTextFromExcel", "Error: ${e.message}", e)
+        Log.e("extractTextFromExcel", "Error: ${e.message}", e)
         "📊 Microsoft Excel Spreadsheet\n\n" +
         "Could not extract data: ${e.message}\n\n" +
         "To view this spreadsheet with formulas and formatting, tap 'Open in App' above."
@@ -1122,11 +1157,11 @@ private fun extractTextFromExcelDocument(inputStream: java.io.InputStream): Stri
  * Extract text from PowerPoint document (.pptx)
  * PPTX files are ZIP archives containing XML files
  */
-private fun extractTextFromPowerPointDocument(inputStream: java.io.InputStream): String {
+private fun extractTextFromPowerPointDocument(inputStream: InputStream): String {
     return try {
         val textBuilder = StringBuilder()
-        val zipInputStream = java.util.zip.ZipInputStream(inputStream)
-        var entry: java.util.zip.ZipEntry?
+        val zipInputStream = ZipInputStream(inputStream)
+        var entry: ZipEntry?
         var slideCount = 0
 
         // PPTX files contain slides in ppt/slides/slide*.xml
@@ -1138,16 +1173,16 @@ private fun extractTextFromPowerPointDocument(inputStream: java.io.InputStream):
                 textBuilder.append("═══════════════════\n\n")
 
                 // Parse the XML to extract text
-                val xmlParser = android.util.Xml.newPullParser()
+                val xmlParser = Xml.newPullParser()
                 xmlParser.setInput(zipInputStream, "UTF-8")
 
                 var eventType = xmlParser.eventType
-                while (eventType != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
-                    if (eventType == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                while (eventType != XmlPullParser.END_DOCUMENT) {
+                    if (eventType == XmlPullParser.START_TAG) {
                         // Text content is in <a:t> tags in PowerPoint
                         if (xmlParser.name == "t") {
                             xmlParser.next()
-                            if (xmlParser.eventType == org.xmlpull.v1.XmlPullParser.TEXT) {
+                            if (xmlParser.eventType == XmlPullParser.TEXT) {
                                 textBuilder.append(xmlParser.text).append(" ")
                             }
                         }
@@ -1175,7 +1210,7 @@ private fun extractTextFromPowerPointDocument(inputStream: java.io.InputStream):
             "tap 'Open in App' above."
         }
     } catch (e: Exception) {
-        android.util.Log.e("extractTextFromPPT", "Error: ${e.message}", e)
+        Log.e("extractTextFromPPT", "Error: ${e.message}", e)
         "📊 Microsoft PowerPoint Presentation\n\n" +
         "Could not extract content: ${e.message}\n\n" +
         "To view this presentation with animations and formatting, tap 'Open in App' above."
