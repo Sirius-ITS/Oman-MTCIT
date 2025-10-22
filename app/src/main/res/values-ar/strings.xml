@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="app_name">MTCIT</string>
     <string name="country">الدولة</string>
     <string name="language">اللغة</string>
@@ -407,11 +408,10 @@
     <string name="yes">نعم</string>
     <string name="no">لا</string>
 
-    <!-- progress bar
     <string name="step">خطوة</string>
     <string name="of">من</string>
 
-    <!- File Viewer Screen -->
+
     <string name="file_viewer">عارض الملفات</string>
     <string name="back">رجوع</string>
     <string name="open_external_app">فتح في تطبيق خارجي</string>
@@ -449,4 +449,40 @@
     <string name="subcategory_marine_unit_registration">تسجيل الوحدات البحرية</string>
     <string name="subcategory_navigation_permits">تصاريح الملاحة</string>
     <string name="subcategory_ship_data_modifications">تعديل بيانات السفينة</string>
+
+    <string name="start_the_service">ابدأ الخدمة</string>
+
+
+    <string name="hello_label">مرحبا</string>
+    <string name="user_name">أحمد محمد</string>
+    <string name="welcome_message">حياكم الله، يسعدنا خدمتكم</string>
+    <string name="how_can_help">كيف يمكننا مساعدتك اليوم؟</string>
+
+    <string name="service_available">الخدمات المتاحة</string>
+    <string name="transaction">معاملة</string>
+    <string name="electronically">إلكترونياً</string>
+
+    <string name="view_all">عرض الكل</string>
+    <string name="available_services_title">الخدمات المتاحة</string>
+    <string name="choose_service">اختر الخدمة المناسبة</string>
+
+    <string name="registration_section_title">قسم التسجيل</string>
+    <string name="registration_section_desc">إدارة عمليات تسجيل السفن والبيانات الرسمية</string>
+    <string name="seafarers_section_title">قسم شؤون البحارة</string>
+    <string name="seafarers_section_desc">تنظيم شؤون البحارة وإدارتها</string>
+    <string name="view_details">عرض التفاصيل</string>
+
+    <string name="upcoming_events_title">الأحداث القادمة</string>
+    <string name="dont_miss_opportunity">لا تفوت الفرصة</string>
+
+    <string name="event1_title">يوم الشباب</string>
+    <string name="event1_location">حصن السلسلة</string>
+    <string name="event1_date">26 أكتوبر</string>
+    <string name="event1_time">8:00 - 12:00</string>
+
+    <string name="event2_title">معرض التكنولوجيا</string>
+    <string name="event2_location">مركز المعارض</string>
+    <string name="event2_date">28 أكتوبر</string>
+    <string name="event2_time">9:00 - 17:00</string>
+
 </resources>

@@ -39,7 +39,7 @@ import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.data.datastorehelper.TokenManager
 import com.informatique.mtcit.ui.base.BaseActivity
 import com.informatique.mtcit.ui.screens.LoginScreen
-import com.informatique.mtcit.ui.screens.HomeScreen
+import com.informatique.mtcit.ui.screens.MainCategoriesScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
 import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
@@ -47,12 +47,16 @@ import com.informatique.mtcit.ui.screens.ComingSoonScreen
 import com.informatique.mtcit.ui.screens.FileViewerScreen
 import com.informatique.mtcit.ui.screens.LanguageScreen
 import com.informatique.mtcit.ui.screens.settings.SettingsScreen
+import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.business.transactions.TransactionType
+import com.informatique.mtcit.ui.screens.HomePageScreen
+import com.informatique.mtcit.ui.screens.ShipDimensionsChangeScreen
 import com.informatique.mtcit.ui.theme.AppTheme
 import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
+import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
 
@@ -88,7 +92,7 @@ class LandingActivity: BaseActivity() {
             val themeViewModel: ThemeViewModel = hiltViewModel()
 
 
-            val lang by languageViewModel.languageFlow.collectAsState(initial = "en")
+            val lang by languageViewModel.languageFlow.collectAsState(initial = "ar")
             val currentLocale = Locale(lang)
             val themeOption by themeViewModel.theme.collectAsState(initial = ThemeOption.SYSTEM_DEFAULT)
 
@@ -106,16 +110,23 @@ class LandingActivity: BaseActivity() {
 
                         LaunchedEffect(Unit) {
                             val token = TokenManager.getToken(applicationContext)
-                            startDestination = if (token.isNullOrEmpty()) "login" else "main"
+                            startDestination = if (token.isNullOrEmpty()) "homepage" else "homepage"
                         }
 
                         if (startDestination == null) {
-                            SplashAnimationScreen()
+//                            SplashAnimationScreen()
                         } else {
                             NavHost(
                                 navController = navController,
                                 startDestination = startDestination!!
                             ) {
+//                            composable("ship") {
+//                                ShipDimensionsChangeScreen(navController)
+//                            }
+                                composable("homepage") {
+                                    HomePageScreen(navController)
+                                }
+
                                 composable("login") {
                                     val sharedUserViewModel: SharedUserViewModel =
                                         hiltViewModel(LocalActivity.current as ComponentActivity)
@@ -136,8 +147,8 @@ class LandingActivity: BaseActivity() {
                                 }
 
                                 // Home Screen - Shows categories with sub-categories
-                                composable("main") {
-                                    HomeScreen(navController, sharedUserViewModel)
+                                composable("mainCategoriesScreen") {
+                                    MainCategoriesScreen(navController, sharedUserViewModel)
                                 }
 
                                 // Transaction List Screen - Shows transactions for selected sub-category
@@ -145,6 +156,37 @@ class LandingActivity: BaseActivity() {
                                     val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
                                     val subCategoryId = backStackEntry.arguments?.getString("subCategoryId") ?: ""
                                     TransactionListScreen(navController, categoryId, subCategoryId)
+                                }
+
+                                // Requirements screen: show transaction requirements before going to form/steps
+                                composable("transaction_requirements/{categoryId}/{subCategoryId}/{transactionId}/{parentTitleRes}") { backStackEntry ->
+                                    val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
+                                    val subCategoryId = backStackEntry.arguments?.getString("subCategoryId") ?: ""
+                                    val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+                                    val parentTitleResStr = backStackEntry.arguments?.getString("parentTitleRes") ?: ""
+
+                                    // Use the same TransactionListViewModel to load the list and find the transaction
+                                    val txListVm: TransactionListViewModel = hiltViewModel()
+                                    LaunchedEffect(categoryId, subCategoryId) {
+                                        txListVm.loadTransactions(categoryId, subCategoryId)
+                                    }
+                                    val transactions by txListVm.transactions.collectAsState()
+                                    val transaction = transactions.find { it.id == transactionId }
+
+                                    val parentTitleRes: Int? = parentTitleResStr.toIntOrNull()
+
+                                    if (transaction != null) {
+                                        TransactionRequirementsScreen(
+                                            transaction = transaction,
+                                            onStart = { navController.navigate(transaction.route) },
+                                            onBack = { navController.popBackStack() },
+                                            parentTitleRes = parentTitleRes
+                                        )
+                                    } else {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
                                 }
 
                                 // ========== TRANSACTION FORMS ==========

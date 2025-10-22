@@ -9,13 +9,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Business
@@ -46,7 +44,7 @@ import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(navController: NavController, sharedUserViewModel: SharedUserViewModel) {
+fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: SharedUserViewModel) {
     val viewModel: HomeViewModel = hiltViewModel()
     val categories by viewModel.categories.collectAsState()
     val expandedCategories by viewModel.expandedCategories.collectAsState()
