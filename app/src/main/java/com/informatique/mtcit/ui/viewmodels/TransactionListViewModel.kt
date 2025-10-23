@@ -1,7 +1,6 @@
 package com.informatique.mtcit.ui.viewmodels
 
 import androidx.lifecycle.viewModelScope
-import com.informatique.mtcit.data.repository.CategoriesRepository
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.models.SubCategory
 import com.informatique.mtcit.ui.models.Transaction
@@ -19,7 +18,6 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class TransactionListViewModel @Inject constructor(
-    private val repository: CategoriesRepository
 ) : BaseViewModel() {
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
@@ -37,36 +35,18 @@ class TransactionListViewModel @Inject constructor(
     /**
      * Strategy: Load transactions for a sub-category from repository cache
      */
-    fun loadTransactions(categoryId: String, subCategoryId: String) {
-        viewModelScope.launch {
-            setLoading(true)
-            try {
-                // Use repository instead of calling getMainCategories() directly
-                // Repository will return cached data if available
-                repository.getCategories().fold(
-                    onSuccess = { categories ->
-                        val category = categories.find { it.id == categoryId }
-                        val subCat = category?.subCategories?.find { it.id == subCategoryId }
+    fun loadTransactions(categories: List<MainCategory>, categoryId: String, subCategoryId: String) {
+        val category = categories.find { it.id == categoryId }
+        val subCat = category?.subCategories?.find { it.id == subCategoryId }
 
-                        if (subCat != null) {
-                            _mainCategory.value = category
-                            _subCategory.value = subCat
-                            _transactions.value = subCat.transactions
-                            setLoading(false)
-                        } else {
-                            setError("Sub-category not found")
-                            setLoading(false)
-                        }
-                    },
-                    onFailure = { error ->
-                        setError(error.message ?: "Failed to load transactions")
-                        setLoading(false)
-                    }
-                )
-            } catch (e: Exception) {
-                setError(e.message ?: "Failed to load transactions")
-                setLoading(false)
-            }
+        if (subCat != null) {
+            _mainCategory.value = category
+            _subCategory.value = subCat
+            _transactions.value = subCat.transactions
+            setLoading(false)
+        } else {
+            setError("Sub-category not found")
+            setLoading(false)
         }
     }
 

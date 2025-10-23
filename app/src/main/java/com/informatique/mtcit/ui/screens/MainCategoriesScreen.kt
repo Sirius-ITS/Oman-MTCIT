@@ -38,15 +38,25 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.models.SubCategory
+import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
-import com.informatique.mtcit.ui.viewmodels.HomeViewModel
+import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: SharedUserViewModel) {
-    val viewModel: HomeViewModel = hiltViewModel()
-    val categories by viewModel.categories.collectAsState()
+    val viewModel: MainCategoriesViewModel = hiltViewModel()
+    // Get categories from CompositionLocal instead of ViewModel
+    val categories = LocalCategories.current
+
+    // Set categories into ViewModel when they change
+    LaunchedEffect(categories) {
+        if (categories.isNotEmpty()) {
+            viewModel.setCategories(categories)
+        }
+    }
+
     val expandedCategories by viewModel.expandedCategories.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val extraColors = LocalExtraColors.current

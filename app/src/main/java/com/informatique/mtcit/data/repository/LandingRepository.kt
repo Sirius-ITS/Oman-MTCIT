@@ -11,15 +11,15 @@ import javax.inject.Singleton
 /**
  * Repository for fetching categories data
  */
-interface CategoriesRepository {
+interface LandingRepository {
     suspend fun getCategories(): Result<List<MainCategory>>
 }
 
 @Singleton
-class CategoriesRepositoryImpl @Inject constructor(
+class LandingRepositoryImpl @Inject constructor(
     // TODO: Inject API service when endpoint is ready
     // private val apiService: CategoriesApiService
-) : CategoriesRepository {
+) : LandingRepository {
 
     // Cache for categories
     private var cachedCategories: List<MainCategory>? = null

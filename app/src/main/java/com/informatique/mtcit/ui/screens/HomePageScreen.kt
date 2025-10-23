@@ -19,9 +19,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
@@ -54,12 +55,15 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
+import com.informatique.mtcit.ui.models.MainCategory
+import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePageScreen(navController: NavController) {
     val extraColors = LocalExtraColors.current
+    val categories = LocalCategories.current
 
     Box(
         modifier = Modifier
@@ -132,6 +136,7 @@ fun HomePageScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(24.dp))
                 AvailableServicesSection(
                     navController = navController,
+                    categories = categories,
                     onServiceClick = { serviceId ->
                         // Navigate to service
                     }
@@ -367,7 +372,7 @@ fun CircularStatItem(
 }
 
 @Composable
-fun AvailableServicesSection(navController: NavController, onServiceClick: (Int) -> Unit) {
+fun AvailableServicesSection(navController: NavController, categories: List<MainCategory>, onServiceClick: (Int) -> Unit) {
     val extracolors = LocalExtraColors.current
     Column(
         modifier = Modifier
@@ -403,56 +408,42 @@ fun AvailableServicesSection(navController: NavController, onServiceClick: (Int)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
             }
         }
-        LazyRow (
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
-        ) {
-            item {
-                ServiceCard(
-                    title = localizedApp(R.string.seafarers_section_title),
-                    description = localizedApp(R.string.seafarers_section_desc),
-                    icon = painterResource(id = R.drawable.ic_captain),
-                    color = extracolors.blue1,
-                    onClick = { onServiceClick(1) },
-                    modifier = Modifier.weight(1f)
-                )
-                ServiceCard(
-                    title = localizedApp(R.string.registration_section_title),
-                    description = localizedApp(R.string.registration_section_desc),
-                    icon = painterResource(id = R.drawable.ic_ship_registration),
-                    color = extracolors.blue1,
-                    onClick = { onServiceClick(0) },
-                    modifier = Modifier.weight(1f)
-                )
-                ServiceCard(
-                    title = localizedApp(R.string.registration_section_title),
-                    description = localizedApp(R.string.registration_section_desc),
-                    icon = painterResource(id = R.drawable.ic_ship_registration),
-                    color = extracolors.blue1,
-                    onClick = { onServiceClick(0) },
-                    modifier = Modifier.weight(1f)
-                )
-                ServiceCard(
-                    title = localizedApp(R.string.registration_section_title),
-                    description = localizedApp(R.string.registration_section_desc),
-                    icon = painterResource(id = R.drawable.ic_ship_registration),
-                    color = extracolors.blue1,
-                    onClick = { onServiceClick(0) },
-                    modifier = Modifier.weight(1f)
-                )
-                ServiceCard(
-                    title = localizedApp(R.string.registration_section_title),
-                    description = localizedApp(R.string.registration_section_desc),
-                    icon = painterResource(id = R.drawable.ic_ship_registration),
-                    color = extracolors.blue1,
-                    onClick = { onServiceClick(0) },
-                    modifier = Modifier.weight(1f)
-                )
+
+        // Display categories dynamically from the categories array
+        if (categories.isEmpty()) {
+            // Show loading or empty state
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = extracolors.blue1)
+            }
+        } else {
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            ) {
+                items(categories.size) { index ->
+                    val category = categories[index]
+                    ServiceCard(
+                        title = localizedApp(category.titleRes),
+                        description = localizedApp(category.descriptionRes),
+                        icon = painterResource(id = category.iconRes),
+                        color = extracolors.blue1,
+                        onClick = {
+                            // Navigate to MainCategoriesScreen or specific category
+                            navController.navigate("mainCategoriesScreen")
+                        },
+                        modifier = Modifier
+                    )
+                }
             }
         }
     }
@@ -530,7 +521,7 @@ fun ServiceCard(
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
                     tint = color,
                     modifier = Modifier.size(18.dp)
@@ -578,7 +569,7 @@ fun LatestEventsSection() {
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
@@ -705,7 +696,7 @@ fun EventCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
                 tint = Color.Gray,
                 modifier = Modifier.size(20.dp)

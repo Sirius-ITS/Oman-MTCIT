@@ -30,6 +30,7 @@ import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
+import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.ExtraColors
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
@@ -42,6 +43,7 @@ fun TransactionListScreen(
     subCategoryId: String
 ) {
     val viewModel: TransactionListViewModel = hiltViewModel()
+    val categories = LocalCategories.current
     val transactions by viewModel.transactions.collectAsState()
     val subCategory by viewModel.subCategory.collectAsState()
     val mainCategory by viewModel.mainCategory.collectAsState()
@@ -49,7 +51,7 @@ fun TransactionListScreen(
     val extraColors = LocalExtraColors.current
 
     LaunchedEffect(categoryId, subCategoryId) {
-        viewModel.loadTransactions(categoryId, subCategoryId)
+        viewModel.loadTransactions(categories, categoryId, subCategoryId)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

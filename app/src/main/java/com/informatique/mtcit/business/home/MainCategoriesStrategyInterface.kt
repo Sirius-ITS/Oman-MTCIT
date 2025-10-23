@@ -6,13 +6,7 @@ import com.informatique.mtcit.ui.models.MainCategory
  * Strategy interface for Home screen operations
  * Each strategy implements specific business logic for home features
  */
-interface HomeStrategy {
-
-    /**
-     * Load categories from data source
-     * @return Result containing list of categories or error
-     */
-    suspend fun loadCategories(): Result<List<MainCategory>>
+interface MainCategoriesStrategyInterface {
 
     /**
      * Filter categories based on criteria

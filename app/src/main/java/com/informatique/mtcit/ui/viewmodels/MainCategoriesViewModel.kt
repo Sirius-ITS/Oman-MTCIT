@@ -1,9 +1,8 @@
 package com.informatique.mtcit.ui.viewmodels
 
 import androidx.lifecycle.viewModelScope
-import com.informatique.mtcit.business.home.HomeStrategy
-import com.informatique.mtcit.business.home.HomeStrategyFactory
-import com.informatique.mtcit.data.repository.CategoriesRepositoryImpl
+import com.informatique.mtcit.business.home.MainCategoriesStrategyInterface
+import com.informatique.mtcit.business.home.MainCategoriesStrategyFactory
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.models.SubCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,21 +13,20 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * HomeViewModel - Strategy pattern implementation
- * Manages categories and sub-categories for the home screen
- * Uses Strategy pattern similar to transactions for business logic separation
+ * MainCategoriesViewModel - Manages UI state for MainCategoriesScreen
+ * Responsibilities: Filtering, Expansion, Search - NOT loading categories
+ * Categories are provided globally via CompositionLocal from LandingViewModel
  */
 @HiltViewModel
-class HomeViewModel @Inject constructor(
-    private val strategyFactory: HomeStrategyFactory,
-    private val repository: CategoriesRepositoryImpl
+class MainCategoriesViewModel @Inject constructor(
+    strategyFactory: MainCategoriesStrategyFactory
 ) : BaseViewModel() {
 
     // Current strategy for categories management
-    private var currentStrategy: HomeStrategy? = null
+    private var currentStrategy: MainCategoriesStrategyInterface? = null
 
+    // Categories received from CompositionLocal
     private val _categories = MutableStateFlow<List<MainCategory>>(emptyList())
-    val categories: StateFlow<List<MainCategory>> = _categories.asStateFlow()
 
     private val _filteredCategories = MutableStateFlow<List<MainCategory>>(emptyList())
     val filteredCategories: StateFlow<List<MainCategory>> = _filteredCategories.asStateFlow()
@@ -46,45 +44,18 @@ class HomeViewModel @Inject constructor(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     init {
-        // Initialize strategy
+        // Initialize strategy only
         currentStrategy = strategyFactory.createCategoriesStrategy()
-        loadCategories()
     }
 
     /**
-     * Strategy: Load categories from repository via strategy
+     * Set categories from external source (CompositionLocal)
+     * This should be called when categories are available from CompositionLocal
      */
-    fun loadCategories() {
-        viewModelScope.launch {
-            setLoading(true)
-            try {
-                currentStrategy?.let { strategy ->
-                    val result = strategy.loadCategories()
-                    result.fold(
-                        onSuccess = { categoriesData ->
-                            _categories.value = categoriesData
-                            applyFilters()
-                            setLoading(false)
-                        },
-                        onFailure = { error ->
-                            setError(error.message ?: "Failed to load categories")
-                            setLoading(false)
-                        }
-                    )
-                }
-            } catch (e: Exception) {
-                setError(e.message ?: "Failed to load categories")
-                setLoading(false)
-            }
-        }
-    }
-
-    /**
-     * Refresh categories - clears cache and reloads
-     */
-    fun refreshCategories() {
-        repository.clearCache()
-        loadCategories()
+    fun setCategories(categories: List<MainCategory>) {
+        _categories.value = categories
+        applyFilters()
+        setLoading(false) // Ensure loading state is false when categories are set
     }
 
     /**
@@ -167,7 +138,7 @@ class HomeViewModel @Inject constructor(
      * Get available services count for a category
      */
     fun getAvailableServicesCount(categoryId: String): Int {
-        val category = _filteredCategories.value.find { it.id == categoryId }
+        val category = _categories.value.find { it.id == categoryId }
         return category?.subCategories?.sumOf { it.transactions.size } ?: 0
     }
 }

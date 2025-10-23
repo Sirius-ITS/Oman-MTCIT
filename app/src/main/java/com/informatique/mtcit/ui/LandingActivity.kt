@@ -50,13 +50,15 @@ import com.informatique.mtcit.ui.screens.settings.SettingsScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.ui.screens.HomePageScreen
-import com.informatique.mtcit.ui.screens.ShipDimensionsChangeScreen
 import com.informatique.mtcit.ui.theme.AppTheme
 import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
+import com.informatique.mtcit.ui.viewmodels.LandingViewModel
+import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
+import com.informatique.mtcit.ui.providers.LocalCategories
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
 
@@ -90,15 +92,17 @@ class LandingActivity: BaseActivity() {
             val languageViewModel: LanguageViewModel = hiltViewModel()
             val sharedUserViewModel: SharedUserViewModel = hiltViewModel()
             val themeViewModel: ThemeViewModel = hiltViewModel()
-
+            val landingViewModel: LandingViewModel = hiltViewModel()
 
             val lang by languageViewModel.languageFlow.collectAsState(initial = "ar")
             val currentLocale = Locale(lang)
             val themeOption by themeViewModel.theme.collectAsState(initial = ThemeOption.SYSTEM_DEFAULT)
+            val categories by landingViewModel.categories.collectAsState()
 
             CompositionLocalProvider(
                 LocalLayoutDirection provides if (lang == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr,
-                LocalAppLocale provides currentLocale
+                LocalAppLocale provides currentLocale,
+                LocalCategories provides categories
             ) {
                 AppTheme(themeOption = themeOption) {
                     // Remove Scaffold padding to allow edge-to-edge content
@@ -168,7 +172,7 @@ class LandingActivity: BaseActivity() {
                                     // Use the same TransactionListViewModel to load the list and find the transaction
                                     val txListVm: TransactionListViewModel = hiltViewModel()
                                     LaunchedEffect(categoryId, subCategoryId) {
-                                        txListVm.loadTransactions(categoryId, subCategoryId)
+                                        txListVm.loadTransactions(categories, categoryId, subCategoryId)
                                     }
                                     val transactions by txListVm.transactions.collectAsState()
                                     val transaction = transactions.find { it.id == transactionId }

@@ -7,14 +7,14 @@ import javax.inject.Provider
  * Factory for creating home strategies
  * Uses Hilt's Provider to lazily create strategies only when needed
  */
-class HomeStrategyFactory @Inject constructor(
-    private val categoriesStrategy: Provider<CategoriesStrategy>
+class MainCategoriesStrategyFactory @Inject constructor(
+    private val categoriesStrategy: Provider<MainCategoriesStrategy>
 ) {
 
     /**
      * Create a strategy instance for the given home feature
      */
-    fun createCategoriesStrategy(): HomeStrategy {
+    fun createCategoriesStrategy(): MainCategoriesStrategyInterface {
         return categoriesStrategy.get()
     }
 }

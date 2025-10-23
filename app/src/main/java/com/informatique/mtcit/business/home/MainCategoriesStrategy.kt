@@ -1,6 +1,5 @@
 package com.informatique.mtcit.business.home
 
-import com.informatique.mtcit.data.repository.CategoriesRepository
 import com.informatique.mtcit.ui.models.MainCategory
 import javax.inject.Inject
 
@@ -8,13 +7,10 @@ import javax.inject.Inject
  * Strategy for loading and managing categories on the home screen
  * Handles category loading from repository and filtering logic
  */
-class CategoriesStrategy @Inject constructor(
-    private val repository: CategoriesRepository
-) : HomeStrategy {
+class MainCategoriesStrategy @Inject constructor(
+) : MainCategoriesStrategyInterface {
 
-    override suspend fun loadCategories(): Result<List<MainCategory>> {
-        return repository.getCategories()
-    }
+
 
     override fun filterCategories(
         categories: List<MainCategory>,
