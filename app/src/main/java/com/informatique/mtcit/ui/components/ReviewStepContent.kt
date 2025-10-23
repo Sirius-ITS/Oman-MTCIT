@@ -108,7 +108,7 @@ private fun ExpandableStepCard(
                     Text(
                         text = localizedApp(step.titleRes),
                         style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         ),
                         color = extraColors.blue1
                     )

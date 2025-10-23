@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
@@ -45,11 +46,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
@@ -62,7 +65,8 @@ fun TransactionRequirementsScreen(
     onStart: () -> Unit,
     onBack: () -> Unit,
     // Optional: title resource of the previous screen (e.g., sub-category). If provided, show it instead of transaction title
-    parentTitleRes: Int? = null
+    parentTitleRes: Int? = null,
+    navController: NavController
 ) {
     val extraColors = LocalExtraColors.current
     var selectedTab by remember { mutableStateOf(0) }
@@ -79,21 +83,29 @@ fun TransactionRequirementsScreen(
                     Text(
                         text = parentTitleRes?.let { localizedApp(it) } ?: localizedApp(transaction.titleRes),
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = extraColors.blue1
+                        fontWeight = FontWeight.Medium
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+                actions = {
+                    // Settings/Close Icon Button
+                    Box(
+                        modifier = Modifier
+                            .padding( 12.dp)
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.2f))
+                            .clickable{ navController.popBackStack() },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = localizedApp(R.string.back_button),
-                            tint = extraColors.blue1
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Close Menu",
+                            tint = extraColors.white
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = extraColors.background
+                    containerColor = Color.Transparent
                 )
             )
         },
@@ -118,12 +130,12 @@ fun TransactionRequirementsScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "ابدأ الخدمة", fontSize = 16.sp)
+                        Text(text = "ابدأ الخدمة", fontSize = 16.sp , fontWeight = FontWeight.Medium)
                     }
                 }
             }
         },
-        containerColor = Color(0xFFF5F5F5)
+        containerColor = extraColors.background
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -150,11 +162,11 @@ fun TransactionRequirementsScreen(
                     Text(text = localizedApp(transaction.titleRes),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
+                        fontSize = 18.sp,
                         color = extraColors.blue1,
                         modifier = Modifier.padding(bottom = 8.dp))
+
                     Text(text = localizedApp(transaction.descriptionRes),
-                        style = MaterialTheme.typography.bodyMedium,
                         color = extraColors.blue2)
                 }
             }
@@ -311,14 +323,13 @@ fun TransactionRequirementsScreen(
                                 ) {
                                     Text(
                                         text = "رسوم الخدمة",
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
                                         color = extraColors.blue2
                                     )
                                     Text(
                                         text = transaction.fees,
                                         fontSize = 14.sp,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.Medium,
                                         color = Color(0xFF4CAF50)
                                     )
                                 }
@@ -335,12 +346,12 @@ fun TransactionRequirementsScreen(
                                 ) {
                                     Text(
                                         text = "مدة الطلب",
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
                                         color = extraColors.blue2
                                     )
                                     Text(
                                         text = transaction.duration,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
                                         color = Color(0xFFFF9800)
                                     )
                                 }
@@ -381,14 +392,14 @@ private fun SummaryTileWithIcon(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 color = extraColors.blue1
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = sub,
-                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
                 color = extraColors.blue2,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
@@ -416,8 +427,7 @@ private fun CustomTab(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Medium,
             color = if (selected) { extraColors.blue1 } else extraColors.blue2,
             textAlign = TextAlign.Center,
             maxLines = 1

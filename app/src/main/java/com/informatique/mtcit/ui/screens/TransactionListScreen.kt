@@ -2,8 +2,11 @@ package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -11,26 +14,24 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
-import com.informatique.mtcit.ui.theme.ExtraColors
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 
@@ -60,22 +61,33 @@ fun TransactionListScreen(
                         Text(
                             text = subCategory?.let { localizedApp(it.titleRes) } ?: "Sub Category",
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         )
                     },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                    actions = {
+                        // Settings/Close Icon Button
+                        Box(
+                            modifier = Modifier
+                                .padding( 12.dp)
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.2f))
+                                .clickable{ navController.popBackStack() },
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Close Menu",
+                                tint = extraColors.white
                             )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = extraColors.background
+                        containerColor = Color.Transparent
                     )
                 )
-            }
+            },
+            containerColor = extraColors.background
         ) { paddingValues ->
             if (isLoading) {
                 Box(
@@ -95,15 +107,25 @@ fun TransactionListScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(transactions.size) { index ->
-                        val transaction = transactions[index]
-                        TransactionListCard(
-                            transaction = transaction,
-                            isSelected = viewModel.isTransactionSelected(transaction.id),
-                            onToggleSelection = { viewModel.toggleTransactionSelection(transaction.id) },
-                            onClick = { navController.navigate(transaction.route) },
-                            mainCategoryName = mainCategory?.let { localizedApp(it.titleRes) } ?: ""
-                        )
+                    item {
+                        transactions.forEachIndexed { index, transaction ->
+                            TransactionListCard(
+                                transaction = transaction,
+                                _isSelected = viewModel.isTransactionSelected(transaction.id),
+                                _onToggleSelection = { viewModel.toggleTransactionSelection(transaction.id) },
+                                // navigate to the requirements page first (includes category and subCategory so viewModel can reload the list)
+                                onClick = {
+                                    // pass parent subCategory titleRes to the requirements screen so that its TopAppBar can show it
+                                    val parentTitleRes = subCategory?.titleRes?.toString() ?: ""
+                                    navController.navigate(
+                                        "transaction_requirements/$categoryId/$subCategoryId/${transaction.id}/$parentTitleRes"
+                                    )
+                                },
+                                mainCategoryName = mainCategory?.let { localizedApp(it.titleRes) } ?: "",
+                                mainCategoryIconRes = mainCategory?.iconRes
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
                     }
                 }
             }
@@ -112,12 +134,57 @@ fun TransactionListScreen(
 }
 
 @Composable
+private fun InfoCard(
+    icon: ImageVector,
+    iconTint: Color,
+    iconBg: Color,
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = Color(0xFFFAFAFA),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .background(iconBg, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            Text(
+                text = text,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF374151),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Suppress("UNUSED_PARAMETER")
+@Composable
 fun TransactionListCard(
     transaction: Transaction,
-    isSelected: Boolean,
-    onToggleSelection: () -> Unit,
+    _isSelected: Boolean,
+    _onToggleSelection: () -> Unit,
     onClick: () -> Unit,
-    mainCategoryName: String
+    mainCategoryName: String,
+    mainCategoryIconRes: Int? = null
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -132,8 +199,8 @@ fun TransactionListCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Main Content: Icon, Title, Description, Category Badge
@@ -151,35 +218,43 @@ fun TransactionListCard(
                         modifier = Modifier
                             .size(56.dp)
                             .background(
-                                extraColors.blue1,
+                                extraColors.blue1.copy(alpha = 0.1f),
                                 RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Description,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        if (mainCategoryIconRes != null) {
+                            Icon(
+                                painter = painterResource(id = mainCategoryIconRes),
+                                contentDescription = null,
+                                tint = extraColors.blue1,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Description,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
 
                     // Transaction Title
                     Text(
                         text = localizedApp(transaction.titleRes),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
                         color = extraColors.blue1,
-                        modifier = Modifier
-                            .weight(1f)
-                            .align(Alignment.CenterVertically)
+                        lineHeight = 22.sp,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                        maxLines = 2
                     )
                 }
-
                 // Description (spans full width)
                 Text(
                     text = localizedApp(transaction.descriptionRes),
-                    fontSize = 13.sp,
+                    fontSize = 14.sp,
                     color = Color.Gray,
                     lineHeight = 18.sp,
                     maxLines = 2
@@ -202,10 +277,12 @@ fun TransactionListCard(
 
             // Right Column: Metadata (vertically centered)
             Column(
-                modifier = Modifier.width(90.dp),
-                horizontalAlignment = Alignment.Start
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .align(Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Time Range
+                // Time Range (use transaction.duration)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -217,14 +294,14 @@ fun TransactionListCard(
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
-                        text = "1-4 أيام",
+                        text = transaction.duration,
                         fontSize = 11.sp,
                         color = Color(0xFFFF9800),
                         fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Steps
+                // Steps (derive from transaction.steps when available)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -235,8 +312,9 @@ fun TransactionListCard(
                         tint = Color.Gray,
                         modifier = Modifier.size(14.dp)
                     )
+                    val stepsCount = if (transaction.steps.isNotEmpty()) transaction.steps.size else transaction.stepCount
                     Text(
-                        text = "${transaction.stepCount} خطوات",
+                        text = "$stepsCount خطوات",
                         fontSize = 11.sp,
                         color = Color.Gray
                     )
@@ -264,3 +342,159 @@ fun TransactionListCard(
         }
     }
 }
+//
+//@Suppress("UNUSED_PARAMETER")
+//@Composable
+//fun TransactionListCard(
+//    transaction: Transaction,
+//    _isSelected: Boolean,
+//    _onToggleSelection: () -> Unit,
+//    onClick: () -> Unit,
+//    mainCategoryName: String,
+//    mainCategoryIconRes: Int? = null
+//) {
+//    val extraColors = LocalExtraColors.current
+//
+//    Card(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .clickable { onClick() },
+//        colors = CardDefaults.cardColors(
+//            containerColor = Color.White
+//        ),
+//        elevation = CardDefaults.cardElevation(1.dp),
+//        shape = RoundedCornerShape(20.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(20.dp),
+//            verticalArrangement = Arrangement.spacedBy(16.dp)
+//        ) {
+//            // Header: Icon + Title + Category
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.spacedBy(14.dp),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                // Modern Icon with Gradient Effect
+//                Box(
+//                    modifier = Modifier
+//                        .size(64.dp)
+//                        .background(
+//                            brush = Brush.linearGradient(
+//                                colors = listOf(
+//                                    extraColors.blue1.copy(alpha = 0.15f),
+//                                    extraColors.blue2.copy(alpha = 0.08f)
+//                                )
+//                            ),
+//                            shape = RoundedCornerShape(18.dp)
+//                        )
+//                        .border(
+//                            width = 1.dp,
+//                            color = extraColors.blue1.copy(alpha = 0.1f),
+//                            shape = RoundedCornerShape(18.dp)
+//                        ),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    if (mainCategoryIconRes != null) {
+//                        Icon(
+//                            painter = painterResource(id = mainCategoryIconRes),
+//                            contentDescription = null,
+//                            tint = extraColors.blue1,
+//                            modifier = Modifier.size(34.dp)
+//                        )
+//                    } else {
+//                        Icon(
+//                            imageVector = Icons.Default.Description,
+//                            contentDescription = null,
+//                            tint = extraColors.blue1,
+//                            modifier = Modifier.size(30.dp)
+//                        )
+//                    }
+//                }
+//
+//                // Title + Category
+//                Column(
+//                    modifier = Modifier.weight(1f),
+//                    verticalArrangement = Arrangement.spacedBy(6.dp)
+//                ) {
+//                    Text(
+//                        text = localizedApp(transaction.titleRes),
+//                        fontSize = 12.sp,
+//                        fontWeight = FontWeight.SemiBold,
+//                        color = Color(0xFF1A1A1A),
+//                        maxLines = 1,
+//                        overflow = TextOverflow.Ellipsis
+//                    )
+//
+//                    // Modern Category Chip
+//                    Surface(
+//                        color = extraColors.blue1.copy(alpha = 0.08f),
+//                        shape = RoundedCornerShape(8.dp)
+//                    ) {
+//                        Text(
+//                            text = mainCategoryName,
+//                            fontSize = 11.sp,
+//                            color = extraColors.blue1,
+//                            fontWeight = FontWeight.Medium,
+//                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+//                        )
+//                    }
+//                }
+//            }
+//
+//            // Description
+//            Text(
+//                text = localizedApp(transaction.descriptionRes),
+//                fontSize = 13.sp,
+//                color = Color(0xFF6B7280),
+//                lineHeight = 20.sp,
+//                maxLines = 2,
+//                overflow = TextOverflow.Ellipsis
+//            )
+//
+//            // Divider
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(1.dp)
+//                    .background(Color(0xFFF3F4F6))
+//            )
+//
+//            // Modern Info Cards Row
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.spacedBy(10.dp)
+//            ) {
+//                // Duration Card
+//                InfoCard(
+//                    icon = Icons.Default.AccessTime,
+//                    iconTint = Color(0xFFFF9800),
+//                    iconBg = Color(0xFFFF9800).copy(alpha = 0.1f),
+//                    text = transaction.duration,
+//                    modifier = Modifier.weight(1f)
+//                )
+//
+//                // Steps Card
+//                val stepsCount = if (transaction.steps.isNotEmpty()) transaction.steps.size else transaction.stepCount
+//                InfoCard(
+//                    icon = Icons.AutoMirrored.Filled.List,
+//                    iconTint = extraColors.blue1,
+//                    iconBg = extraColors.blue2.copy(alpha = 0.1f),
+//                    text = "$stepsCount خطوات",
+//                    modifier = Modifier.weight(1f)
+//                )
+//
+//                // Fees Card
+//                InfoCard(
+//                    icon = Icons.Default.AttachMoney,
+//                    iconTint = Color(0xFF10B981),
+//                    iconBg = Color(0xFF10B981).copy(alpha = 0.1f),
+//                    text = transaction.fees,
+//                    modifier = Modifier.weight(1f)
+//                )
+//            }
+//        }
+//    }
+//}

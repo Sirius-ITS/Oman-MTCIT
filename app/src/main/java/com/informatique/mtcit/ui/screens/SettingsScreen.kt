@@ -1,4 +1,4 @@
-package com.informatique.mtcit.ui.screens.settings
+ package com.informatique.mtcit.ui.screens.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*

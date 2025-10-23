@@ -50,7 +50,6 @@ import com.informatique.mtcit.ui.screens.settings.SettingsScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.ui.screens.HomePageScreen
-import com.informatique.mtcit.ui.screens.ShipDimensionsChangeScreen
 import com.informatique.mtcit.ui.theme.AppTheme
 import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
@@ -180,7 +179,8 @@ class LandingActivity: BaseActivity() {
                                             transaction = transaction,
                                             onStart = { navController.navigate(transaction.route) },
                                             onBack = { navController.popBackStack() },
-                                            parentTitleRes = parentTitleRes
+                                            parentTitleRes = parentTitleRes,
+                                            navController = navController
                                         )
                                     } else {
                                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
