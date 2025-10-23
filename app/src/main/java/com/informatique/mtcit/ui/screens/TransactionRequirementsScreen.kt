@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
@@ -29,6 +30,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -78,33 +80,33 @@ fun TransactionRequirementsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = parentTitleRes?.let { localizedApp(it) } ?: localizedApp(transaction.titleRes),
-                        fontSize = 18.sp,
+                        fontSize = 22.sp,
+                        color = extraColors.white,
                         fontWeight = FontWeight.Medium
                     )
                 },
                 actions = {
-                    // Settings/Close Icon Button
                     Box(
                         modifier = Modifier
-                            .padding( 12.dp)
+                            .padding(end = 12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.2f))
-                            .clickable{ navController.popBackStack() },
+                            .background(extraColors.navy18223B)
+                            .clickable { navController.popBackStack() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Close Menu",
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = "Back",
                             tint = extraColors.white
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent
                 )
             )
@@ -121,7 +123,7 @@ fun TransactionRequirementsScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = extraColors.blue1,
+                        containerColor = extraColors.blue6,
                         contentColor = Color.White
                     ),
                     shape = RoundedCornerShape(12.dp)
@@ -152,9 +154,10 @@ fun TransactionRequirementsScreen(
                         .fillMaxWidth()
                         .padding(vertical = 8.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = extraColors.grayCard
+                        containerColor = extraColors.cardBackground
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    shape = RoundedCornerShape(14.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp)
@@ -163,11 +166,11 @@ fun TransactionRequirementsScreen(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Medium,
                         fontSize = 18.sp,
-                        color = extraColors.blue1,
+                        color = extraColors.white,
                         modifier = Modifier.padding(bottom = 8.dp))
 
                     Text(text = localizedApp(transaction.descriptionRes),
-                        color = extraColors.blue2)
+                        color = extraColors.white.copy(alpha = 0.5f))
                 }
             }
 
@@ -206,16 +209,17 @@ fun TransactionRequirementsScreen(
                 // Tabs
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor =  extraColors.white
+                        containerColor =  extraColors.cardBackground
                     ),
                     elevation = CardDefaults.cardElevation(0.dp)
                 ) {
                     val extraColors = LocalExtraColors.current
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth().background(extraColors.grayCard)
+                            .fillMaxWidth()
+                            .background(extraColors.cardBackground)
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -243,7 +247,7 @@ fun TransactionRequirementsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 12.dp),
-                            color = extraColors.blue1
+                            color = extraColors.white
                         )
                     }
 
@@ -288,7 +292,7 @@ fun TransactionRequirementsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 12.dp),
-                            color = extraColors.blue1
+                            color = extraColors.white
                         )
                     }
 
@@ -305,15 +309,15 @@ fun TransactionRequirementsScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.padding(bottom = 12.dp),
-                            color = extraColors.blue1
+                            color = extraColors.white
                         )
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(2.dp),
-                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(0.dp),
+                            shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color.White
+                                containerColor = extraColors.cardBackground
                             )
                         ) {
                             Column(Modifier.padding(16.dp)) {
@@ -324,7 +328,7 @@ fun TransactionRequirementsScreen(
                                     Text(
                                         text = "رسوم الخدمة",
                                         fontWeight = FontWeight.Medium,
-                                        color = extraColors.blue2
+                                        color = extraColors.white
                                     )
                                     Text(
                                         text = transaction.fees,
@@ -347,7 +351,7 @@ fun TransactionRequirementsScreen(
                                     Text(
                                         text = "مدة الطلب",
                                         fontWeight = FontWeight.Medium,
-                                        color = extraColors.blue2
+                                        color = extraColors.white
                                     )
                                     Text(
                                         text = transaction.duration,
@@ -375,9 +379,9 @@ private fun SummaryTileWithIcon(
     val extraColors = LocalExtraColors.current
     Card(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(extraColors.white)
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(extraColors.cardBackground)
     ) {
         Column(
             modifier = Modifier.padding(12.dp).align(Alignment.CenterHorizontally)
@@ -394,13 +398,13 @@ private fun SummaryTileWithIcon(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-                color = extraColors.blue1
+                color = extraColors.white
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = sub,
                 fontWeight = FontWeight.Medium,
-                color = extraColors.blue2,
+                color = extraColors.white.copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
@@ -418,17 +422,17 @@ private fun CustomTab(
     Box(
         modifier = modifier
             .background(
-                color = if (selected) extraColors.white else extraColors.grayCard,
-                shape = RoundedCornerShape(8.dp)
+                color = if (selected) extraColors.cardBackground2 else Color.Transparent,
+                shape = RoundedCornerShape(14.dp)
             )
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = title,
             fontWeight = if (selected) FontWeight.Medium else FontWeight.Medium,
-            color = if (selected) { extraColors.blue1 } else extraColors.blue2,
+            color =  extraColors.white,
             textAlign = TextAlign.Center,
             maxLines = 1
         )
@@ -439,9 +443,9 @@ private fun CustomTab(
 private fun DocumentItem(number: Int, text: String, isRequired: Boolean = false) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = LocalExtraColors.current.cardBackground)
     ) {
         val extraColors = LocalExtraColors.current
         Row(
@@ -452,7 +456,7 @@ private fun DocumentItem(number: Int, text: String, isRequired: Boolean = false)
             Text(
                 text = "${number}.",
                 style = MaterialTheme.typography.titleMedium,
-                color = extraColors.blue1,
+                color = extraColors.white,
                 modifier = Modifier.padding(end = 8.dp)
             )
 
@@ -479,7 +483,7 @@ private fun DocumentItem(number: Int, text: String, isRequired: Boolean = false)
             Icon(
                 imageVector = Icons.Filled.Description,
                 contentDescription = null,
-                tint = extraColors.blue2,
+                tint = extraColors.blue5,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(Modifier.width(12.dp))
@@ -488,7 +492,7 @@ private fun DocumentItem(number: Int, text: String, isRequired: Boolean = false)
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Right,
                 modifier = Modifier.weight(1f),
-                color = extraColors.blue2
+                color = extraColors.white
             )
         }
     }
@@ -500,7 +504,7 @@ private fun StepItem(number: Int, text: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(extraColors.background )
     ) {
         Row(
@@ -511,12 +515,12 @@ private fun StepItem(number: Int, text: String) {
             Box(
                 modifier = Modifier
                     .size(26.dp)
-                    .background(extraColors.blue1, CircleShape),
+                    .background(extraColors.bluegray, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = number.toString(),
-                    color = Color.White,
+                    color = extraColors.blue5,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -527,7 +531,7 @@ private fun StepItem(number: Int, text: String) {
                 text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Right,
-                color = extraColors.blue2
+                color = extraColors.white
             )
 
         }

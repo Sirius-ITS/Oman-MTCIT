@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
@@ -58,33 +59,34 @@ fun TransactionListScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
-                TopAppBar(
+                CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            text = subCategory?.let { localizedApp(it.titleRes) } ?: "Sub Category",
-                            fontSize = 18.sp,
+                            text = subCategory?.let { localizedApp(it.titleRes) }
+                                ?: "Sub Category",
+                            fontSize = 22.sp,
+                            color = extraColors.white,
                             fontWeight = FontWeight.Medium
                         )
                     },
                     actions = {
-                        // Settings/Close Icon Button
                         Box(
                             modifier = Modifier
-                                .padding( 12.dp)
+                                .padding(end = 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.2f))
-                                .clickable{ navController.popBackStack() },
+                                .background(extraColors.navy18223B)
+                                .clickable { navController.popBackStack() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "Close Menu",
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                contentDescription = "Back",
                                 tint = extraColors.white
                             )
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color.Transparent
                     )
                 )
@@ -194,9 +196,9 @@ fun TransactionListCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp)
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
@@ -220,8 +222,8 @@ fun TransactionListCard(
                         modifier = Modifier
                             .size(56.dp)
                             .background(
-                                extraColors.blue1.copy(alpha = 0.1f),
-                                RoundedCornerShape(12.dp)
+                                extraColors.bluegray,
+                                CircleShape
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -229,15 +231,15 @@ fun TransactionListCard(
                             Icon(
                                 painter = painterResource(id = mainCategoryIconRes),
                                 contentDescription = null,
-                                tint = extraColors.blue1,
+                                tint = extraColors.blue5,
                                 modifier = Modifier.size(32.dp)
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Description,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(28.dp)
+                                tint = extraColors.blue5,
+                                modifier = Modifier.size(32.dp)
                             )
                         }
                     }
@@ -245,10 +247,10 @@ fun TransactionListCard(
                     // Transaction Title
                     Text(
                         text = localizedApp(transaction.titleRes),
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
-                        color = extraColors.blue1,
-                        lineHeight = 22.sp,
+                        color = extraColors.white,
+                        lineHeight = 20.sp,
                         modifier = Modifier.align(Alignment.CenterVertically),
                         maxLines = 2
                     )
@@ -258,19 +260,19 @@ fun TransactionListCard(
                     text = localizedApp(transaction.descriptionRes),
                     fontSize = 14.sp,
                     color = Color.Gray,
-                    lineHeight = 18.sp,
+                    lineHeight = 22.sp,
                     maxLines = 2
                 )
 
                 // Category Badge (rounded with blue background) - Now shows MAIN category
                 Surface(
-                    color = extraColors.blue2.copy(alpha = 0.2f),
+                    color = extraColors.bluegray,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
                         text = mainCategoryName,
                         fontSize = 12.sp,
-                        color = extraColors.blue1,
+                        color = extraColors.blue5,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )

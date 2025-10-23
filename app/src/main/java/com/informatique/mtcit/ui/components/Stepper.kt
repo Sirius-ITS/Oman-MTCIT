@@ -275,7 +275,7 @@ fun DynamicStepper(
         Text(
             text = "$stepText ${formatNumber(currentStep + 1)} $ofText ${formatNumber(totalSteps)}",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = extraColors.white.copy(alpha = 0.5f),
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -301,7 +301,7 @@ fun DynamicStepper(
         Text(
             text = "${formatNumber(progressPercentage)}%",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = extraColors.white.copy(alpha = 0.5f),
             fontWeight = FontWeight.Medium,
             modifier = Modifier
                 .align(Alignment.Start)

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -57,34 +58,34 @@ fun TransactionFormContent(
         modifier = Modifier.fillMaxSize(),
         containerColor = extraColors.background,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = transactionTitle,
-                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = 22.sp,
+                        color = extraColors.white,
                         fontWeight = FontWeight.Medium,
-                        color = extraColors.blue1
+                        maxLines = 1
                     )
                 },
                 actions = {
-                    // Settings/Close Icon Button
                     Box(
                         modifier = Modifier
-                            .padding( 12.dp)
+                            .padding(end = 12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.2f))
-                            .clickable{ navController.popBackStack() },
+                            .background(extraColors.navy18223B)
+                            .clickable { navController.popBackStack() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Close Menu",
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            contentDescription = "Back",
                             tint = extraColors.white
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.Transparent
                 )
             )
@@ -131,9 +132,9 @@ fun TransactionFormContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = extraColors.grayCard
+                        containerColor = extraColors.cardBackground
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp)
@@ -143,14 +144,14 @@ fun TransactionFormContent(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Medium,
                             fontSize = 18.sp,
-                            color = extraColors.blue1,
+                            color = extraColors.white,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
                         Text(
                             text = localizedApp(currentStepData.descriptionRes),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = extraColors.blue2
+                            color = extraColors.white.copy(alpha = 0.5f)
                         )
                     }
                 }
@@ -204,7 +205,7 @@ fun GenericNavigationBottomBar(
             topEnd = 16.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = extraColors.grayCard
+            containerColor = extraColors.background
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
@@ -233,7 +234,7 @@ fun GenericNavigationBottomBar(
                 enabled = canProceed && !isSubmitting,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = extraColors.blue1,
+                    containerColor = extraColors.cardBackground,
                     contentColor = Color.White
                 ),
 
