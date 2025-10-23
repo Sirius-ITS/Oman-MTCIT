@@ -1,20 +1,25 @@
 package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionState
@@ -57,21 +62,30 @@ fun TransactionFormContent(
                     Text(
                         text = transactionTitle,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Medium,
                         color = extraColors.blue1
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                actions = {
+                    // Settings/Close Icon Button
+                    Box(
+                        modifier = Modifier
+                            .padding( 12.dp)
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.2f))
+                            .clickable{ navController.popBackStack() },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = localizedApp(R.string.back_button),
-                            tint = extraColors.blue1
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = "Close Menu",
+                            tint = extraColors.white
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = extraColors.background
+                    containerColor = Color.Transparent
                 )
             )
         },
@@ -127,7 +141,8 @@ fun TransactionFormContent(
                         Text(
                             text = localizedApp(currentStepData.titleRes),
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 18.sp,
                             color = extraColors.blue1,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
