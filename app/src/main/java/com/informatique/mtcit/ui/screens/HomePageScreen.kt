@@ -90,7 +90,6 @@ fun HomePageScreen(navController: NavController) {
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
-    var isFabMenuExpanded by remember { mutableStateOf(false) }
 
     // Allow drawing behind system bars and make status bar transparent so the gradient can extend into it
     LaunchedEffect(window) {
@@ -164,10 +163,7 @@ fun HomePageScreen(navController: NavController) {
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 // TopProfileBar will include statusBarsPadding to avoid overlap with status bar
-                TopProfileBar(
-                    isFabMenuExpanded = isFabMenuExpanded,
-                    onFabToggle = { isFabMenuExpanded = !isFabMenuExpanded }
-                )
+                TopProfileBar(navController = navController)
             },
             containerColor = Color.Transparent // let the gradient show through
         ) { innerPadding ->
@@ -198,57 +194,12 @@ fun HomePageScreen(navController: NavController) {
                 }
             }
         }
-        // Scrim/Backdrop when FAB menu is expanded
-        if (isFabMenuExpanded) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .clickable { isFabMenuExpanded = false }
-            )
-        }
-
-        // FAB Menu overlay
-        AnimatedVisibility(
-            visible = isFabMenuExpanded,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 64.dp, end = 8.dp),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                // Change Language Item
-                HomeExtendedFabMenuItem(
-                    icon = Icons.Default.Language,
-                    label = localizedApp(R.string.change_language),
-                    onClick = {
-                        isFabMenuExpanded = false
-                        navController.navigate("languagescreen")
-                    }
-                )
-
-                // Change Theme Item
-                HomeExtendedFabMenuItem(
-                    icon = Icons.Default.DarkMode,
-                    label = localizedApp(R.string.settings_title),
-                    onClick = {
-                        isFabMenuExpanded = false
-                        navController.navigate("settings_screen")
-                    }
-                )
-            }
-        }
     }
 }
 
 @Composable
 fun TopProfileBar(
-    isFabMenuExpanded: Boolean,
-    onFabToggle: () -> Unit
+    navController: NavController
 ) {
     Row(
         modifier = Modifier
@@ -300,11 +251,11 @@ fun TopProfileBar(
                     .size(38.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
-                    .clickable { onFabToggle() },
+                    .clickable { navController.navigate("settings_screen") },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isFabMenuExpanded) Icons.Default.Close else Icons.Default.Settings,
+                    imageVector = Icons.Default.Settings,
                     contentDescription = "الإعدادات",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
@@ -550,8 +501,8 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                         icon = painterResource(id = category.iconRes),
                         color = extracolors.blue1,
                         onClick = {
-                            // Navigate to MainCategoriesScreen or specific category
-                            navController.navigate("mainCategoriesScreen")
+                            // Navigate to MainCategoriesScreen with the specific category ID
+                            navController.navigate("mainCategoriesScreen/${category.id}")
                         },
                         modifier = Modifier
                     )

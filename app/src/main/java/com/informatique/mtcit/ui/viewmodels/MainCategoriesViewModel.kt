@@ -105,6 +105,15 @@ class MainCategoriesViewModel @Inject constructor(
     }
 
     /**
+     * Expand a specific category (used when navigating from home screen)
+     */
+    fun expandCategory(categoryId: String) {
+        val currentExpanded = _expandedCategories.value.toMutableSet()
+        currentExpanded.add(categoryId)
+        _expandedCategories.value = currentExpanded
+    }
+
+    /**
      * Check if category is expanded
      */
     fun isCategoryExpanded(categoryId: String): Boolean {

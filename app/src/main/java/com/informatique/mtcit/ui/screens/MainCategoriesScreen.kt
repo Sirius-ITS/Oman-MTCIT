@@ -54,7 +54,11 @@ import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: SharedUserViewModel) {
+fun MainCategoriesScreen(
+    navController: NavController,
+    sharedUserViewModel: SharedUserViewModel,
+    categoryIdToExpand: String = ""
+) {
     val viewModel: MainCategoriesViewModel = hiltViewModel()
     // Get categories from CompositionLocal instead of ViewModel
     val categories = LocalCategories.current
@@ -63,6 +67,13 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
     LaunchedEffect(categories) {
         if (categories.isNotEmpty()) {
             viewModel.setCategories(categories)
+        }
+    }
+
+    // Auto-expand the specified category when navigating from home
+    LaunchedEffect(categoryIdToExpand) {
+        if (categoryIdToExpand.isNotEmpty()) {
+            viewModel.expandCategory(categoryIdToExpand)
         }
     }
 
@@ -154,11 +165,11 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = 8.dp , top = 35.dp))
                             },
-                    actions = {
-                        // Settings/Close Icon Button
+                    navigationIcon = {
+                        // Back Icon Button
                         Box(
                             modifier = Modifier
-                                .padding( 12.dp)
+                                .padding(start = 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.2f))
@@ -166,8 +177,26 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                contentDescription = if (isFabMenuExpanded) "Close Menu" else "Settings Menu",
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        // Settings Icon Button
+                        Box(
+                            modifier = Modifier
+                                .padding( 12.dp)
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .clickable { navController.navigate("settings_screen") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
                                 tint = Color.White
                             )
                         }

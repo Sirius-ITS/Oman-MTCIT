@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,10 +69,10 @@ fun TransactionFormContent(
                         maxLines = 1
                     )
                 },
-                actions = {
+                navigationIcon = {
                     Box(
                         modifier = Modifier
-                            .padding(end = 12.dp)
+                            .padding(start = 12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
                             .background(extraColors.navy18223B)
@@ -79,8 +80,25 @@ fun TransactionFormContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
+                            tint = extraColors.white
+                        )
+                    }
+                },
+                actions = {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(extraColors.navy18223B)
+                            .clickable { navController.navigate("settings_screen") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
                             tint = extraColors.white
                         )
                     }

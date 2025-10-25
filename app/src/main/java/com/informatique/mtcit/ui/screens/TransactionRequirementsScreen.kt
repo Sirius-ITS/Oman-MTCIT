@@ -1,4 +1,3 @@
-
 package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.background
@@ -26,6 +25,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -89,10 +89,10 @@ fun TransactionRequirementsScreen(
                         fontWeight = FontWeight.Medium
                     )
                 },
-                actions = {
+                navigationIcon = {
                     Box(
                         modifier = Modifier
-                            .padding(end = 12.dp)
+                            .padding(start = 12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
                             .background(extraColors.navy18223B)
@@ -100,8 +100,25 @@ fun TransactionRequirementsScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
+                            tint = extraColors.white
+                        )
+                    }
+                },
+                actions = {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(extraColors.navy18223B)
+                            .clickable { navController.navigate("settings_screen") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
                             tint = extraColors.white
                         )
                     }

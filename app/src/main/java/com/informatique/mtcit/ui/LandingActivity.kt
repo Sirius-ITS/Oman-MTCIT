@@ -35,6 +35,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.data.datastorehelper.TokenManager
 import com.informatique.mtcit.ui.base.BaseActivity
@@ -46,7 +48,6 @@ import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.ComingSoonScreen
 import com.informatique.mtcit.ui.screens.FileViewerScreen
 import com.informatique.mtcit.ui.screens.LanguageScreen
-import com.informatique.mtcit.ui.screens.settings.SettingsScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.ui.screens.HomePageScreen
@@ -59,6 +60,7 @@ import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 import com.informatique.mtcit.ui.providers.LocalCategories
+import com.informatique.mtcit.ui.screens.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
 
@@ -151,8 +153,20 @@ class LandingActivity: BaseActivity() {
                                 }
 
                                 // Home Screen - Shows categories with sub-categories
+                                composable(
+                                    route = "mainCategoriesScreen/{categoryId}",
+                                    arguments = listOf(navArgument("categoryId") {
+                                        type = NavType.StringType
+                                        defaultValue = ""
+                                    })
+                                ) { backStackEntry ->
+                                    val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
+                                    MainCategoriesScreen(navController, sharedUserViewModel, categoryId)
+                                }
+
+                                // Alternative route without category ID for backward compatibility
                                 composable("mainCategoriesScreen") {
-                                    MainCategoriesScreen(navController, sharedUserViewModel)
+                                    MainCategoriesScreen(navController, sharedUserViewModel, "")
                                 }
 
                                 // Transaction List Screen - Shows transactions for selected sub-category
