@@ -163,7 +163,7 @@ fun MainCategoriesScreen(
                         fontSize = 22.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = 8.dp , top = 35.dp))
+                        modifier = Modifier.padding(start = 8.dp ))
                             },
                     navigationIcon = {
                         // Back Icon Button
