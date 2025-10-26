@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
@@ -53,7 +54,11 @@ import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: SharedUserViewModel) {
+fun MainCategoriesScreen(
+    navController: NavController,
+    sharedUserViewModel: SharedUserViewModel,
+    categoryIdToExpand: String = ""
+) {
     val viewModel: MainCategoriesViewModel = hiltViewModel()
     // Get categories from CompositionLocal instead of ViewModel
     val categories = LocalCategories.current
@@ -62,6 +67,13 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
     LaunchedEffect(categories) {
         if (categories.isNotEmpty()) {
             viewModel.setCategories(categories)
+        }
+    }
+
+    // Auto-expand the specified category when navigating from home
+    LaunchedEffect(categoryIdToExpand) {
+        if (categoryIdToExpand.isNotEmpty()) {
+            viewModel.expandCategory(categoryIdToExpand)
         }
     }
 
@@ -92,7 +104,7 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp + statusBarHeight)
+                .height(220.dp + statusBarHeight)
         ) {
             // Gradient background
             Box(
@@ -149,15 +161,15 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
                         Text(
                         text = localizedApp(R.string.solutions_and_services),
                         fontSize = 22.sp,
-                        color = extraColors.white,
+                        color = Color.White,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = 8.dp , top = 35.dp))
+                        modifier = Modifier.padding(start = 8.dp ))
                             },
-                    actions = {
-                        // Settings/Close Icon Button
+                    navigationIcon = {
+                        // Back Icon Button
                         Box(
                             modifier = Modifier
-                                .padding( 12.dp)
+                                .padding(start = 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.2f))
@@ -165,9 +177,27 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = if (isFabMenuExpanded) "Close Menu" else "Settings Menu",
-                                tint = extraColors.white
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        // Settings Icon Button
+                        Box(
+                            modifier = Modifier
+                                .padding( 12.dp)
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .clickable { navController.navigate("settings_screen") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = Color.White
                             )
                         }
                     },
@@ -187,13 +217,13 @@ fun MainCategoriesScreen(navController: NavController, sharedUserViewModel: Shar
                 Text(
                     text = localizedApp(R.string.choose_department_that_suits_your_needs),
                     fontSize = 14.sp,
-                    color = extraColors.white.copy(alpha = 0.8f),
+                    color = Color.White.copy(alpha = 0.8f),
                     modifier = Modifier.padding(start = 24.dp , bottom = 10.dp , top = 4.dp))
                 // Filters Section
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp , end = 16.dp , bottom = 17.dp , top = 8.dp),
+                        .padding(start = 16.dp , end = 16.dp , bottom = 37.dp , top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Institution Filter
@@ -340,9 +370,9 @@ fun FilterDropdown(
 
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(8.dp)
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2),
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
@@ -356,28 +386,40 @@ fun FilterDropdown(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = extraColors.blue1,
-                    modifier = Modifier.size(24.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            Color.White.copy(alpha = 0.1f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
                 Column {
                     Text(
                         text = label,
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = Color.White.copy(alpha = 0.5f)
                     )
                     Text(
                         text = localizedApp(R.string.select),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White
                     )
                 }
             }
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
+                tint = Color.White,
                 modifier = Modifier.rotate(if (expanded) 180f else 0f)
             )
         }
@@ -396,9 +438,9 @@ fun CategoryCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp)
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Category Header
@@ -420,7 +462,7 @@ fun CategoryCard(
                         modifier = Modifier
                             .size(56.dp)
                             .background(
-                                extraColors.blue1.copy(alpha = 0.1f),
+                                extraColors.bluegray,
                                 CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -428,7 +470,7 @@ fun CategoryCard(
                         Icon(
                             painter = painterResource(category.iconRes),
                             contentDescription = null,
-                            tint = extraColors.blue1,
+                            tint = extraColors.blue5,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -439,7 +481,7 @@ fun CategoryCard(
                             text = localizedApp(category.titleRes),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
-                            color = extraColors.blue1
+                            color = extraColors.white
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -454,7 +496,7 @@ fun CategoryCard(
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = null,
-                    tint = extraColors.blue1,
+                    tint = extraColors.white,
                     modifier = Modifier
                         .size(28.dp)
                         .rotate(if (isExpanded) 180f else 0f)
@@ -470,7 +512,7 @@ fun CategoryCard(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(extraColors.background.copy(alpha = 0.3f))
+                        .background(extraColors.background.copy(alpha = 0.1f))
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     category.subCategories.forEach { subCategory ->
@@ -486,11 +528,11 @@ fun CategoryCard(
                     Text(
                         text = "$availableServicesCount ${localizedApp(R.string.services_available)}",
                         fontSize = 13.sp,
-                        color = extraColors.blue1,
+                        color = extraColors.white,
                         modifier = Modifier
                             .background(
-                                extraColors.blue1.copy(alpha = 0.1f),
-                                RoundedCornerShape(12.dp)
+                                extraColors.cardBackground2.copy(alpha = 0.1f),
+                                RoundedCornerShape(14.dp)
                             )
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
@@ -512,9 +554,9 @@ fun SubCategoryItem(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(8.dp)
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)),
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Row(
             modifier = Modifier
@@ -527,23 +569,15 @@ fun SubCategoryItem(
                 text = localizedApp(subCategory.titleRes),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = extraColors.blue1,
+                color = extraColors.white,
                 modifier = Modifier.weight(1f)
             )
-
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(extraColors.blue1.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
-                    tint = extraColors.blue1,
+                    tint = extraColors.white,
                     modifier = Modifier.size(16.dp)
                 )
-            }
         }
     }
 }

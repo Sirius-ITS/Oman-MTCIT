@@ -53,7 +53,6 @@ fun LoginScreen(
     var dialogTitle by remember { mutableStateOf("") }
     var dialogMessage by remember { mutableStateOf("") }
     var dialogColor by remember { mutableStateOf(Color.Transparent) }
-    var showSettings by remember { mutableStateOf(false) }
     val extraColors = LocalExtraColors.current
 
     Scaffold(
@@ -83,12 +82,12 @@ fun LoginScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { showSettings = !showSettings },
+                        onClick = { navController.navigate("settings_screen") },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = if (showSettings) Icons.Default.Close else Icons.Default.Settings,
-                            contentDescription = if (showSettings) "Close Settings" else "Settings",
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
                             tint = extraColors.blue1,
                             modifier = Modifier.size(24.dp)
                         )

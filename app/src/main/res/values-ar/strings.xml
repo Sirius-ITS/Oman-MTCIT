@@ -60,7 +60,6 @@
     <string name="notification">الاشعارات</string>
     <string name="manage_notification">للتحكم في الاشعارات المستلمة</string>
     <string name="rate_this_app">تقيم التطبيق</string>
-    <string name="change_language">تغير اللغة </string>
     <string name="log_out">تسجيل الخروج</string>
     <string name="profile">البيانات الشخصية</string>
     <string name="home">الرئيسية</string>
@@ -261,6 +260,21 @@
     <string name="ship_registration_title">تسجيل السفينة</string>
     <string name="language_title">إعدادات اللغة</string>
     <string name="settings_title">الإعدادات</string>
+
+    <!-- Settings Screen - Arabic -->
+    <string name="settings_language_section">اللغة</string>
+    <string name="settings_theme_section">مظهر التطبيق</string>
+    <string name="settings_language_description">تغيير لغة التطبيق</string>
+    <string name="settings_theme_description">اختر المظهر المفضل لديك</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_english">English</string>
+    <string name="theme_light">الوضع الفاتح</string>
+    <string name="theme_dark">الوضع الداكن</string>
+    <string name="theme_system">النظام الافتراضي</string>
+    <string name="change_language">اختر اللغة</string>
+    <string name="done">تم</string>
+    <string name="about_app">حول التطبيق</string>
+    <string name="version">الإصدار</string>
 
     <!-- Transaction Categories - Arabic -->
     <string name="categories_title">التسجيل</string>

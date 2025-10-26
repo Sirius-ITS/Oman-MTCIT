@@ -93,7 +93,7 @@ fun OwnerFormBottomSheet(
                 text = if (owner != null) localizedApp(R.string.edit_owner) else localizedApp(R.string.add_owner),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = extraColors.blue1,
+                color = extraColors.white,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -252,7 +252,7 @@ fun OwnerFormBottomSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(localizedApp(R.string.cancel_button))
+                    Text(localizedApp(R.string.cancel_button) , color = extraColors.white)
                 }
 
                 Button(
@@ -278,10 +278,10 @@ fun OwnerFormBottomSheet(
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = extraColors.blue1
+                        containerColor = extraColors.blue6
                     )
                 ) {
-                    Text(localizedApp(R.string.save_button))
+                    Text(localizedApp(R.string.save_button) , color = extraColors.white)
                 }
             }
 

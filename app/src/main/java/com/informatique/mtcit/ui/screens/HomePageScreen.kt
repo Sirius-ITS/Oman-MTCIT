@@ -1,7 +1,6 @@
 package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
-import android.graphics.Color as AndroidColor
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -14,23 +13,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DarkMode
@@ -49,6 +51,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -57,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -71,18 +75,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Alignment
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import android.graphics.Color as AndroidColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,7 +90,6 @@ fun HomePageScreen(navController: NavController) {
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
-    var isFabMenuExpanded by remember { mutableStateOf(false) }
 
     // Allow drawing behind system bars and make status bar transparent so the gradient can extend into it
     LaunchedEffect(window) {
@@ -165,10 +163,7 @@ fun HomePageScreen(navController: NavController) {
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 // TopProfileBar will include statusBarsPadding to avoid overlap with status bar
-                TopProfileBar(
-                    isFabMenuExpanded = isFabMenuExpanded,
-                    onFabToggle = { isFabMenuExpanded = !isFabMenuExpanded }
-                )
+                TopProfileBar(navController = navController)
             },
             containerColor = Color.Transparent // let the gradient show through
         ) { innerPadding ->
@@ -199,57 +194,12 @@ fun HomePageScreen(navController: NavController) {
                 }
             }
         }
-        // Scrim/Backdrop when FAB menu is expanded
-        if (isFabMenuExpanded) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .clickable { isFabMenuExpanded = false }
-            )
-        }
-
-        // FAB Menu overlay
-        AnimatedVisibility(
-            visible = isFabMenuExpanded,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 64.dp, end = 8.dp),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                // Change Language Item
-                HomeExtendedFabMenuItem(
-                    icon = Icons.Default.Language,
-                    label = localizedApp(R.string.change_language),
-                    onClick = {
-                        isFabMenuExpanded = false
-                        navController.navigate("languagescreen")
-                    }
-                )
-
-                // Change Theme Item
-                HomeExtendedFabMenuItem(
-                    icon = Icons.Default.DarkMode,
-                    label = localizedApp(R.string.settings_title),
-                    onClick = {
-                        isFabMenuExpanded = false
-                        navController.navigate("settings_screen")
-                    }
-                )
-            }
-        }
     }
 }
 
 @Composable
 fun TopProfileBar(
-    isFabMenuExpanded: Boolean,
-    onFabToggle: () -> Unit
+    navController: NavController
 ) {
     Row(
         modifier = Modifier
@@ -301,11 +251,11 @@ fun TopProfileBar(
                     .size(38.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
-                    .clickable { onFabToggle() },
+                    .clickable { navController.navigate("settings_screen") },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isFabMenuExpanded) Icons.Default.Close else Icons.Default.Settings,
+                    imageVector = Icons.Default.Settings,
                     contentDescription = "الإعدادات",
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
@@ -367,25 +317,29 @@ fun WelcomeSection() {
 
 @Composable
 fun QuickStatsCircular() {
+    val extraColors = LocalExtraColors.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(6.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = extraColors.cardBackground // شفافية خفيفة
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+//                .background(extraColors.cardBackground),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             CircularStatItem(
                 value = "123",
                 label = localizedApp(R.string.service_available),
                 progress = 0.85f,
-                color = Color(0xFF4A90E2),
+                color = Color(0xFF0E62C4),
                 icon = Icons.Default.Apps
             )
             Divider(
@@ -398,7 +352,7 @@ fun QuickStatsCircular() {
                 value = "214",
                 label = localizedApp(R.string.transaction),
                 progress = 0.65f,
-                color = Color(0xFF50C878),
+                color = Color(0xFF0EBD48),
                 icon = Icons.Default.TrendingUp
             )
             Divider(
@@ -426,7 +380,9 @@ fun CircularStatItem(
     color: Color,
     icon: ImageVector
 ) {
+    val extracolor = LocalExtraColors.current
     Column(
+//        modifier = Modifier.background(Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -460,7 +416,7 @@ fun CircularStatItem(
             text = value,
             fontSize = 18.sp,
             fontWeight = FontWeight.Medium,
-            color = Color.Black
+            color = extracolor.white
         )
         Text(
             text = label,
@@ -488,12 +444,12 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     text = localizedApp(R.string.available_services_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extracolors.blue1
+                    color = extracolors.white
                 )
                 Text(
                     text = localizedApp(R.string.choose_service),
                     fontSize = 12.sp,
-                    color = extracolors.blue2
+                    color = extracolors.white
                 )
             }
             Surface(
@@ -505,7 +461,8 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     onClick = { navController.navigate("mainCategoriesScreen") },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = extracolors.blue2
-                    )
+                    ),
+                    modifier = Modifier.align(Alignment.CenterVertically),
                 ) {
                     Text(
                         text = localizedApp(R.string.view_all),
@@ -513,7 +470,7 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -544,8 +501,8 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                         icon = painterResource(id = category.iconRes),
                         color = extracolors.blue1,
                         onClick = {
-                            // Navigate to MainCategoriesScreen or specific category
-                            navController.navigate("mainCategoriesScreen")
+                            // Navigate to MainCategoriesScreen with the specific category ID
+                            navController.navigate("mainCategoriesScreen/${category.id}")
                         },
                         modifier = Modifier
                     )
@@ -572,8 +529,8 @@ fun ServiceCard(
             .padding(horizontal = 10.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
+        colors = CardDefaults.cardColors(extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -586,7 +543,7 @@ fun ServiceCard(
                 modifier = Modifier
                     .size(56.dp)
                     .background(
-                        extraColors.blue1.copy(alpha = 0.1f),
+                        extraColors.blue4,
                         shape = RoundedCornerShape(18.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -594,7 +551,7 @@ fun ServiceCard(
                 Icon(
                     painter = icon,
                     contentDescription = null,
-                    tint = extraColors.blue1,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -603,14 +560,14 @@ fun ServiceCard(
                     text = title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extraColors.blue1,
+                    color = extraColors.white,
                     textAlign = TextAlign.Start
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
                     fontSize = 12.sp,
-                    color = extraColors.blue2,
+                    color = extraColors.gray1,
                     textAlign = TextAlign.Start,
                     lineHeight = 16.sp
                 )
@@ -623,13 +580,13 @@ fun ServiceCard(
                 Text(
                     text = localizedApp(R.string.view_details),
                     fontSize = 13.sp,
-                    color = color,
+                    color = extraColors.white,
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
-                    tint = color,
+                    tint = extraColors.white,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -655,12 +612,12 @@ fun LatestEventsSection() {
                     text = localizedApp(R.string.upcoming_events_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extracolors.blue1
+                    color = extracolors.white
                 )
                 Text(
                     text = localizedApp(R.string.dont_miss_opportunity),
                     fontSize = 12.sp,
-                    color = extracolors.blue2
+                    color = extracolors.white
                 )
             }
             Surface(
@@ -672,7 +629,8 @@ fun LatestEventsSection() {
                     onClick = { /* View all */ },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = extracolors.blue2
-                    )
+                    ),
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 ) {
                     Text(
                         text = localizedApp(R.string.view_all),
@@ -724,8 +682,8 @@ fun EventCard(
             .fillMaxWidth()
             .clickable { },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp)
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -738,7 +696,7 @@ fun EventCard(
                 modifier = Modifier
                     .size(56.dp)
                     .background(
-                        extraColors.blue1.copy(alpha = 0.1f),
+                        extraColors.blue4,
                         shape = RoundedCornerShape(18.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -746,7 +704,7 @@ fun EventCard(
                 Icon(
                     painter = icon,
                     contentDescription = null,
-                    tint = extraColors.blue1,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -759,7 +717,7 @@ fun EventCard(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extraColors.blue1
+                    color = extraColors.white
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
@@ -807,9 +765,9 @@ fun EventCard(
                 }
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                 contentDescription = null,
-                tint = extraColors.blue2,
+                tint = extraColors.white,
                 modifier = Modifier.size(20.dp)
             )
         }

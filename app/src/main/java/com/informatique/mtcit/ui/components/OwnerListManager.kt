@@ -281,22 +281,24 @@ fun OwnerListManager(
                 showBottomSheet = true
             },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = extraColors.blue1
+                containerColor = extraColors.blue6
             ),
             contentPadding = PaddingValues(vertical = 14.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(22.dp),
+                tint = extraColors.white
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = localizedApp(R.string.add_owner),
                 fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = extraColors.white
             )
         }
     }
@@ -332,11 +334,11 @@ fun ModernOwnerCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = extraColors.white
+            containerColor = extraColors.cardBackground
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
@@ -355,14 +357,14 @@ fun ModernOwnerCard(
                         text = owner.fullName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = extraColors.blue1,
+                        color = extraColors.white,
                         fontSize = 16.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = owner.nationality,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = extraColors.blue2,
+                        color = extraColors.white.copy(alpha = 0.5f),
                         fontSize = 14.sp
                     )
                 }
@@ -373,7 +375,7 @@ fun ModernOwnerCard(
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = extraColors.blue1,
+                        tint = extraColors.white,
                         modifier = Modifier.padding(6.dp)
                     )
             }
@@ -391,7 +393,7 @@ fun ModernOwnerCard(
                 ) {
                     HorizontalDivider(
                         modifier = Modifier.padding(bottom = 12.dp),
-                        color = extraColors.blue2.copy(alpha = 0.2f),
+                        color = extraColors.white.copy(alpha = 0.2f),
                         thickness = 1.dp
                     )
 
@@ -425,19 +427,21 @@ fun ModernOwnerCard(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = extraColors.blue1
+                                contentColor = extraColors.white
                             ),
                             border = BorderStroke(1.dp, extraColors.blue1.copy(alpha = 0.5f))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(18.dp),
+                                tint = extraColors.white
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = localizedApp(R.string.edit_owner),
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                color = extraColors.white
                             )
                         }
 
@@ -479,14 +483,14 @@ private fun InfoRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = extraColors.blue2.copy(alpha = 0.7f),
+            color = extraColors.white.copy(alpha = 0.5f),
             fontSize = 12.sp
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = extraColors.blue1,
+            color = extraColors.white,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )

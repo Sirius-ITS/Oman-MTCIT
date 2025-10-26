@@ -59,7 +59,6 @@
     <string name="notification">Manage your notification</string>
     <string name="manage_notification">Manage if you categorise to create over your expenses and categorise</string>
     <string name="rate_this_app">Rate this app</string>
-    <string name="change_language">Change Language</string>
     <string name="log_out">Log out</string>
     <string name="profile">Profile</string>
     <string name="home">Home</string>
@@ -263,6 +262,21 @@
     <string name="ship_registration_title">Ship Registration</string>
     <string name="language_title">Language Settings</string>
     <string name="settings_title">Settings</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_language_section">Language</string>
+    <string name="settings_theme_section">App Theme</string>
+    <string name="settings_language_description">Change application language</string>
+    <string name="settings_theme_description">Choose your preferred theme</string>
+    <string name="language_arabic">العربية</string>
+    <string name="language_english">English</string>
+    <string name="theme_light">Light Mode</string>
+    <string name="theme_dark">Dark Mode</string>
+    <string name="theme_system">System Default</string>
+    <string name="change_language">Select Language</string>
+    <string name="done">Done</string>
+    <string name="about_app">About App</string>
+    <string name="version">Version</string>
 
     <!-- Transaction Categories -->
     <string name="categories_title">Registration</string>
