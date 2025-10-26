@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -74,13 +75,13 @@ fun TransactionRequirementsScreen(
 ) {
     val viewModel: TransactionListViewModel = hiltViewModel()
 
-//    val categories = LocalCategories.current
+
     val extraColors = LocalExtraColors.current
-//
+
     LaunchedEffect(transactionId) {
         viewModel.getTransactionRequirements(transactionId)
     }
-//
+
     val requirement by viewModel.requirements.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
