@@ -39,11 +39,39 @@ data class Transaction(
     val isAvailable: Boolean = true,
     val fees: String = "10 ريال",
     // New: list of requirement descriptions to show in TransactionRequirementsScreen
-    val requirements: List<String> = emptyList(),
+    val requirements: Requirement? = null,
     // New: estimated duration string (shown in list and forwarded to requirements screen)
     val duration: String = "4-1 أيام",
     // New: optional explicit step titles. If empty, UI will fallback to generic "خطوة N" using stepCount
     val steps: List<String> = emptyList()
+)
+
+
+data class Requirement(
+    val id: String = "",
+    val serviceSummaryList: List<ServiceSummary> = emptyList(),
+    val serviceInfoList: List<ServiceInfo> = emptyList()
+)
+
+data class ServiceSummary (
+    var type: String,
+    var value: String,
+    var label: String,
+)
+
+
+data class ServiceInfo (
+    var id: Int,
+    var title: String,
+    var data: List<ServiceInfoSteps>,
+)
+
+data class ServiceInfoSteps (
+    var id: Int = 0,
+    var stepNo: Int = 1,
+    var title: String = "",
+    var subTitle: String? = null,
+    var value: String? = null
 )
 
 /**
@@ -71,10 +99,145 @@ fun getMainCategories(): List<MainCategory> {
                             route = "ship_registration_form",
                             routeInfo = "route-1",
                             fees = "20 ريال",
-                            requirements = listOf(
-                                "نسخة من بطاقة الهوية",
-                                "صورة للسفينة (جديدة وواضحة)",
-                                "إيصال دفع الرسوم"
+//                            requirements = listOf(
+//                                "نسخة من بطاقة الهوية",
+//                                "صورة للسفينة (جديدة وواضحة)",
+//                                "إيصال دفع الرسوم"
+//                            ),
+                            requirements = Requirement(
+                                id = "temporary_registration_certificate_id",
+                                serviceSummaryList = listOf(
+                                    ServiceSummary(
+                                        type = "fee",
+                                        value = "20 ريال",
+                                        label = "الرسوم",
+                                    ),
+                                    /*ServiceSummary(
+                                        type = "duration",
+                                        value = "5-1 أيام",
+                                        label = "المدة الزمنية",
+                                    ),
+                                    ServiceSummary(
+                                        type = "fee",
+                                        value = "20 ريال",
+                                        label = "الرسوم",
+                                    ),
+                                    ServiceSummary(
+                                        type = "duration",
+                                        value = "5-1 أيام",
+                                        label = "المدة الزمنية",
+                                    )*/
+                                ),
+                                serviceInfoList = listOf(
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المتطلبات",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    /*ServiceInfo(
+                                        id = 2,
+                                        title = "المتطلبات 2",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية2",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة)2",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم2",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المتطلبات 3",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية 3",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة) 3",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم 3",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المتطلبات 4",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية 4",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة) 4",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم 4",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    )*/
+                                )
                             ),
                             duration = "5-1 أيام",
                             steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام")
@@ -127,11 +290,94 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.transaction_issue_navigation_permit_desc,
                             route = "issue_navigation_permit_form",
                             routeInfo = "route-7",
-                            requirements = listOf(
-                                "طلب إصدار تصريح ملاحية مكتمل",
-                                "نسخة من رخصة القبطان (إن وجدت)",
-                                "خريطة مسار الرحلة (إن لزم)"
-                            )
+//                            requirements = listOf(
+//                                "طلب إصدار تصريح ملاحية مكتمل",
+//                                "نسخة من رخصة القبطان (إن وجدت)",
+//                                "خريطة مسار الرحلة (إن لزم)"
+//                            )
+                            requirements = Requirement(
+                                id = "issue_navigation_permit_id",
+                                serviceSummaryList = listOf(
+                                    ServiceSummary(
+                                        type = "fee",
+                                        value = "20 ريال",
+                                        label = "الرسوم",
+                                    ),
+                                    ServiceSummary(
+                                        type = "steps",
+                                        value = "4",
+                                        label = "الخطوات",
+                                    ),
+                                    ServiceSummary(
+                                        type = "duration",
+                                        value = "5-1 أيام",
+                                        label = "المدة الزمنية",
+                                    )
+                                ),
+                                serviceInfoList = listOf(
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المتطلبات",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 2,
+                                        title = "خطوات الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "ملء النموذج",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "رفع المستندات",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "مراجعة الطلب",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 4,
+                                                stepNo = 4,
+                                                title = "استلام التصريح",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
                         ),
                         Transaction(
                             id = "renew_navigation_permit",
@@ -160,11 +406,133 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.transaction_ship_name_change_desc,
                             route = "ship_name_change_form",
                             routeInfo = "route-10",
-                            requirements = listOf(
-                                "طلب تغيير اسم السفينة موقع",
-                                "شهادة تسجيل قديمة",
-                                "موافقة المالك الجديد (إن وجدت)"
-                            )
+//                            requirements = listOf(
+//                                "طلب تغيير اسم السفينة موقع",
+//                                "شهادة تسجيل قديمة",
+//                                "موافقة المالك الجديد (إن وجدت)"
+//                            )
+                            requirements = Requirement(
+                                id = "issue_navigation_permit_id",
+                                serviceSummaryList = listOf(
+                                    ServiceSummary(
+                                        type = "fee",
+                                        value = "20 ريال",
+                                        label = "الرسوم",
+                                    ),
+                                    ServiceSummary(
+                                        type = "steps",
+                                        value = "4",
+                                        label = "الخطوات",
+                                    ),
+                                    ServiceSummary(
+                                        type = "duration",
+                                        value = "5-1 أيام",
+                                        label = "المدة الزمنية",
+                                    ),
+                                    ServiceSummary(
+                                        type = "duration",
+                                        value = "5-1 أيام",
+                                        label = "المدة الزمنية",
+                                    )
+                                ),
+                                serviceInfoList = listOf(
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المتطلبات",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 2,
+                                        title = "خطوات الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "ملء النموذج",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "رفع المستندات",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "مراجعة الطلب",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 4,
+                                                stepNo = 4,
+                                                title = "استلام التصريح",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 3,
+                                        title = "خطوات الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "ملء النموذج",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "رفع المستندات",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "مراجعة الطلب",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 4,
+                                                stepNo = 4,
+                                                title = "استلام التصريح",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
                         ),
                         Transaction(
                             id = "ship_dimensions_change",
@@ -283,3 +651,4 @@ fun getMainCategories(): List<MainCategory> {
         )
     )
 }
+

@@ -185,7 +185,8 @@ class LandingActivity: BaseActivity() {
                                             onStart = { navController.navigate(transaction.route) },
                                             onBack = { navController.popBackStack() },
                                             parentTitleRes = parentTitleRes,
-                                            navController = navController
+                                            navController = navController,
+                                            transactionId = transactionId
                                         )
                                     } else {
                                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

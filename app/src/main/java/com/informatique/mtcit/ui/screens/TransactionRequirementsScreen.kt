@@ -1,4 +1,3 @@
-
 package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.background
@@ -6,8 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,32 +16,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,11 +49,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,12 +62,24 @@ fun TransactionRequirementsScreen(
     transaction: Transaction,
     onStart: () -> Unit,
     onBack: () -> Unit,
-    // Optional: title resource of the previous screen (e.g., sub-category). If provided, show it instead of transaction title
+    transactionId: String,
     parentTitleRes: Int? = null,
     navController: NavController
 ) {
+    val viewModel: TransactionListViewModel = hiltViewModel()
+
+//    val categories = LocalCategories.current
     val extraColors = LocalExtraColors.current
-    var selectedTab by remember { mutableStateOf(0) }
+//
+    LaunchedEffect(transactionId) {
+        viewModel.getTransactionRequirements(transactionId)
+    }
+//
+    val requirement by viewModel.requirements.collectAsState()
+
+    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedSteps by remember { mutableStateOf(
+        transaction.requirements?.serviceInfoList[0]?.data ?: listOf()) }
     val tabs = listOf("المستندات المطلوبة", "الخطوات", "الرسوم")
 
     // Prepare simple derived data from Transaction model
@@ -90,11 +100,11 @@ fun TransactionRequirementsScreen(
                     // Settings/Close Icon Button
                     Box(
                         modifier = Modifier
-                            .padding( 12.dp)
+                            .padding(12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
                             .background(Color.Black.copy(alpha = 0.2f))
-                            .clickable{ navController.popBackStack() },
+                            .clickable { navController.popBackStack() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -174,67 +184,95 @@ fun TransactionRequirementsScreen(
                 Spacer(Modifier.height(16.dp))
 
                 // Summary tiles with icons
-                Row(
-                    Modifier.fillMaxWidth(),
+                Row (
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    SummaryTileWithIcon(
-                        label = transaction.fees,
-                        sub = "الرسوم",
-                        icon = Icons.Filled.AttachMoney,
-                        iconColor = Color(0xFF4CAF50),
-                        modifier = Modifier.weight(1f)
-                    )
-                    SummaryTileWithIcon(
-                        label = (if (transaction.steps.isNotEmpty()) transaction.steps.size else transaction.stepCount).toString(),
-                        sub = "الخطوات",
-                        icon = Icons.AutoMirrored.Filled.List,
-                        iconColor = Color(0xFF2196F3),
-                        modifier = Modifier.weight(1f)
-                    )
-                    SummaryTileWithIcon(
-                        label = transaction.duration,
-                        sub = "مدة التنفيذ",
-                        icon = Icons.Filled.AccessTime,
-                        iconColor = Color(0xFFFF9800),
-                        modifier = Modifier.weight(1f)
-                    )
+                    requirement.serviceSummaryList.map{ summary ->
+                        SummaryTileWithIcon(
+                            label = summary.value,
+                            sub = summary.label,
+                            icon = Icons.Filled.AttachMoney,
+                            iconColor = Color(0xFF4CAF50),
+                            modifier = Modifier.weight(1f).fillMaxHeight()
+                            // modifier = Modifier.fillMaxWidth(fraction = 1f / transaction.requirements.serviceSummaryList.size.toFloat())
+                        )
+                    }
+//                    SummaryTileWithIcon(
+//                        label = transaction.fees,
+//                        sub = "الرسوم",
+//                        icon = Icons.Filled.AttachMoney,
+//                        iconColor = Color(0xFF4CAF50),
+//                        modifier = Modifier.weight(1f)
+//                    )
+//                    SummaryTileWithIcon(
+//                        label = (if (transaction.steps.isNotEmpty()) transaction.steps.size else transaction.stepCount).toString(),
+//                        sub = "الخطوات",
+//                        icon = Icons.AutoMirrored.Filled.List,
+//                        iconColor = Color(0xFF2196F3),
+//                        modifier = Modifier.weight(1f)
+//                    )
+//                    SummaryTileWithIcon(
+//                        label = transaction.duration,
+//                        sub = "مدة التنفيذ",
+//                        icon = Icons.Filled.AccessTime,
+//                        iconColor = Color(0xFFFF9800),
+//                        modifier = Modifier.weight(1f)
+//                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
 
                 // Tabs
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor =  extraColors.white
-                    ),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    val extraColors = LocalExtraColors.current
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth().background(extraColors.grayCard)
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Column {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = extraColors.white
+                        ),
+                        elevation = CardDefaults.cardElevation(0.dp)
                     ) {
-                        tabs.forEachIndexed { index, title ->
-                            CustomTab(
-                                title = title,
-                                selected = selectedTab == index,
-                                onClick = { selectedTab = index },
-                                modifier = Modifier.weight(1f)
-                            )
+                        val extraColors = LocalExtraColors.current
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(extraColors.grayCard)
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            requirement.serviceInfoList.forEachIndexed { index, serviceInfo ->
+                                CustomTab(
+                                    title = serviceInfo.title,
+                                    selected = selectedTab == index,
+                                    onClick = {
+                                        selectedTab = index
+                                        selectedSteps = serviceInfo.data
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                         }
                     }
-                }
 
-                Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(16.dp))
+
+                    selectedSteps.map { step ->
+                        DocumentItem(
+                            number = step.stepNo,
+                            text = step.title,
+                            isRequired = false
+                        )
+
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
             }
 
+
+
             // Tab content
-            when (selectedTab) {
+            /*when (selectedTab) {
                 0 -> {
                     // Documents/requirements
                     item {
@@ -247,7 +285,7 @@ fun TransactionRequirementsScreen(
                         )
                     }
 
-                    if (documents.isEmpty()) {
+                    if (documents != null) {
                         item {
                             Column(
                                 modifier = Modifier
@@ -359,7 +397,7 @@ fun TransactionRequirementsScreen(
                         }
                     }
                 }
-            }
+            }*/
         }
     }
 }
@@ -380,20 +418,27 @@ private fun SummaryTileWithIcon(
         colors = CardDefaults.cardColors(extraColors.white)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp).align(Alignment.CenterHorizontally)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceEvenly,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(28.dp).align(Alignment.CenterHorizontally)
+                modifier = Modifier
+                    .size(28.dp)
+                    .align(Alignment.CenterHorizontally)
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
+                textAlign = TextAlign.Center,
                 color = extraColors.blue1
             )
             Spacer(Modifier.height(4.dp))
@@ -401,7 +446,7 @@ private fun SummaryTileWithIcon(
                 text = sub,
                 fontWeight = FontWeight.Medium,
                 color = extraColors.blue2,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -415,6 +460,7 @@ private fun CustomTab(
     modifier: Modifier = Modifier
 ) {
     val extraColors = LocalExtraColors.current
+
     Box(
         modifier = modifier
             .background(
@@ -428,7 +474,9 @@ private fun CustomTab(
         Text(
             text = title,
             fontWeight = if (selected) FontWeight.Medium else FontWeight.Medium,
-            color = if (selected) { extraColors.blue1 } else extraColors.blue2,
+            color = if (selected) {
+                extraColors.blue1
+            } else extraColors.blue2,
             textAlign = TextAlign.Center,
             maxLines = 1
         )

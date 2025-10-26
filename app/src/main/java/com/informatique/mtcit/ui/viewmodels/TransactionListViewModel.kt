@@ -1,14 +1,13 @@
 package com.informatique.mtcit.ui.viewmodels
 
-import androidx.lifecycle.viewModelScope
 import com.informatique.mtcit.ui.models.MainCategory
+import com.informatique.mtcit.ui.models.Requirement
 import com.informatique.mtcit.ui.models.SubCategory
 import com.informatique.mtcit.ui.models.Transaction
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -31,6 +30,9 @@ class TransactionListViewModel @Inject constructor(
 
     private val _selectedTransactions = MutableStateFlow<Set<String>>(emptySet())
     val selectedTransactions: StateFlow<Set<String>> = _selectedTransactions.asStateFlow()
+
+    private val _requirements = MutableStateFlow<Requirement>(Requirement())
+    val requirements: StateFlow<Requirement> = _requirements.asStateFlow()
 
     /**
      * Strategy: Load transactions for a sub-category from repository cache
@@ -61,6 +63,11 @@ class TransactionListViewModel @Inject constructor(
             currentSelected.add(transactionId)
         }
         _selectedTransactions.value = currentSelected
+    }
+
+    fun getTransactionRequirements(transactionId: String) {
+        val transaction = _transactions.value.find { it.id == transactionId }
+        _requirements.value = transaction?.requirements!!
     }
 
     /**
