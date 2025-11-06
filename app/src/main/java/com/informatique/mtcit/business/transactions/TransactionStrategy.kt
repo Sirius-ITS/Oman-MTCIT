@@ -18,7 +18,7 @@ interface TransactionStrategy {
      * Called during transaction initialization BEFORE getSteps()
      * @return Map of fieldId to list of option values
      */
-    suspend fun loadDynamicOptions(): Map<String, List<String>> {
+    suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // Default implementation - no dynamic options
         return emptyMap()
     }

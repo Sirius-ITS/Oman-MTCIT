@@ -2,11 +2,15 @@ package com.informatique.mtcit.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData
+import kotlinx.serialization.json.Json
 
 
 @Composable
@@ -22,6 +26,10 @@ fun DynamicStepForm(
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
 ) {
+
+    var selectedId by remember { mutableStateOf<String?>(null) }
+    var selectedPersonId by remember { mutableStateOf("PT-2024-001") }
+
     // Detect Review Step: If no fields, show ReviewStepContent
     if (stepData.fields.isEmpty() && allSteps.isNotEmpty()) {
         // This is the review step - show summary of all collected data
@@ -130,7 +138,7 @@ fun DynamicStepForm(
                             // Parse owners from JSON value
                             val owners = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<OwnerData>>(field.value)
+                                    Json.decodeFromString<List<OwnerData>>(field.value)
                                 } catch (_: Exception) {
                                     emptyList<OwnerData>()
                                 }
@@ -148,13 +156,51 @@ fun DynamicStepForm(
                                 includeCompanyFields = field.includeCompanyFields,
                                 totalOwnersCount = totalCount,
                                 onOwnersChange = { updatedOwners ->
-                                    val json = kotlinx.serialization.json.Json.encodeToString(updatedOwners)
+                                    val json = Json.encodeToString(updatedOwners)
                                     onFieldChange(field.id, json, null)
                                 },
                                 onTotalCountChange = field.totalCountFieldId?.let { countFieldId ->
                                     { count -> onFieldChange(countFieldId, count, null) }
                                 }
                             )
+                        }
+
+                        is FormField.SelectableList<*> -> {
+                            when(field.id){
+                                "selectionPersonType" -> {
+                                    SelectableList(
+                                        items = field.options,
+                                        uiItem = { item ->
+                                            PersonTypeCard(
+                                                item = item as PersonType,
+                                                isSelected = selectedPersonId == item.id,
+                                                onClick = {
+                                                    selectedPersonId = item.id
+                                                    val json = Json.encodeToString(item)
+                                                    onFieldChange(field.id, json, null)
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                                "selectionData" -> {
+                                    SelectableList(
+                                        items = field.options,
+                                        // selectedItemId = field.value,
+                                        uiItem = { item ->
+                                            SelectableItemCard(
+                                                item = item as SelectableItem,
+                                                isSelected = selectedId == item.id,
+                                                onClick = {
+                                                    selectedId = item.id
+                                                    val json = Json.encodeToString(item)
+                                                    onFieldChange(field.id, json, null)
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

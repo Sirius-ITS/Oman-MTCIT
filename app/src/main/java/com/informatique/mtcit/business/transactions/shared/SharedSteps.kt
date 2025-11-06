@@ -2,6 +2,8 @@ package com.informatique.mtcit.business.transactions.shared
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.ui.components.PersonType
+import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.viewmodels.StepData
 
 /**
@@ -17,6 +19,46 @@ object SharedSteps {
 
     // Special step ID to identify the owner info step with custom UI
     const val STEP_ID_OWNER_INFO_MULTIPLE = "owner_info_multiple"
+
+    fun personTypeStep(
+        options: List<PersonType>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.SelectableList(
+                id = "selectionPersonType",
+                options = options,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.person_type_title,
+            descriptionRes = R.string.person_type_desc,
+            fields = fields
+        )
+    }
+
+    fun commercialRegistrationStep(
+        options: List<SelectableItem>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.SelectableList(
+                id = "selectionData",
+                options = options,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.commercial_registration_title,
+            descriptionRes = R.string.commercial_registration_desc,
+            fields = fields
+        )
+    }
 
     /**
      * Unit Selection Step (Ship Information)

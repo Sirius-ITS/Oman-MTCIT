@@ -87,4 +87,15 @@ sealed class FormField(
         override val error: String? = null,
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory)
+
+    data class SelectableList<T>(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        val options: List<T> = emptyList(),
+        val selectedOption: T? = null,
+        override val value: String = "",
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory)
 }

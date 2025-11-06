@@ -499,4 +499,10 @@
     <string name="event2_date">28 أكتوبر</string>
     <string name="event2_time">9:00 - 17:00</string>
 
+    <string name="commercial_registration_title">اختر السجل التجاري المرتبط بنشاطك</string>
+    <string name="commercial_registration_desc">يرجى اختيار رقم السجل التجاري لتحديد الجهة المالكة للنشاط والتحقق من بياناتها الرسمية</string>
+
+    <string name="person_type_title">اختر نوع المستخدم</string>
+    <string name="person_type_desc">يرجى اختيار نوع الحساب المناسب لك لتقديم الخدمات بشكل مخصص</string>
+
 </resources>

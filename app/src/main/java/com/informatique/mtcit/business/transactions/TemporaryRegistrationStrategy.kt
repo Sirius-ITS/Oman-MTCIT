@@ -7,6 +7,8 @@ import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.ui.components.PersonType
+import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
 import com.informatique.mtcit.ui.viewmodels.StepData
 import kotlinx.coroutines.Dispatchers
@@ -30,26 +32,40 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
 
-    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
+    private var commercialOptions: List<SelectableItem> = emptyList()
+
+    private var typeOptions: List<PersonType> = emptyList()
+
+    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         portOptions = ports
         countryOptions = countries
         shipTypeOptions = shipTypes
+        commercialOptions = commercialRegistrations
+        typeOptions = personTypes
 
         return mapOf(
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
             "registrationCountry" to countries,
-            "unitType" to shipTypes
+            "unitType" to shipTypes,
+            "commercialRegistration" to commercialRegistrations,
+            "personType" to personTypes
         )
     }
 
     override fun getSteps(): List<StepData> {
         return listOf(
+            SharedSteps.personTypeStep(typeOptions),
+
+            SharedSteps.commercialRegistrationStep(commercialOptions),
+
             SharedSteps.unitSelectionStep(
                 shipTypes = shipTypeOptions,
                 ports = portOptions,

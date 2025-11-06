@@ -6,6 +6,9 @@ import com.informatique.mtcit.data.model.LookupResponse
 import com.informatique.mtcit.data.model.Port
 import com.informatique.mtcit.data.model.ShipType
 import com.informatique.mtcit.di.module.AppHttpRequests
+import com.informatique.mtcit.ui.components.DefaultBusinessIcon
+import com.informatique.mtcit.ui.components.PersonType
+import com.informatique.mtcit.ui.components.SelectableItem
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.delay
 import javax.inject.Inject
@@ -82,6 +85,32 @@ class LookupApiService @Inject constructor(
         return Result.success(createMockCitiesResponse(countryId))
     }
 
+    /**
+     * Get list of commercial registrations
+     * TODO: Replace with real endpoint when API is ready
+     */
+    suspend fun getCommercialRegistrations(): Result<LookupResponse<SelectableItem>> {
+        delay(500)
+
+        // TODO: Replace with actual API call
+        // val result = onGetData("${BASE_URL}/api/lookups/commercial-registrations")
+
+        return Result.success(createMockCommercialRegistrationsResponse())
+    }
+
+    /**
+     * Get list of person types
+     * TODO: Replace with real endpoint when API is ready
+     */
+    suspend fun getPersonTypes(): Result<LookupResponse<PersonType>> {
+        delay(500)
+
+        // TODO: Replace with actual API call
+        // val result = onGetData("${BASE_URL}/api/lookups/person-type")
+
+        return Result.success(createMockPersonTypesResponse())
+    }
+
     // ========== MOCK DATA GENERATION ==========
     // Remove these methods when real API is ready
 
@@ -139,5 +168,52 @@ class LookupApiService @Inject constructor(
             else -> listOf()
         }
         return LookupResponse(true, cities)
+    }
+
+    private fun createMockCommercialRegistrationsResponse(): LookupResponse<SelectableItem> {
+        val data = listOf(
+            SelectableItem(
+                id = "CR-2024-001",
+                title = "شركة النور للتجارة",
+                code = "CR-2024-001",
+                description = "شركة تجارية متخصصة في استيراد وتصدير\nالمواد الغذائية"
+            ),
+            SelectableItem(
+                id = "CR-2024-002",
+                title = "مؤسسة البحر للملاحة",
+                code = "CR-2024-002",
+                description = "مؤسسة متخصصة في النقل البحري\nوالخدمات اللوجستية"
+            ),
+            SelectableItem(
+                id = "CR-2024-003",
+                title = "مؤسسة فلامنجو للملاحة",
+                code = "CR-2024-003",
+                description = "مؤسسة متخصصة في النقل البحري\nوالخدمات اللوجستية"
+            ),
+            SelectableItem(
+                id = "CR-2024-004",
+                title = "شركة الأفق للاستثمار",
+                code = "CR-2024-004",
+                description = "شركة استثمارية في مجال العقارات"
+            )
+        )
+        return LookupResponse(true, data)
+    }
+
+    private fun createMockPersonTypesResponse(): LookupResponse<PersonType> {
+        val data = listOf(
+            PersonType(
+                id = "PT-2024-001",
+                title = "فرد",
+                code = "PT-2024-001",
+                icon = { DefaultBusinessIcon(false) }
+            ),
+            PersonType(
+                id = "PT-2024-002",
+                title = "شركة",
+                code = "PT-2024-002"
+            )
+        )
+        return LookupResponse(true, data)
     }
 }

@@ -505,5 +505,11 @@
     <string name="event2_date">28 October</string>
     <string name="event2_time">9:00 - 17:00</string>
 
+    <string name="commercial_registration_title">Choose the commercial registration that relates to your business.</string>
+    <string name="commercial_registration_desc">Please select the commercial registration number to identify the business owner and verify their official details.</string>
+
+    <string name="person_type_title">Select user type</string>
+    <string name="person_type_desc">Please select the account type that best suits your needs for customized service delivery.</string>
+
 
 </resources>

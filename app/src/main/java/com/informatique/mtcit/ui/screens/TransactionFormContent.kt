@@ -298,7 +298,7 @@ private fun updateFieldWithFormData(
         is FormField.DropDown -> field.copy(
             label = localizedLabel,
             options = if (field.optionRes.isNotEmpty()) field.optionRes.map { localizedApp(it) } else field.options,
-            selectedOption = if (value.isNotEmpty()) value else null,
+            selectedOption = value.ifEmpty { null },
             value = value,
             error = error
         )
@@ -322,5 +322,12 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" }, // Ensure valid JSON
             error = error
         )
+
+        is FormField.SelectableList<*> -> field.copy(
+            label = localizedLabel,
+            value = value,
+            error = error
+        )
+
     }
 }
