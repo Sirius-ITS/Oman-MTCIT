@@ -82,7 +82,8 @@ fun DynamicStepForm(
                                     isPassword = field.isPassword,
                                     isNumeric = field.isNumeric,
                                     error = field.error,
-                                    mandatory = field.mandatory
+                                    mandatory = field.mandatory,
+                                    placeholder = field.label
                                 )
                             }
                         }
@@ -94,7 +95,8 @@ fun DynamicStepForm(
                                 selectedOption = field.selectedOption,
                                 onOptionSelected = { onFieldChange(field.id, it, null) },
                                 error = field.error,
-                                mandatory = field.mandatory
+                                mandatory = field.mandatory,
+                                placeholder = field.label
                             )
                         }
 
@@ -138,6 +140,9 @@ fun DynamicStepForm(
                             // Parse owners from JSON value
                             val owners = remember(field.value) {
                                 try {
+                                    kotlinx.serialization.json.Json.decodeFromString<List<OwnerData>>(
+                                        field.value
+                                    )
                                     Json.decodeFromString<List<OwnerData>>(field.value)
                                 } catch (_: Exception) {
                                     emptyList<OwnerData>()
@@ -161,6 +166,27 @@ fun DynamicStepForm(
                                 },
                                 onTotalCountChange = field.totalCountFieldId?.let { countFieldId ->
                                     { count -> onFieldChange(countFieldId, count, null) }
+                                }
+                            )
+                        }
+                        is FormField.MarineUnitSelector -> {
+                            // Parse selected unit IDs from JSON
+                            val selectedIds = remember(field.value) {
+                                try {
+                                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(field.value)
+                                } catch (_: Exception) {
+                                    emptyList<String>()
+                                }
+                            }
+
+                            MarineUnitSelectorManager(
+                                units = field.units,
+                                selectedUnitIds = selectedIds,
+                                allowMultipleSelection = field.allowMultipleSelection,
+                                showOwnedUnitsWarning = field.showOwnedUnitsWarning,
+                                onSelectionChange = { updatedSelection ->
+                                    val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
+                                    onFieldChange(field.id, json, null)
                                 }
                             )
                         }

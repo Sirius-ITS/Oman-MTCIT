@@ -95,7 +95,9 @@ object SharedSteps {
                 id = "unitType",
                 labelRes = R.string.select_unit_type_placeholder,
                 options = shipTypes,
-                mandatory = true
+                mandatory = true,
+                placeholder = R.string.select_unit_type_placeholder.toString()
+
             )
         )
 
@@ -104,7 +106,8 @@ object SharedSteps {
             FormField.TextField(
                 id = "callSign",
                 labelRes = R.string.call_sign,
-                mandatory = true
+                mandatory = true,
+                placeholder = R.string.call_sign.toString()  // استخدم placeholderRes
             )
         )
 
@@ -263,7 +266,7 @@ object SharedSteps {
                 countries = countries,
                 includeCompanyFields = includeCompanyFields,
                 totalCountFieldId = "totalOwnersCount", // This tells OwnerListManager to show count input
-                mandatory = true
+                mandatory = true,
             )
         )
 
@@ -310,6 +313,28 @@ object SharedSteps {
             fields = emptyList()
         )
     }
+
+    fun marineUnitSelectionStep(
+        units: List<MarineUnit>,
+        allowMultipleSelection: Boolean = true,
+        showOwnedUnitsWarning: Boolean = true
+    ): StepData {
+        return StepData(
+            titleRes = R.string.owned_ships,
+            descriptionRes = R.string.owned_ships,
+            fields = listOf(
+                FormField.MarineUnitSelector(
+                    id = "selectedMarineUnits",
+                    labelRes = R.string.owned_ships ,
+                    value = "[]", // Empty array by default
+                    units = units,
+                    allowMultipleSelection = allowMultipleSelection,
+                    showOwnedUnitsWarning = showOwnedUnitsWarning,
+                    mandatory = true
+                )
+            )
+        )
+    }
 }
 
 /**
@@ -322,3 +347,18 @@ data class DocumentConfig(
     val maxSizeMB: Int = 5,
     val mandatory: Boolean = true
 )
+
+
+data class MarineUnit(
+    val id: String,              // معرف فريد
+    val name: String,            // اسم الوحدة
+    val type: String,            // نوع الوحدة البحرية
+    val imoNumber: String,       // رقم IMO
+    val callSign: String,        // رمز النداء
+    val maritimeId: String,      // رقم الهوية البحرية
+    val registrationPort: String, // ميناء التسجيل
+    val activity: String,        // النشاط البحري
+    val isOwned: Boolean = false // هل مملوكة/موظفة؟
+)
+
+

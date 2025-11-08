@@ -198,7 +198,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -206,11 +205,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -254,7 +253,8 @@ fun OwnerListManager(
                 onValueChange = { /* Read-only */ },
                 label = localizedApp(R.string.total_owners_count),
                 isNumeric = true,
-                mandatory = false
+                mandatory = false,
+                placeholder = R.string.total_owners_count.toString()
             )
         }
 
@@ -283,7 +283,7 @@ fun OwnerListManager(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = extraColors.blue6
+                containerColor = extraColors.startServiceButton
             ),
             contentPadding = PaddingValues(vertical = 14.dp)
         ) {
@@ -291,14 +291,14 @@ fun OwnerListManager(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = extraColors.white
+                tint = Color.White
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = localizedApp(R.string.add_owner),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = extraColors.white
+                color = Color.White
             )
         }
     }
@@ -357,14 +357,14 @@ fun ModernOwnerCard(
                         text = owner.fullName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = extraColors.white,
+                        color = extraColors.whiteInDarkMode,
                         fontSize = 16.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = owner.nationality,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = extraColors.white.copy(alpha = 0.5f),
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
                         fontSize = 14.sp
                     )
                 }
@@ -375,7 +375,7 @@ fun ModernOwnerCard(
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = extraColors.white,
+                        tint = extraColors.whiteInDarkMode,
                         modifier = Modifier.padding(6.dp)
                     )
             }
@@ -393,7 +393,7 @@ fun ModernOwnerCard(
                 ) {
                     HorizontalDivider(
                         modifier = Modifier.padding(bottom = 12.dp),
-                        color = extraColors.white.copy(alpha = 0.2f),
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
                         thickness = 1.dp
                     )
 
@@ -427,21 +427,21 @@ fun ModernOwnerCard(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(8.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = extraColors.white
+                                contentColor = extraColors.whiteInDarkMode
                             ),
-                            border = BorderStroke(1.dp, extraColors.blue1.copy(alpha = 0.5f))
+                            border = BorderStroke(1.dp, extraColors.whiteInDarkMode.copy(alpha = 0.5f))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = extraColors.white
+                                tint = extraColors.whiteInDarkMode
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = localizedApp(R.string.edit_owner),
                                 fontSize = 12.sp,
-                                color = extraColors.white
+                                color = extraColors.whiteInDarkMode
                             )
                         }
 
@@ -483,14 +483,14 @@ private fun InfoRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = extraColors.white.copy(alpha = 0.5f),
+            color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
             fontSize = 12.sp
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
-            color = extraColors.white,
+            color = extraColors.whiteInDarkMode,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )

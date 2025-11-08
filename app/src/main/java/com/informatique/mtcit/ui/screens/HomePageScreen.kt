@@ -1,12 +1,8 @@
 package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,11 +29,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -56,13 +49,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -124,7 +114,7 @@ fun HomePageScreen(navController: NavController) {
                         )
                     )
             )
-            // Subtle white wave overlay (like the Swift Path overlay)
+            // Subtle whiteInDarkMode wave overlay (like the Swift Path overlay)
             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
                 val w = size.width
                 val h = size.height
@@ -209,6 +199,7 @@ fun TopProfileBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val extraColors = LocalExtraColors.current
         // Profile Section
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -218,7 +209,18 @@ fun TopProfileBar(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.3f))
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFF4A7BA7 ),
+                        shape = CircleShape
+                    )
+                    .shadow(
+                        elevation = 20.dp,
+                        shape = CircleShape,
+                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                    )
+                    .background(extraColors.iconBackBackground)
                     .clickable { },
                 contentAlignment = Alignment.Center
             ) {
@@ -250,7 +252,18 @@ fun TopProfileBar(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f))
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFF4A7BA7 ),
+                        shape = CircleShape
+                    )
+                    .shadow(
+                        elevation = 20.dp,
+                        shape = CircleShape,
+                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                    )
+                    .background(extraColors.iconBackBackground)
                     .clickable { navController.navigate("settings_screen") },
                 contentAlignment = Alignment.Center
             ) {
@@ -266,7 +279,18 @@ fun TopProfileBar(
                 modifier = Modifier
                     .size(38.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f))
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFF4A7BA7 ),
+                        shape = CircleShape
+                    )
+                    .shadow(
+                        elevation = 20.dp,
+                        shape = CircleShape,
+                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                    )
+                    .background(extraColors.iconBackBackground)
                     .clickable { }
             ) {
                 Icon(
@@ -416,7 +440,7 @@ fun CircularStatItem(
             text = value,
             fontSize = 18.sp,
             fontWeight = FontWeight.Medium,
-            color = extracolor.white
+            color = extracolor.whiteInDarkMode
         )
         Text(
             text = label,
@@ -444,29 +468,30 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     text = localizedApp(R.string.available_services_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extracolors.white
+                    color = extracolors.whiteInDarkMode
                 )
                 Text(
                     text = localizedApp(R.string.choose_service),
                     fontSize = 12.sp,
-                    color = extracolors.white
+                    color = extracolors.whiteInDarkMode.copy(alpha = 0.5f)
                 )
             }
             Surface(
-                color = extracolors.blue2.copy(alpha = 0.2f),
+                color = extracolors.viewAll,
                 shape = RoundedCornerShape(32.dp),
                 modifier = Modifier.height(34.dp).align(Alignment.CenterVertically)
             ) {
                 TextButton(
                     onClick = { navController.navigate("mainCategoriesScreen") },
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = extracolors.blue2
+                        contentColor = extracolors.viewAllText
                     ),
                     modifier = Modifier.align(Alignment.CenterVertically),
                 ) {
                     Text(
                         text = localizedApp(R.string.view_all),
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
@@ -543,7 +568,7 @@ fun ServiceCard(
                 modifier = Modifier
                     .size(56.dp)
                     .background(
-                        extraColors.blue4,
+                        extraColors.iconBlueBackground,
                         shape = RoundedCornerShape(18.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -560,14 +585,14 @@ fun ServiceCard(
                     text = title,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extraColors.white,
+                    color = extraColors.whiteInDarkMode,
                     textAlign = TextAlign.Start
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = description,
                     fontSize = 12.sp,
-                    color = extraColors.gray1,
+                    color = extraColors.textSubTitle,
                     textAlign = TextAlign.Start,
                     lineHeight = 16.sp
                 )
@@ -580,13 +605,13 @@ fun ServiceCard(
                 Text(
                     text = localizedApp(R.string.view_details),
                     fontSize = 13.sp,
-                    color = extraColors.white,
+                    color = extraColors.showDetials,
                     fontWeight = FontWeight.Medium
                 )
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
-                    tint = extraColors.white,
+                    tint = extraColors.showDetials,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -612,29 +637,30 @@ fun LatestEventsSection() {
                     text = localizedApp(R.string.upcoming_events_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extracolors.white
+                    color = extracolors.whiteInDarkMode
                 )
                 Text(
                     text = localizedApp(R.string.dont_miss_opportunity),
                     fontSize = 12.sp,
-                    color = extracolors.white
+                    color = extracolors.whiteInDarkMode.copy(alpha = 0.5f)
                 )
             }
             Surface(
-                color = extracolors.blue2.copy(alpha = 0.2f),
+                color = extracolors.viewAll,
                 shape = RoundedCornerShape(32.dp),
                 modifier = Modifier.height(34.dp).align(Alignment.CenterVertically)
             ) {
                 TextButton(
                     onClick = { /* View all */ },
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = extracolors.blue2
+                        contentColor = extracolors.viewAllText
                     ),
                     modifier = Modifier.align(Alignment.CenterVertically)
                 ) {
                     Text(
                         text = localizedApp(R.string.view_all),
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
@@ -696,7 +722,7 @@ fun EventCard(
                 modifier = Modifier
                     .size(56.dp)
                     .background(
-                        extraColors.blue4,
+                        extraColors.iconBlueBackground,
                         shape = RoundedCornerShape(18.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -717,7 +743,7 @@ fun EventCard(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extraColors.white
+                    color = extraColors.whiteInDarkMode
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
@@ -727,13 +753,13 @@ fun EventCard(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = Color.Gray,
+                        tint = extraColors.textSubTitle,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = location,
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = extraColors.textSubTitle
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
@@ -744,30 +770,30 @@ fun EventCard(
                     Icon(
                         imageVector = Icons.Default.AccessTime,
                         contentDescription = null,
-                        tint = extraColors.blue2,
+                        tint = extraColors.textBlueSubTitle,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = time,
                         fontSize = 12.sp,
-                        color = extraColors.blue2
+                        color = extraColors.textBlueSubTitle
                     )
                     Text(
                         text = "•",
                         fontSize = 12.sp,
-                        color = extraColors.blue2
+                        color = extraColors.textBlueSubTitle
                     )
                     Text(
                         text = date,
                         fontSize = 12.sp,
-                        color = extraColors.blue2
+                        color = extraColors.textBlueSubTitle
                     )
                 }
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                 contentDescription = null,
-                tint = extraColors.white,
+                tint = extraColors.whiteInDarkMode,
                 modifier = Modifier.size(20.dp)
             )
         }

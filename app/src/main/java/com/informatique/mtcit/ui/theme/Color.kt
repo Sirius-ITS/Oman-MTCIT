@@ -38,6 +38,19 @@ val blue5Light = Color(0xFF2180C4)
 val Navy18223B = Color(0xFF18223B)
 val blue6Light = Color(0xFF253859)
 
+val ViewAllLight = Color(0xFFE1E8EE)
+val ShowDetailsLight = Color(0xFF474747)
+val IconBackgroundLight = Color(0xFFFFFFFF).copy(alpha = 0.3f)
+val BackIconLight = Color(0xFFE3F4FD)
+
+val IconBackBackground2Light = Color(0xFFFCFCFC)
+val CardBackground3Ligt = Color(0xFFFFFFFF)
+val SelectedCustomTabLight = Color(0xFFF5F5F5)
+
+val IconGreyBackgroundLight = Color(0xFFEDF0F5)
+
+val IconBlueGreyLight = Color(0xFF44678C)
+
 
 
 
@@ -62,6 +75,24 @@ val cardbackground2Dark = Color(0xFF7488A1)
 val DarkBlueGray = Color(0xFF273951)
 val blue5Dark = Color(0xFF297FBA)
 val blue6Dark = Color(0xFF151D30)
+
+
+val ViewAllDark = Color(0xFF122239)
+val ShowDetailsDark = Color(0xFFE2E5EA)
+val IconBackgroundDark = Color(0xFF1A2B45)
+val BackIconDark = Color(0xFFE3F4FD)
+
+val IconBackBackground2Dark = Color(0xFF18223B)
+val CardBackground3Dark = Color(0xFF272E40)
+val SelectedCustomTabDark = Color(0xFF646675)
+
+val IconGreyBackgroundDark = Color(0xFFEDF0F5)
+
+val IconBlueGreyDark = Color(0xFF44678C)
+
+
+
+
 
 
 

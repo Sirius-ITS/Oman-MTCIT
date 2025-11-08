@@ -1,18 +1,15 @@
 package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
@@ -22,7 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -66,7 +63,7 @@ fun TransactionListScreen(
                             text = subCategory?.let { localizedApp(it.titleRes) }
                                 ?: "Sub Category",
                             fontSize = 22.sp,
-                            color = extraColors.white,
+                            color = extraColors.whiteInDarkMode,
                             fontWeight = FontWeight.Medium
                         )
                     },
@@ -76,14 +73,25 @@ fun TransactionListScreen(
                                 .padding(start = 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(extraColors.navy18223B)
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFF4A7BA7 ),
+                                    shape = CircleShape
+                                )
+                                .shadow(
+                                    elevation = 20.dp,
+                                    shape = CircleShape,
+                                    ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                    spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                                )
+                                .background(extraColors.iconBackBackground2)
                                 .clickable { navController.popBackStack() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = extraColors.white
+                                tint = extraColors.iconBack2
                             )
                         }
                     },
@@ -93,14 +101,25 @@ fun TransactionListScreen(
                                 .padding(end = 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(extraColors.navy18223B)
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFF4A7BA7 ),
+                                    shape = CircleShape
+                                )
+                                .shadow(
+                                    elevation = 20.dp,
+                                    shape = CircleShape,
+                                    ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                    spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                                )
+                                .background(extraColors.iconBackBackground2)
                                 .clickable { navController.navigate("settings_screen") },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
-                                tint = extraColors.white
+                                tint = extraColors.iconBack2
                             )
                         }
                     },
@@ -216,7 +235,7 @@ fun TransactionListCard(
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -240,7 +259,7 @@ fun TransactionListCard(
                         modifier = Modifier
                             .size(56.dp)
                             .background(
-                                extraColors.bluegray,
+                                extraColors.iconLightBlueBackground,
                                 CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -249,14 +268,14 @@ fun TransactionListCard(
                             Icon(
                                 painter = painterResource(id = mainCategoryIconRes),
                                 contentDescription = null,
-                                tint = extraColors.blue5,
+                                tint = extraColors.iconLightBlue,
                                 modifier = Modifier.size(32.dp)
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Description,
                                 contentDescription = null,
-                                tint = extraColors.blue5,
+                                tint = extraColors.iconLightBlue,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -267,7 +286,7 @@ fun TransactionListCard(
                         text = localizedApp(transaction.titleRes),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
-                        color = extraColors.white,
+                        color = extraColors.whiteInDarkMode,
                         lineHeight = 20.sp,
                         modifier = Modifier.align(Alignment.CenterVertically),
                         maxLines = 2
@@ -277,20 +296,20 @@ fun TransactionListCard(
                 Text(
                     text = localizedApp(transaction.descriptionRes),
                     fontSize = 14.sp,
-                    color = Color.Gray,
+                    color = extraColors.textSubTitle,
                     lineHeight = 22.sp,
                     maxLines = 2
                 )
 
                 // Category Badge (rounded with blue background) - Now shows MAIN category
                 Surface(
-                    color = extraColors.bluegray,
+                    color = extraColors.iconLightBlueBackground,
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
                         text = mainCategoryName,
                         fontSize = 12.sp,
-                        color = extraColors.blue5,
+                        color = extraColors.iconLightBlue,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )

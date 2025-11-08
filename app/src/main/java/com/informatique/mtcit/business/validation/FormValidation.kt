@@ -77,6 +77,15 @@ class FormValidator @Inject constructor() {
                 }
                 field.copy(error = error)
             }
+            is FormField.MarineUnitSelector -> {
+                val error = when {
+                    field.value.isBlank() -> {
+                        if (field.mandatory) "${field.label} is required" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
         }
     }
 

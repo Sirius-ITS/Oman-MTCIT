@@ -1,23 +1,24 @@
 package com.informatique.mtcit.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,10 +64,10 @@ fun TransactionFormContent(
                 title = {
                     Text(
                         text = transactionTitle,
-                        fontSize = 22.sp,
-                        color = extraColors.white,
+                        fontSize = 18.sp,
+                        color = extraColors.whiteInDarkMode,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 1
+                        maxLines = 2
                     )
                 },
                 navigationIcon = {
@@ -75,6 +76,17 @@ fun TransactionFormContent(
                             .padding(start = 12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
+                            .border(
+                                width = 1.dp,
+                                color = Color(0xFF4A7BA7 ),
+                                shape = CircleShape
+                            )
+                            .shadow(
+                                elevation = 20.dp,
+                                shape = CircleShape,
+                                ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                            )
                             .background(extraColors.navy18223B)
                             .clickable { navController.popBackStack() },
                         contentAlignment = Alignment.Center
@@ -82,7 +94,7 @@ fun TransactionFormContent(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = extraColors.white
+                            tint = extraColors.iconBack2
                         )
                     }
                 },
@@ -92,6 +104,17 @@ fun TransactionFormContent(
                             .padding(end = 12.dp)
                             .size(38.dp)
                             .clip(CircleShape)
+                            .border(
+                                width = 1.dp,
+                                color = Color(0xFF4A7BA7 ),
+                                shape = CircleShape
+                            )
+                            .shadow(
+                                elevation = 20.dp,
+                                shape = CircleShape,
+                                ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                            )
                             .background(extraColors.navy18223B)
                             .clickable { navController.navigate("settings_screen") },
                         contentAlignment = Alignment.Center
@@ -99,7 +122,7 @@ fun TransactionFormContent(
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = extraColors.white
+                            tint = extraColors.iconBack2
                         )
                     }
                 },
@@ -138,7 +161,7 @@ fun TransactionFormContent(
                 currentStep = uiState.currentStep,
                 completedSteps = uiState.completedSteps,
                 onStepClick = goToStep,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 10.dp , bottom = 4.dp)
             )
 
             // Form Content
@@ -148,11 +171,12 @@ fun TransactionFormContent(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 18.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = extraColors.cardBackground
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp)
@@ -162,14 +186,14 @@ fun TransactionFormContent(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Medium,
                             fontSize = 18.sp,
-                            color = extraColors.white,
+                            color = extraColors.whiteInDarkMode,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
                         Text(
                             text = localizedApp(currentStepData.descriptionRes),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = extraColors.white.copy(alpha = 0.5f)
+                            color = extraColors.textSubTitle
                         )
                     }
                 }
@@ -223,39 +247,44 @@ fun GenericNavigationBottomBar(
             topEnd = 16.dp
         ),
         colors = CardDefaults.cardColors(
-            containerColor = extraColors.background
+            containerColor = Color.Transparent
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 18.dp, top = 4.dp),
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (currentStep > 0) {
                 OutlinedButton(
                     onClick = onPreviousClick,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = extraColors.startServiceButton,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(18.dp)
                 ) {
                     Text(localizedApp(R.string.back_button))
                 }
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
             }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
+            Spacer(modifier = Modifier.width(12.dp))
             Button(
                 onClick = onNextClick,
                 enabled = canProceed && !isSubmitting,
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = extraColors.cardBackground,
+                    containerColor = extraColors.startServiceButton,
                     contentColor = Color.White
                 ),
-
+                border = ButtonDefaults.outlinedButtonBorder(
+                    enabled = canProceed && !isSubmitting
+                ),
+                shape = RoundedCornerShape(18.dp)
             ) {
                 if (currentStep < totalSteps - 1) {
                     Row(
@@ -320,6 +349,11 @@ private fun updateFieldWithFormData(
         is FormField.OwnerList -> field.copy(
             label = localizedLabel,
             value = value.ifEmpty { "[]" }, // Ensure valid JSON
+            error = error
+        )
+        is FormField.MarineUnitSelector -> field.copy(
+            label = localizedLabel,
+            value = value,
             error = error
         )
 

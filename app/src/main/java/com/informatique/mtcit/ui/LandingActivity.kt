@@ -55,7 +55,6 @@ import com.informatique.mtcit.ui.theme.AppTheme
 import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
 import com.informatique.mtcit.ui.viewmodels.LandingViewModel
-import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
@@ -129,8 +128,11 @@ class LandingActivity: BaseActivity() {
 //                            composable("ship") {
 //                                ShipDimensionsChangeScreen(navController)
 //                            }
+//                                composable ("marineunitsScreen"){
+//                                    MarineUnitsScreen(navController)
+//                                }
                                 composable("homepage") {
-                                    HomePageScreen(navController)
+                                    HomePageScreen(navController = navController)
                                 }
 
                                 composable("login") {

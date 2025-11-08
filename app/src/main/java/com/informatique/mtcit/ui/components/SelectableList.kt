@@ -1,6 +1,7 @@
 package com.informatique.mtcit.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -73,9 +75,9 @@ fun SelectableItemCard(
     }
 
     val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+        LocalExtraColors.current.cardBackground
     } else {
-        MaterialTheme.colorScheme.surface
+        LocalExtraColors.current.cardBackground
     }
 
     Surface(
@@ -83,12 +85,12 @@ fun SelectableItemCard(
             .fillMaxWidth()
             .clickable { onClick() }
             .border(
-                width = 2.dp,
+                width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp)
             ),
         color = backgroundColor,
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -111,20 +113,20 @@ fun SelectableItemCard(
                 Text(
                     text = item.title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Normal,
                     textAlign = TextAlign.Start
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Surface(
-                    color = Color(0xFFF5F5F5),
+                    color = LocalExtraColors.current.iconGreyBackground,
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
                         text = item.code,
                         fontSize = 14.sp,
-                        color = Color.Gray,
+                        color = LocalExtraColors.current.textSubTitle,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
@@ -134,7 +136,7 @@ fun SelectableItemCard(
                 Text(
                     text = item.description,
                     fontSize = 13.sp,
-                    color = Color.Gray,
+                    color = LocalExtraColors.current.textSubTitle,
                     textAlign = TextAlign.Start,
                     lineHeight = 18.sp
                 )
@@ -155,16 +157,18 @@ fun PersonTypeCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val extraColors = LocalExtraColors.current
+
     val borderColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
+       extraColors.iconBlueGrey
     } else {
-        Color.LightGray
+        extraColors.background
     }
 
     val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+       extraColors.cardBackground
     } else {
-        MaterialTheme.colorScheme.surface
+        extraColors.cardBackground
     }
 
     Surface(
@@ -172,12 +176,12 @@ fun PersonTypeCard(
             .fillMaxWidth()
             .clickable { onClick() }
             .border(
-                width = 2.dp,
+                width = 1.dp,
                 color = borderColor,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(16.dp)
             ),
         color = backgroundColor,
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -236,9 +240,10 @@ private fun SelectionIndicator(isSelected: Boolean) {
 fun DefaultBusinessIcon(default: Boolean = true) {
     Surface(
         modifier = Modifier.size(56.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFE8EAF6)
-    ) {
+        shape = CircleShape,
+        color = LocalExtraColors.current.iconGreyBackground,
+    )
+    {
         Box(contentAlignment = Alignment.Center) {
             if (default) {
                 Text(
@@ -249,8 +254,8 @@ fun DefaultBusinessIcon(default: Boolean = true) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profile",
-                    modifier = Modifier.size(24.dp),
-                    tint = Color(0xFF5F7D95)
+                    modifier = Modifier.size(32.dp),
+                    tint = LocalExtraColors.current.iconBlueGrey
                 )
             }
         }

@@ -4,10 +4,9 @@ import android.app.Activity
 import android.graphics.Color as AndroidColor
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,26 +14,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -119,7 +114,7 @@ fun MainCategoriesScreen(
                         )
                     )
             )
-            // Subtle white wave overlay (like the Swift Path overlay)
+            // Subtle whiteInDarkMode wave overlay (like the Swift Path overlay)
             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
                 val w = size.width
                 val h = size.height
@@ -156,7 +151,7 @@ fun MainCategoriesScreen(
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(
+                CenterAlignedTopAppBar(
                     title = {
                         Text(
                         text = localizedApp(R.string.solutions_and_services),
@@ -172,14 +167,25 @@ fun MainCategoriesScreen(
                                 .padding(start = 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFF4A7BA7 ),
+                                    shape = CircleShape
+                                )
+                                .shadow(
+                                    elevation = 20.dp,
+                                    shape = CircleShape,
+                                    ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                    spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                                )
+                                .background(extraColors.iconBackBackground)
                                 .clickable{ navController.popBackStack() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = Color.White
+                                tint = extraColors.iconBack
                             )
                         }
                     },
@@ -190,14 +196,25 @@ fun MainCategoriesScreen(
                                 .padding( 12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.2f))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFF4A7BA7),
+                                    shape = CircleShape
+                                )
+                                .shadow(
+                                    elevation = 20.dp,
+                                    shape = CircleShape,
+                                    ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                    spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                                )
+                                .background(extraColors.iconBackBackground)
                                 .clickable { navController.navigate("settings_screen") },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
-                                tint = Color.White
+                                tint = extraColors.iconBack
                             )
                         }
                     },
@@ -217,8 +234,8 @@ fun MainCategoriesScreen(
                 Text(
                     text = localizedApp(R.string.choose_department_that_suits_your_needs),
                     fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(start = 24.dp , bottom = 10.dp , top = 4.dp))
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 24.dp , bottom = 6.dp , top = 18.dp))
                 // Filters Section
                 Row(
                     modifier = Modifier
@@ -372,13 +389,13 @@ fun FilterDropdown(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(12.dp),
+                .padding(horizontal = 12.dp , vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -388,7 +405,7 @@ fun FilterDropdown(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(36.dp)
                         .background(
                             Color.White.copy(alpha = 0.1f),
                             CircleShape
@@ -440,7 +457,7 @@ fun CategoryCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Category Header
@@ -462,7 +479,7 @@ fun CategoryCard(
                         modifier = Modifier
                             .size(56.dp)
                             .background(
-                                extraColors.bluegray,
+                                extraColors.iconLightBlueBackground,
                                 CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -470,7 +487,7 @@ fun CategoryCard(
                         Icon(
                             painter = painterResource(category.iconRes),
                             contentDescription = null,
-                            tint = extraColors.blue5,
+                            tint = extraColors.iconLightBlue,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -481,13 +498,13 @@ fun CategoryCard(
                             text = localizedApp(category.titleRes),
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
-                            color = extraColors.white
+                            color = extraColors.whiteInDarkMode
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = localizedApp(category.descriptionRes),
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = extraColors.textSubTitle
                         )
                     }
                 }
@@ -496,7 +513,7 @@ fun CategoryCard(
                 Icon(
                     imageVector = Icons.Default.ArrowDropDown,
                     contentDescription = null,
-                    tint = extraColors.white,
+                    tint = extraColors.whiteInDarkMode,
                     modifier = Modifier
                         .size(28.dp)
                         .rotate(if (isExpanded) 180f else 0f)
@@ -528,11 +545,11 @@ fun CategoryCard(
                     Text(
                         text = "$availableServicesCount ${localizedApp(R.string.services_available)}",
                         fontSize = 13.sp,
-                        color = extraColors.white,
+                        color = extraColors.whiteInDarkMode,
                         modifier = Modifier
                             .background(
                                 extraColors.cardBackground2.copy(alpha = 0.1f),
-                                RoundedCornerShape(14.dp)
+                                RoundedCornerShape(16.dp)
                             )
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
@@ -556,7 +573,7 @@ fun SubCategoryItem(
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(14.dp)
+        shape = RoundedCornerShape(16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -569,13 +586,13 @@ fun SubCategoryItem(
                 text = localizedApp(subCategory.titleRes),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = extraColors.white,
+                color = extraColors.whiteInDarkMode,
                 modifier = Modifier.weight(1f)
             )
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
-                    tint = extraColors.white,
+                    tint = extraColors.whiteInDarkMode,
                     modifier = Modifier.size(16.dp)
                 )
         }

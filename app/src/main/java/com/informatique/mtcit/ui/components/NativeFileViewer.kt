@@ -532,7 +532,7 @@ private fun NativePdfViewer(
                         Bitmap.Config.ARGB_8888 // Use ARGB for better quality
                     )
 
-                    // Fill with white background
+                    // Fill with whiteInDarkMode background
                     val canvas = Canvas(bitmap)
                     canvas.drawColor(android.graphics.Color.WHITE)
 

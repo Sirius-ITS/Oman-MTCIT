@@ -63,7 +63,7 @@ fun SettingsScreen(
                 Text(
                     text = localizedApp(R.string.settings_title),
                     fontSize = 22.sp,
-                    color = extraColors.white,
+                    color = extraColors.whiteInDarkMode,
                     modifier = Modifier.align(Alignment.Center)
                 )
 
@@ -72,7 +72,7 @@ fun SettingsScreen(
                     modifier = Modifier
                         .size(56.dp)
                         .background(extraColors.cardBackground, CircleShape)
-                        .border(1.5.dp, extraColors.bluegray, CircleShape)
+                        .border(1.5.dp, extraColors.iconLightBlueBackground, CircleShape)
                         .clickable { navController.popBackStack() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -80,7 +80,7 @@ fun SettingsScreen(
                         text = localizedApp(R.string.done),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = extraColors.white
+                        color = extraColors.whiteInDarkMode
                     )
                 }
             }
@@ -89,7 +89,7 @@ fun SettingsScreen(
             Text(
                 text = localizedApp(R.string.settings_language_section),
                 fontSize = 20.sp,
-                color = extraColors.white,
+                color = extraColors.whiteInDarkMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
@@ -119,7 +119,7 @@ fun SettingsScreen(
             Text(
                 text = localizedApp(R.string.settings_theme_section),
                 fontSize = 20.sp,
-                color = extraColors.white,
+                color = extraColors.whiteInDarkMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
@@ -155,7 +155,7 @@ fun SettingsScreen(
             Text(
                 text = localizedApp(R.string.about_app),
                 fontSize = 20.sp,
-                color = extraColors.white,
+                color = extraColors.whiteInDarkMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp)
@@ -180,13 +180,13 @@ fun SettingsScreen(
                         text = localizedApp(R.string.version),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = extraColors.white
+                        color = extraColors.whiteInDarkMode
                     )
                     Text(
                         text = "1.0",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Normal,
-                        color = extraColors.white.copy(alpha = 0.7f)
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -217,17 +217,12 @@ fun LanguageCardEnhanced(
             .fillMaxWidth()
             .height(68.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(
-                if (isSelected)
-                    Color.Transparent
-                else
-                    extraColors.grayCard.copy(alpha = 0.4f)
-            )
+            .background(Color.Transparent)
             .then(
                 if (isSelected)
-                    Modifier.border(2.dp, extraColors.blue1, RoundedCornerShape(16.dp))
+                    Modifier.border(2.dp, extraColors.blue1, RoundedCornerShape(16.dp)).background(extraColors.iconLightBlueBackground)
                 else
-                    Modifier
+                    Modifier.border(1.dp, extraColors.grayCard.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp),
@@ -247,7 +242,7 @@ fun LanguageCardEnhanced(
                     text = languageName,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isSelected) extraColors.white else extraColors.white.copy(alpha = 0.9f)
+                    color = if (isSelected) extraColors.whiteInDarkMode else extraColors.whiteInDarkMode.copy(alpha = 0.9f)
                 )
                 Text(
                     text = flagEmoji,
@@ -287,7 +282,7 @@ fun ThemeCardEnhanced(
             .background(Color.Transparent)
             .then(
                 if (isSelected)
-                    Modifier.border(2.dp, extraColors.blue1, RoundedCornerShape(16.dp)).background(extraColors.bluegray)
+                    Modifier.border(2.dp, extraColors.blue1, RoundedCornerShape(16.dp)).background(extraColors.iconLightBlueBackground)
                 else
                     Modifier.border(1.dp, extraColors.grayCard.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
             )
@@ -320,7 +315,7 @@ fun ThemeCardEnhanced(
                 text = themeName,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = extraColors.white
+                color = extraColors.whiteInDarkMode
             )
         }
     }

@@ -112,7 +112,7 @@ fun getMainCategories(): List<MainCategory> {
                                         value = "20 ريال",
                                         label = "الرسوم",
                                     ),
-                                    /*ServiceSummary(
+                                    ServiceSummary(
                                         type = "duration",
                                         value = "5-1 أيام",
                                         label = "المدة الزمنية",
@@ -126,7 +126,7 @@ fun getMainCategories(): List<MainCategory> {
                                         type = "duration",
                                         value = "5-1 أيام",
                                         label = "المدة الزمنية",
-                                    )*/
+                                    )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
@@ -156,7 +156,7 @@ fun getMainCategories(): List<MainCategory> {
                                             )
                                         )
                                     ),
-                                    /*ServiceInfo(
+                                    ServiceInfo(
                                         id = 2,
                                         title = "المتطلبات 2",
                                         data = listOf(
@@ -236,7 +236,7 @@ fun getMainCategories(): List<MainCategory> {
                                                 value = null
                                             )
                                         )
-                                    )*/
+                                    )
                                 )
                             ),
                             duration = "5-1 أيام",

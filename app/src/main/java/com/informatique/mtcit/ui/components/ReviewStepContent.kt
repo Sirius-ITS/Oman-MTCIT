@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
@@ -46,7 +45,7 @@ fun ReviewStepContent(
         Text(
             text = localizedApp(R.string.no_data_to_review),
             style = MaterialTheme.typography.bodyMedium,
-            color = extraColors.white.copy(alpha = 0.5f),
+            color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
             modifier = Modifier.padding(16.dp)
         )
     } else {
@@ -110,13 +109,13 @@ private fun ExpandableStepCard(
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = extraColors.white
+                        color = extraColors.whiteInDarkMode
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = localizedApp(step.descriptionRes),
                         style = MaterialTheme.typography.bodySmall,
-                        color = extraColors.white.copy(alpha = 0.5f)
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
                     )
                 }
 
@@ -126,7 +125,7 @@ private fun ExpandableStepCard(
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = extraColors.white,
+                        tint = extraColors.whiteInDarkMode,
                         modifier = Modifier.padding(6.dp)
                     )
             }
@@ -144,7 +143,7 @@ private fun ExpandableStepCard(
                 ) {
                     HorizontalDivider(
                         modifier = Modifier.padding(bottom = 16.dp),
-                        color = extraColors.white.copy(alpha = 0.2f),
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
                         thickness = 1.dp
                     )
 
@@ -199,7 +198,7 @@ private fun ReviewFieldItem(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.SemiBold
                     ),
-                    color = extraColors.white.copy(alpha = 0.5f),
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 DisplayFileAttachment(value, field, extraColors)
@@ -213,7 +212,7 @@ private fun ReviewFieldItem(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.SemiBold
                     ),
-                    color = extraColors.white.copy(alpha = 0.5f),
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 DisplayRegularValue(
@@ -229,7 +228,7 @@ private fun ReviewFieldItem(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.SemiBold
                     ),
-                    color = extraColors.white.copy(alpha = 0.5f),
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 DisplayRegularValue(value)
@@ -312,9 +311,9 @@ private fun DisplayFileAttachment(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = extraColors.background
+                containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
             ),
-            elevation = CardDefaults.cardElevation(1.dp),
+            elevation = CardDefaults.cardElevation(0.dp),
             shape = RoundedCornerShape(8.dp)
         ) {
             Row(
@@ -330,19 +329,19 @@ private fun DisplayFileAttachment(
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.Medium
                         ),
-                        color = extraColors.blue1
+                        color = extraColors.whiteInDarkMode
                     )
                     Text(
                         text = localizedApp(R.string.file_attached),
                         style = MaterialTheme.typography.bodySmall,
-                        color = extraColors.blue2
+                        color = extraColors.textSubTitle
                     )
                 }
 
                 Icon(
                     imageVector = Icons.Default.AttachFile,
                     contentDescription = null,
-                    tint = extraColors.blue1,
+                    tint = extraColors.whiteInDarkMode,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -369,7 +368,7 @@ private fun OwnerDetailRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = extraColors.white.copy(alpha = 0.5f),
+            color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
             modifier = Modifier.weight(1f)
         )
         Text(
@@ -377,7 +376,7 @@ private fun OwnerDetailRow(
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Medium
             ),
-            color = extraColors.white,
+            color = extraColors.whiteInDarkMode,
             modifier = Modifier.weight(1.5f),
             textAlign = TextAlign.End
         )
@@ -394,7 +393,7 @@ private fun DisplayRegularValue(value: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = extraColors.cardBackground
+            containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
         ),
         elevation = CardDefaults.cardElevation(0.dp),
         shape = RoundedCornerShape(8.dp)
@@ -402,7 +401,7 @@ private fun DisplayRegularValue(value: String) {
         Text(
             text = value,
             style = MaterialTheme.typography.bodyLarge,
-            color = extraColors.white,
+            color = extraColors.whiteInDarkMode,
             modifier = Modifier.padding(16.dp)
         )
     }
@@ -420,7 +419,7 @@ private fun ExpandableOwnerReviewCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = extraColors.cardBackground
+            containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -441,14 +440,14 @@ private fun ExpandableOwnerReviewCard(
                         text = "${localizedApp(R.string.owner_info)} ${index + 1}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = extraColors.white,
+                        color = extraColors.whiteInDarkMode,
                         fontSize = 16.sp
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = owner.fullName,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = extraColors.white.copy(alpha = 0.5f),
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
                         fontSize = 14.sp
                     )
                 }
@@ -459,7 +458,7 @@ private fun ExpandableOwnerReviewCard(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = extraColors.white,
+                    tint = extraColors.whiteInDarkMode,
                     modifier = Modifier.padding(6.dp)
                 )
             }

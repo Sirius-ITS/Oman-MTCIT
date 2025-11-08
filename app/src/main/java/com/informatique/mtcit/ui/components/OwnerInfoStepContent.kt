@@ -5,8 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.informatique.mtcit.R
@@ -93,7 +93,7 @@ fun OwnerFormBottomSheet(
                 text = if (owner != null) localizedApp(R.string.edit_owner) else localizedApp(R.string.add_owner),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = extraColors.white,
+                color = extraColors.whiteInDarkMode,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
@@ -112,7 +112,8 @@ fun OwnerFormBottomSheet(
                 value = fullName,
                 onValueChange = { fullName = it },
                 label = localizedApp(R.string.owner_full_name),
-                mandatory = true
+                mandatory = true,
+                placeholder = localizedApp(R.string.owner_full_name),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -123,7 +124,8 @@ fun OwnerFormBottomSheet(
                 options = nationalities,
                 selectedOption = nationality,
                 onOptionSelected = { nationality = it },
-                mandatory = true
+                mandatory = true,
+                placeholder = nationality.ifEmpty { localizedApp(R.string.select_nationality) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -134,7 +136,8 @@ fun OwnerFormBottomSheet(
                 onValueChange = { idNumber = it },
                 label = localizedApp(R.string.owner_id_number),
                 isNumeric = true,
-                mandatory = true
+                mandatory = true,
+                placeholder =localizedApp(R.string.owner_id_number)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -144,7 +147,8 @@ fun OwnerFormBottomSheet(
                 value = passportNumber,
                 onValueChange = { passportNumber = it },
                 label = localizedApp(R.string.owner_passport_number),
-                mandatory = true
+                mandatory = true,
+                placeholder = localizedApp(R.string.owner_passport_number)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -154,7 +158,8 @@ fun OwnerFormBottomSheet(
                 value = email,
                 onValueChange = { email = it },
                 label = localizedApp(R.string.email),
-                mandatory = true
+                mandatory = true,
+                placeholder =localizedApp(R.string.email),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -165,7 +170,8 @@ fun OwnerFormBottomSheet(
                 onValueChange = { mobile = it },
                 label = localizedApp(R.string.owner_mobile),
                 isNumeric = true,
-                mandatory = true
+                mandatory = true,
+                placeholder =localizedApp(R.string.owner_mobile),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -175,7 +181,8 @@ fun OwnerFormBottomSheet(
                 value = address,
                 onValueChange = { address = it },
                 label = localizedApp(R.string.owner_address),
-                mandatory = true
+                mandatory = true,
+                placeholder = localizedApp(R.string.owner_address),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -185,7 +192,8 @@ fun OwnerFormBottomSheet(
                 value = city,
                 onValueChange = { city = it },
                 label = localizedApp(R.string.owner_city),
-                mandatory = true
+                mandatory = true,
+                placeholder = localizedApp(R.string.owner_city),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -196,7 +204,8 @@ fun OwnerFormBottomSheet(
                 options = countries,
                 selectedOption = country,
                 onOptionSelected = { country = it },
-                mandatory = true
+                mandatory = true,
+                placeholder = country.ifEmpty { localizedApp(R.string.country) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -207,7 +216,8 @@ fun OwnerFormBottomSheet(
                 onValueChange = { postalCode = it },
                 label = localizedApp(R.string.owner_postal_code),
                 isNumeric = true,
-                mandatory = false
+                mandatory = false,
+                placeholder =localizedApp(R.string.owner_postal_code),
             )
 
             // Company Fields (conditionally shown)
@@ -219,7 +229,8 @@ fun OwnerFormBottomSheet(
                     onValueChange = { companyRegistrationNumber = it },
                     label = localizedApp(R.string.company_registration_number),
                     isNumeric = true,
-                    mandatory = true
+                    mandatory = true,
+                    placeholder = localizedApp(R.string.company_registration_number),
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -228,7 +239,8 @@ fun OwnerFormBottomSheet(
                     value = companyName,
                     onValueChange = { companyName = it },
                     label = localizedApp(R.string.company_name),
-                    mandatory = false
+                    mandatory = false,
+                    placeholder = localizedApp(R.string.company_name),
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -237,7 +249,8 @@ fun OwnerFormBottomSheet(
                     value = companyType,
                     onValueChange = { companyType = it },
                     label = localizedApp(R.string.owner_type),
-                    mandatory = false
+                    mandatory = false,
+                    placeholder = localizedApp(R.string.owner_type),
                 )
             }
 
@@ -252,7 +265,7 @@ fun OwnerFormBottomSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(localizedApp(R.string.cancel_button) , color = extraColors.white)
+                    Text(localizedApp(R.string.cancel_button) , color = extraColors.whiteInDarkMode)
                 }
 
                 Button(
@@ -278,10 +291,10 @@ fun OwnerFormBottomSheet(
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = extraColors.blue6
+                        containerColor = extraColors.startServiceButton
                     )
                 ) {
-                    Text(localizedApp(R.string.save_button) , color = extraColors.white)
+                    Text(localizedApp(R.string.save_button) , color = Color.White)
                 }
             }
 

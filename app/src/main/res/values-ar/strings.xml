@@ -505,4 +505,10 @@
     <string name="person_type_title">اختر نوع المستخدم</string>
     <string name="person_type_desc">يرجى اختيار نوع الحساب المناسب لك لتقديم الخدمات بشكل مخصص</string>
 
+
+    <string name="owned_ships" >السفن المملوكة</string>
+    <string name="num_of_ships">عدد السفن المختارة </string>
+
+
+
 </resources>
