@@ -514,5 +514,26 @@
     <string name="person_type_title">Select user type</string>
     <string name="person_type_desc">Please select the account type that best suits your needs for customized service delivery.</string>
 
+    <string name="engine_title">Marine unit engine data</string>
+    <string name="engine_description">Please provide complete information about the vessel and marine unit to facilitate the study of the application and take the necessary measures.</string>
+    <string name="engine_info">Engine Information</string>
+    <string name="engine_count">Total Number of Engines</string>
+    <string name="engine_add_title">Add Engine</string>
+    <string name="engine_added_title">Added Engines</string>
+    <string name="engine_edit_title">Edit Engine</string>
+    <string name="engine_delete_title">Delete Engine</string>
+    <string name="engine_no_title">Enter engine number</string>
+    <string name="engine_type_title">Enter engine type</string>
+    <string name="engine_power_title">Enter engine power</string>
+    <string name="engine_cylinders_title">Enter number of cylinders</string>
+    <string name="engine_manufacturer_title">Select engine manufacturer</string>
+    <string name="engine_model_title">Enter model</string>
+    <string name="engine_manufacture_year_title">Enter year of manufacture</string>
+    <string name="engine_producing_country_title">Select producing country</string>
+    <string name="engine_fuel_type_title">Select fuel type</string>
+    <string name="engine_fuel_type">fuel type</string>
+    <string name="engine_condition_title">Select engine condition</string>
+    <string name="engine_save_btn">Save</string>
+
 
 </resources>

@@ -60,6 +60,34 @@ object SharedSteps {
         )
     }
 
+    fun engineInfoStep(
+        manufacturers: List<String>,
+        countries: List<String>,
+        fuelTypes: List<String>,
+        engineConditions: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.EngineList(
+                id = "engines",
+                labelRes = R.string.engine_info,
+                value = "[]",
+                manufacturers = manufacturers,
+                countries = countries,
+                fuelTypes = fuelTypes,
+                engineConditions = engineConditions,
+                mandatory = true,
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.engine_title,
+            descriptionRes = R.string.engine_description,
+            fields = fields
+        )
+    }
+
     /**
      * Unit Selection Step (Ship Information)
      * Used by: Ship Registration, Name Change, Dimension Change, etc.

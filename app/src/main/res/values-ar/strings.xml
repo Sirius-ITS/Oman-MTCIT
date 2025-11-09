@@ -509,6 +509,26 @@
     <string name="owned_ships" >السفن المملوكة</string>
     <string name="num_of_ships">عدد السفن المختارة </string>
 
+    <string name="engine_title">بيانات المحركات الخاصة بالوحدة البحرية</string>
+    <string name="engine_description">يرجي توفير معلومات كاملة عن السفينة والوحدة البحرية لتسهيل دراسة الطلب واتخاذ الاجراءات اللازمة</string>
+    <string name="engine_info">بيانات المحركات</string>
+    <string name="engine_count">أدخل إجمالي المحركات</string>
+    <string name="engine_add_title">إضافة محرك</string>
+    <string name="engine_added_title">المحركات المضافة</string>
+    <string name="engine_edit_title">تعديل محرك</string>
+    <string name="engine_delete_title">حذف محرك</string>
+    <string name="engine_no_title">أدخل رقم المحرك</string>
+    <string name="engine_type_title">أدخل نوع المحرك</string>
+    <string name="engine_power_title">أدخل قوة المحرك</string>
+    <string name="engine_cylinders_title">أدخل عدد السلندرات</string>
+    <string name="engine_manufacturer_title">إختر الشركة المصنعة</string>
+    <string name="engine_model_title">أدخل الموديل</string>
+    <string name="engine_manufacture_year_title">أدخل سنة الصنع</string>
+    <string name="engine_producing_country_title">إختر الدولة المنتجة</string>
+    <string name="engine_fuel_type_title">إختر نوع الوقود</string>
+    <string name="engine_fuel_type">نوع الوقود</string>
+    <string name="engine_condition_title">إختر حالة المحرك</string>
+    <string name="engine_save_btn">حفظ</string>
 
 
 </resources>

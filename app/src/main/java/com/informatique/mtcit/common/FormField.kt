@@ -114,4 +114,18 @@ sealed class FormField(
         override val error: String? = null,
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory)
+
+    data class EngineList(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "[]",
+        val manufacturers: List<String> = emptyList(),
+        val countries: List<String> = emptyList(),
+        val fuelTypes: List<String> = emptyList(),
+        val engineConditions: List<String> = emptyList(),
+        val placeholder: String? = null,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory)
 }

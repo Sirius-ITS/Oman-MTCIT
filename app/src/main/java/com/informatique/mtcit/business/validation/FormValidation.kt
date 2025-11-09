@@ -68,6 +68,17 @@ class FormValidator @Inject constructor() {
                 field.copy(error = error)
             }
 
+            is FormField.EngineList -> {
+                // Validate that at least one owner is added if mandatory
+                val error = when {
+                    field.value == "[]" || field.value.isBlank() -> {
+                        if (field.mandatory) "At least one engine must be added" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
+
             is FormField.SelectableList<*> -> {
                 val error = when {
                     field.value.isBlank() -> {

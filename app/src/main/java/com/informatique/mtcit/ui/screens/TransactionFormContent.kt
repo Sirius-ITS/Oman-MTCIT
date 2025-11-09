@@ -362,6 +362,11 @@ private fun updateFieldWithFormData(
             value = value,
             error = error
         )
+        is FormField.EngineList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
 
     }
 }

@@ -169,6 +169,30 @@ fun DynamicStepForm(
                                 }
                             )
                         }
+                        is FormField.EngineList -> {
+                            val engines = remember(field.value) {
+                                try {
+                                    Json.decodeFromString<List<EngineData>>(
+                                        field.value
+                                    )
+                                    Json.decodeFromString<List<EngineData>>(field.value)
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            }
+
+                            EngineListManager(
+                                engines = engines,
+                                manufacturers = field.manufacturers,
+                                countries = field.countries,
+                                fuelTypes = field.fuelTypes,
+                                conditions = field.engineConditions,
+                                onEnginesChange = { updatedEngines ->
+                                    val json = Json.encodeToString(updatedEngines)
+                                    onFieldChange(field.id, json, null)
+                                }
+                            )
+                        }
                         is FormField.MarineUnitSelector -> {
                             // Parse selected unit IDs from JSON
                             val selectedIds = remember(field.value) {
@@ -194,6 +218,9 @@ fun DynamicStepForm(
                         is FormField.SelectableList<*> -> {
                             when(field.id){
                                 "selectionPersonType" -> {
+                                    val json = Json.encodeToString(selectedPersonId)
+                                    onFieldChange(field.id, json, null)
+
                                     SelectableList(
                                         items = field.options,
                                         uiItem = { item ->
