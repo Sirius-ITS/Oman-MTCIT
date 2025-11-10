@@ -20,6 +20,7 @@ import com.informatique.mtcit.ui.viewmodels.FileNavigationEvent
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.components.localizedApp
 import androidx.core.net.toUri
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.util.UriPermissionManager
 import java.net.URLEncoder
 
@@ -128,7 +129,7 @@ fun ShipDataModificationScreen(
                     // Navigate to internal file viewer
                     val encodedUri = java.net.URLEncoder.encode(event.fileUri, "UTF-8")
                     val encodedFileName = java.net.URLEncoder.encode(fileName ?: "File", "UTF-8")
-                    navController.navigate("file_viewer/$encodedUri/$encodedFileName")
+                    navController.navigate(NavRoutes.FileViewerRoute.createRoute(encodedUri, encodedFileName))
 
                     viewModel.clearFileNavigationEvent()
                 }

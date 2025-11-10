@@ -2,6 +2,7 @@ package com.informatique.mtcit.ui.models
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
 
 /**
@@ -96,7 +97,7 @@ fun getMainCategories(): List<MainCategory> {
                             id = "temporary_registration_certificate",
                             titleRes = R.string.transaction_temporary_registration_certificate,
                             descriptionRes = R.string.transaction_temporary_registration_certificate_desc,
-                            route = "ship_registration_form",
+                            route = NavRoutes.ShipRegistrationRoute.route,
                             routeInfo = "route-1",
                             fees = "20 ريال",
 //                            requirements = listOf(
@@ -246,35 +247,35 @@ fun getMainCategories(): List<MainCategory> {
                             id = "permanent_registration_certificate",
                             titleRes = R.string.transaction_permanent_registration_certificate,
                             descriptionRes = R.string.transaction_permanent_registration_certificate_desc,
-                            route = "permanent_registration_form",
+                            route = NavRoutes.PermanentRegistrationRoute.route,
                             routeInfo = "route-2"
                         ),
                         Transaction(
                             id = "suspend_permanent_registration",
                             titleRes = R.string.transaction_suspend_permanent_registration,
                             descriptionRes = R.string.transaction_suspend_permanent_registration_desc,
-                            route = "suspend_registration_form",
+                            route = NavRoutes.SuspendRegistrationRoute.route,
                             routeInfo = "route-3"
                         ),
                         Transaction(
                             id = "cancel_permanent_registration",
                             titleRes = R.string.transaction_cancel_permanent_registration,
                             descriptionRes = R.string.transaction_cancel_permanent_registration_desc,
-                            route = "cancel_registration_form",
+                            route = NavRoutes.CancelRegistrationRoute.route,
                             routeInfo = "route-4"
                         ),
                         Transaction(
                             id = "mortgage_certificate",
                             titleRes = R.string.transaction_mortgage_certificate,
                             descriptionRes = R.string.transaction_mortgage_certificate_desc,
-                            route = "mortgage_certificate_form",
+                            route = NavRoutes.MortgageCertificateRoute.route,
                             routeInfo = "route-5"
                         ),
                         Transaction(
                             id = "release_mortgage",
                             titleRes = R.string.transaction_release_mortgage,
                             descriptionRes = R.string.transaction_release_mortgage_desc,
-                            route = "release_mortgage_form",
+                            route = NavRoutes.ReleaseMortgageRoute.route,
                             routeInfo = "route-6"
                         )
                     )
@@ -288,7 +289,7 @@ fun getMainCategories(): List<MainCategory> {
                             id = "issue_navigation_permit",
                             titleRes = R.string.transaction_issue_navigation_permit,
                             descriptionRes = R.string.transaction_issue_navigation_permit_desc,
-                            route = "issue_navigation_permit_form",
+                            route = NavRoutes.IssueNavigationPermitRoute.route,
                             routeInfo = "route-7",
 //                            requirements = listOf(
 //                                "طلب إصدار تصريح ملاحية مكتمل",
@@ -383,14 +384,14 @@ fun getMainCategories(): List<MainCategory> {
                             id = "renew_navigation_permit",
                             titleRes = R.string.transaction_renew_navigation_permit,
                             descriptionRes = R.string.transaction_renew_navigation_permit_desc,
-                            route = "renew_navigation_permit_form",
+                            route = NavRoutes.RenewNavigationPermitRoute.route,
                             routeInfo = "route-8"
                         ),
                         Transaction(
                             id = "suspend_navigation_permit",
                             titleRes = R.string.transaction_suspend_navigation_permit,
                             descriptionRes = R.string.transaction_suspend_navigation_permit_desc,
-                            route = "suspend_navigation_permit_form",
+                            route = NavRoutes.SuspendNavigationPermitRoute.route,
                             routeInfo = "route-9"
                         )
                     )
@@ -404,7 +405,7 @@ fun getMainCategories(): List<MainCategory> {
                             id = "ship_name_change",
                             titleRes = R.string.transaction_ship_name_change,
                             descriptionRes = R.string.transaction_ship_name_change_desc,
-                            route = "ship_name_change_form",
+                            route = NavRoutes.ShipNameChangeRoute.route,
                             routeInfo = "route-10",
 //                            requirements = listOf(
 //                                "طلب تغيير اسم السفينة موقع",
@@ -552,28 +553,28 @@ fun getMainCategories(): List<MainCategory> {
                             id = "captain_name_change",
                             titleRes = R.string.transaction_captain_name_change,
                             descriptionRes = R.string.transaction_captain_name_change_desc,
-                            route = "captain_name_change_form",
+                            route = NavRoutes.CaptainNameChangeRoute.route,
                             routeInfo = "route-13"
                         ),
                         Transaction(
                             id = "ship_activity_change",
                             titleRes = R.string.transaction_ship_activity_change,
                             descriptionRes = R.string.transaction_ship_activity_change_desc,
-                            route = "ship_activity_change_form",
+                            route = NavRoutes.ShipActivityChangeRoute.route,
                             routeInfo = "route-14"
                         ),
                         Transaction(
                             id = "ship_port_change",
                             titleRes = R.string.transaction_ship_port_change,
                             descriptionRes = R.string.transaction_ship_port_change_desc,
-                            route = "ship_port_change_form",
+                            route = NavRoutes.ShipPortChangeRoute.route,
                             routeInfo = "route-15"
                         ),
                         Transaction(
                             id = "ship_ownership_change",
                             titleRes = R.string.transaction_ship_ownership_change,
                             descriptionRes = R.string.transaction_ship_ownership_change_desc,
-                            route = "ship_ownership_change_form",
+                            route = NavRoutes.ShipOwnershipChangeRoute.route,
                             routeInfo = "route-16"
                         )
                     )
@@ -597,42 +598,42 @@ fun getMainCategories(): List<MainCategory> {
                             id = "temporary_registration_certificate",
                             titleRes = R.string.transaction_temporary_registration_certificate,
                             descriptionRes = R.string.transaction_temporary_registration_certificate_desc,
-                            route = "ship_registration_form",
+                            route = NavRoutes.ShipRegistrationRoute.route,
                             routeInfo = "route-1"
                         ),
                         Transaction(
                             id = "permanent_registration_certificate",
                             titleRes = R.string.transaction_permanent_registration_certificate,
                             descriptionRes = R.string.transaction_permanent_registration_certificate_desc,
-                            route = "permanent_registration_form",
+                            route = NavRoutes.PermanentRegistrationRoute.route,
                             routeInfo = "route-2"
                         ),
                         Transaction(
                             id = "suspend_permanent_registration",
                             titleRes = R.string.transaction_suspend_permanent_registration,
                             descriptionRes = R.string.transaction_suspend_permanent_registration_desc,
-                            route = "suspend_registration_form",
+                            route = NavRoutes.SuspendRegistrationRoute.route,
                             routeInfo = "route-3"
                         ),
                         Transaction(
                             id = "cancel_permanent_registration",
                             titleRes = R.string.transaction_cancel_permanent_registration,
                             descriptionRes = R.string.transaction_cancel_permanent_registration_desc,
-                            route = "cancel_registration_form",
+                            route = NavRoutes.CancelRegistrationRoute.route,
                             routeInfo = "route-4"
                         ),
                         Transaction(
                             id = "mortgage_certificate",
                             titleRes = R.string.transaction_mortgage_certificate,
                             descriptionRes = R.string.transaction_mortgage_certificate_desc,
-                            route = "mortgage_certificate_form",
+                            route = NavRoutes.MortgageCertificateRoute.route,
                             routeInfo = "route-5"
                         ),
                         Transaction(
                             id = "release_mortgage",
                             titleRes = R.string.transaction_release_mortgage,
                             descriptionRes = R.string.transaction_release_mortgage_desc,
-                            route = "release_mortgage_form",
+                            route = NavRoutes.ReleaseMortgageRoute.route,
                             routeInfo = "route-6"
                         )
                     )

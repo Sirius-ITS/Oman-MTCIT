@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionState
 import com.informatique.mtcit.ui.components.*
@@ -116,7 +117,7 @@ fun TransactionFormContent(
                                 spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                             )
                             .background(extraColors.navy18223B)
-                            .clickable { navController.navigate("settings_screen") },
+                            .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(

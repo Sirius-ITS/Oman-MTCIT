@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
 import com.informatique.mtcit.ui.theme.LocalExtraColors
@@ -113,7 +114,7 @@ fun TransactionListScreen(
                                     spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                                 )
                                 .background(extraColors.iconBackBackground2)
-                                .clickable { navController.navigate("settings_screen") },
+                                .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -159,7 +160,7 @@ fun TransactionListScreen(
                                     // pass parent subCategory titleRes to the requirements screen so that its TopAppBar can show it
                                     val parentTitleRes = subCategory?.titleRes?.toString() ?: ""
                                     navController.navigate(
-                                        "transaction_requirements/$categoryId/$subCategoryId/${transaction.id}/$parentTitleRes"
+                                        NavRoutes.TransactionRequirementRoute.createRoute(categoryId, subCategoryId, transaction.id, parentTitleRes)
                                     )
                                 },
                                 mainCategoryName = mainCategory?.let { localizedApp(it.titleRes) } ?: "",

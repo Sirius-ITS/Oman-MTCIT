@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.viewmodels.StepData
 import com.informatique.mtcit.util.UriPermissionManager
 
@@ -150,7 +151,7 @@ fun MarineRegistrationScreen(
                     // Navigate to internal file viewer
                     val encodedUri = java.net.URLEncoder.encode(event.fileUri, "UTF-8")
                     val encodedFileName = java.net.URLEncoder.encode(fileName ?: "File", "UTF-8")
-                    navController.navigate("file_viewer/$encodedUri/$encodedFileName")
+                    navController.navigate(NavRoutes.FileViewerRoute.createRoute(encodedUri, encodedFileName))
 
                     viewModel.clearFileNavigationEvent()
                 }

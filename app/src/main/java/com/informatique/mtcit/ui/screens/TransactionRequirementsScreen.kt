@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
 import com.informatique.mtcit.ui.theme.LocalExtraColors
@@ -146,7 +147,7 @@ fun TransactionRequirementsScreen(
                                 spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                             )
                             .background(extraColors.iconBackBackground2)
-                            .clickable { navController.navigate("settings_screen") },
+                            .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(

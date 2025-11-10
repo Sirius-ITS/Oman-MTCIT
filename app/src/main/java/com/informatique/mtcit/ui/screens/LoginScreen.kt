@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.NoInternetException
 import com.informatique.mtcit.data.model.loginModels.LoginResponse
@@ -81,7 +82,7 @@ fun LoginScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { navController.navigate("settings_screen") },
+                        onClick = { navController.navigate(NavRoutes.SettingsRoute.route) },
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
@@ -241,8 +242,8 @@ fun LoginScreen(
                                 response.userMainData?.let {
                                     sharedUserViewModel.setUserMainData(it)
                                 }
-                                navController.navigate("main") {
-                                    popUpTo("login") { inclusive = true }
+                                navController.navigate(NavRoutes.HomeRoute.route) {
+                                    popUpTo(NavRoutes.LoginRoute.route) { inclusive = true }
                                 }
                             }
                         }
