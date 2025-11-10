@@ -16,7 +16,7 @@ val lightBlue = Color(0xFF128EFF)
 
 
 // Custom (optional)
-val SuccessLight = Color(0xFF00C853)
+val SuccessLight = Color(0xFF0EBD48).copy(alpha = 0.15f )
 val WarningLight = Color(0xFFFFC107)
 val ErrorLight = Color(0xFFD50000)
 val AccentLight = Color(0xFF1C2B44)
@@ -50,13 +50,14 @@ val SelectedCustomTabLight = Color(0xFFF5F5F5)
 val IconGreyBackgroundLight = Color(0xFFEDF0F5)
 
 val IconBlueGreyLight = Color(0xFF44678C)
+val ButtonLightBlueLight = Color(0xFF273951)
 
 
 
 
 
 // Custom (optional)
-val SuccessDark = Color(0xFF43A047)
+val SuccessDark = Color(0xFF0EBD48).copy(alpha = 0.3f)
 val AccentDark = Color(0xFF0E1625)
 val BackgroundDark = Color(0xFF0F172A)
 val Blue1Dark = Color(0xFF141E30)
@@ -69,7 +70,9 @@ val GrayCardDark = Color(0xFFE4E7EC)
 val Blue3Dark = Color(0xFF47698C)
 val SteppunselectedDark = Color(0xFFD2D1D6)
 val Black = Color(0xFFFFFFFF)
-val cardBackgroundDark = Color(0x1AFFFFFF)
+val cardBackgroundDark = Color(0xFF1E293B)
+//val cardBackgroundDark = Color(0x1AFFFFFF)
+
 val SurfaceDark = Color(0x338E8E93)    // Dark mode: رمادي شفاف (20% alpha)
 val cardbackground2Dark = Color(0xFF7488A1)
 val DarkBlueGray = Color(0xFF273951)
@@ -89,6 +92,7 @@ val SelectedCustomTabDark = Color(0xFF646675)
 val IconGreyBackgroundDark = Color(0xFFEDF0F5)
 
 val IconBlueGreyDark = Color(0xFF44678C)
+val ButtonLightBlueDark = Color(0xFF273951)
 
 
 
