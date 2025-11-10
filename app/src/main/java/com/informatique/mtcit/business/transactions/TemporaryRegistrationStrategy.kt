@@ -133,6 +133,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 allowMultipleSelection = false, // اختيار وحدة واحدة فقط
                 showOwnedUnitsWarning = true
             ),
+
             SharedSteps.unitSelectionStep(
                 shipTypes = shipTypeOptions,
                 ports = portOptions,
@@ -144,6 +145,14 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 includeConstructionDates = false,
                 includeRegistrationCountry = false
             ),
+
+            SharedSteps.engineInfoStep(
+                manufacturers = listOf("Manufacturer 1", "Manufacturer 2", "Manufacturer 3"),
+                countries = countryOptions,
+                fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
+                engineConditions = listOf("New", "Used - Like New", "Used - Good", "Used - Fair", "Used - Poor"),
+            ),
+
             SharedSteps.ownerInfoStep(
                 nationalities = countryOptions,
                 countries = countryOptions,
