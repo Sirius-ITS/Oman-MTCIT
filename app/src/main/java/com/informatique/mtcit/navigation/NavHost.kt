@@ -31,6 +31,8 @@ import com.informatique.mtcit.ui.screens.LanguageScreen
 import com.informatique.mtcit.ui.screens.LoginScreen
 import com.informatique.mtcit.ui.screens.MainCategoriesScreen
 import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
+import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
+import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
 import com.informatique.mtcit.ui.screens.SettingsScreen
 import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
@@ -53,6 +55,7 @@ fun NavHost(themeViewModel: ThemeViewModel){
         navController = navController,
         startDestination = NavRoutes.HomeRoute.route
     ) {
+
         composable(NavRoutes.HomeRoute.route) {
             HomePageScreen(navController = navController)
         }
@@ -229,6 +232,80 @@ fun NavHost(themeViewModel: ThemeViewModel){
             )
         }
 
+        // ========== ADDITIONAL ROUTES FROM MAIN SCREEN ==========
+
+        // Ship Registration Renewal Form (placeholder)
+        composable("ship_registration_renewal_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Ship Registration Renewal"
+            )
+        }
+
+        // Temporary Ship Registration Form (placeholder)
+        composable("temporary_ship_registration_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Temporary Ship Registration"
+            )
+        }
+
+        // Ship Color Change Form (placeholder)
+        composable("ship_color_change_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Ship Color Change"
+            )
+        }
+
+        // Engine Change Form (placeholder)
+        composable("engine_change_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Engine Change"
+            )
+        }
+
+        // Captain License Update Form (placeholder)
+        composable("captain_license_update_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Captain License Update"
+            )
+        }
+
+        // Crew Member Addition Form (placeholder)
+        composable("crew_member_addition_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Crew Member Addition"
+            )
+        }
+
+        // Certificate Request Form (placeholder)
+        composable("certificate_request_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Certificate Request"
+            )
+        }
+
+        // Document Renewal Form (placeholder)
+        composable("document_renewal_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "Document Renewal"
+            )
+        }
+
+        // License Issuance Form (placeholder)
+        composable("license_issuance_form") {
+            ComingSoonScreen(
+                navController = navController,
+                transactionName = "License Issuance"
+            )
+        }
+
         // File Viewer Screen
         composable(NavRoutes.FileViewerRoute.route) { backStackEntry ->
             val context = LocalContext.current
@@ -292,6 +369,14 @@ fun NavHost(themeViewModel: ThemeViewModel){
             exitTransition = { defaultExitTransition() }
         ) {
             LanguageScreen(navController = navController)
+        }
+
+        composable(NavRoutes.PaymentDetailsRoute.route) {
+            PaymentDetailsScreen(navController = navController)
+        }
+
+        composable(NavRoutes.PaymentSuccessRoute.route) {
+            PaymentSuccessScreen(navController = navController)
         }
     }
 

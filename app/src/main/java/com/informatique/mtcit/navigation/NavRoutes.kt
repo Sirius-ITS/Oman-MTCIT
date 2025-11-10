@@ -55,4 +55,8 @@ sealed class NavRoutes(val route: String) {
     }
 
     data object LanguageScreenRoute : NavRoutes("languagescreen")
+
+    data object PaymentDetailsRoute : NavRoutes("pay")
+
+    data object PaymentSuccessRoute : NavRoutes("paysuc")
 }
