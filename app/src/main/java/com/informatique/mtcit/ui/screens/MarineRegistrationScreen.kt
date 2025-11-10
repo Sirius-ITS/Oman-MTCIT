@@ -167,7 +167,7 @@ fun MarineRegistrationScreen(
     LaunchedEffect(submissionState) {
         when (submissionState) {
             is UIState.Success -> {
-                navController.navigateUp()
+                navController.navigate("pay")
                 viewModel.resetSubmissionState()
             }
 

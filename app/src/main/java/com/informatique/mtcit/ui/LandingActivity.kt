@@ -59,6 +59,8 @@ import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 import com.informatique.mtcit.ui.providers.LocalCategories
+import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
+import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
 import com.informatique.mtcit.ui.screens.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
@@ -131,8 +133,14 @@ class LandingActivity: BaseActivity() {
 //                                composable ("marineunitsScreen"){
 //                                    MarineUnitsScreen(navController)
 //                                }
+                                composable("paysuc") {
+                                    PaymentSuccessScreen(navController = navController)
+                                }
                                 composable("homepage") {
                                     HomePageScreen(navController = navController)
+                                }
+                                composable("pay") {
+                                    PaymentDetailsScreen(navController = navController)
                                 }
 
                                 composable("login") {
