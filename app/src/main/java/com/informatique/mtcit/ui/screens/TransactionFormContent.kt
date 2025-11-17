@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
@@ -32,6 +33,7 @@ import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -53,7 +55,8 @@ fun TransactionFormContent(
     goToStep: (Int) -> Unit,
     previousStep: () -> Unit,
     nextStep: () -> Unit,
-    submitForm: () -> Unit
+    submitForm: () -> Unit,
+    viewModel: BaseTransactionViewModel
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -238,7 +241,9 @@ fun TransactionFormContent(
                     allSteps = uiState.steps,
                     onDeclarationChange = { accepted ->
                         declarationAccepted = accepted
-                    }
+                    },
+                    onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
+
                 )
             }
         }
@@ -378,6 +383,11 @@ private fun updateFieldWithFormData(
             error = error
         )
         is FormField.EngineList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
+        is FormField.RadioGroup -> field.copy(
             label = localizedLabel,
             value = value.ifEmpty { "[]" },
             error = error

@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -239,7 +240,7 @@ fun TransactionRequirementsScreen(
                         SummaryTileWithIcon(
                             label = summary.value,
                             sub = summary.label,
-                            icon = Icons.Filled.AttachMoney,
+                            icon = summary.icon,
                             iconColor = Color(0xFF4CAF50),
                             modifier = Modifier.weight(1f).fillMaxHeight()
                             // modifier = Modifier.fillMaxWidth(fraction = 1f / transaction.requirements.serviceSummaryList.size.toFloat())
@@ -452,7 +453,7 @@ fun TransactionRequirementsScreen(
 private fun SummaryTileWithIcon(
     label: String,
     sub: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector ,
     iconColor: Color,
     modifier: Modifier = Modifier
 ) {

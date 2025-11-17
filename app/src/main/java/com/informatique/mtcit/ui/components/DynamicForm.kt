@@ -2,12 +2,14 @@ package com.informatique.mtcit.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData
 import kotlinx.serialization.json.Json
@@ -26,6 +28,7 @@ fun DynamicStepForm(
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
     onDeclarationChange: ((Boolean) -> Unit)? = null // Changed to declaration callback
+    onTriggerNext: () -> Unit // ✅ أضف الـ parameter ده
 ) {
 
     var selectedId by remember { mutableStateOf<String?>(null) }
@@ -85,7 +88,8 @@ fun DynamicStepForm(
                                     isNumeric = field.isNumeric,
                                     error = field.error,
                                     mandatory = field.mandatory,
-                                    placeholder = field.label
+                                    placeholder = field.label,
+                                    enabled = true
                                 )
                             }
                         }
@@ -204,12 +208,27 @@ fun DynamicStepForm(
                                     emptyList<String>()
                                 }
                             }
+                            var shouldTriggerNext by remember { mutableStateOf(false) }
+                            LaunchedEffect(shouldTriggerNext) {
+                                if (shouldTriggerNext) {
+                                    onTriggerNext()
+                                    shouldTriggerNext = false
+                                }
+                            }
 
                             MarineUnitSelectorManager(
                                 units = field.units,
                                 selectedUnitIds = selectedIds,
                                 allowMultipleSelection = field.allowMultipleSelection,
                                 showOwnedUnitsWarning = field.showOwnedUnitsWarning,
+                                showAddNewButton = field.showAddNewButton, // ✅ مرر القيمة
+                                addNewUnit = {
+                                    // ✅ نحط flag أن المستخدم عايز يضيف سفينة جديدة
+                                    onFieldChange(field.id, "[]", null) // نفضي الـ selection
+                                    onFieldChange("isAddingNewUnit", "true", null) // نحط flag
+
+                                    shouldTriggerNext = true // ✅ هنا
+                                },
                                 onSelectionChange = { updatedSelection ->
                                     val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
@@ -220,9 +239,6 @@ fun DynamicStepForm(
                         is FormField.SelectableList<*> -> {
                             when(field.id){
                                 "selectionPersonType" -> {
-                                    val json = Json.encodeToString(selectedPersonId)
-                                    onFieldChange(field.id, json, null)
-
                                     SelectableList(
                                         items = field.options,
                                         uiItem = { item ->
@@ -230,32 +246,63 @@ fun DynamicStepForm(
                                                 item = item as PersonType,
                                                 isSelected = selectedPersonId == item.id,
                                                 onClick = {
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                                                    println("🎯 PersonType clicked")
+                                                    println("📝 Field ID: ${field.id}")
+                                                    println("🆔 Item ID: ${item.id}")
+                                                    println("📊 Item Title: ${item.title}")
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
                                                     selectedPersonId = item.id
-                                                    val json = Json.encodeToString(item)
-                                                    onFieldChange(field.id, json, null)
+
+                                                    // ✅ الحل: ابعت الـ title مش الـ JSON
+                                                    onFieldChange(field.id, item.title, null)
                                                 }
                                             )
                                         }
                                     )
                                 }
+
                                 "selectionData" -> {
                                     SelectableList(
                                         items = field.options,
-                                        // selectedItemId = field.value,
                                         uiItem = { item ->
                                             SelectableItemCard(
                                                 item = item as SelectableItem,
                                                 isSelected = selectedId == item.id,
                                                 onClick = {
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                                                    println("🎯 SelectableItem clicked")
+                                                    println("📝 Field ID: ${field.id}")
+                                                    println("🆔 Item ID: ${item.id}")
+                                                    println("📊 Item Title: ${item.title}")
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
                                                     selectedId = item.id
-                                                    val json = Json.encodeToString(item)
-                                                    onFieldChange(field.id, json, null)
+
+                                                    // ✅ الحل: ابعت الـ title أو id حسب احتياجك
+                                                    onFieldChange(field.id, item.title, null)
                                                 }
                                             )
                                         }
                                     )
                                 }
                             }
+                        }
+                        is FormField.RadioGroup -> {
+                            // ✅ Create a local state to track selection
+                            var localSelection by remember {
+                                mutableStateOf(field.selectedValue)
+                            }
+
+                            RadioGroupManager(
+                                field = field as FormField.RadioGroup,
+                                selectedValue = localSelection, // ✅ Use local state
+                                onValueChange = { newValue ->
+                                    localSelection = newValue // ✅ Update local state first
+                                    onFieldChange(field.id, newValue, null) // Then notify parent
+                                }
+                            )
                         }
                     }
                 }

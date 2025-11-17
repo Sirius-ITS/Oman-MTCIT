@@ -201,10 +201,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -254,7 +256,8 @@ fun OwnerListManager(
                 label = localizedApp(R.string.total_owners_count),
                 isNumeric = true,
                 mandatory = false,
-                placeholder = R.string.total_owners_count.toString()
+                placeholder = R.string.total_owners_count.toString(),
+                enabled = true
             )
         }
 
@@ -352,32 +355,48 @@ fun ModernOwnerCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = owner.fullName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = extraColors.whiteInDarkMode,
-                        fontSize = 16.sp
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Icon based on owner type
+                    Icon(
+                        imageVector = if (owner.isCompany) Icons.Default.Business else Icons.Default.Person,
+                        contentDescription = null,
+                        tint = extraColors.startServiceButton,
+                        modifier = Modifier.size(28.dp)
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = owner.nationality,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
-                        fontSize = 14.sp
-                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = if (owner.isCompany) owner.companyName else owner.fullName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = extraColors.whiteInDarkMode,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (owner.isCompany) "شركة" else "فرد",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = extraColors.startServiceButton,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Expand/Collapse Icon with Circle Background
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = extraColors.whiteInDarkMode,
-                        modifier = Modifier.padding(6.dp)
-                    )
+                // Expand/Collapse Icon
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = extraColors.whiteInDarkMode,
+                    modifier = Modifier.padding(6.dp)
+                )
             }
 
             // Animated Expandable Details
@@ -397,19 +416,121 @@ fun ModernOwnerCard(
                         thickness = 1.dp
                     )
 
-                    // ID Number
-                    InfoRow(
-                        label = localizedApp(R.string.owner_id_number),
-                        value = owner.idNumber,
-                        extraColors = extraColors
-                    )
-
-                    // Company Info if applicable
-                    if (owner.isCompany && owner.companyName.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                    if (owner.isCompany) {
+                        // Company Information
                         InfoRow(
                             label = localizedApp(R.string.company_name),
                             value = owner.companyName,
+                            extraColors = extraColors
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        InfoRow(
+                            label = localizedApp(R.string.company_registration_number),
+                            value = owner.companyRegistrationNumber,
+                            extraColors = extraColors
+                        )
+
+                        if (owner.companyType.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            InfoRow(
+                                label = "نوع الشركة",
+                                value = owner.companyType,
+                                extraColors = extraColors
+                            )
+                        }
+                    } else {
+                        // Individual Information
+                        InfoRow(
+                            label = localizedApp(R.string.owner_full_name_ar),
+                            value = owner.fullName,
+                            extraColors = extraColors
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        InfoRow(
+                            label = localizedApp(R.string.owner_id_number),
+                            value = owner.idNumber,
+                            extraColors = extraColors
+                        )
+
+                        if (owner.nationality.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            InfoRow(
+                                label = "الجنسية",
+                                value = owner.nationality,
+                                extraColors = extraColors
+                            )
+                        }
+                    }
+
+                    // Common Information for both types
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    InfoRow(
+                        label = localizedApp(R.string.enter_ownershippercentage),
+                        value = "${owner.ownerShipPercentage}%",
+                        extraColors = extraColors
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    InfoRow(
+                        label = localizedApp(R.string.email),
+                        value = owner.email,
+                        extraColors = extraColors
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    InfoRow(
+                        label = localizedApp(R.string.owner_mobile),
+                        value = owner.mobile,
+                        extraColors = extraColors
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    InfoRow(
+                        label = localizedApp(R.string.owner_address),
+                        value = owner.address,
+                        extraColors = extraColors
+                    )
+
+                    if (owner.city.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        InfoRow(
+                            label = "المدينة",
+                            value = owner.city,
+                            extraColors = extraColors
+                        )
+                    }
+
+                    if (owner.country.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        InfoRow(
+                            label = "الدولة",
+                            value = owner.country,
+                            extraColors = extraColors
+                        )
+                    }
+
+                    if (owner.postalCode.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        InfoRow(
+                            label = "الرمز البريدي",
+                            value = owner.postalCode,
+                            extraColors = extraColors
+                        )
+                    }
+
+                    if (owner.documentName.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        InfoRow(
+                            label = localizedApp(R.string.ownership_proof_document),
+                            value = owner.documentName,
                             extraColors = extraColors
                         )
                     }

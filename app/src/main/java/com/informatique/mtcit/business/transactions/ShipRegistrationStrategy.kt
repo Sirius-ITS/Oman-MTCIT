@@ -63,6 +63,7 @@ class ShipRegistrationStrategy @Inject constructor(
                 includeIMO = true,
                 includeMMSI = true,
                 includeManufacturer = true,
+                maritimeactivity = shipTypeOptions,
                 includeProofDocument = true,
                 includeConstructionDates = true,
                 includeRegistrationCountry = true

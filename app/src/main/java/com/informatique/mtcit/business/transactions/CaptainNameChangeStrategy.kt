@@ -103,7 +103,7 @@ class CaptainNameChangeStrategy @Inject constructor(
         fields = listOf(
             FormField.TextField(
                 id = "currentCaptainName",
-                labelRes = R.string.owner_full_name,
+                labelRes = R.string.owner_full_name_ar,
                 mandatory = true
             ),
             FormField.TextField(
@@ -121,7 +121,7 @@ class CaptainNameChangeStrategy @Inject constructor(
         fields = listOf(
             FormField.TextField(
                 id = "newCaptainName",
-                labelRes = R.string.owner_full_name,
+                labelRes = R.string.owner_full_name_ar,
                 mandatory = true
             ),
             FormField.TextField(

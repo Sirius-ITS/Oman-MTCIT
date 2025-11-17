@@ -20,6 +20,8 @@ sealed class FormField(
         val isNumeric: Boolean = false,
         val placeholder: String? = null,
         override val error: String? = null,
+        val initialValue: String = "",
+        val enabled: Boolean = true, // ✅ إضافة الخاصية دي
         override val mandatory: Boolean = false
 
     ) : FormField(id, label, labelRes, value, error, mandatory)
@@ -101,6 +103,7 @@ sealed class FormField(
         val allowMultipleSelection: Boolean = true, // Allow selecting multiple units
         val showOwnedUnitsWarning: Boolean = true, // Show warning for owned units
         override val error: String? = null,
+        val showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory)
 
@@ -128,4 +131,31 @@ sealed class FormField(
         override val error: String? = null,
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory)
+
+    data class RadioGroup(
+        override val id: String,
+        override val labelRes: Int,
+        override val label: String = "",
+        val options: List<RadioOption>,
+        override val value: String = "[]",
+        val selectedValue: String? = null,
+        val descriptionRes: Int? = null,
+        val orientation: RadioOrientation = RadioOrientation.VERTICAL,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory)
+
+    data class RadioOption(
+        val value: String,
+        val labelRes: Int,
+        val descriptionRes: Int? = null,
+        val isEnabled: Boolean = true,
+        val error: String? = null
+    )
+    enum class RadioOrientation {
+        VERTICAL,   // خيارات عمودية (الافتراضي)
+        HORIZONTAL  // خيارات أفقية
+    }
+
 }
+

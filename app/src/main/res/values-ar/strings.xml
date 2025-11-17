@@ -52,7 +52,7 @@
     <string name="student_id">الرقم الجامعي</string>
     <string name="nationality">الجنسية</string>
     <string name="national_id">الرقم القومي</string>
-    <string name="email">البريد الالكتروني</string>
+    <string name="email">أدخل البريد الإلكتروني</string>
     <string name="mobile_no">رقم المحمول</string>
     <string name="college">الكلية</string>
     <string name="major">التخصص</string>
@@ -86,16 +86,18 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">إصدار شهادة تسجيل مؤقتة للسفينة أوالوحدة البحرية</string>
     <string name="ship_info">معلومات السفينة</string>
     <string name="owner_info">معلومات المالك</string>
-    <string name="documents">المستندات</string>
+    <string name="documents">رفع المستندات</string>
     <string name="technical_details">التفاصيل الفنية</string>
     <string name="insurance">التأمين</string>
     <string name="review">المراجعة</string>
     <string name="confirmation">التأكيد</string>
     <string name="step_x_of_y">الخطوة %1$d من %2$d</string>
-    <string name="unit_data">بيانات الوحدة</string>
-    <string name="unit_data_description">يرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية\nلتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
+    <string name="unit_data">بيانات الوحدة البحرية</string>
+    <string name="unit_data_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
     <string name="select_unit_type">اختيار نوع الوحدة البحرية</string>
     <string name="select_unit_type_placeholder">اختيار نوع الوحدة</string>
+    <string name="select_unit_classification">تصنيف الوحدة</string>
+    <string name="select_unit_classification_placeholder">اختيار تصنيف الوحدة</string>
     <string name="call_sign">رمز النداء</string>
     <string name="enter_call_sign">ادخل رمز النداء</string>
     <string name="imo_number">رقم IMO</string>
@@ -110,9 +112,15 @@
     <string name="maritime_activity">النشاط البحري</string>
     <string name="select_maritime_activity">اختيار النشاط البحري</string>
     <string name="building_dock_optional">حوض البناء (اختياري)</string>
+    <string name="construction_pool">حوض البناء</string>
+    <string name="enter_construction_pool">أدخل اسم الترسانة</string>
     <string name="enter_shipyard_name">ادخل اسم الترسانة</string>
     <string name="proof_document">وثيقة الإثبات</string>
     <string name="proof_type">نوع الإثبات</string>
+    <string name="building_material">مادة البناء</string>
+    <string name="select_building_material">اختيار مادة البناء</string>
+    <string name="attaching_the_engine_documents">ارفاق المستندات الخاصة بالمحرك</string>
+
     <string name="select_proof_type">اختيار نوع الإثبات</string>
     <string name="construction_end_date">تاريخ انتهاء البناء</string>
     <string name="construction_start_date">تاريخ بدء البناء</string>
@@ -155,22 +163,64 @@
     <string name="choose_file">اختر ملف</string>
     <string name="view_file">عرض</string>
 
+
+
+
+    <!-- Marine Unit Dimensions -->
+    <string name="marine_unit_dimensions_title">الأبعاد الخاصة بالوحدة البحرية</string>
+    <string name="marine_unit_dimensions_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
+
+    <string name="overall_length">الطول الكلي</string>
+    <string name="overall_length_placeholder">أدخل الطول الأقصى للوحدة    متر</string>
+
+    <string name="overall_width">العرض الكلي</string>
+    <string name="overall_width_placeholder">أدخل العرض الأقصى للوحدة    متر</string>
+
+    <string name="depth">الغاطس</string>
+    <string name="depth_placeholder">أدخل الغاطس بالمتر    متر</string>
+
+    <string name="height_optional">الارتفاع (اختياري)</string>
+    <string name="height_placeholder">من قاعدة العارضة لأعلى نقطة    متر</string>
+
+    <string name="decks_count_optional">عدد الطوابق (اختياري)</string>
+    <string name="decks_count_placeholder">أدخل إجمالي الطوابق</string>
+
+
+
+    <!-- Marine Unit Weights and Loads -->
+    <string name="marine_unit_weights_title">الأوزان والحمولات الخاصة بالوحدة البحرية</string>
+    <string name="marine_unit_weights_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
+
+    <string name="gross_tonnage_placeholder">أدخل الحمولة الكلية</string>
+
+    <string name="net_tonnage_placeholder">أدخل الحمولة الصافية</string>
+
+    <string name="static_load">الحمولة الساكنة (اختياري)</string>
+    <string name="static_load_placeholder">أدخل الحمولة الساكنة (DWT)</string>
+
+    <string name="max_permitted_load_optional">أقصى حمولة مسموح بها (اختياري)</string>
+    <string name="max_permitted_load_placeholder">أدخل أقصى حمولة مسموحة</string>
+
     <!-- Owner Information Fields - Arabic -->
     <string name="owner_info_description">يرجى تقديم معلومات المالك الكاملة للوحدة البحرية</string>
     <string name="owner_information">معلومات المالك</string>
     <string name="owner_information_description">يرجى تقديم تفاصيل المالك للوحدة البحرية</string>
-    <string name="owner_full_name">الاسم الكامل للمالك</string>
+    <string name="owner_full_name_ar">الاسم الكامل للمالك بالعربية</string>
+    <string name="owner_full_name_en">الاسم الكامل للمالك بالانجليزية</string>
     <string name="enter_owner_full_name">أدخل الاسم الكامل للمالك</string>
     <string name="owner_nationality">جنسية المالك</string>
     <string name="select_nationality">اختر الجنسية</string>
-    <string name="owner_id_number">رقم هوية المالك</string>
+    <string name="owner_id_number">أدخل الرقم المدني/الهوية</string>
     <string name="enter_owner_id_number">أدخل رقم الهوية</string>
     <string name="owner_passport_number">رقم جواز سفر المالك</string>
+    <string name="ownershippercentage">نسبة الملكية %</string>
+    <string name="enter_ownershippercentage">أدخل نسبة الملكية %</string>
+
     <string name="enter_owner_passport_number">أدخل رقم جواز السفر</string>
     <string name="owner_email">بريد المالك الإلكتروني</string>
-    <string name="owner_mobile">رقم جوال المالك</string>
+    <string name="owner_mobile">أدخل رقم الهاتف المحمول</string>
     <string name="enter_owner_mobile">أدخل رقم الجوال</string>
-    <string name="owner_address">عنوان المالك</string>
+    <string name="owner_address">أدخل العنوان بالتفصيل</string>
     <string name="enter_owner_address">أدخل العنوان</string>
     <string name="owner_city">مدينة المالك</string>
     <string name="enter_owner_city">أدخل المدينة</string>
@@ -178,9 +228,11 @@
     <string name="select_owner_country">اختر الدولة</string>
     <string name="owner_postal_code">الرمز البريدي</string>
     <string name="enter_owner_postal_code">أدخل الرمز البريدي</string>
+    <string name="ownership_proof_attachments">مرفقات إثبات الملكية</string>
+    <string name="ownership_proof_document">مرفقات إثبات الملكية</string>
     <string name="company_name">اسم الشركة</string>
     <string name="enter_company_name">أدخل اسم الشركة</string>
-    <string name="company_registration_number">رقم تسجيل الشركة</string>
+    <string name="company_registration_number">أدخل رقم السجل التجارى</string>
     <string name="enter_company_registration_number">أدخل رقم التسجيل</string>
     <string name="is_company">هل هي شركة</string>
 
@@ -235,7 +287,7 @@
     <string name="technical_documents">الوثائق التقنية والمخططات</string>
 
     <!-- Documentation - Arabic -->
-    <string name="documents_description">رفع جميع الوثائق والمستندات المطلوبة لإتمام عملية التسجيل</string>
+    <string name="documents_description">ى تحميل المستندات المطلوبة بصيغ رسمية ومعتمدة، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة</string>
     <string name="identity_document">صورة من بطاقة الهوية/جواز السفر</string>
     <string name="vessel_photos">صور للوحدة البحرية (خارجية وداخلية)</string>
     <string name="safety_certificate">شهادة السلامة البحرية</string>
@@ -245,9 +297,31 @@
     <string name="data_accuracy">أتعهد بصحة جميع البيانات والمعلومات المقدمة</string>
     <string name="legal_responsibility">أتحمل المسؤولية القانونية الكاملة عن صحة المعلومات</string>
     <string name="shipbuilding_certificate_or_sale_contract">شهادة بناء السفينة او عقد البيع حالة الشراء</string>
-    <string name="inspection_documents">مستندات المعاينة</string>
+    <string name="inspection_documents">مستندات المعاينة ستتم داخل دورة المعاينة(إلزامي)</string>
 
     <string name="marine_unit_Dimentions">الأبعاد الخاصة بالوحدة البحرية</string>
+
+
+
+
+    <!-- Marine Unit Registration Certificate -->
+    <string name="marine_unit_registration_certificate_title">هل لدى الوحدة البحرية شهادة تسجيل مؤقتة؟</string>
+    <string name="marine_unit_registration_certificate_description">حدد ما إذا كانت وحدتك البحرية مسجلة مسبقاً بشهادة مؤقتة أم لا لتقديم الخدمات بشكل مخصص.</string>
+    <string name="marine_unit_registration_certificate_description_simple">يُرجى تحديد حالة التسجيل المؤقت للوحدة البحرية</string>
+
+    <string name="has_temporary_registration_certificate_question">حالة شهادة التسجيل المؤقتة</string>
+    <string name="yes_has_temporary_certificate">نعم، لدى الوحدة البحرية شهادة تسجيل مؤقتة</string>
+    <string name="no_temporary_certificate">لا، لا توجد شهادة تسجيل مؤقتة للوحدة البحرية</string>
+
+
+
+    <!-- Marine Unit Name Selection -->
+    <string name="marine_unit_name_selection_title">اختيار الاسم المطلوب للوحدة البحرية</string>
+    <string name="marine_unit_name_selection_description">يُرجى اختيار الاسم المطلوب للوحدة البحرية. سيتم حجز الاسم لفترة زمنية محددة بالدقائق، ويتعين عليكم سداد الرسوم خلال هذه المدة لضمان تثبيت الحجز.</string>
+    <string name="marine_unit_name_selection_description_simple">يُرجى إدخال الاسم المطلوب للوحدة البحرية</string>
+
+    <string name="marine_unit_name">اسم الوحدة البحرية</string>
+    <string name="marine_unit_name_placeholder">أدخل اسم الوحدة البحرية المطلوب تسجيله</string>
 
     <!-- File Upload Actions -->
     <string name="replace_file">استبدال</string>
@@ -286,10 +360,10 @@
     <string name="category_ship_data_modifications_desc">طلب تعديلات على معلومات وبيانات السفينة</string>
 
     <!-- Category 1: Marine Unit Registration Transactions - Arabic -->
-    <string name="transaction_temporary_registration_certificate">إصدار شهادة تسجيل سفينة أو وحدة بحرية مؤقتة</string>
-    <string name="transaction_temporary_registration_certificate_desc">إصدار شهادة تسجيل مؤقتة لسفينة أو وحدة بحرية</string>
-    <string name="transaction_permanent_registration_certificate">إصدار شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
-    <string name="transaction_permanent_registration_certificate_desc">إصدار شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
+    <string name="transaction_temporary_registration_certificate">إصدار شهادة تسجيل مؤقتة للسفينة أو الوحدة البحرية</string>
+    <string name="transaction_temporary_registration_certificate_desc">تمكين مالك السفينة أو وكيله من تسجيل الوحدة البحرية مؤقتا في سلطنة عمان والحصول على شهادة مؤقتة سهل تتيح التشغيل القانوني لحين استكمال متطلبات التسجيل الدائم</string>
+    <string name="transaction_permanent_registration_certificate">إصدار شهادة تسجيل دائمة للسفينة أو الوحدة البحرية</string>
+    <string name="transaction_permanent_registration_certificate_desc">تتيح هذه الخدمة إصدار شهادة تسجيل دائم للوحدة البحرية، لضمان إدراجها في السجل الوطني وتمكين المالك من ممارسة أنشطته البحرية بشكل قانوني داخل السلطنة وخارجها</string>
     <string name="transaction_suspend_permanent_registration">تعطيل شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
     <string name="transaction_suspend_permanent_registration_desc">تعطيل شهادة التسجيل الدائمة للسفن أو الوحدات البحرية</string>
     <string name="transaction_cancel_permanent_registration">شطب شهادة تسجيل دائمة للسفن أو الوحدات البحرية</string>
@@ -516,7 +590,7 @@
     <string name="person_type_desc">يرجى اختيار نوع الحساب المناسب لك لتقديم الخدمات بشكل مخصص</string>
 
 
-    <string name="owned_ships" >السفن المملوكة</string>
+    <string name="owned_ships" >اختر السفينة من بين المملوكة و المسجّلة او ابحث باستخدام الرقم التعريفي</string>
     <string name="num_of_ships">عدد السفن المختارة </string>
 
     <string name="engine_title">بيانات المحركات الخاصة بالوحدة البحرية</string>
@@ -540,5 +614,36 @@
     <string name="engine_condition_title">إختر حالة المحرك</string>
     <string name="engine_save_btn">حفظ</string>
 
+
+
+
+    <!-- Step Title and Description -->
+    <string name="insurance_document_title">بيانات وثيقة التأمين</string>
+    <string name="insurance_document_description">أدخل رقم وثيقة التأمين وحدد الشركة المصدرة والدولة. هذه المعلومات مطلوبة لإثبات التغطية التأمينية.</string>
+
+    <!-- Insurance Document Number -->
+    <string name="insurance_document_number">رقم وثيقة التأمين</string>
+    <string name="insurance_document_number_placeholder">أدخل رقم وثيقة التأمين</string>
+
+    <!-- Country -->
+    <string name="insurance_country">الدولة</string>
+    <string name="insurance_country_placeholder">اختر الدولة</string>
+
+    <!-- Insurance Company -->
+    <string name="insurance_company">الشركة المصدرة</string>
+    <string name="insurance_company_placeholder">أدخل الشركة التأمين المصدرة</string>
+
+    <!-- Insurance Document Attachment -->
+    <string name="insurance_document_attachment">أرفاق وثيقة التأمين (إذا كانت شركة التأمين خارج السلطنة)</string>
+    <string name="insurance_document_hint">فقط ملفات بحجم 5 ميجابايت أو أقل.\nيجب png أو jpeg أو jpg أو pdf.</string>
+    <string name="insurance_document_button">اختر الملف</string>
+
+    <!-- Validation Messages -->
+    <string name="insurance_document_number_required">رقم وثيقة التأمين مطلوب</string>
+    <string name="insurance_country_required">يجب اختيار الدولة</string>
+    <string name="insurance_company_required">يجب اختيار الشركة المصدرة</string>
+    <string name="insurance_document_required">يجب إرفاق وثيقة التأمين</string>
+    <string name="insurance_document_invalid_format">صيغة الملف غير مدعومة. يرجى رفع PDF أو صورة</string>
+    <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
 </resources>

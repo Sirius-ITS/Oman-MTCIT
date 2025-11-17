@@ -50,7 +50,6 @@ fun <T> SelectableList(
 ) {
     Column(modifier = modifier) {
         // List Items
-
         if (items.isNotEmpty()) {
             items.forEach { item ->
                 Spacer(modifier = Modifier.height(16.dp))

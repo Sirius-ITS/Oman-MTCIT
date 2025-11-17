@@ -163,33 +163,49 @@ abstract class BaseTransactionViewModel(
                 // 🔹 فلترة الداتا اللي تخص الـ step الحالي فقط
                 val currentStepData = currentState.formData.filterKeys { it in currentStepFields }
 
-                // 🧠 حفظ الداتا في SharedSteps
-                SharedSteps.saveStepData("Step_${currentStepIndex + 1}", currentStepData)
+                // ✅✅✅ الحل الأساسي: نادي processStepData و refresh الـ steps
+                val strategy = currentStrategy
+                if (strategy != null) {
+                    // Process the data
+                    strategy.processStepData(currentStepIndex, currentStepData)
 
-                // 🧾 عرض داتا الـ step الحالي في Toast
+                    // Refresh steps (critical for dynamic step logic!)
+                    val updatedSteps = strategy.getSteps()
+
+                    // Update state with new steps
+                    val updatedState = currentState.copy(steps = updatedSteps)
+                    _uiState.value = updatedState
+
+                    // Use updated state for navigation
+                    navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
+                        val newCompletedSteps = updatedState.completedSteps + currentStepIndex
+
+                        _uiState.value = updatedState.copy(
+                            currentStep = nextStep,
+                            completedSteps = newCompletedSteps,
+                            canProceedToNext = navigationUseCase.canProceedToNext(
+                                nextStep,
+                                updatedSteps,
+                                updatedState.formData
+                            )
+                        )
+                    }
+                }
+
+                // 🧠 حفظ الداتا في SharedSteps للـ review (اختياري)
+                com.informatique.mtcit.ui.viewmodels.SharedSteps.saveStepData(
+                    "Step_${currentStepIndex + 1}",
+                    currentStepData
+                )
+
+                // 🧾 عرض داتا الـ step الحالي في Toast (اختياري)
                 val dataSummary = currentStepData.entries.joinToString("\n") { (key, value) ->
                     "$key: $value"
                 }
                 _showToastEvent.value = "Step ${currentStepIndex + 1} Data:\n$dataSummary"
-
-                // ✅ الانتقال للـ Step التالي
-                navigationUseCase.getNextStep(currentStepIndex, currentState.steps.size)?.let { nextStep ->
-                    val newCompletedSteps = currentState.completedSteps + currentStepIndex
-
-                    _uiState.value = currentState.copy(
-                        currentStep = nextStep,
-                        completedSteps = newCompletedSteps,
-                        canProceedToNext = navigationUseCase.canProceedToNext(
-                            nextStep,
-                            currentState.steps,
-                            currentState.formData
-                        )
-                    )
-                }
             }
         }
     }
-
 
     fun previousStep() {
         val currentState = _uiState.value
