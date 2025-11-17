@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionState
 import com.informatique.mtcit.ui.components.*
@@ -97,6 +98,34 @@ fun TransactionFormContent(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
+                            tint = extraColors.iconBack2
+                        )
+                    }
+                },
+                actions = {
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .border(
+                                width = 1.dp,
+                                color = Color(0xFF4A7BA7 ),
+                                shape = CircleShape
+                            )
+                            .shadow(
+                                elevation = 20.dp,
+                                shape = CircleShape,
+                                ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                                spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                            )
+                            .background(extraColors.navy18223B)
+                            .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
                             tint = extraColors.iconBack2
                         )
                     }

@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
@@ -264,7 +265,7 @@ fun TopProfileBar(
                         spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                     )
                     .background(extraColors.iconBackBackground)
-                    .clickable { navController.navigate("settings_screen") },
+                    .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -527,7 +528,8 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                         color = extracolors.blue1,
                         onClick = {
                             // Navigate to MainCategoriesScreen with the specific category ID
-                            navController.navigate("mainCategoriesScreen/${category.id}")
+                            navController.navigate(
+                                NavRoutes.MainCategoriesRoute.createRoute(category.id))
                         },
                         modifier = Modifier
                     )

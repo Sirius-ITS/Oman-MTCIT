@@ -2682,6 +2682,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.coroutines.delay
@@ -2828,7 +2829,7 @@ fun PaymentDetailsScreen(navController: NavController) {
                     modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
                     ActionButtons(
-                        onPayClick = { navController.navigate("paysuc") },
+                        onPayClick = { navController.navigate(NavRoutes.PaymentSuccessRoute.route) },
                         onCancelClick = { navController.popBackStack() },
                     )
                 }

@@ -38,6 +38,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
@@ -208,7 +209,7 @@ fun MainCategoriesScreen(
                                     spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                                 )
                                 .background(extraColors.iconBackBackground)
-                                .clickable { navController.navigate("settings_screen") },
+                                .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -281,7 +282,7 @@ fun MainCategoriesScreen(
                                 isExpanded = expandedCategories.contains(category.id),
                                 onToggleExpand = { viewModel.toggleCategoryExpansion(category.id) },
                                 onSubCategoryClick = { subCategory ->
-                                    navController.navigate("transaction_list/${category.id}/${subCategory.id}")
+                                    navController.navigate(NavRoutes.TransactionListRoute.createRoute(category.id, subCategory.id))
                                 },
                                 availableServicesCount = viewModel.getAvailableServicesCount(category.id)
                             )
