@@ -27,7 +27,7 @@ fun DynamicStepForm(
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
-    onDeclarationChange: ((Boolean) -> Unit)? = null // Changed to declaration callback
+    onDeclarationChange: ((Boolean) -> Unit)? = null, // Changed to declaration callback
     onTriggerNext: () -> Unit // ✅ أضف الـ parameter ده
 ) {
 
