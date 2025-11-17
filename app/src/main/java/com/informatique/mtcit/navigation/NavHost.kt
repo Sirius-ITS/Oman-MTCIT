@@ -33,6 +33,8 @@ import com.informatique.mtcit.ui.screens.MainCategoriesScreen
 import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
 import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
 import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
+import com.informatique.mtcit.ui.screens.RequestDetail
+import com.informatique.mtcit.ui.screens.RequestDetailScreen
 import com.informatique.mtcit.ui.screens.SettingsScreen
 import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
@@ -40,6 +42,7 @@ import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
+import kotlinx.serialization.json.Json
 import java.net.URLDecoder
 
 @Composable
@@ -116,7 +119,8 @@ fun NavHost(themeViewModel: ThemeViewModel){
             if (transaction != null) {
                 TransactionRequirementsScreen(
                     transaction = transaction,
-                    onStart = { navController.navigate(transaction.route) },
+                    onStart = {
+                        navController.navigate(transaction.route) },
                     onBack = { navController.popBackStack() },
                     parentTitleRes = parentTitleRes,
                     navController = navController,
@@ -171,21 +175,6 @@ fun NavHost(themeViewModel: ThemeViewModel){
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.RELEASE_MORTGAGE
-            )
-        }
-
-        // Navigation Forms
-        composable(NavRoutes.IssueNavigationPermitRoute.route) {
-            ComingSoonScreen(
-                navController = navController,
-                transactionName = "Issue Navigation Permit"
-            )
-        }
-
-        composable(NavRoutes.RenewNavigationPermitRoute.route) {
-            ComingSoonScreen(
-                navController = navController,
-                transactionName = "Renew Navigation Permit"
             )
         }
 
@@ -378,6 +367,13 @@ fun NavHost(themeViewModel: ThemeViewModel){
         composable(NavRoutes.PaymentSuccessRoute.route) {
             PaymentSuccessScreen(navController = navController)
         }
+
+        composable(NavRoutes.RequestDetailRoute.route) { backStackEntry ->
+            val requestDetail = Json.decodeFromString<RequestDetail>(
+                backStackEntry.arguments?.getString("detail") ?: "")
+            RequestDetailScreen(navController = navController, requestDetail = requestDetail)
+        }
+
     }
 
 }
