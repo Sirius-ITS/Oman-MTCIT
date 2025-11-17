@@ -368,21 +368,20 @@
     <!-- Bank/Mortgage Related -->
     <string name="bank_information">Bank Information</string>
     <string name="bank_information_desc">Provide complete information about the mortgaging bank</string>
+    <string name="mortgage_data">Mortgage Data</string>
+    <string name="mortgage_data_desc">Enter the mortgage details and related information</string>
     <string name="bank_name">Bank Name</string>
     <string name="enter_bank_name">Enter bank name</string>
-    <string name="bank_branch">Bank Branch</string>
-    <string name="enter_bank_branch">Enter bank branch</string>
-    <string name="bank_country">Bank Country</string>
-    <string name="mortgage_amount">Mortgage Amount</string>
-    <string name="enter_amount">Enter amount</string>
-    <string name="currency">Currency</string>
-    <string name="select_currency">Select currency</string>
-    <string name="mortgage_start_date">Mortgage Start Date</string>
-    <string name="mortgage_end_date">Mortgage End Date</string>
-    <string name="mortgage_terms">Mortgage Terms and Conditions</string>
-    <string name="enter_mortgage_terms">Enter mortgage terms</string>
-    <string name="mortgage_agreement">Mortgage Agreement</string>
-    <string name="bank_approval_letter">Bank Approval Letter</string>
+    <string name="select_bank_name">Select bank name</string>
+    <string name="mortgage_contract_number">Mortgage Contract Number</string>
+    <string name="enter_mortgage_contract_number">Enter mortgage contract number</string>
+    <string name="mortgage_purpose">Mortgage Purpose</string>
+    <string name="select_mortgage_purpose">Select mortgage purpose</string>
+    <string name="mortgage_value">Mortgage Value (OMR)</string>
+    <string name="enter_mortgage_value">Enter mortgage value</string>
+    <string name="mortgage_start_date">Mortgage start date</string>
+    <string name="mortgage_end_date">Mortgage end date</string>
+    <string name="mortgage_application">Mortgage Application Document</string>
 
     <!-- Release Mortgage Related -->
     <string name="mortgage_information">Mortgage Information</string>
@@ -423,6 +422,17 @@
     <string name="no_file_attached">No File Attached</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+
+    <!-- Rejection Step -->
+    <string name="request_rejected_title">Request Cannot Be Processed</string>
+    <string name="request_rejected_desc">Unfortunately, your request cannot be completed due to the following reasons</string>
+    <string name="rejection_reasons">Rejection Reasons</string>
+    <string name="restriction_details">Restriction Details</string>
+    <string name="captured_data">Captured Data at Rejection</string>
+    <string name="entered_data_summary">Data You Entered</string>
+    <string name="go_back_and_fix">Go Back and Fix Issue</string>
+    <string name="back_to_home">Back to Home</string>
+    <string name="contact_support">Contact Support</string>
 
     <!-- File Upload Actions -->
     <string name="replace_file">Replace</string>

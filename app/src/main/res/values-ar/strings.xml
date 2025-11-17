@@ -366,21 +366,20 @@
     <!-- Bank/Mortgage Related -->
     <string name="bank_information">معلومات البنك</string>
     <string name="bank_information_desc">قدم معلومات كاملة عن البنك المرتهن</string>
+    <string name="mortgage_data">بيانات الرهن</string>
+    <string name="mortgage_data_desc">أدخل تفاصيل الرهن والمعلومات ذات الصلة</string>
     <string name="bank_name">اسم البنك</string>
     <string name="enter_bank_name">أدخل اسم البنك</string>
-    <string name="bank_branch">فرع البنك</string>
-    <string name="enter_bank_branch">أدخل فرع البنك</string>
-    <string name="bank_country">دولة البنك</string>
-    <string name="mortgage_amount">مبلغ الرهن</string>
-    <string name="enter_amount">أدخل المبلغ</string>
-    <string name="currency">العملة</string>
-    <string name="select_currency">اختر العملة</string>
+    <string name="select_bank_name">اختر اسم البنك</string>
+    <string name="mortgage_contract_number">رقم عقد الرهن</string>
+    <string name="enter_mortgage_contract_number">أدخل رقم عقد الرهن</string>
+    <string name="mortgage_purpose">الغرض من الرهن</string>
+    <string name="select_mortgage_purpose">اختر الغرض من الرهن</string>
+    <string name="mortgage_value">قيمة الرهن (ريال عماني)</string>
+    <string name="enter_mortgage_value">أدخل قيمة الرهن</string>
     <string name="mortgage_start_date">تاريخ بداية الرهن</string>
-    <string name="mortgage_end_date">تاريخ انتهاء الرهن</string>
-    <string name="mortgage_terms">شروط وأحكام الرهن</string>
-    <string name="enter_mortgage_terms">أدخل شروط الرهن</string>
-    <string name="mortgage_agreement">اتفاقية الرهن</string>
-    <string name="bank_approval_letter">خطاب موافقة البنك</string>
+    <string name="mortgage_end_date">تاريخ سداد الرهن</string>
+    <string name="mortgage_application">وثيقة طلب الرهن</string>
 
     <!-- Release Mortgage Related -->
     <string name="mortgage_information">معلومات الرهن</string>
@@ -421,6 +420,17 @@
     <string name="no_file_attached">لا يوجد ملف مرفق</string>
     <string name="yes">نعم</string>
     <string name="no">لا</string>
+
+    <!-- Rejection Step -->
+    <string name="request_rejected_title">لا يمكن معالجة الطلب</string>
+    <string name="request_rejected_desc">للأسف، لا يمكن إكمال طلبك للأسباب التالية</string>
+    <string name="rejection_reasons">أسباب الرفض</string>
+    <string name="restriction_details">تفاصيل القيد</string>
+    <string name="captured_data">البيانات المسجلة عند الرفض</string>
+    <string name="entered_data_summary">البيانات التي أدخلتها</string>
+    <string name="go_back_and_fix">الرجوع وإصلاح المشكلة</string>
+    <string name="back_to_home">العودة للرئيسية</string>
+    <string name="contact_support">التواصل مع الدعم</string>
 
     <string name="step">خطوة</string>
     <string name="of">من</string>

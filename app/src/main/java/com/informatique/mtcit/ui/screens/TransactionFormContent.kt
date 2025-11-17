@@ -57,6 +57,12 @@ fun TransactionFormContent(
 ) {
     val extraColors = LocalExtraColors.current
 
+    // Track declaration acceptance state for review step
+    var declarationAccepted by remember { mutableStateOf(false) }
+
+    // Check if current step is the review step (last step with no fields)
+    val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.fields?.isEmpty() == true
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = extraColors.background,
@@ -145,7 +151,12 @@ fun TransactionFormContent(
                         submitForm()
                     }
                 },
-                canProceed = uiState.canProceedToNext,
+                canProceed = if (isReviewStep) {
+                    // On review step, require declaration to be accepted
+                    declarationAccepted && uiState.canProceedToNext
+                } else {
+                    uiState.canProceedToNext
+                },
                 isSubmitting = submissionState is UIState.Loading
             )
         }
@@ -224,7 +235,10 @@ fun TransactionFormContent(
                     onOpenFilePicker = onOpenFilePicker,
                     onViewFile = onViewFile,
                     onRemoveFile = onRemoveFile,
-                    allSteps = uiState.steps
+                    allSteps = uiState.steps,
+                    onDeclarationChange = { accepted ->
+                        declarationAccepted = accepted
+                    }
                 )
             }
         }

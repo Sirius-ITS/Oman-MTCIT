@@ -3,10 +3,13 @@ package com.informatique.mtcit.business.transactions
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
+import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.ui.components.PersonType
+import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.viewmodels.StepData
 import javax.inject.Inject
 
@@ -23,109 +26,107 @@ class ReleaseMortgageStrategy @Inject constructor(
 
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
+    private var personTypeOptions: List<PersonType> = emptyList()
+    private var commercialOptions: List<SelectableItem> = emptyList()
+    private var marineUnits: List<MarineUnit> = emptyList()
 
-    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
+    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
+        val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
 
         portOptions = ports
         countryOptions = countries
+        personTypeOptions = personTypes
+        commercialOptions = commercialRegistrations
+        marineUnits = listOf(
+            MarineUnit(
+                id = "1",
+                name = "الريادة البحرية",
+                type = "سفينة صيد",
+                imoNumber = "9990001",
+                callSign = "A9BC2",
+                maritimeId = "470123456",
+                registrationPort = "صحار",
+                activity = "صيد",
+                isOwned = false
+            ),
+
+            MarineUnit(
+                id = "3",
+                name = "النجم الساطع",
+                type = "سفينة شحن",
+                imoNumber = "9990002",
+                callSign = "B8CD3",
+                maritimeId = "470123457",
+                registrationPort = "مسقط",
+                activity = "شحن دولي",
+                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
+            ),
+            MarineUnit(
+                id = "8",
+                name = "البحر الهادئ",
+                type = "سفينة صهريج",
+                imoNumber = "9990008",
+                callSign = "H8IJ9",
+                maritimeId = "470123463",
+                registrationPort = "صلالة",
+                activity = "نقل وقود",
+                isOwned = true // ⚠️ مملوكة
+            ),
+            MarineUnit(
+                id = "9",
+                name = "اللؤلؤة البيضاء",
+                type = "سفينة سياحية",
+                imoNumber = "9990009",
+                callSign = "I9JK0",
+                maritimeId = "470123464",
+                registrationPort = "مسقط",
+                activity = "رحلات سياحية",
+                isOwned = false
+            ),
+            MarineUnit(
+                id = "10",
+                name = "الشراع الذهبي",
+                type = "سفينة شراعية",
+                imoNumber = "9990010",
+                callSign = "J0KL1",
+                maritimeId = "470123465",
+                registrationPort = "صحار",
+                activity = "تدريب بحري",
+                isOwned = false
+            )
+        )
 
         return mapOf(
             "registrationPort" to ports,
-            "bankCountry" to countries
+            "ownerNationality" to countries,
+            "ownerCountry" to countries,
+            "bankCountry" to countries,
+            "marineUnits" to marineUnits.map { it.maritimeId },
+            "commercialRegistration" to commercialRegistrations,
+            "personType" to personTypes
         )
     }
 
     override fun getSteps(): List<StepData> {
         return listOf(
-            // Step 1: Mortgage Information
-            StepData(
-                titleRes = R.string.mortgage_information,
-                descriptionRes = R.string.mortgage_information_desc,
-                fields = listOf(
-                    FormField.TextField(
-                        id = "registrationNumber",
-                        labelRes = R.string.registration_number,
-                        mandatory = true
-                    ),
-                    FormField.TextField(
-                        id = "vesselName",
-                        labelRes = R.string.vessel_name,
-                        mandatory = true
-                    ),
-                    FormField.DropDown(
-                        id = "registrationPort",
-                        labelRes = R.string.registration_port,
-                        mandatory = true,
-                        options = portOptions
-                    ),
-                    FormField.TextField(
-                        id = "mortgageReferenceNumber",
-                        labelRes = R.string.mortgage_reference_number,
-                        mandatory = true
-                    ),
-                    FormField.DatePicker(
-                        id = "mortgageDate",
-                        labelRes = R.string.mortgage_date,
-                        allowPastDates = true,
-                        mandatory = true
-                    )
-                )
+            // Step 1: Person Type Selection
+            SharedSteps.personTypeStep(
+                options = personTypeOptions
             ),
-            // Step 2: Bank Release Information
-            StepData(
-                titleRes = R.string.bank_release_info,
-                descriptionRes = R.string.bank_release_info_desc,
-                fields = listOf(
-                    FormField.TextField(
-                        id = "bankName",
-                        labelRes = R.string.bank_name,
-                        mandatory = true
-                    ),
-                    FormField.DropDown(
-                        id = "bankCountry",
-                        labelRes = R.string.bank_country,
-                        mandatory = true,
-                        options = countryOptions
-                    ),
-                    FormField.DatePicker(
-                        id = "releaseDate",
-                        labelRes = R.string.release_date,
-                        allowPastDates = true,
-                        mandatory = true
-                    ),
-                    FormField.TextField(
-                        id = "releaseReason",
-                        labelRes = R.string.release_reason,
-                        mandatory = false,
-                    )
-                )
+
+            // Step 2: Commercial Registration (conditional)
+            SharedSteps.commercialRegistrationStep(
+                options = commercialOptions
             ),
-            // Step 3: Release Documents
-            SharedSteps.documentsStep(
-                requiredDocuments = listOf(
-                    DocumentConfig(
-                        id = "mortgageCertificate",
-                        labelRes = R.string.original_mortgage_certificate,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "bankReleaseLetter",
-                        labelRes = R.string.bank_release_letter,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "paymentProof",
-                        labelRes = R.string.payment_proof,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "ownerIdDocument",
-                        labelRes = R.string.identity_document,
-                        mandatory = true
-                    )
-                )
+
+            // Step 3: marine Selection
+            SharedSteps.marineUnitSelectionStep(
+                units = marineUnits,
+                allowMultipleSelection = false,
+                showOwnedUnitsWarning = true
             ),
             // Step 4: Review
             SharedSteps.reviewStep()
@@ -146,4 +147,3 @@ class ReleaseMortgageStrategy @Inject constructor(
         return repository.submitRegistration(data)
     }
 }
-

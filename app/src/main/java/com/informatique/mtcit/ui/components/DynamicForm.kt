@@ -25,6 +25,7 @@ fun DynamicStepForm(
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
+    onDeclarationChange: ((Boolean) -> Unit)? = null // Changed to declaration callback
 ) {
 
     var selectedId by remember { mutableStateOf<String?>(null) }
@@ -35,7 +36,8 @@ fun DynamicStepForm(
         // This is the review step - show summary of all collected data
         ReviewStepContent(
             steps = allSteps,
-            formData = formData
+            formData = formData,
+//            onDeclarationChange = onDeclarationChange
         )
     } else {
         // Regular step - show form fields
