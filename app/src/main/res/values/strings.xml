@@ -648,5 +648,6 @@
     <string name="insurance_document_invalid_format">صيغة الملف غير مدعومة. يرجى رفع PDF أو صورة</string>
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
+    <string name="request_detail_back_title">Services screen</string>
 
 </resources>
