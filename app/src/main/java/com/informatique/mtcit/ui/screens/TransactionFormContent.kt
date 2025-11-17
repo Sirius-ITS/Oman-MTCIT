@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionState
@@ -31,6 +32,7 @@ import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -52,7 +54,8 @@ fun TransactionFormContent(
     goToStep: (Int) -> Unit,
     previousStep: () -> Unit,
     nextStep: () -> Unit,
-    submitForm: () -> Unit
+    submitForm: () -> Unit,
+    viewModel: BaseTransactionViewModel
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -94,34 +97,6 @@ fun TransactionFormContent(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = extraColors.iconBack2
-                        )
-                    }
-                },
-                actions = {
-                    Box(
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .border(
-                                width = 1.dp,
-                                color = Color(0xFF4A7BA7 ),
-                                shape = CircleShape
-                            )
-                            .shadow(
-                                elevation = 20.dp,
-                                shape = CircleShape,
-                                ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
-                                spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
-                            )
-                            .background(extraColors.navy18223B)
-                            .clickable { navController.navigate("settings_screen") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
                             tint = extraColors.iconBack2
                         )
                     }
@@ -223,7 +198,8 @@ fun TransactionFormContent(
                     onOpenFilePicker = onOpenFilePicker,
                     onViewFile = onViewFile,
                     onRemoveFile = onRemoveFile,
-                    allSteps = uiState.steps
+                    allSteps = uiState.steps,
+                    onTriggerNext = { viewModel.nextStep() } // ✅ مرر الـ ViewModel function
                 )
             }
         }
@@ -363,6 +339,11 @@ private fun updateFieldWithFormData(
             error = error
         )
         is FormField.EngineList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
+        is FormField.RadioGroup -> field.copy(
             label = localizedLabel,
             value = value.ifEmpty { "[]" },
             error = error

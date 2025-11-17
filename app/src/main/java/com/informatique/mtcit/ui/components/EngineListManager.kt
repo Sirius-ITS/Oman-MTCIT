@@ -65,6 +65,7 @@ fun EngineListManager(
             isNumeric = true,
             mandatory = false,
             placeholder = stringResource(R.string.engine_count),
+            enabled = true
         )
 
 

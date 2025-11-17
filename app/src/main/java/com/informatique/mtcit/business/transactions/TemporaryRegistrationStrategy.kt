@@ -18,10 +18,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
-/**
- * Strategy for Temporary Registration Certificate
- * Full baseline implementation with all steps
- */
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
@@ -33,10 +29,9 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
-
     private var commercialOptions: List<SelectableItem> = emptyList()
-
     private var typeOptions: List<PersonType> = emptyList()
+    private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -61,9 +56,20 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 maritimeId = "470123456",
                 registrationPort = "صحار",
                 activity = "صيد",
-                isOwned = false
+                isOwned = false,
+                totalLength = "45 متر",
+                lengthBetweenPerpendiculars = "40 متر",
+                totalWidth = "12 متر",
+                draft = "4 أمتار",
+                height = "15 متر",
+                numberOfDecks = "2",
+                totalCapacity = "500 طن",
+                containerCapacity = "-",
+                violationsCount = "0",
+                detentionsCount = "0",
+                amountDue = "0 ريال",
+                paymentStatus = "مسدد"
             ),
-
             MarineUnit(
                 id = "3",
                 name = "النجم الساطع",
@@ -73,7 +79,19 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 maritimeId = "470123457",
                 registrationPort = "مسقط",
                 activity = "شحن دولي",
-                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
+                isOwned = true,
+                totalLength = "240 متر",
+                lengthBetweenPerpendiculars = "210 متر",
+                totalWidth = "33 متر",
+                draft = "10 أمتار",
+                height = "45 متر",
+                numberOfDecks = "9",
+                totalCapacity = "50000 طن",
+                containerCapacity = "4500 حاوية",
+                violationsCount = "2",
+                detentionsCount = "1",
+                amountDue = "15000 ريال",
+                paymentStatus = "مستحق"
             ),
             MarineUnit(
                 id = "8",
@@ -84,7 +102,19 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 maritimeId = "470123463",
                 registrationPort = "صلالة",
                 activity = "نقل وقود",
-                isOwned = true // ⚠️ مملوكة
+                isOwned = true,
+                totalLength = "180 متر",
+                lengthBetweenPerpendiculars = "165 متر",
+                totalWidth = "28 متر",
+                draft = "12 أمتار",
+                height = "38 متر",
+                numberOfDecks = "7",
+                totalCapacity = "75000 طن",
+                containerCapacity = "-",
+                violationsCount = "3",
+                detentionsCount = "0",
+                amountDue = "8500 ريال",
+                paymentStatus = "تحت المراجعة"
             ),
             MarineUnit(
                 id = "9",
@@ -95,7 +125,19 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 maritimeId = "470123464",
                 registrationPort = "مسقط",
                 activity = "رحلات سياحية",
-                isOwned = false
+                isOwned = false,
+                totalLength = "120 متر",
+                lengthBetweenPerpendiculars = "105 متر",
+                totalWidth = "22 متر",
+                draft = "6 أمتار",
+                height = "30 متر",
+                numberOfDecks = "8",
+                totalCapacity = "3000 طن",
+                containerCapacity = "-",
+                violationsCount = "0",
+                detentionsCount = "0",
+                amountDue = "0 ريال",
+                paymentStatus = "مسدد"
             ),
             MarineUnit(
                 id = "10",
@@ -106,7 +148,19 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 maritimeId = "470123465",
                 registrationPort = "صحار",
                 activity = "تدريب بحري",
-                isOwned = false
+                isOwned = false,
+                totalLength = "35 متر",
+                lengthBetweenPerpendiculars = "30 متر",
+                totalWidth = "8 متر",
+                draft = "3 أمتار",
+                height = "25 متر",
+                numberOfDecks = "1",
+                totalCapacity = "150 طن",
+                containerCapacity = "-",
+                violationsCount = "0",
+                detentionsCount = "0",
+                amountDue = "0 ريال",
+                paymentStatus = "مسدد"
             )
         )
 
@@ -123,57 +177,136 @@ class TemporaryRegistrationStrategy @Inject constructor(
     }
 
     override fun getSteps(): List<StepData> {
-        return listOf(
-            SharedSteps.personTypeStep(typeOptions),
+        val steps = mutableListOf<StepData>()
 
-            SharedSteps.commercialRegistrationStep(commercialOptions),
+        // Step 1: Person Type
+        steps.add(SharedSteps.personTypeStep(typeOptions))
 
+        // Step 2: Commercial Registration (فقط للشركات)
+        val selectedPersonType = accumulatedFormData["selectionPersonType"]
+        if (selectedPersonType == "شركة") {
+            steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
+        }
+
+        // Step 3: Marine Unit Selection
+        steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false, // اختيار وحدة واحدة فقط
+                allowMultipleSelection = false,
+                showAddNewButton = true,
                 showOwnedUnitsWarning = true
-            ),
+            )
+        )
 
-            SharedSteps.unitSelectionStep(
-                shipTypes = shipTypeOptions,
-                ports = portOptions,
-                countries = countryOptions,
-                includeIMO = false,
-                includeMMSI = false,
-                includeManufacturer = false,
-                includeProofDocument = false,
-                includeConstructionDates = false,
-                includeRegistrationCountry = false
-            ),
+        // ✅ التحقق الصحيح من اختيار المستخدم
+        val isAddingNewUnitFlag = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
+        val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
 
-            SharedSteps.engineInfoStep(
-                manufacturers = listOf("Manufacturer 1", "Manufacturer 2", "Manufacturer 3"),
-                countries = countryOptions,
-                fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
-                engineConditions = listOf("New", "Used - Like New", "Used - Good", "Used - Fair", "Used - Poor"),
-            ),
+        // ✅ المستخدم اختار سفينة موجودة إذا كان فيه JSON مش فاضي ومش "[]"
+        val hasSelectedExistingUnit = !selectedUnitsJson.isNullOrEmpty() &&
+                selectedUnitsJson != "[]"
 
-            SharedSteps.ownerInfoStep(
-                nationalities = countryOptions,
-                countries = countryOptions,
-                includeCompanyFields = true,
-            ),
-            SharedSteps.documentsStep(
-                requiredDocuments = listOf(
-                    DocumentConfig(
-                        id = "shipbuildingCertificate",
-                        labelRes = R.string.shipbuilding_certificate_or_sale_contract,
-                        mandatory = true
+        // ✅ WORKAROUND: لو selectedMarineUnits موجود وفاضي "[]" ومفيش isAddingNewUnit flag
+        // معناها المستخدم ضغط على الزرار بس الفلاج مبعتش صح
+        val isAddingNewUnit = isAddingNewUnitFlag ||
+                (selectedUnitsJson == "[]" && accumulatedFormData.containsKey("selectedMarineUnits"))
+
+        // ✅ طباعة للتتبع (Debug)
+        println("🔍 DEBUG - isAddingNewUnitFlag: $isAddingNewUnitFlag")
+        println("🔍 DEBUG - selectedUnitsJson: $selectedUnitsJson")
+        println("🔍 DEBUG - accumulatedFormData: $accumulatedFormData")
+        println("🔍 DEBUG - hasSelectedExistingUnit: $hasSelectedExistingUnit")
+        println("🔍 DEBUG - isAddingNewUnit (final): $isAddingNewUnit")
+        println("🔍 DEBUG - Will show new unit steps: ${isAddingNewUnit && !hasSelectedExistingUnit}")
+
+        // ✅ نضيف steps الإضافة فقط لو المستخدم ضغط "إضافة جديدة" ومش مختار سفينة موجودة
+        if (isAddingNewUnit && !hasSelectedExistingUnit) {
+            println("✅ Adding new unit steps")
+
+            steps.add(
+                SharedSteps.unitSelectionStep(
+                    shipTypes = shipTypeOptions,
+                    ports = portOptions,
+                    countries = countryOptions,
+                    includeIMO = true,
+                    includeMMSI = true,
+                    includeManufacturer = true,
+                    maritimeactivity = shipTypeOptions,
+                    includeProofDocument = false,
+                    includeConstructionDates = true,
+                    includeRegistrationCountry = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.marineUnitDimensionsStep(
+                    includeHeight = true,
+                    includeDecksCount = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.marineUnitWeightsStep(
+                    includeMaxPermittedLoad = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.engineInfoStep(
+                    manufacturers = listOf(
+                        "Manufacturer 1",
+                        "Manufacturer 2",
+                        "Manufacturer 3"
                     ),
-                    DocumentConfig(
-                        id = "inspectionDocuments",
-                        labelRes = R.string.inspection_documents,
-                        mandatory = true
+                    countries = countryOptions,
+                    fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
+                    engineConditions = listOf(
+                        "New",
+                        "Used - Like New",
+                        "Used - Good",
+                        "Used - Fair",
+                        "Used - Poor"
+                    ),
+                )
+            )
+
+            steps.add(
+                SharedSteps.ownerInfoStep(
+                    nationalities = countryOptions,
+                    countries = countryOptions,
+                    includeCompanyFields = true,
+                )
+            )
+
+            steps.add(
+                SharedSteps.documentsStep(
+                    requiredDocuments = listOf(
+                        DocumentConfig(
+                            id = "shipbuildingCertificate",
+                            labelRes = R.string.shipbuilding_certificate_or_sale_contract,
+                            mandatory = true
+                        ),
+                        DocumentConfig(
+                            id = "inspectionDocuments",
+                            labelRes = R.string.inspection_documents,
+                            mandatory = true
+                        )
                     )
                 )
-            ),
-            SharedSteps.reviewStep()
+            )
+        } else {
+            println("❌ NOT adding new unit steps - isAddingNewUnit: $isAddingNewUnit, hasSelectedExistingUnit: $hasSelectedExistingUnit")
+        }
+
+        // Review Step
+        steps.add(SharedSteps.reviewStep())
+        steps.add(
+            SharedSteps.marineUnitNameSelectionStep(
+                showReservationInfo = true
+            )
         )
+        println("📋 Total steps count: ${steps.size}")
+        return steps
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
@@ -183,7 +316,103 @@ class TemporaryRegistrationStrategy @Inject constructor(
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
+        println("🔄 processStepData called with: $data")
+
+        // ✅ تحديث الـ accumulatedFormData
+        accumulatedFormData.putAll(data)
+
+        println("📦 accumulatedFormData after update: $accumulatedFormData")
+
+        // ✅ لو المستخدم غيّر اختياره في Marine Unit Selection Step
+        if (data.containsKey("selectedMarineUnits") || data.containsKey("isAddingNewUnit")) {
+            println("🔀 Marine unit selection changed")
+            handleMarineUnitSelectionChange(data)
+        }
+
         return data
+    }
+
+    // ✅ دالة جديدة لمعالجة تغيير اختيار السفينة
+    private fun handleMarineUnitSelectionChange(data: Map<String, String>) {
+        val isAddingNew = data["isAddingNewUnit"]?.toBoolean() ?: false
+        val hasSelectedUnit = !data["selectedMarineUnits"].isNullOrEmpty() &&
+                data["selectedMarineUnits"] != "[]"
+
+        println("🔧 handleMarineUnitSelectionChange - isAddingNew: $isAddingNew, hasSelectedUnit: $hasSelectedUnit")
+
+        if (isAddingNew && hasSelectedUnit) {
+            // ✅ المستخدم اختار "إضافة جديدة" بعد ما كان مختار سفينة
+            println("🗑️ Removing selected units because adding new")
+            accumulatedFormData.remove("selectedMarineUnits")
+            resetNewUnitData()
+        } else if (!isAddingNew && hasSelectedUnit) {
+            // ✅ المستخدم اختار سفينة موجودة بعد ما كان في وضع "إضافة جديدة"
+            println("🗑️ Resetting new unit data because selected existing unit")
+            accumulatedFormData["isAddingNewUnit"] = "false"
+            resetNewUnitData()
+        }
+    }
+
+    // ✅ دالة لمسح بيانات السفينة الجديدة
+    private fun resetNewUnitData() {
+        println("🧹 Resetting new unit data")
+
+        val keysToRemove = listOf(
+            // Unit Selection Data
+            "unitType",
+            "unitClassification",
+            "callSign",
+            "imoNumber",
+            "registrationPort",
+            "mmsi",
+            "manufacturerYear",
+            "constructionpool",
+            "proofType",
+            "proofDocument",
+            "constructionEndDate",
+            "firstRegistrationDate",
+            "registrationCountry",
+
+            // Dimensions
+            "overallLength",
+            "overallWidth",
+            "depth",
+            "height",
+            "decksCount",
+
+            // Weights
+            "grossTonnage",
+            "netTonnage",
+            "staticLoad",
+            "maxPermittedLoad",
+
+            // Engine Info
+            "engines",
+
+            // Owner Info
+            "owners",
+            "totalOwnersCount",
+
+            // Documents
+            "shipbuildingCertificate",
+            "inspectionDocuments",
+
+            // Unit Name
+            "marineUnitName",
+
+            // Insurance
+            "insuranceDocumentNumber",
+            "insuranceCountry",
+            "insuranceCompany",
+            "insuranceDocumentFile"
+        )
+
+        keysToRemove.forEach { key ->
+            if (accumulatedFormData.containsKey(key)) {
+                println("  Removing key: $key")
+            }
+            accumulatedFormData.remove(key)
+        }
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
@@ -248,4 +477,3 @@ class TemporaryRegistrationStrategy @Inject constructor(
         }
     }
 }
-

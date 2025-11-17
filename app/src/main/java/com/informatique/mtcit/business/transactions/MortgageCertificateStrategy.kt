@@ -60,6 +60,7 @@ class MortgageCertificateStrategy @Inject constructor(
                 includeIMO = true,
                 includeMMSI = false, // 🔴 REMOVED
                 includeManufacturer = false, // 🔴 REMOVED
+                maritimeactivity = shipTypeOptions,
                 includeProofDocument = false, // 🔴 REMOVED
                 includeConstructionDates = false, // 🔴 REMOVED
                 includeRegistrationCountry = false // 🔴 REMOVED

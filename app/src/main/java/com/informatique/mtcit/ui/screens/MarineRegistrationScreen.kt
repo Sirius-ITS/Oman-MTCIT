@@ -206,7 +206,8 @@ fun MarineRegistrationScreen(
         goToStep = viewModel::goToStep,
         previousStep = viewModel::previousStep,
         nextStep = viewModel::nextStep,
-        submitForm = viewModel::submitForm
+        submitForm = viewModel::submitForm,
+        viewModel = viewModel
     )
 }
 
