@@ -435,7 +435,7 @@ fun getMainCategories(): List<MainCategory> {
                             titleRes = R.string.transaction_permanent_registration_certificate,
                             descriptionRes = R.string.transaction_permanent_registration_certificate_desc,
                             route = NavRoutes.PermanentRegistrationRoute.route,
-                            routeInfo = "route-2"
+                            routeInfo = "route-2",
                             duration = "10 دقائق",
                             steps = listOf("ملء النموذج", "رفع المستندات" ,"استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
                         ),
