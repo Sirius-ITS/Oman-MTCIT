@@ -238,7 +238,7 @@ fun TransactionFormContent(
 //                        declarationAccepted = accepted
 //                    },
                     onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
-
+                    navController = navController
                 )
             }
         }

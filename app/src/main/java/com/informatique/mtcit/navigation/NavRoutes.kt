@@ -1,6 +1,8 @@
 package com.informatique.mtcit.navigation
 
 import android.net.Uri
+import com.informatique.mtcit.ui.screens.RequestDetail
+import kotlinx.serialization.json.Json
 
 sealed class NavRoutes(val route: String) {
     data object HomeRoute : NavRoutes("homepage")
@@ -62,4 +64,9 @@ sealed class NavRoutes(val route: String) {
     data object PaymentDetailsRoute : NavRoutes("pay")
 
     data object PaymentSuccessRoute : NavRoutes("paysuc")
+
+    data object RequestDetailRoute : NavRoutes("request-detail/{detail}"){
+        fun createRoute(detail: RequestDetail)
+                = "request-detail/${Uri.encode(Json.encodeToString(detail))}"
+    }
 }

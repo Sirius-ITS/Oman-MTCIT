@@ -6,17 +6,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 
 @Composable
 fun DynamicStepForm(
+    navController: NavController,
     stepData: StepData,
     formData: Map<String, String> = emptyMap(), // Add formData parameter
     onFieldChange: (String, String, Boolean?) -> Unit,
@@ -31,6 +38,7 @@ fun DynamicStepForm(
     onTriggerNext: () -> Unit // ✅ أضف الـ parameter ده
 ) {
 
+    val scope = rememberCoroutineScope()
     var selectedId by remember { mutableStateOf<String?>(null) }
     var selectedPersonId by remember { mutableStateOf("PT-2024-001") }
 
@@ -232,6 +240,14 @@ fun DynamicStepForm(
                                 onSelectionChange = { updatedSelection ->
                                     val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
+                                    if (updatedSelection[0] == "470123456") {
+                                        scope.launch {
+                                            delay(1000)
+                                            navController.navigate(NavRoutes.RequestDetailRoute.createRoute(
+                                                CheckShipCondition("470123456")
+                                            ))
+                                        }
+                                    }
                                 }
                             )
                         }
