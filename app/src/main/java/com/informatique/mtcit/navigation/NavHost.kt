@@ -34,6 +34,7 @@ import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
 import com.informatique.mtcit.ui.screens.NotificationScreen
 import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
 import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
+import com.informatique.mtcit.ui.screens.ProfileScreen
 import com.informatique.mtcit.ui.screens.RequestDetail
 import com.informatique.mtcit.ui.screens.RequestDetailScreen
 import com.informatique.mtcit.ui.screens.SettingsScreen
