@@ -17,12 +17,18 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.data.repository.MarineUnitRepository
+import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
+import com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult
+import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
 
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val marineUnitRepository: MarineUnitRepository,
+    private val temporaryRegistrationRules: TemporaryRegistrationRules
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -46,126 +52,10 @@ class TemporaryRegistrationStrategy @Inject constructor(
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false,
-                totalLength = "45 متر",
-                lengthBetweenPerpendiculars = "40 متر",
-                totalWidth = "12 متر",
-                draft = "4 أمتار",
-                height = "15 متر",
-                numberOfDecks = "2",
-                totalCapacity = "500 طن",
-                containerCapacity = "-",
-                violationsCount = "0",
-                detentionsCount = "0",
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true,
-                totalLength = "240 متر",
-                lengthBetweenPerpendiculars = "210 متر",
-                totalWidth = "33 متر",
-                draft = "10 أمتار",
-                height = "45 متر",
-                numberOfDecks = "9",
-                totalCapacity = "50000 طن",
-                containerCapacity = "4500 حاوية",
-                violationsCount = "2",
-                detentionsCount = "1",
-                amountDue = "15000 ريال",
-                paymentStatus = "مستحق"
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true,
-                totalLength = "180 متر",
-                lengthBetweenPerpendiculars = "165 متر",
-                totalWidth = "28 متر",
-                draft = "12 أمتار",
-                height = "38 متر",
-                numberOfDecks = "7",
-                totalCapacity = "75000 طن",
-                containerCapacity = "-",
-                violationsCount = "3",
-                detentionsCount = "0",
-                amountDue = "8500 ريال",
-                paymentStatus = "تحت المراجعة"
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false,
-                totalLength = "120 متر",
-                lengthBetweenPerpendiculars = "105 متر",
-                totalWidth = "22 متر",
-                draft = "6 أمتار",
-                height = "30 متر",
-                numberOfDecks = "8",
-                totalCapacity = "3000 طن",
-                containerCapacity = "-",
-                violationsCount = "0",
-                detentionsCount = "0",
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false,
-                totalLength = "35 متر",
-                lengthBetweenPerpendiculars = "30 متر",
-                totalWidth = "8 متر",
-                draft = "3 أمتار",
-                height = "25 متر",
-                numberOfDecks = "1",
-                totalCapacity = "150 طن",
-                containerCapacity = "-",
-                violationsCount = "0",
-                detentionsCount = "0",
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            )
-        )
+        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
 
         return mapOf(
-            "marineUnits" to marineUnits.map { it.maritimeId },
+            "marineUnits" to marineUnits, // ✅ Return actual MarineUnit objects for validation
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
@@ -298,13 +188,16 @@ class TemporaryRegistrationStrategy @Inject constructor(
             println("❌ NOT adding new unit steps - isAddingNewUnit: $isAddingNewUnit, hasSelectedExistingUnit: $hasSelectedExistingUnit")
         }
 
-        // Review Step
+        // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
+
+        // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
         steps.add(
             SharedSteps.marineUnitNameSelectionStep(
                 showReservationInfo = true
             )
         )
+
         println("📋 Total steps count: ${steps.size}")
         return steps
     }
@@ -474,6 +367,42 @@ class TemporaryRegistrationStrategy @Inject constructor(
             }
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+        }
+    }
+
+    /**
+     * Validate marine unit selection using TemporaryRegistrationRules
+     * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
+     */
+    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+        return try {
+            println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
+
+            // Find the selected unit
+            val selectedUnit = marineUnits.firstOrNull { it.id == unitId }
+
+            if (selectedUnit == null) {
+                println("❌ Unit not found with id: $unitId")
+                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
+            }
+
+            println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
+
+            // Use TemporaryRegistrationRules to validate
+            val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
+            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
+
+            println("✅ Validation result: ${validationResult::class.simpleName}")
+            println("✅ Navigation action: ${navigationAction::class.simpleName}")
+
+            ValidationResult.Success(
+                validationResult = validationResult,
+                navigationAction = navigationAction
+            )
+        } catch (e: Exception) {
+            println("❌ Validation error: ${e.message}")
+            e.printStackTrace()
+            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
         }
     }
 }

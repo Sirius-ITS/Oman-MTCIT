@@ -1,27 +1,35 @@
 package com.informatique.mtcit.business.transactions
 
-import com.informatique.mtcit.R
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
-import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.viewmodels.StepData
 import javax.inject.Inject
+import com.informatique.mtcit.business.transactions.marineunit.rules.ReleaseMortgageRules
+import com.informatique.mtcit.business.transactions.marineunit.usecases.ValidateMarineUnitUseCase
+import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
+import com.informatique.mtcit.data.repository.MarineUnitRepository
 
 /**
  * Strategy for Release Mortgage
- * DEMONSTRATION: Simplified 3-step process showing minimal required data
- * Different document requirements from other transactions
+ * Steps:
+ * 1. Person Type Selection (Individual/Company)
+ * 2. Commercial Registration (conditional - only for Company)
+ * 3. Unit Selection (choose from mortgaged ships) - WITH BUSINESS VALIDATION
+ * 4. Review
  */
 class ReleaseMortgageStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val validationUseCase: FormValidationUseCase,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val releaseMortgageRules: ReleaseMortgageRules,
+    private val validateMarineUnitUseCase: ValidateMarineUnitUseCase,
+    private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
+    private val marineUnitRepository: MarineUnitRepository
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -40,64 +48,8 @@ class ReleaseMortgageStrategy @Inject constructor(
         countryOptions = countries
         personTypeOptions = personTypes
         commercialOptions = commercialRegistrations
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false
-            ),
 
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true // ⚠️ مملوكة
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false
-            )
-        )
+        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
 
         return mapOf(
             "registrationPort" to ports,
@@ -122,15 +74,36 @@ class ReleaseMortgageStrategy @Inject constructor(
                 options = commercialOptions
             ),
 
-            // Step 3: marine Selection
+            // Step 3: Marine Unit Selection - WITH BUSINESS RULES
+            // Only mortgaged units should be selectable
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false,
+                allowMultipleSelection = releaseMortgageRules.allowMultipleSelection(),
                 showOwnedUnitsWarning = true
             ),
-            // Step 4: Review
+
+            // Step 4: Review (mortgage details will be shown from backend)
             SharedSteps.reviewStep()
         )
+    }
+
+    // NEW: Validate marine unit selection with business rules
+    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+        val unit = marineUnits.find { it.id == unitId }
+            ?: return ValidationResult.Error("الوحدة البحرية غير موجودة")
+
+        val (validationResult, navigationAction) = validateMarineUnitUseCase.executeAndGetAction(
+            unit = unit,
+            userId = userId,
+            rules = releaseMortgageRules
+        )
+
+        return ValidationResult.Success(validationResult, navigationAction)
+    }
+
+    // NEW: Get only eligible units (mortgaged units) for this transaction
+    suspend fun getEligibleMarineUnits(userId: String): List<MarineUnit> {
+        return getEligibleUnitsUseCase.getEligibleOnly(userId, releaseMortgageRules)
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {

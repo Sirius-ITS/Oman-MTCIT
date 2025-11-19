@@ -130,6 +130,8 @@
     <string name="first_registration_date_optional">تاريخ أول تسجيل (اختياري)</string>
     <string name="continue_button">استمرار</string>
     <string name="next_button">التالي</string>
+    <string name="accept_and_send">قبول وإرسال</string>
+    <string name="declaration_acceptance_text">أقر بأن جميع المعلومات المقدمة صحيحة ودقيقة، وأتحمل كامل المسؤولية عن البيانات المقدمة.</string>
     <string name="step_2_title">الخطوة 2: معلومات المالك</string>
     <string name="step_3_title">الخطوة 3: المستندات</string>
     <string name="step_4_title">الخطوة 4: التفاصيل الفنية</string>

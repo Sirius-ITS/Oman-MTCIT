@@ -110,7 +110,7 @@ object SharedSteps {
         includeIMO: Boolean = true,
         includeMMSI: Boolean = true,
         includeManufacturer: Boolean = true,
-        maritimeactivity : List<String>,
+        maritimeactivity: List<String>,
         includeProofDocument: Boolean = true,
         includeConstructionDates: Boolean = true,
         includeRegistrationCountry: Boolean = true,
@@ -253,7 +253,17 @@ object SharedSteps {
                     FormField.FileUpload(
                         id = "proofDocument",
                         labelRes = R.string.proof_document,
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
+                        allowedTypes = listOf(
+                            "pdf",
+                            "jpg",
+                            "jpeg",
+                            "png",
+                            "doc",
+                            "docx",
+                            "xls",
+                            "xlsx",
+                            "txt"
+                        ),
                         mandatory = true
                     )
                 )
@@ -396,7 +406,6 @@ object SharedSteps {
     }
 
 
-
     /**
      * Marine Unit Name Selection Step
      * Used for: Ship Registration, Name Change
@@ -442,8 +451,6 @@ object SharedSteps {
             fields = fields
         )
     }
-
-
 
 
     /**
@@ -515,12 +522,6 @@ object SharedSteps {
     }
 
 
-
-
-
-
-
-
     /**
      * Marine Unit Registration Certificate Step
      * Used for: Various ship transactions that require checking registration status
@@ -568,9 +569,6 @@ object SharedSteps {
     }
 
 
-
-
-
     /**
      * Marine Unit Weights and Loads Step
      * Used for: Ship Registration, Technical Modifications, Load Capacity Changes
@@ -582,10 +580,9 @@ object SharedSteps {
      * - Maximum Permitted Load (optional)
      *
      * @param includeMaxPermittedLoad Show maximum permitted load field (default: true)
-     * @param weightUnits List of weight units (default: ["طن"])
      */
     fun marineUnitWeightsStep(
-        includeMaxPermittedLoad: Boolean = true,
+        includeMaxPermittedLoad: Boolean = true
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -641,8 +638,6 @@ object SharedSteps {
             fields = fields
         )
     }
-
-
 
 
     /**
@@ -728,23 +723,24 @@ object SharedSteps {
         showOwnedUnitsWarning: Boolean = true,
         showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
     ): StepData {
-            return StepData(
+        return StepData(
             titleRes = R.string.owned_ships,
             descriptionRes = R.string.owned_ships,
             fields = listOf(
                 FormField.MarineUnitSelector(
                     id = "selectedMarineUnits",
-                    labelRes = R.string.owned_ships ,
+                    labelRes = R.string.owned_ships,
                     value = "[]", // Empty array by default
                     units = units,
                     allowMultipleSelection = allowMultipleSelection,
                     showOwnedUnitsWarning = showOwnedUnitsWarning,
-                    showAddNewButton = showAddNewButton, // ✅ مرره هنا
+                    showAddNewButton = showAddNewButton, // ✅ مرهه هنا
                     mandatory = true
                 )
             )
         )
     }
+
 }
 
 /**
@@ -753,7 +749,17 @@ object SharedSteps {
 data class DocumentConfig(
     val id: String,
     val labelRes: Int,
-    val allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
+    val allowedTypes: List<String> = listOf(
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "txt"
+    ),
     val maxSizeMB: Int = 5,
     val mandatory: Boolean = true
 )
@@ -787,7 +793,27 @@ data class MarineUnit(
 
     // الديون والمستحقات
     val amountDue: String = "",                     // المبلغ المستحق
-    val paymentStatus: String = ""                  // حالة السداد
+    val paymentStatus: String = "",                 // حالة السداد
+
+    // NEW: Extended fields for business validation (fetched from backend)
+    val registrationStatus: String = "ACTIVE",      // حالة التسجيل: ACTIVE, SUSPENDED, CANCELLED
+    val registrationType: String = "PERMANENT",     // نوع التسجيل: PERMANENT, TEMPORARY
+    val isMortgaged: Boolean = false,               // هل مرهونة؟
+    val mortgageDetails: MortgageDetails? = null,   // تفاصيل الرهن إن وجدت
+
+    // NEW: Inspection fields for Temporary Registration
+    val isInspected: Boolean = false,               // هل تم الفحص؟
+    val inspectionStatus: String = "NOT_VERIFIED",  // حالة الفحص: VALID, PENDING, NOT_VERIFIED, REJECTED, EXPIRED
+    val inspectionRemarks: String = ""              // ملاحظات الفحص
 )
 
-
+/**
+ * Mortgage details for a marine unit
+ */
+data class MortgageDetails(
+    val mortgageId: String,
+    val bankName: String,
+    val startDate: String,
+    val endDate: String,
+    val amount: String
+)

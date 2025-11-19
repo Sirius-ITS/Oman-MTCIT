@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.ValidationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +36,9 @@ fun MarineUnitSelectorManager(
     allowMultipleSelection: Boolean = true,
     showOwnedUnitsWarning: Boolean = true,
     showAddNewButton: Boolean ,
-    onSelectionChange: (List<String>) -> Unit
+    onSelectionChange: (List<String>) -> Unit,
+    validationState: ValidationState = ValidationState.Idle,
+    onMarineUnitSelected: ((String) -> Unit)? = null
 ) {
     val extraColors = LocalExtraColors.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -72,6 +75,35 @@ fun MarineUnitSelectorManager(
                 )
             }
         }
+
+        // NEW: Validation loading indicator
+        if (validationState is ValidationState.Validating) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(Color(0xFFF3F4F6))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "جاري التحقق من الوحدة البحرية...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280)
+                    )
+                }
+            }
+        }
+
         // عرض عدد السفن المختارة
         if (selectedUnitIds.isNotEmpty()) {
             Text(
@@ -87,21 +119,45 @@ fun MarineUnitSelectorManager(
             MarineUnitSelectionCard(
                 unit = unit,
                 isSelected = selectedUnitIds.contains(unit.maritimeId),
+                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.maritimeId),
                 onToggleSelection = {
-                    val newSelection = if (allowMultipleSelection) {
-                        if (selectedUnitIds.contains(unit.maritimeId)) {
-                            selectedUnitIds - unit.maritimeId
+                    // Check if validation is needed
+                    if (onMarineUnitSelected != null) {
+                        // Update selection state immediately for UI feedback
+                        val newSelection = if (allowMultipleSelection) {
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                selectedUnitIds - unit.maritimeId
+                            } else {
+                                selectedUnitIds + unit.maritimeId
+                            }
                         } else {
-                            selectedUnitIds + unit.maritimeId
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                emptyList()
+                            } else {
+                                listOf(unit.maritimeId)
+                            }
                         }
+                        onSelectionChange(newSelection)
+
+                        // Trigger validation - pass unit.id for backend validation
+                        onMarineUnitSelected(unit.id)
                     } else {
-                        if (selectedUnitIds.contains(unit.maritimeId)) {
-                            emptyList()
+                        // Regular selection without validation
+                        val newSelection = if (allowMultipleSelection) {
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                selectedUnitIds - unit.maritimeId
+                            } else {
+                                selectedUnitIds + unit.maritimeId
+                            }
                         } else {
-                            listOf(unit.maritimeId)
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                emptyList()
+                            } else {
+                                listOf(unit.maritimeId)
+                            }
                         }
+                        onSelectionChange(newSelection)
                     }
-                    onSelectionChange(newSelection)
                 },
                 onShowDetails = {
                     selectedUnitForDetails = unit
@@ -118,21 +174,45 @@ fun MarineUnitSelectorManager(
                 MarineUnitSelectionCard(
                     unit = unit,
                     isSelected = selectedUnitIds.contains(unit.maritimeId),
+                    isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.maritimeId),
                     onToggleSelection = {
-                        val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
-                                selectedUnitIds - unit.maritimeId
+                        // Check if validation is needed
+                        if (onMarineUnitSelected != null) {
+                            // Update selection state immediately for UI feedback
+                            val newSelection = if (allowMultipleSelection) {
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    selectedUnitIds - unit.maritimeId
+                                } else {
+                                    selectedUnitIds + unit.maritimeId
+                                }
                             } else {
-                                selectedUnitIds + unit.maritimeId
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    emptyList()
+                                } else {
+                                    listOf(unit.maritimeId)
+                                }
                             }
+                            onSelectionChange(newSelection)
+
+                            // Trigger validation - will handle navigation on Next button
+                            onMarineUnitSelected(unit.id)
                         } else {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
-                                emptyList()
+                            // Regular selection
+                            val newSelection = if (allowMultipleSelection) {
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    selectedUnitIds - unit.maritimeId
+                                } else {
+                                    selectedUnitIds + unit.maritimeId
+                                }
                             } else {
-                                listOf(unit.maritimeId)
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    emptyList()
+                                } else {
+                                    listOf(unit.maritimeId)
+                                }
                             }
+                            onSelectionChange(newSelection)
                         }
-                        onSelectionChange(newSelection)
                     },
                     onShowDetails = {
                         selectedUnitForDetails = unit
@@ -161,6 +241,7 @@ fun MarineUnitSelectorManager(
 private fun MarineUnitSelectionCard(
     unit: MarineUnit,
     isSelected: Boolean,
+    isValidating: Boolean = false,
     onToggleSelection: () -> Unit,
     onShowDetails: () -> Unit
 ) {
@@ -228,29 +309,38 @@ private fun MarineUnitSelectionCard(
                         modifier = Modifier.rotate(rotationAngle)
                     )
 
-                    // Checkbox
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .border(
-                                width = 2.dp,
-                                color = if (isSelected) Color(0xFF1E3A5F) else Color(0xFFD1D5DB),
-                                shape = CircleShape
-                            )
-                            .background(
-                                color = if (isSelected) Color(0xFF1E3A5F) else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable(onClick = onToggleSelection),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                    // NEW: Show loading indicator if validating
+                    if (isValidating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = Color(0xFF1E3A5F)
+                        )
+                    } else {
+                        // Checkbox
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .border(
+                                    width = 2.dp,
+                                    color = if (isSelected) Color(0xFF1E3A5F) else Color(0xFFD1D5DB),
+                                    shape = CircleShape
+                                )
+                                .background(
+                                    color = if (isSelected) Color(0xFF1E3A5F) else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable(onClick = onToggleSelection),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }

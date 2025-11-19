@@ -67,7 +67,7 @@ abstract class BaseTransactionViewModel(
     val fileNavigationEvent: StateFlow<FileNavigationEvent?> = _fileNavigationEvent.asStateFlow()
 
     // Error state
-    private val _error = MutableStateFlow<AppError?>(null)
+    protected val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
     // Current transaction strategy
@@ -148,7 +148,7 @@ abstract class BaseTransactionViewModel(
         }
     }
 
-    fun nextStep() {
+    open fun nextStep() {
         viewModelScope.launch {
             val currentState = _uiState.value
 
