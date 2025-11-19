@@ -49,7 +49,9 @@ class MarineRegistrationViewModel @Inject constructor(
             TransactionType.SUSPEND_PERMANENT_REGISTRATION,
             TransactionType.CANCEL_PERMANENT_REGISTRATION,
             TransactionType.MORTGAGE_CERTIFICATE,
-            TransactionType.RELEASE_MORTGAGE -> true
+            TransactionType.RELEASE_MORTGAGE,
+            TransactionType.ISSUE_NAVIGATION_PERMIT,
+            TransactionType.RENEW_NAVIGATION_PERMIT -> true
             else -> false
         }
     }

@@ -221,6 +221,8 @@ private fun getMarineRegistrationTitle(transactionType: TransactionType): String
         TransactionType.CANCEL_PERMANENT_REGISTRATION -> localizedApp(R.string.transaction_cancel_permanent_registration)
         TransactionType.MORTGAGE_CERTIFICATE -> localizedApp(R.string.transaction_mortgage_certificate)
         TransactionType.RELEASE_MORTGAGE -> localizedApp(R.string.transaction_release_mortgage)
+        TransactionType.ISSUE_NAVIGATION_PERMIT -> localizedApp(R.string.transaction_issue_navigation_permit)
+        TransactionType.RENEW_NAVIGATION_PERMIT -> localizedApp(R.string.transaction_renew_navigation_permit)
         else -> "Unknown Transaction"
     }
 }

@@ -393,5 +393,10 @@ private fun updateFieldWithFormData(
             error = error
         )
 
+        is FormField.SailorList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
     }
 }

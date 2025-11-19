@@ -10,7 +10,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.navigation.NavRoutes
@@ -154,7 +153,7 @@ fun DynamicStepForm(
                             // Parse owners from JSON value
                             val owners = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<OwnerData>>(
+                                    Json.decodeFromString<List<OwnerData>>(
                                         field.value
                                     )
                                     Json.decodeFromString<List<OwnerData>>(field.value)
@@ -211,7 +210,7 @@ fun DynamicStepForm(
                             // Parse selected unit IDs from JSON
                             val selectedIds = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(field.value)
+                                    Json.decodeFromString<List<String>>(field.value)
                                 } catch (_: Exception) {
                                     emptyList<String>()
                                 }
@@ -238,7 +237,7 @@ fun DynamicStepForm(
                                     shouldTriggerNext = true // ✅ هنا
                                 },
                                 onSelectionChange = { updatedSelection ->
-                                    val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
+                                    val json = Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
                                     if (updatedSelection[0] == "470123456") {
                                         scope.launch {
@@ -317,6 +316,28 @@ fun DynamicStepForm(
                                 onValueChange = { newValue ->
                                     localSelection = newValue // ✅ Update local state first
                                     onFieldChange(field.id, newValue, null) // Then notify parent
+                                }
+                            )
+                        }
+
+                        is FormField.SailorList -> {
+                            val sailors = remember(field.value) {
+                                try {
+                                    Json.decodeFromString<List<SailorData>>(
+                                        field.value
+                                    )
+                                    Json.decodeFromString<List<SailorData>>(field.value)
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            }
+
+                            SailorListManager(
+                                sailors = sailors,
+                                jobs = field.jobs,
+                                onSailorChange = { updatedSailors ->
+                                    val json = Json.encodeToString(updatedSailors)
+                                    onFieldChange(field.id, json, null)
                                 }
                             )
                         }

@@ -1,0 +1,222 @@
+package com.informatique.mtcit.business.transactions
+
+import com.informatique.mtcit.R
+import com.informatique.mtcit.business.BusinessState
+import com.informatique.mtcit.business.transactions.shared.DocumentConfig
+import com.informatique.mtcit.business.usecases.FormValidationUseCase
+import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.data.repository.ShipRegistrationRepository
+import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.ui.components.PersonType
+import com.informatique.mtcit.ui.components.SelectableItem
+import com.informatique.mtcit.ui.repo.CompanyRepo
+import com.informatique.mtcit.ui.viewmodels.StepData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
+import javax.inject.Inject
+
+/**
+ * Strategy for Temporary Registration Certificate
+ * Full baseline implementation with all steps
+ */
+class RenewNavigationPermitStrategy @Inject constructor(
+    private val repository: ShipRegistrationRepository,
+    private val companyRepository: CompanyRepo,
+    private val validationUseCase: FormValidationUseCase,
+    private val lookupRepository: LookupRepository
+) : TransactionStrategy {
+    private var countryOptions: List<String> = emptyList()
+    private var marineUnits: List<MarineUnit> = emptyList()
+
+    private var commercialOptions: List<SelectableItem> = emptyList()
+
+    private var typeOptions: List<PersonType> = emptyList()
+
+    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
+
+        countryOptions = countries
+        commercialOptions = commercialRegistrations
+        typeOptions = personTypes
+
+        marineUnits = listOf(
+            MarineUnit(
+                id = "1",
+                name = "الريادة البحرية",
+                type = "سفينة صيد",
+                imoNumber = "9990001",
+                callSign = "A9BC2",
+                maritimeId = "470123456",
+                registrationPort = "صحار",
+                activity = "صيد",
+                isOwned = false
+            ),
+
+            MarineUnit(
+                id = "3",
+                name = "النجم الساطع",
+                type = "سفينة شحن",
+                imoNumber = "9990002",
+                callSign = "B8CD3",
+                maritimeId = "470123457",
+                registrationPort = "مسقط",
+                activity = "شحن دولي",
+                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
+            ),
+            MarineUnit(
+                id = "8",
+                name = "البحر الهادئ",
+                type = "سفينة صهريج",
+                imoNumber = "9990008",
+                callSign = "H8IJ9",
+                maritimeId = "470123463",
+                registrationPort = "صلالة",
+                activity = "نقل وقود",
+                isOwned = true // ⚠️ مملوكة
+            ),
+            MarineUnit(
+                id = "9",
+                name = "اللؤلؤة البيضاء",
+                type = "سفينة سياحية",
+                imoNumber = "9990009",
+                callSign = "I9JK0",
+                maritimeId = "470123464",
+                registrationPort = "مسقط",
+                activity = "رحلات سياحية",
+                isOwned = false
+            ),
+            MarineUnit(
+                id = "10",
+                name = "الشراع الذهبي",
+                type = "سفينة شراعية",
+                imoNumber = "9990010",
+                callSign = "J0KL1",
+                maritimeId = "470123465",
+                registrationPort = "صحار",
+                activity = "تدريب بحري",
+                isOwned = false
+            )
+        )
+
+        return mapOf(
+            "marineUnits" to marineUnits.map { it.maritimeId },
+            "registrationCountry" to countries,
+            "commercialRegistration" to commercialRegistrations,
+            "personType" to personTypes
+        )
+    }
+
+    override fun getSteps(): List<StepData> {
+        return listOf(
+            // User type
+            SharedSteps.personTypeStep(options = typeOptions),
+
+            SharedSteps.commercialRegistrationStep(commercialOptions),
+
+            SharedSteps.marineUnitSelectionStep(
+                units = marineUnits,
+                allowMultipleSelection = false, // اختيار وحدة واحدة فقط
+                showOwnedUnitsWarning = true
+            ),
+
+            SharedSteps.sailorInfoStep(
+                jobs = listOf("Captain", "Chief Engineer", "Boatswain", "Electro-Technical Officer", "Navigator", "Chief Medical Officer")
+            ),
+
+            SharedSteps.documentsStep(
+                requiredDocuments = listOf(
+                    DocumentConfig(
+                        id = "shipbuildingCertificate",
+                        labelRes = R.string.shipbuilding_certificate_or_sale_contract,
+                        mandatory = true
+                    ),
+                    DocumentConfig(
+                        id = "inspectionDocuments",
+                        labelRes = R.string.inspection_documents,
+                        mandatory = true
+                    )
+                )
+            ),
+
+            SharedSteps.reviewStep()
+        )
+    }
+
+    override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
+        val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
+        val formData = data.mapValues { it.value.toString() }
+        return validationUseCase.validateStep(stepData, formData)
+    }
+
+    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
+        return data
+    }
+
+    override suspend fun submit(data: Map<String, String>): Result<Boolean> {
+        return repository.submitRegistration(data)
+    }
+
+    override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
+        if (fieldId == "owner_type") {
+            val mutableFormData = formData.toMutableMap()
+            when (value) {
+                "فرد" -> {
+                    mutableFormData.remove("companyName")
+                    mutableFormData.remove("companyRegistrationNumber")
+                }
+            }
+            return mutableFormData
+        }
+        return formData
+    }
+
+    override suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
+        if (fieldId == "companyRegistrationNumber") {
+            return handleCompanyRegistrationLookup(value)
+        }
+        return FieldFocusResult.NoAction
+    }
+
+    private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
+        if (registrationNumber.isBlank()) {
+            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+        }
+
+        if (registrationNumber.length < 3) {
+            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+        }
+
+        return try {
+            val result = companyRepository.fetchCompanyLookup(registrationNumber)
+                .flowOn(Dispatchers.IO)
+                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
+                .first()
+
+            when (result) {
+                is BusinessState.Success -> {
+                    val companyData = result.data.result
+                    if (companyData != null) {
+                        FieldFocusResult.UpdateFields(
+                            mapOf(
+                                "companyName" to companyData.arabicCommercialName,
+                                "companyType" to companyData.commercialRegistrationEntityType
+                            )
+                        )
+                    } else {
+                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                    }
+                }
+                is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
+                is BusinessState.Loading -> FieldFocusResult.NoAction
+            }
+        } catch (e: Exception) {
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+        }
+    }
+}
+

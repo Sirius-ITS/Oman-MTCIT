@@ -132,6 +132,17 @@ sealed class FormField(
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory)
 
+    data class SailorList(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "[]",
+        val jobs: List<String> = emptyList(),
+        val placeholder: String? = null,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory)
+
     data class RadioGroup(
         override val id: String,
         override val labelRes: Int,

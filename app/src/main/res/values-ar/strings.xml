@@ -86,6 +86,7 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">إصدار شهادة تسجيل مؤقتة للسفينة أوالوحدة البحرية</string>
     <string name="ship_info">معلومات السفينة</string>
     <string name="owner_info">معلومات المالك</string>
+    <string name="sailor_info">معلومات البحار</string>
     <string name="documents">رفع المستندات</string>
     <string name="technical_details">التفاصيل الفنية</string>
     <string name="insurance">التأمين</string>
@@ -647,5 +648,18 @@
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
     <string name="request_detail_back_title">شاشة الخدمات</string>
+
+    <!-- Sailors -->
+    <string name="sailor_info_description">يرجى تقديم معلومات عن البحارة للسفينة او الوحدة البحرية</string>
+    <string name="sailor_add_title">إضافة بحار</string>
+    <string name="sailor_edit_title">تعديل بحار</string>
+    <string name="sailor_job_title">إختر وظيفة البحار</string>
+    <string name="sailor_name_title">أدخل اسم البحار</string>
+    <string name="sailor_identity_number_title">أدخل رقم الهوية</string>
+    <string name="sailor_seaman_passport_number_title">أدخل رقم الجواز البحري</string>
+    <string name="sailor_count">إجمالي عدد البحارة</string>
+    <string name="sailor_identity_number">رقم الهوية</string>
+    <string name="sailor_seaman_passport_number">رقم الجواز البحري</string>
+    <string name="sailor_delete_title">حذف بحار</string>
 
 </resources>

@@ -86,6 +86,7 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">Issuance of a temporary registration certificate for a vessel or marine unit</string>
     <string name="ship_info">Ship Information</string>
     <string name="owner_info">Owner Information</string>
+    <string name="sailor_info">Sailor Information</string>
     <string name="documents">Documents</string>
     <string name="technical_details">Technical Details</string>
     <string name="insurance">Insurance</string>
@@ -649,5 +650,18 @@
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
     <string name="request_detail_back_title">Services screen</string>
+
+    <!-- Sailors -->
+    <string name="sailor_info_description">Please provide information about the seafarers of the ship or naval unit</string>
+    <string name="sailor_add_title">Add Sailor</string>
+    <string name="sailor_edit_title">Edit Sailor</string>
+    <string name="sailor_job_title">Select sailor job</string>
+    <string name="sailor_name_title">Enter sailor name</string>
+    <string name="sailor_identity_number_title">Enter identity number</string>
+    <string name="sailor_seaman_passport_number_title">Enter seaman\'s passport number</string>
+    <string name="sailor_count">Total Number of Sailors</string>
+    <string name="sailor_identity_number">Identity number</string>
+    <string name="sailor_seaman_passport_number">Seaman\'s passport number</string>
+    <string name="sailor_delete_title">Delete Sailor</string>
 
 </resources>

@@ -178,6 +178,21 @@ fun NavHost(themeViewModel: ThemeViewModel){
             )
         }
 
+        // Navigation Forms
+        composable(NavRoutes.IssueNavigationPermitRoute.route) {
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.ISSUE_NAVIGATION_PERMIT
+            )
+        }
+
+        composable(NavRoutes.RenewNavigationPermitRoute.route) {
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.RENEW_NAVIGATION_PERMIT
+            )
+        }
+
         composable(NavRoutes.SuspendNavigationPermitRoute.route) {
             ComingSoonScreen(
                 navController = navController,

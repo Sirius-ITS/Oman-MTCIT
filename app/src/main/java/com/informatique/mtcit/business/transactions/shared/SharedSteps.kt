@@ -88,6 +88,28 @@ object SharedSteps {
         )
     }
 
+    fun sailorInfoStep(
+        jobs: List<String>,
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.SailorList(
+                id = "sailors",
+                labelRes = R.string.sailor_info,
+                value = "[]",
+                jobs = jobs,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.sailor_info,
+            descriptionRes = R.string.sailor_info_description,
+            fields = fields
+        )
+    }
+
     /**
      * Unit Selection Step (Ship Information)
      * Used by: Ship Registration, Name Change, Dimension Change, etc.
