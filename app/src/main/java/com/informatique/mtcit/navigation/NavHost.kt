@@ -31,6 +31,7 @@ import com.informatique.mtcit.ui.screens.LanguageScreen
 import com.informatique.mtcit.ui.screens.LoginScreen
 import com.informatique.mtcit.ui.screens.MainCategoriesScreen
 import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
+import com.informatique.mtcit.ui.screens.NotificationScreen
 import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
 import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
 import com.informatique.mtcit.ui.screens.RequestDetail
@@ -91,7 +92,21 @@ fun NavHost(themeViewModel: ThemeViewModel){
             val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
             MainCategoriesScreen(navController, sharedUserViewModel, categoryId)
         }
-
+        composable(
+            route = NavRoutes.MainCategoriesRouteWithoutID.route)
+        { backStackEntry ->
+            MainCategoriesScreen(navController, sharedUserViewModel)
+        }
+        composable(
+            route = NavRoutes.ProfileScreenRoute.route)
+        { backStackEntry ->
+            ProfileScreen(navController)
+        }
+        composable(
+            route = NavRoutes.NotificationScreen.route)
+        { backStackEntry ->
+            NotificationScreen(navController)
+        }
         // Transaction List Screen - Shows transactions for selected sub-category
         composable(NavRoutes.TransactionListRoute.route) { backStackEntry ->
             val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""

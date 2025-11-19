@@ -157,7 +157,7 @@ object SharedSteps {
                     id = "imoNumber",
                     labelRes = R.string.enter_imo_number,
                     isNumeric = true,
-                    mandatory = true
+                    mandatory = false
                 )
             )
         }
@@ -179,7 +179,7 @@ object SharedSteps {
                     id = "mmsi",
                     labelRes = R.string.mmsi_number,
                     isNumeric = true,
-                    mandatory = true
+                    mandatory = false
                 )
             )
         }

@@ -2,12 +2,16 @@ package com.informatique.mtcit.business.transactions
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
-import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.data.repository.ShipRegistrationRepository
+import com.informatique.mtcit.business.usecases.FormValidationUseCase
+import com.informatique.mtcit.business.validation.rules.DateValidationRules
+import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
+import com.informatique.mtcit.business.validation.rules.MarineUnitValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
@@ -21,6 +25,7 @@ import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
+
 
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -184,8 +189,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     )
                 )
             )
-        } else {
-            println("❌ NOT adding new unit steps - isAddingNewUnit: $isAddingNewUnit, hasSelectedExistingUnit: $hasSelectedExistingUnit")
         }
 
         // Review Step (shows all collected data)
@@ -205,107 +208,98 @@ class TemporaryRegistrationStrategy @Inject constructor(
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+
+        // ✅ Get validation rules for this step
+        val rules = getValidationRulesForStep(step, stepData)
+
+        // ✅ Use accumulated data for validation (enables cross-step validation)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = rules
+        )
+    }
+
+    /**
+     * Get validation rules based on step content
+     */
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        val fieldIds = stepData.fields.map { it.id }
+        val rules = mutableListOf<ValidationRule>()
+
+        if (fieldIds.contains("grossTonnage")) {
+            println("🔍 Step contains grossTonnage field")
+
+
+            // ✅ Marine Unit Weights Step - Always add cross-step rules
+            if (fieldIds.contains("grossTonnage")) {
+
+
+                println("🔍 Step contains grossTonnage field")
+
+
+                // ✅ Pass accumulated data to validation rules
+                rules.addAll(MarineUnitValidationRules.getAllWeightRules(accumulatedFormData))
+                println("🔍 Added ${rules.size} marine unit validation rules")
+            }
+
+            // Check if MMSI field exists
+            if (accumulatedFormData.containsKey("mmsi")) {
+                println("🔍 ✅ Adding MMSI validation rule")
+                rules.add(MarineUnitValidationRules.mmsiRequiredForMediumVessels(accumulatedFormData ))
+            }
+        }
+
+        // Same-step validations
+        if (fieldIds.containsAll(listOf("grossTonnage", "netTonnage"))) {
+            rules.add(MarineUnitValidationRules.netTonnageLessThanOrEqualGross())
+        }
+
+        if (fieldIds.containsAll(listOf("grossTonnage", "staticLoad"))) {
+            rules.add(MarineUnitValidationRules.staticLoadValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("staticLoad", "maxPermittedLoad"))) {
+            rules.add(MarineUnitValidationRules.maxPermittedLoadValidation())
+        }
+
+        // Dimension Rules
+        if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
+            rules.add(DimensionValidationRules.lengthGreaterThanWidth())
+        }
+
+        if (fieldIds.containsAll(listOf("height", "grossTonnage"))) {
+            rules.add(DimensionValidationRules.heightValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("decksCount", "grossTonnage"))) {
+            rules.add(DimensionValidationRules.deckCountValidation())
+        }
+
+        // Date Rules
+        if (fieldIds.contains("manufacturerYear")) {
+            rules.add(DateValidationRules.manufacturerYearValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("constructionEndDate", "firstRegistrationDate"))) {
+            rules.add(DateValidationRules.registrationAfterConstruction())
+        }
+
+        return rules
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
         println("🔄 processStepData called with: $data")
 
-        // ✅ تحديث الـ accumulatedFormData
+        // ✅ Update accumulated data
         accumulatedFormData.putAll(data)
 
         println("📦 accumulatedFormData after update: $accumulatedFormData")
 
-        // ✅ لو المستخدم غيّر اختياره في Marine Unit Selection Step
-        if (data.containsKey("selectedMarineUnits") || data.containsKey("isAddingNewUnit")) {
-            println("🔀 Marine unit selection changed")
-            handleMarineUnitSelectionChange(data)
-        }
+        // ... rest of existing code
 
         return data
-    }
-
-    // ✅ دالة جديدة لمعالجة تغيير اختيار السفينة
-    private fun handleMarineUnitSelectionChange(data: Map<String, String>) {
-        val isAddingNew = data["isAddingNewUnit"]?.toBoolean() ?: false
-        val hasSelectedUnit = !data["selectedMarineUnits"].isNullOrEmpty() &&
-                data["selectedMarineUnits"] != "[]"
-
-        println("🔧 handleMarineUnitSelectionChange - isAddingNew: $isAddingNew, hasSelectedUnit: $hasSelectedUnit")
-
-        if (isAddingNew && hasSelectedUnit) {
-            // ✅ المستخدم اختار "إضافة جديدة" بعد ما كان مختار سفينة
-            println("🗑️ Removing selected units because adding new")
-            accumulatedFormData.remove("selectedMarineUnits")
-            resetNewUnitData()
-        } else if (!isAddingNew && hasSelectedUnit) {
-            // ✅ المستخدم اختار سفينة موجودة بعد ما كان في وضع "إضافة جديدة"
-            println("🗑️ Resetting new unit data because selected existing unit")
-            accumulatedFormData["isAddingNewUnit"] = "false"
-            resetNewUnitData()
-        }
-    }
-
-    // ✅ دالة لمسح بيانات السفينة الجديدة
-    private fun resetNewUnitData() {
-        println("🧹 Resetting new unit data")
-
-        val keysToRemove = listOf(
-            // Unit Selection Data
-            "unitType",
-            "unitClassification",
-            "callSign",
-            "imoNumber",
-            "registrationPort",
-            "mmsi",
-            "manufacturerYear",
-            "constructionpool",
-            "proofType",
-            "proofDocument",
-            "constructionEndDate",
-            "firstRegistrationDate",
-            "registrationCountry",
-
-            // Dimensions
-            "overallLength",
-            "overallWidth",
-            "depth",
-            "height",
-            "decksCount",
-
-            // Weights
-            "grossTonnage",
-            "netTonnage",
-            "staticLoad",
-            "maxPermittedLoad",
-
-            // Engine Info
-            "engines",
-
-            // Owner Info
-            "owners",
-            "totalOwnersCount",
-
-            // Documents
-            "shipbuildingCertificate",
-            "inspectionDocuments",
-
-            // Unit Name
-            "marineUnitName",
-
-            // Insurance
-            "insuranceDocumentNumber",
-            "insuranceCountry",
-            "insuranceCompany",
-            "insuranceDocumentFile"
-        )
-
-        keysToRemove.forEach { key ->
-            if (accumulatedFormData.containsKey(key)) {
-                println("  Removing key: $key")
-            }
-            accumulatedFormData.remove(key)
-        }
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
