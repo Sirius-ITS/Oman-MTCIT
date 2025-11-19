@@ -3,6 +3,7 @@ package com.informatique.mtcit.di.module
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.work.WorkManager
+import com.informatique.mtcit.business.validation.CrossFieldValidator
 import com.informatique.mtcit.business.validation.FormValidator
 import com.informatique.mtcit.common.AndroidResourceProvider
 import com.informatique.mtcit.common.Const
@@ -30,8 +31,10 @@ abstract class ApplicationModule {
 
     companion object {
         @Provides
-        @Singleton
-        fun provideFormValidator(): FormValidator = FormValidator()
+    @Singleton
+    fun provideFormValidator(
+        crossFieldValidator: CrossFieldValidator
+    ): FormValidator = FormValidator(crossFieldValidator)
 
         @ApiKey
         @Provides

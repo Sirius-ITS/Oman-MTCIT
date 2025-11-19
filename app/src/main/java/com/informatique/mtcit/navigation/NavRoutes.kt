@@ -10,6 +10,9 @@ sealed class NavRoutes(val route: String) {
     data object MainCategoriesRoute : NavRoutes("mainCategoriesScreen/{categoryId}"){
         fun createRoute(categoryId: String) = "mainCategoriesScreen/${Uri.encode(categoryId)}"
     }
+    data object MainCategoriesRouteWithoutID : NavRoutes("mainCategoriesScreen")
+    data object ProfileScreenRoute : NavRoutes("profileScreen")
+    data object NotificationScreen : NavRoutes("notificationScreen")
 
     data object TransactionListRoute : NavRoutes("transaction_list/{categoryId}/{subCategoryId}"){
         fun createRoute(categoryId: String, subCategoryId: String)

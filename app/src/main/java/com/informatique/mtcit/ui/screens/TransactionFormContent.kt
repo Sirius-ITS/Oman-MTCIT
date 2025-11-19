@@ -154,12 +154,7 @@ fun TransactionFormContent(
                         submitForm()
                     }
                 },
-                canProceed = if (isReviewStep) {
-                    // On review step, require declaration to be accepted
-                    declarationAccepted && uiState.canProceedToNext
-                } else {
-                    uiState.canProceedToNext
-                },
+                canProceed = uiState.canProceedToNext,
                 isSubmitting = submissionState is UIState.Loading
             )
         }
@@ -239,9 +234,9 @@ fun TransactionFormContent(
                     onViewFile = onViewFile,
                     onRemoveFile = onRemoveFile,
                     allSteps = uiState.steps,
-                    onDeclarationChange = { accepted ->
-                        declarationAccepted = accepted
-                    },
+//                    onDeclarationChange = { accepted ->
+//                        declarationAccepted = accepted
+//                    },
                     onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
 
                 )
