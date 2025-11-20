@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -61,7 +62,9 @@ import kotlinx.serialization.json.Json
 fun ReviewStepContent(
     steps: List<StepData>,
     formData: Map<String, String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCheckChanged: (Boolean) -> Unit,
+    checked: Boolean
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -78,6 +81,39 @@ fun ReviewStepContent(
         Column(
             modifier = modifier.fillMaxWidth(),
         ) {
+
+            Card(
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = extraColors.blue2.copy(alpha = 0.05f)),
+                elevation = CardDefaults.cardElevation(0.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                ) {
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = "المبلغ الواجب دفعه",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium ,
+                        color = extraColors.whiteInDarkMode
+                    )
+
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = "50 ريال عماني",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = extraColors.whiteInDarkMode,
+                        textAlign = TextAlign.End
+                    )
+                    Spacer(modifier.width(4.dp))
+                    Icon(imageVector = Icons.Default.Payment, contentDescription = null, tint = extraColors.whiteInDarkMode)
+                }
+            }
+
             steps.forEachIndexed { index, step ->
                 // Get fields for this step that have values
                 if (index == 0) return@forEachIndexed
@@ -94,6 +130,49 @@ fun ReviewStepContent(
                         stepFieldsWithData = stepFieldsWithData,
                         formData = formData,
                         isExpandedByDefault = index == 1 // First step expanded by default
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier.padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+                elevation = CardDefaults.cardElevation(0.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                ) {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        text = "الان أرسل طلبك", //localizedApp(currentStepData.descriptionRes),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = extraColors.whiteInDarkMode
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        text = "من خلال تقديم هذا الطلب, فإنك تؤكد علي حد علمك أن التفاصيل التي تقدمها صحيحة.", //localizedApp(currentStepData.descriptionRes),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = extraColors.textSubTitle
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    CustomCheckBox(
+                        checked = checked,
+                        onCheckedChange = onCheckChanged,
+                        label = "إقرار ذاتي"
+                    )
+                    Text(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        text = "أقرّ بأن جميع المعلومات المذكورة صحيحة ودقيقة، وأتعهد بإبلاغ الإدارة بأي تغيير يطرأ عليها. وأدرك أن تقديم بيانات أو مستندات غير صحيحة قد يؤدي إلى بطلان الطلب وتحميلي المسؤولية القانونية.", //localizedApp(currentStepData.descriptionRes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = extraColors.textSubTitle
                     )
                 }
             }

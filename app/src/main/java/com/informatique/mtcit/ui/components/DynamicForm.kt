@@ -22,7 +22,6 @@ import kotlinx.serialization.json.Json
 
 @Composable
 fun DynamicStepForm(
-    navController: NavController,
     stepData: StepData,
     formData: Map<String, String> = emptyMap(), // Add formData parameter
     onFieldChange: (String, String, Boolean?) -> Unit,
@@ -33,13 +32,13 @@ fun DynamicStepForm(
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
-    onDeclarationChange: ((Boolean) -> Unit)? = null, // Changed to declaration callback
+    onDeclarationChange: ((Boolean) -> Unit), // Changed to declaration callback
     onTriggerNext: () -> Unit // ✅ أضف الـ parameter ده
 ) {
 
-    val scope = rememberCoroutineScope()
+    var acknowledgeCheck by remember { mutableStateOf<Boolean>(false) }
     var selectedId by remember { mutableStateOf<String?>(null) }
-    var selectedPersonId by remember { mutableStateOf("PT-2024-001") }
+    var selectedPersonId by remember { mutableStateOf("فرد") }
 
     // Detect Review Step: If no fields, show ReviewStepContent
     if (stepData.fields.isEmpty() && allSteps.isNotEmpty()) {
@@ -47,7 +46,11 @@ fun DynamicStepForm(
         ReviewStepContent(
             steps = allSteps,
             formData = formData,
-//            onDeclarationChange = onDeclarationChange
+            onCheckChanged = {
+                acknowledgeCheck = it
+                onDeclarationChange(it)
+            },
+            checked = acknowledgeCheck
         )
     } else {
         // Regular step - show form fields
@@ -239,14 +242,6 @@ fun DynamicStepForm(
                                 onSelectionChange = { updatedSelection ->
                                     val json = Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
-                                    if (updatedSelection[0] == "470123456") {
-                                        scope.launch {
-                                            delay(1000)
-                                            navController.navigate(NavRoutes.RequestDetailRoute.createRoute(
-                                                CheckShipCondition("470123456")
-                                            ))
-                                        }
-                                    }
                                 }
                             )
                         }
@@ -254,12 +249,15 @@ fun DynamicStepForm(
                         is FormField.SelectableList<*> -> {
                             when(field.id){
                                 "selectionPersonType" -> {
+//                                    onFieldChange(field.id, selectedPersonId, null)
+
                                     SelectableList(
                                         items = field.options,
                                         uiItem = { item ->
                                             PersonTypeCard(
                                                 item = item as PersonType,
-                                                isSelected = selectedPersonId == item.id,
+                                                defaultValue = selectedPersonId == item.title,
+                                                isSelected = selectedPersonId == item.title,
                                                 onClick = {
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
                                                     println("🎯 PersonType clicked")
@@ -268,7 +266,7 @@ fun DynamicStepForm(
                                                     println("📊 Item Title: ${item.title}")
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-                                                    selectedPersonId = item.id
+                                                    selectedPersonId = item.title
 
                                                     // ✅ الحل: ابعت الـ title مش الـ JSON
                                                     onFieldChange(field.id, item.title, null)

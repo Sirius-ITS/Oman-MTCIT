@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
 import com.informatique.mtcit.util.UriPermissionManager
 
@@ -168,8 +169,31 @@ fun MarineRegistrationScreen(
     LaunchedEffect(submissionState) {
         when (submissionState) {
             is UIState.Success -> {
-                navController.navigate(NavRoutes.PaymentDetailsRoute.route)
-                viewModel.resetSubmissionState()
+//                navController.navigate(NavRoutes.PaymentDetailsRoute.route)
+//                viewModel.resetSubmissionState()
+                val shipData = mapOf(
+                    "نوع الوحدة البحرية" to "سفينة صيد",
+                    "رقم IMO" to "9990001",
+                    "رمز النداء" to "A9BC2",
+                    "رقم الهوية البحرية" to "470123456",
+                    "ميناء التسجيل" to "صحار",
+                    "النشاط البحري" to "صيد",
+                    "سنة صنع السفينة" to "2018",
+                    "نوع الإثبات" to "شهادة بناء",
+                    "حوض البناء" to "Hyundai Shipyard",
+                    "تاريخ بدء البناء" to "2014-03-01",
+                    "تاريخ انتهاء البناء" to "2015-01-15",
+                    "تاريخ أول تسجيل" to "2015-02-01",
+                    "بلد البناء" to "سلطنة عمان"
+                )
+                navController.navigate(NavRoutes.RequestDetailRoute.createRoute(
+                    RequestDetail.AcceptedAndPayment(
+                        transactionTitle = "إصدار تصريح ملاحة للسفن و الوحدات البحرية",
+                        title = "قبول الطلب و إتمام الدفع",
+                        referenceNumber = "007 24 7865498",
+                        dataSubmitted = shipData
+                    )
+                ))
             }
 
             is UIState.Failure -> {

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -26,6 +27,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -40,8 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.NavOptionsBuilder
-import androidx.navigation.PopUpToBuilder
 import com.informatique.mtcit.R
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
@@ -51,9 +51,24 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed interface RequestDetail {
     @Serializable
-    data class CheckShipCondition(val shipData: String) : RequestDetail
+    data class CheckShipCondition(
+        val transactionTitle: String,
+        val title: String,
+        val description: String,
+        val referenceNumber: String,
+        val refuseReason: String,
+        val shipData: Map<String, String>
+    ) : RequestDetail
     @Serializable
     data class Attachments(val requestData: String) : RequestDetail
+
+    @Serializable
+    data class AcceptedAndPayment(
+        val transactionTitle: String,
+        val title: String,
+        val referenceNumber: String,
+        val dataSubmitted: Map<String, String>
+    ) : RequestDetail
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,142 +85,340 @@ fun RequestDetailScreen(navController: NavController, requestDetail: RequestDeta
             .background(extraColors.background)
     ) {
 
-
-        CenterAlignedTopAppBar(
-            title = {
-                Text(
-                    text = localizedApp(R.string.transaction_issue_navigation_permit),
-                    fontSize = 18.sp,
-                    color = extraColors.whiteInDarkMode,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2
-                )
-            },
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = Color.Transparent
-            )
-        )
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 4.dp, bottom = 18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = extraColors.cardBackground
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
-            ) {
-                Text(
-                    text = "تم رفض الطلب", //localizedApp(currentStepData.titleRes),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 18.sp,
-                    color = extraColors.whiteInDarkMode,
-                    modifier = Modifier.padding(bottom = 8.dp)
+        when (requestDetail) {
+            is RequestDetail.CheckShipCondition -> {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = requestDetail.transactionTitle,
+                            fontSize = 18.sp,
+                            color = extraColors.whiteInDarkMode,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 2
+                        )
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent
+                    )
                 )
 
-                Text(
-                    text = "تم رفض طلبكم بسبب وجود في  شطب على السفن مما تمنع استكمال المعاملة وفق الإجراءات القانونية المعتمدة", //localizedApp(currentStepData.descriptionRes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = extraColors.textSubTitle
-                )
-            }
-        }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 4.dp, bottom = 18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = extraColors.cardBackground
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp)
+                    ) {
+                        Text(
+                            text = requestDetail.title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 18.sp,
+                            color = extraColors.whiteInDarkMode,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(vertical = 24.dp, horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+                        Text(
+                            text = "الرقم المرجعي: ${requestDetail.referenceNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = extraColors.textSubTitle
+                        )
 
-            when (requestDetail) {
-                is RequestDetail.CheckShipCondition -> {
+                        Text(
+                            text = requestDetail.description, //localizedApp(currentStepData.descriptionRes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = extraColors.textSubTitle
+                        )
+                    }
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 4.dp, bottom = 18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = extraColors.cardBackground
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp)
+                    ) {
+                        Text(
+                            text = "أسباب الرفض",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp,
+                            color = extraColors.whiteInDarkMode,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Text(
+                            text = requestDetail.refuseReason, //localizedApp(currentStepData.descriptionRes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = extraColors.textSubTitle
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(vertical = 24.dp, horizontal = 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
                     Text(
-                        text = " ${requestDetail.shipData}التفاصيل التي قدمتها", //localizedApp(currentStepData.titleRes),
+                        text = "التفاصيل التي قدمتها", //localizedApp(currentStepData.titleRes),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Medium,
                         fontSize = 18.sp,
                         color = extraColors.whiteInDarkMode,
                     )
-                }
 
-                is RequestDetail.Attachments -> {
-                    Text(
-                        text = " ${requestDetail.requestData}التفاصيل التي قدمتها", //localizedApp(currentStepData.titleRes),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 18.sp,
-                        color = extraColors.whiteInDarkMode,
+                    ExpandableBottomSheetSection(
+                        title = "بيانات الطلب",
+                        isExpand = true,
+                        content = {
+                            BottomSheetInfoCard(label = "نوع الوحدة البحرية", value = "سفينة صيد")
+                            BottomSheetInfoCard(label = "رقم IMO", value = "9990001")
+                            BottomSheetInfoCard(label = "رمز النداء", value = "A9BC2")
+                            BottomSheetInfoCard(label = "رقم الهوية البحرية", value = "470123456")
+                            BottomSheetInfoCard(label = "ميناء التسجيل", value = "صحار")
+                            BottomSheetInfoCard(label = "النشاط البحري", value = "صيد")
+                            BottomSheetInfoCard(label = "سنة صنع السفينة", value = "2018")
+                            BottomSheetInfoCard(label = "نوع الإثبات", value = "شهادة بناء")
+                            BottomSheetInfoCard(label = "حوض البناء", value = "Hyundai Shipyard")
+                            BottomSheetInfoCard(label = "تاريخ بدء البناء", value = "2014-03-01")
+                            BottomSheetInfoCard(label = "تاريخ انتهاء البناء", value = "2015-01-15")
+                            BottomSheetInfoCard(label = "تاريخ أول تسجيل", value = "2015-02-01")
+                            BottomSheetInfoCard(label = "بلد البناء", value = "سلطنة عمان")
+                        }
+                    )
+
+                    ExpandableBottomSheetSection(
+                        title = "بيانات المعاينة",
+                        content = {}
                     )
                 }
-            }
 
-            ExpandableBottomSheetSection(
-                title = "بيانات الطلب",
-                isExpand = true,
-                content = {
-                    BottomSheetInfoCard(label = "نوع الوحدة البحرية", value = "سفينة صيد")
-                    BottomSheetInfoCard(label = "رقم IMO", value = "9990001")
-                    BottomSheetInfoCard(label = "رمز النداء", value = "A9BC2")
-                    BottomSheetInfoCard(label = "رقم الهوية البحرية", value = "470123456")
-                    BottomSheetInfoCard(label = "ميناء التسجيل", value = "صحار")
-                    BottomSheetInfoCard(label = "النشاط البحري", value = "صيد")
-                    BottomSheetInfoCard(label = "سنة صنع السفينة", value = "2018")
-                    BottomSheetInfoCard(label = "نوع الإثبات", value = "شهادة بناء")
-                    BottomSheetInfoCard(label = "حوض البناء", value = "Hyundai Shipyard")
-                    BottomSheetInfoCard(label = "تاريخ بدء البناء", value = "2014-03-01")
-                    BottomSheetInfoCard(label = "تاريخ انتهاء البناء", value = "2015-01-15")
-                    BottomSheetInfoCard(label = "تاريخ أول تسجيل", value = "2015-02-01")
-                    BottomSheetInfoCard(label = "بلد البناء", value = "سلطنة عمان")
-                }
-            )
-
-            ExpandableBottomSheetSection(
-                title = "بيانات المعاينة",
-                content = {}
-            )
-        }
-
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 26.dp)
-        ) {
-            Button(
-                onClick = {
-                    navController.navigate(NavRoutes.MainCategoriesRoute.route) {
-                        popUpTo(NavRoutes.MainCategoriesRoute.route) {
-                            inclusive = true
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 26.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            navController.navigate(NavRoutes.MainCategoriesRoute.route) {
+                                popUpTo(NavRoutes.MainCategoriesRoute.route) {
+                                    inclusive = true
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = extraColors.startServiceButton,
+                            contentColor = Color.White
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = localizedApp(R.string.request_detail_back_title),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = extraColors.startServiceButton,
-                    contentColor = Color.White
-                ),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = localizedApp(R.string.request_detail_back_title),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
+                }
+            }
+
+            is RequestDetail.Attachments -> {
+
+            }
+
+            is RequestDetail.AcceptedAndPayment -> {
+                CenterAlignedTopAppBar(
+                    title = {
+                        Text(
+                            text = requestDetail.transactionTitle,
+                            fontSize = 18.sp,
+                            color = extraColors.whiteInDarkMode,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 2
+                        )
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = Color.Transparent
                     )
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 4.dp, bottom = 18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = extraColors.cardBackground
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp)
+                    ) {
+                        Text(
+                            text = requestDetail.title,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 18.sp,
+                            color = extraColors.whiteInDarkMode,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Text(
+                            text = "الرقم المرجعي: ${requestDetail.referenceNumber}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = extraColors.textSubTitle
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(vertical = 24.dp, horizontal = 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+
+                    Text(
+                        text = "التفاصيل التي قدمتها", //localizedApp(currentStepData.titleRes),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 18.sp,
+                        color = extraColors.whiteInDarkMode,
+                    )
+
+                    ExpandableBottomSheetSection(
+                        title = "بيانات الطلب",
+                        isExpand = false,
+                        content = {
+                            BottomSheetInfoCard(label = "نوع الوحدة البحرية", value = "سفينة صيد")
+                            BottomSheetInfoCard(label = "رقم IMO", value = "9990001")
+                            BottomSheetInfoCard(label = "رمز النداء", value = "A9BC2")
+                            BottomSheetInfoCard(label = "رقم الهوية البحرية", value = "470123456")
+                            BottomSheetInfoCard(label = "ميناء التسجيل", value = "صحار")
+                            BottomSheetInfoCard(label = "النشاط البحري", value = "صيد")
+                            BottomSheetInfoCard(label = "سنة صنع السفينة", value = "2018")
+                            BottomSheetInfoCard(label = "نوع الإثبات", value = "شهادة بناء")
+                            BottomSheetInfoCard(label = "حوض البناء", value = "Hyundai Shipyard")
+                            BottomSheetInfoCard(label = "تاريخ بدء البناء", value = "2014-03-01")
+                            BottomSheetInfoCard(label = "تاريخ انتهاء البناء", value = "2015-01-15")
+                            BottomSheetInfoCard(label = "تاريخ أول تسجيل", value = "2015-02-01")
+                            BottomSheetInfoCard(label = "بلد البناء", value = "سلطنة عمان")
+                        }
+                    )
+
+                    ExpandableBottomSheetSection(
+                        title = "بيانات البحارة (5 بحارة)",
+                        content = {}
+                    )
+                    ExpandableBottomSheetSection(
+                        title = "بيانات المعاينة",
+                        content = {}
+                    )
+                }
+
+                Row (
+                    modifier = Modifier.fillMaxWidth(),
+                ){
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 26.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                navController.navigate(NavRoutes.MainCategoriesRoute.route) {
+                                    popUpTo(NavRoutes.MainCategoriesRoute.route) {
+                                        inclusive = true
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = extraColors.startServiceButton,
+                                contentColor = Color.White
+                            ),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = localizedApp(R.string.request_detail_back_title),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 26.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                navController.navigate(NavRoutes.PaymentDetailsRoute.route)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = extraColors.startServiceButton,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(22.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = localizedApp(R.string.process_to_payment_button),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
                 }
             }
         }

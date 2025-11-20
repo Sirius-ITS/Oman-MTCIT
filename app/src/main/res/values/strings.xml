@@ -138,6 +138,7 @@
     <string name="oman">Oman</string>
     <string name="next_button">Next</string>
     <string name="back_button">Back</string>
+    <string name="process_to_payment_button">Proceed to payment</string>
     <string name="submit_button">Submit</string>
     <string name="step_2_title">Step 2: Owner Information</string>
     <string name="step_3_title">Step 3: Documents</string>

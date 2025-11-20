@@ -363,7 +363,7 @@ class PermanentRegistrationStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
         println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
         println("💾 Processing Step $step Data: $data")
         println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -373,7 +373,7 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         println("📦 Accumulated Data After Update: $accumulatedFormData")
 
-        return data
+        return step
     }
 
 

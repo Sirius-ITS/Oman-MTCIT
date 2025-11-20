@@ -315,7 +315,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
         println("🔄 processStepData called with: $data")
 
         // ✅ تحديث الـ accumulatedFormData
@@ -329,7 +329,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
             handleMarineUnitSelectionChange(data)
         }
 
-        return data
+        return step
     }
 
     // ✅ دالة جديدة لمعالجة تغيير اختيار السفينة

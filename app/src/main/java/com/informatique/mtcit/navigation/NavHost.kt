@@ -2,6 +2,7 @@ package com.informatique.mtcit.navigation
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
@@ -46,13 +47,58 @@ import kotlinx.serialization.json.Json
 import java.net.URLDecoder
 
 @Composable
-fun NavHost(themeViewModel: ThemeViewModel){
+fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManagerImpl){
 
     val sharedUserViewModel: SharedUserViewModel = hiltViewModel()
 
     val navController = rememberNavController()
 
     val categories = LocalCategories.current
+
+    LaunchedEffect(navController) {
+        navigationManager.navigationCommands.collect { command ->
+            when (command) {
+                is NavigationCommand.Navigate -> {
+                    navController.navigate(command.route) {
+                        command.popUpTo?.let { route ->
+                            popUpTo(route) {
+                                inclusive = command.inclusive
+                            }
+                        }
+                        launchSingleTop = command.singleTop
+                    }
+                }
+
+                NavigationCommand.NavigateBack -> {
+                    navController.popBackStack()
+                }
+
+                NavigationCommand.NavigateUp -> {
+                    navController.navigateUp()
+                }
+
+                is NavigationCommand.PopBackStackTo -> {
+                    navController.popBackStack(
+                        route = command.route,
+                        inclusive = command.inclusive
+                    )
+                }
+
+                is NavigationCommand.NavigateAndClearBackStack -> {
+                    navController.navigate(command.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+
+                is NavigationCommand.NavigateWithArgs -> {
+                    navController.navigate("${command.route}/${Uri.encode(command.data)}")
+                }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
