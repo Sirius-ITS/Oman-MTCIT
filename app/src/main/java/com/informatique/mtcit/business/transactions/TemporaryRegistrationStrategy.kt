@@ -2,12 +2,16 @@ package com.informatique.mtcit.business.transactions
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
-import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.data.repository.ShipRegistrationRepository
+import com.informatique.mtcit.business.usecases.FormValidationUseCase
+import com.informatique.mtcit.business.validation.rules.DateValidationRules
+import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
+import com.informatique.mtcit.business.validation.rules.MarineUnitValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
@@ -17,12 +21,19 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.data.repository.MarineUnitRepository
+import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
+import com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult
+import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
+
 
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val marineUnitRepository: MarineUnitRepository,
+    private val temporaryRegistrationRules: TemporaryRegistrationRules
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -46,126 +57,10 @@ class TemporaryRegistrationStrategy @Inject constructor(
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false,
-                totalLength = "45 متر",
-                lengthBetweenPerpendiculars = "40 متر",
-                totalWidth = "12 متر",
-                draft = "4 أمتار",
-                height = "15 متر",
-                numberOfDecks = "2",
-                totalCapacity = "500 طن",
-                containerCapacity = "-",
-                violationsCount = "0",
-                detentionsCount = "0",
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true,
-                totalLength = "240 متر",
-                lengthBetweenPerpendiculars = "210 متر",
-                totalWidth = "33 متر",
-                draft = "10 أمتار",
-                height = "45 متر",
-                numberOfDecks = "9",
-                totalCapacity = "50000 طن",
-                containerCapacity = "4500 حاوية",
-                violationsCount = "2",
-                detentionsCount = "1",
-                amountDue = "15000 ريال",
-                paymentStatus = "مستحق"
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true,
-                totalLength = "180 متر",
-                lengthBetweenPerpendiculars = "165 متر",
-                totalWidth = "28 متر",
-                draft = "12 أمتار",
-                height = "38 متر",
-                numberOfDecks = "7",
-                totalCapacity = "75000 طن",
-                containerCapacity = "-",
-                violationsCount = "3",
-                detentionsCount = "0",
-                amountDue = "8500 ريال",
-                paymentStatus = "تحت المراجعة"
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false,
-                totalLength = "120 متر",
-                lengthBetweenPerpendiculars = "105 متر",
-                totalWidth = "22 متر",
-                draft = "6 أمتار",
-                height = "30 متر",
-                numberOfDecks = "8",
-                totalCapacity = "3000 طن",
-                containerCapacity = "-",
-                violationsCount = "0",
-                detentionsCount = "0",
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false,
-                totalLength = "35 متر",
-                lengthBetweenPerpendiculars = "30 متر",
-                totalWidth = "8 متر",
-                draft = "3 أمتار",
-                height = "25 متر",
-                numberOfDecks = "1",
-                totalCapacity = "150 طن",
-                containerCapacity = "-",
-                violationsCount = "0",
-                detentionsCount = "0",
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            )
-        )
+        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
 
         return mapOf(
-            "marineUnits" to marineUnits.map { it.maritimeId },
+            "marineUnits" to marineUnits, // ✅ Return actual MarineUnit objects for validation
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
@@ -294,17 +189,18 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     )
                 )
             )
-        } else {
-            println("❌ NOT adding new unit steps - isAddingNewUnit: $isAddingNewUnit, hasSelectedExistingUnit: $hasSelectedExistingUnit")
         }
 
-        // Review Step
+        // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
+
+        // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
         steps.add(
             SharedSteps.marineUnitNameSelectionStep(
                 showReservationInfo = true
             )
         )
+
         println("📋 Total steps count: ${steps.size}")
         return steps
     }
@@ -312,107 +208,98 @@ class TemporaryRegistrationStrategy @Inject constructor(
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+
+        // ✅ Get validation rules for this step
+        val rules = getValidationRulesForStep(step, stepData)
+
+        // ✅ Use accumulated data for validation (enables cross-step validation)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = rules
+        )
+    }
+
+    /**
+     * Get validation rules based on step content
+     */
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        val fieldIds = stepData.fields.map { it.id }
+        val rules = mutableListOf<ValidationRule>()
+
+        if (fieldIds.contains("grossTonnage")) {
+            println("🔍 Step contains grossTonnage field")
+
+
+            // ✅ Marine Unit Weights Step - Always add cross-step rules
+            if (fieldIds.contains("grossTonnage")) {
+
+
+                println("🔍 Step contains grossTonnage field")
+
+
+                // ✅ Pass accumulated data to validation rules
+                rules.addAll(MarineUnitValidationRules.getAllWeightRules(accumulatedFormData))
+                println("🔍 Added ${rules.size} marine unit validation rules")
+            }
+
+            // Check if MMSI field exists
+            if (accumulatedFormData.containsKey("mmsi")) {
+                println("🔍 ✅ Adding MMSI validation rule")
+                rules.add(MarineUnitValidationRules.mmsiRequiredForMediumVessels(accumulatedFormData ))
+            }
+        }
+
+        // Same-step validations
+        if (fieldIds.containsAll(listOf("grossTonnage", "netTonnage"))) {
+            rules.add(MarineUnitValidationRules.netTonnageLessThanOrEqualGross())
+        }
+
+        if (fieldIds.containsAll(listOf("grossTonnage", "staticLoad"))) {
+            rules.add(MarineUnitValidationRules.staticLoadValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("staticLoad", "maxPermittedLoad"))) {
+            rules.add(MarineUnitValidationRules.maxPermittedLoadValidation())
+        }
+
+        // Dimension Rules
+        if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
+            rules.add(DimensionValidationRules.lengthGreaterThanWidth())
+        }
+
+        if (fieldIds.containsAll(listOf("height", "grossTonnage"))) {
+            rules.add(DimensionValidationRules.heightValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("decksCount", "grossTonnage"))) {
+            rules.add(DimensionValidationRules.deckCountValidation())
+        }
+
+        // Date Rules
+        if (fieldIds.contains("manufacturerYear")) {
+            rules.add(DateValidationRules.manufacturerYearValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("constructionEndDate", "firstRegistrationDate"))) {
+            rules.add(DateValidationRules.registrationAfterConstruction())
+        }
+
+        return rules
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Int {
         println("🔄 processStepData called with: $data")
 
-        // ✅ تحديث الـ accumulatedFormData
+        // ✅ Update accumulated data
         accumulatedFormData.putAll(data)
 
         println("📦 accumulatedFormData after update: $accumulatedFormData")
 
-        // ✅ لو المستخدم غيّر اختياره في Marine Unit Selection Step
-        if (data.containsKey("selectedMarineUnits") || data.containsKey("isAddingNewUnit")) {
-            println("🔀 Marine unit selection changed")
-            handleMarineUnitSelectionChange(data)
-        }
+        // ... rest of existing code
 
         return step
-    }
-
-    // ✅ دالة جديدة لمعالجة تغيير اختيار السفينة
-    private fun handleMarineUnitSelectionChange(data: Map<String, String>) {
-        val isAddingNew = data["isAddingNewUnit"]?.toBoolean() ?: false
-        val hasSelectedUnit = !data["selectedMarineUnits"].isNullOrEmpty() &&
-                data["selectedMarineUnits"] != "[]"
-
-        println("🔧 handleMarineUnitSelectionChange - isAddingNew: $isAddingNew, hasSelectedUnit: $hasSelectedUnit")
-
-        if (isAddingNew && hasSelectedUnit) {
-            // ✅ المستخدم اختار "إضافة جديدة" بعد ما كان مختار سفينة
-            println("🗑️ Removing selected units because adding new")
-            accumulatedFormData.remove("selectedMarineUnits")
-            resetNewUnitData()
-        } else if (!isAddingNew && hasSelectedUnit) {
-            // ✅ المستخدم اختار سفينة موجودة بعد ما كان في وضع "إضافة جديدة"
-            println("🗑️ Resetting new unit data because selected existing unit")
-            accumulatedFormData["isAddingNewUnit"] = "false"
-            resetNewUnitData()
-        }
-    }
-
-    // ✅ دالة لمسح بيانات السفينة الجديدة
-    private fun resetNewUnitData() {
-        println("🧹 Resetting new unit data")
-
-        val keysToRemove = listOf(
-            // Unit Selection Data
-            "unitType",
-            "unitClassification",
-            "callSign",
-            "imoNumber",
-            "registrationPort",
-            "mmsi",
-            "manufacturerYear",
-            "constructionpool",
-            "proofType",
-            "proofDocument",
-            "constructionEndDate",
-            "firstRegistrationDate",
-            "registrationCountry",
-
-            // Dimensions
-            "overallLength",
-            "overallWidth",
-            "depth",
-            "height",
-            "decksCount",
-
-            // Weights
-            "grossTonnage",
-            "netTonnage",
-            "staticLoad",
-            "maxPermittedLoad",
-
-            // Engine Info
-            "engines",
-
-            // Owner Info
-            "owners",
-            "totalOwnersCount",
-
-            // Documents
-            "shipbuildingCertificate",
-            "inspectionDocuments",
-
-            // Unit Name
-            "marineUnitName",
-
-            // Insurance
-            "insuranceDocumentNumber",
-            "insuranceCountry",
-            "insuranceCompany",
-            "insuranceDocumentFile"
-        )
-
-        keysToRemove.forEach { key ->
-            if (accumulatedFormData.containsKey(key)) {
-                println("  Removing key: $key")
-            }
-            accumulatedFormData.remove(key)
-        }
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
@@ -474,6 +361,42 @@ class TemporaryRegistrationStrategy @Inject constructor(
             }
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+        }
+    }
+
+    /**
+     * Validate marine unit selection using TemporaryRegistrationRules
+     * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
+     */
+    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+        return try {
+            println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
+
+            // Find the selected unit
+            val selectedUnit = marineUnits.firstOrNull { it.id == unitId }
+
+            if (selectedUnit == null) {
+                println("❌ Unit not found with id: $unitId")
+                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
+            }
+
+            println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
+
+            // Use TemporaryRegistrationRules to validate
+            val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
+            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
+
+            println("✅ Validation result: ${validationResult::class.simpleName}")
+            println("✅ Navigation action: ${navigationAction::class.simpleName}")
+
+            ValidationResult.Success(
+                validationResult = validationResult,
+                navigationAction = navigationAction
+            )
+        } catch (e: Exception) {
+            println("❌ Validation error: ${e.message}")
+            e.printStackTrace()
+            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
         }
     }
 }

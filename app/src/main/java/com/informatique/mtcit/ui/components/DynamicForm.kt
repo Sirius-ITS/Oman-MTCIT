@@ -10,6 +10,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.navigation.NavRoutes
@@ -32,11 +33,13 @@ fun DynamicStepForm(
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
-    onDeclarationChange: ((Boolean) -> Unit), // Changed to declaration callback
-    onTriggerNext: () -> Unit // ✅ أضف الـ parameter ده
+    onDeclarationChange: ((Boolean) -> Unit)? = null, // Changed to declaration callback
+    onTriggerNext: () -> Unit, // ✅ أضف الـ parameter ده
+    // NEW: Validation parameters
+    validationState: com.informatique.mtcit.ui.viewmodels.ValidationState = com.informatique.mtcit.ui.viewmodels.ValidationState.Idle,
+    onMarineUnitSelected: ((String) -> Unit)? = null
 ) {
 
-    var acknowledgeCheck by remember { mutableStateOf<Boolean>(false) }
     var selectedId by remember { mutableStateOf<String?>(null) }
     var selectedPersonId by remember { mutableStateOf("فرد") }
 
@@ -46,11 +49,7 @@ fun DynamicStepForm(
         ReviewStepContent(
             steps = allSteps,
             formData = formData,
-            onCheckChanged = {
-                acknowledgeCheck = it
-                onDeclarationChange(it)
-            },
-            checked = acknowledgeCheck
+            onDeclarationChange = onDeclarationChange
         )
     } else {
         // Regular step - show form fields
@@ -231,26 +230,29 @@ fun DynamicStepForm(
                                 selectedUnitIds = selectedIds,
                                 allowMultipleSelection = field.allowMultipleSelection,
                                 showOwnedUnitsWarning = field.showOwnedUnitsWarning,
-                                showAddNewButton = field.showAddNewButton, // ✅ مرر القيمة
+                                showAddNewButton = field.showAddNewButton,
                                 addNewUnit = {
-                                    // ✅ نحط flag أن المستخدم عايز يضيف سفينة جديدة
-                                    onFieldChange(field.id, "[]", null) // نفضي الـ selection
-                                    onFieldChange("isAddingNewUnit", "true", null) // نحط flag
+                                    // Clear selection and set flag
+                                    onFieldChange(field.id, "[]", null)
+                                    onFieldChange("isAddingNewUnit", "true", null)
 
-                                    shouldTriggerNext = true // ✅ هنا
+                                    // Trigger next step immediately (no need to wait for Next button)
+                                    onTriggerNext()
                                 },
                                 onSelectionChange = { updatedSelection ->
-                                    val json = Json.encodeToString(updatedSelection)
+                                    val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
-                                }
+                                    // Remove hardcoded navigation - let validation handle it
+                                },
+                                // Pass validation parameters down to MarineUnitSelectorManager
+                                validationState = validationState,
+                                onMarineUnitSelected = onMarineUnitSelected
                             )
                         }
 
                         is FormField.SelectableList<*> -> {
                             when(field.id){
                                 "selectionPersonType" -> {
-//                                    onFieldChange(field.id, selectedPersonId, null)
-
                                     SelectableList(
                                         items = field.options,
                                         uiItem = { item ->

@@ -140,6 +140,8 @@
     <string name="back_button">Back</string>
     <string name="process_to_payment_button">Proceed to payment</string>
     <string name="submit_button">Submit</string>
+    <string name="accept_and_send">Accept &amp; Send</string>
+    <string name="declaration_acceptance_text">I declare that all the information provided is true and accurate, and I accept full responsibility for the data submitted.</string>
     <string name="step_2_title">Step 2: Owner Information</string>
     <string name="step_3_title">Step 3: Documents</string>
     <string name="step_4_title">Step 4: Technical Details</string>

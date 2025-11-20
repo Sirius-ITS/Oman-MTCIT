@@ -464,6 +464,7 @@ fun getMainCategories(): List<MainCategory> {
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
+                                        icon = Icons.Default.MonetizationOn,
                                         value = "20 ريال",
                                         label = "الرسوم",
                                         icon = Icons.Default.MonetizationOn
@@ -471,6 +472,7 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceSummary(
                                         type = "duration",
+                                        icon = Icons.Default.MonetizationOn,
                                         value = "5-1 أيام",
                                         label = "المدة الزمنية",
                                         icon = Icons.Default.MonetizationOn
@@ -574,12 +576,14 @@ fun getMainCategories(): List<MainCategory> {
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
+                                        icon = Icons.Default.MonetizationOn,
                                         value = "20 ريال",
                                         label = "الرسوم",
                                         icon = Icons.Default.MonetizationOn
                                     ),
                                     ServiceSummary(
                                         type = "duration",
+                                        icon = Icons.Default.MonetizationOn,
                                         value = "5-1 أيام",
                                         label = "المدة الزمنية",
                                         icon = Icons.Default.MonetizationOn

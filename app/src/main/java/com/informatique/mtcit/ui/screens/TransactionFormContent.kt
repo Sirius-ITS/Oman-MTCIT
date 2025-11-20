@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
@@ -34,6 +33,8 @@ import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
+import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
+import com.informatique.mtcit.ui.viewmodels.ValidationState
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -149,9 +150,21 @@ fun TransactionFormContent(
                 onPreviousClick = previousStep,
                 onNextClick = {
                     if (uiState.currentStep < uiState.steps.size - 1) {
-                        nextStep()
+                        // Not on last step - check if we're on review step
+                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
+                            // On review step for Marine Registration - validate before proceeding
+                            viewModel.validateOnReviewStep()
+                        } else {
+                            // Regular next step
+                            nextStep()
+                        }
                     } else {
-                        submitForm()
+                        // On last step (final submission)
+                        if (viewModel is MarineRegistrationViewModel) {
+                            viewModel.validateAndSubmit()
+                        } else {
+                            submitForm()
+                        }
                     }
                 },
                 canProceed = if (isReviewStep) {
@@ -160,7 +173,8 @@ fun TransactionFormContent(
                 } else {
                     uiState.canProceedToNext
                 },
-                isSubmitting = submissionState is UIState.Loading
+                isSubmitting = submissionState is UIState.Loading,
+                isReviewStep = isReviewStep // Pass the review step flag
             )
         }
     ) { paddingValues ->
@@ -243,6 +257,18 @@ fun TransactionFormContent(
                         declarationAccepted = accepted
                     },
                     onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
+                    // Pass only validation state for loading indicator
+                    validationState = if (viewModel is MarineRegistrationViewModel) {
+                        viewModel.validationState.collectAsState().value
+                    } else {
+                        ValidationState.Idle
+                    },
+                    // Pass unit selection callback - errors navigate to RequestDetailScreen
+                    onMarineUnitSelected = if (viewModel is MarineRegistrationViewModel) {
+                        { unitId -> viewModel.onMarineUnitSelected(unitId) }
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -256,7 +282,8 @@ fun GenericNavigationBottomBar(
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     canProceed: Boolean,
-    isSubmitting: Boolean = false
+    isSubmitting: Boolean = false,
+    isReviewStep: Boolean = false // Add parameter to detect review step
 ) {
     val extraColors = LocalExtraColors.current
     Card(
@@ -305,7 +332,10 @@ fun GenericNavigationBottomBar(
                 ),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                if (currentStep < totalSteps - 1) {
+                // Show "Accept & Send" on review step OR last step
+                if (isReviewStep || currentStep >= totalSteps - 1) {
+                    Text(localizedApp(R.string.accept_and_send))
+                } else {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -317,8 +347,6 @@ fun GenericNavigationBottomBar(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                } else {
-                    Text(localizedApp(R.string.submit_button))
                 }
             }
         }
