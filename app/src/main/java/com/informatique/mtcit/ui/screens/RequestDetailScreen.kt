@@ -34,12 +34,12 @@ import kotlinx.serialization.Serializable
 sealed interface RequestDetail {
     @Serializable
     data class CheckShipCondition(
-        val transactionTitle: String,
-        val title: String,
-        val description: String,
-        val referenceNumber: String,
-        val refuseReason: String,
-        val shipData: Map<String, String>
+//        val transactionTitle: String,
+//        val title: String,
+//        val description: String,
+//        val referenceNumber: String,
+//        val refuseReason: String,
+        val shipData: String
     ) : RequestDetail
     @Serializable
     data class Attachments(val requestData: String) : RequestDetail
@@ -383,6 +383,10 @@ private fun parseRequestDetailData(requestDetail: RequestDetail): ParsedRequestD
         }
         is RequestDetail.Attachments -> {
             parseAttachmentsData(requestDetail.requestData)
+        }
+
+        is RequestDetail.AcceptedAndPayment -> {
+            parseAttachmentsData("")
         }
     }
 }

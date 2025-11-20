@@ -146,7 +146,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
         if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
             return 2
         } else if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){
-            val shipData = mapOf(
+            /*val shipData = mapOf(
                 "نوع الوحدة البحرية" to "سفينة صيد",
                 "رقم IMO" to "9990001",
                 "رمز النداء" to "A9BC2",
@@ -160,15 +160,16 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 "تاريخ انتهاء البناء" to "2015-01-15",
                 "تاريخ أول تسجيل" to "2015-02-01",
                 "بلد البناء" to "سلطنة عمان"
-            )
+            )*/
             navigationManager.navigate(NavRoutes.RequestDetailRoute.createRoute(
                 CheckShipCondition(
-                    transactionTitle = "إصدار تصريح ملاحة للسفن و الوحدات البحرية",
-                    title = "تم رفض الطلب",
-                    referenceNumber = "007 24 7865498",
-                    description = "تم رفض طلبكم، ولمزيد من التفاصيل يرجى الاطّلاع على القسم أدناه",
-                    refuseReason = "تم رفض طلبكم بسبب وجود في  شطب على السفن مما تمنع استكمال المعاملة وفق الإجراءات القانونية المعتمدة",
-                    shipData = shipData
+//                    transactionTitle = "إصدار تصريح ملاحة للسفن و الوحدات البحرية",
+//                    title = "تم رفض الطلب",
+//                    referenceNumber = "007 24 7865498",
+//                    description = "تم رفض طلبكم، ولمزيد من التفاصيل يرجى الاطّلاع على القسم أدناه",
+//                    refuseReason = "تم رفض طلبكم بسبب وجود في  شطب على السفن مما تمنع استكمال المعاملة وفق الإجراءات القانونية المعتمدة",
+//                    shipData = shipData
+                    shipData = ""
                 )
             ))
             return -1

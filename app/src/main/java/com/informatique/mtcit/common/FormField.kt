@@ -210,7 +210,13 @@ sealed class FormField(
         val placeholder: String? = null,
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class RadioGroup(
         override val id: String,

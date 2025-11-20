@@ -466,16 +466,14 @@ fun getMainCategories(): List<MainCategory> {
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
                                         value = "20 ريال",
-                                        label = "الرسوم",
-                                        icon = Icons.Default.MonetizationOn
+                                        label = "الرسوم"
 
                                     ),
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.MonetizationOn,
                                         value = "5-1 أيام",
-                                        label = "المدة الزمنية",
-                                        icon = Icons.Default.MonetizationOn
+                                        label = "المدة الزمنية"
                                     )
                                 ),
                                 serviceInfoList = listOf(
@@ -578,15 +576,13 @@ fun getMainCategories(): List<MainCategory> {
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
                                         value = "20 ريال",
-                                        label = "الرسوم",
-                                        icon = Icons.Default.MonetizationOn
+                                        label = "الرسوم"
                                     ),
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.MonetizationOn,
                                         value = "5-1 أيام",
-                                        label = "المدة الزمنية",
-                                        icon = Icons.Default.MonetizationOn
+                                        label = "المدة الزمنية"
                                     )
                                 ),
                                 serviceInfoList = listOf(

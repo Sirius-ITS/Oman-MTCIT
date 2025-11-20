@@ -170,6 +170,7 @@ class CrossFieldValidator @Inject constructor() {
             is FormField.SelectableList<*> -> field.copy(error = error)
             is FormField.MarineUnitSelector -> field.copy(error = error)
             is FormField.RadioGroup -> field.copy(error = error)
+            is FormField.SailorList -> field.copy(error = error)
         }
     }
 }
