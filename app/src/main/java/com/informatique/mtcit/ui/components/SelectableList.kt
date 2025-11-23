@@ -46,7 +46,7 @@ data class SelectableItem(
 fun <T> SelectableList(
     items: List<T>,
     uiItem: @Composable (ColumnScope.(T) -> Unit),
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         // List Items
@@ -154,7 +154,8 @@ fun PersonTypeCard(
     item: PersonType,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    defaultValue: Boolean = false
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -168,6 +169,12 @@ fun PersonTypeCard(
        extraColors.cardBackground
     } else {
         extraColors.cardBackground
+    }
+
+    LaunchedEffect(isSelected) {
+        if (defaultValue) {
+            onClick.invoke()
+        }
     }
 
     Surface(

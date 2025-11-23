@@ -88,6 +88,28 @@ object SharedSteps {
         )
     }
 
+    fun sailorInfoStep(
+        jobs: List<String>,
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.SailorList(
+                id = "sailors",
+                labelRes = R.string.sailor_info,
+                value = "[]",
+                jobs = jobs,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.sailor_info,
+            descriptionRes = R.string.sailor_info_description,
+            fields = fields
+        )
+    }
+
     /**
      * Unit Selection Step (Ship Information)
      * Used by: Ship Registration, Name Change, Dimension Change, etc.
@@ -110,7 +132,7 @@ object SharedSteps {
         includeIMO: Boolean = true,
         includeMMSI: Boolean = true,
         includeManufacturer: Boolean = true,
-        maritimeactivity : List<String>,
+        maritimeactivity: List<String>,
         includeProofDocument: Boolean = true,
         includeConstructionDates: Boolean = true,
         includeRegistrationCountry: Boolean = true,
@@ -157,7 +179,7 @@ object SharedSteps {
                     id = "imoNumber",
                     labelRes = R.string.enter_imo_number,
                     isNumeric = true,
-                    mandatory = true
+                    mandatory = false
                 )
             )
         }
@@ -179,7 +201,7 @@ object SharedSteps {
                     id = "mmsi",
                     labelRes = R.string.mmsi_number,
                     isNumeric = true,
-                    mandatory = true
+                    mandatory = false
                 )
             )
         }
@@ -253,7 +275,17 @@ object SharedSteps {
                     FormField.FileUpload(
                         id = "proofDocument",
                         labelRes = R.string.proof_document,
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
+                        allowedTypes = listOf(
+                            "pdf",
+                            "jpg",
+                            "jpeg",
+                            "png",
+                            "doc",
+                            "docx",
+                            "xls",
+                            "xlsx",
+                            "txt"
+                        ),
                         mandatory = true
                     )
                 )
@@ -396,7 +428,6 @@ object SharedSteps {
     }
 
 
-
     /**
      * Marine Unit Name Selection Step
      * Used for: Ship Registration, Name Change
@@ -442,8 +473,6 @@ object SharedSteps {
             fields = fields
         )
     }
-
-
 
 
     /**
@@ -515,12 +544,6 @@ object SharedSteps {
     }
 
 
-
-
-
-
-
-
     /**
      * Marine Unit Registration Certificate Step
      * Used for: Various ship transactions that require checking registration status
@@ -568,9 +591,6 @@ object SharedSteps {
     }
 
 
-
-
-
     /**
      * Marine Unit Weights and Loads Step
      * Used for: Ship Registration, Technical Modifications, Load Capacity Changes
@@ -582,10 +602,9 @@ object SharedSteps {
      * - Maximum Permitted Load (optional)
      *
      * @param includeMaxPermittedLoad Show maximum permitted load field (default: true)
-     * @param weightUnits List of weight units (default: ["طن"])
      */
     fun marineUnitWeightsStep(
-        includeMaxPermittedLoad: Boolean = true,
+        includeMaxPermittedLoad: Boolean = true
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -641,8 +660,6 @@ object SharedSteps {
             fields = fields
         )
     }
-
-
 
 
     /**
@@ -728,23 +745,239 @@ object SharedSteps {
         showOwnedUnitsWarning: Boolean = true,
         showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
     ): StepData {
-            return StepData(
+        return StepData(
             titleRes = R.string.owned_ships,
             descriptionRes = R.string.owned_ships,
             fields = listOf(
                 FormField.MarineUnitSelector(
                     id = "selectedMarineUnits",
-                    labelRes = R.string.owned_ships ,
+                    labelRes = R.string.owned_ships,
                     value = "[]", // Empty array by default
                     units = units,
                     allowMultipleSelection = allowMultipleSelection,
                     showOwnedUnitsWarning = showOwnedUnitsWarning,
-                    showAddNewButton = showAddNewButton, // ✅ مرره هنا
+                    showAddNewButton = showAddNewButton, // ✅ مرهه هنا
                     mandatory = true
                 )
             )
         )
     }
+    /**
+     * Inspection Purpose Step (الغرض من طلب المعاينة)
+     * Allows selection of inspection purpose from available list
+     * Used in inspection request transactions
+     */
+    fun inspectionPurposeStep(
+        inspectionPurposes: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Inspection Purpose Selection (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionPurpose",
+                labelRes = R.string.inspection_purpose_selection,
+                options = inspectionPurposes,
+                mandatory = false,
+                placeholder = R.string.select_inspection_purpose_placeholder.toString()
+            )
+        )
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionPurpose",
+                labelRes = R.string.inspection_purpose_selection,
+                options = inspectionPurposes,
+                mandatory = false,
+                placeholder = R.string.select_inspection_purpose_placeholder.toString()
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.inspection_purpose_title,
+            descriptionRes = R.string.inspection_purpose_description,
+            fields = fields
+        )
+    }
+
+    /**
+     * Inspection Authority Step (جهة المعاينة)
+     * Allows selection of authorized inspection authority
+     * Used in inspection request transactions
+     */
+    fun inspectionAuthorityStep(
+        inspectionAuthorities: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Inspection Authority Selection (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionAuthority",
+                labelRes = R.string.inspection_authority_selection,
+                options = inspectionAuthorities,
+                mandatory = false,
+                placeholder = R.string.select_inspection_authority_placeholder.toString()
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.inspection_authority_title,
+            descriptionRes = R.string.inspection_authority_description,
+            fields = fields
+        )
+    }
+    /**
+     * Transfer Inspection to Classification Society Step (تحويل المعاينة إلى هيئة تصنيف)
+     * Allows transferring inspection to one of the approved classification societies
+     * Used when redirecting inspection request to external classification body
+     */
+    fun transferInspectionToClassificationStep(
+        classificationSocieties: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Classification Society Selection (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "classificationSociety",
+                labelRes = R.string.classification_society_selection,
+                options = classificationSocieties,
+                mandatory = true,
+                placeholder = R.string.select_classification_society_placeholder.toString()
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.transfer_inspection_title,
+            descriptionRes = R.string.transfer_inspection_description,
+            fields = fields
+        )
+    }
+
+    /**
+     * Login Registration Step (تسجيل الدخول للبوابة)
+     * Used for: Initial authentication/registration before accessing portal services
+     *
+     * Allows user to choose between:
+     * - Mobile phone registration (requires locked phone SIM)
+     * - Civil ID number (requires card reader)
+     */
+    fun loginRegistrationStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // ✅ 1. Benefits Section (InfoCard)
+        fields.add(
+            FormField.InfoCard(
+                id = "loginBenefitsInfo",
+                labelRes = R.string.login_benefits_title, // "ماذا تستفيد من تسجيل الدخول إلى البوابة؟"
+                items = listOf(
+                    R.string.benefit_unified_access,
+                    R.string.benefit_personal_page,
+                    R.string.benefit_easy_transfer,
+                    R.string.benefit_edit_profile,
+                    R.string.benefit_custom_notifications
+                ),
+                showCheckmarks = true,
+                mandatory = false
+            )
+        )
+
+        // ✅ 2. Registration Method Selection (RadioGroup)
+        fields.add(
+            FormField.RadioGroup(
+                id = "registrationMethod",
+                labelRes = R.string.registration_method_selection,
+                options = listOf(
+                    FormField.RadioOption(
+                        value = "mobile_phone",
+                        labelRes = R.string.mobile_phone_option,
+                        descriptionRes = R.string.mobile_phone_description,
+                        isEnabled = true
+                    ),
+                    FormField.RadioOption(
+                        value = "civil_id",
+                        labelRes = R.string.civil_id_option,
+                        descriptionRes = R.string.civil_id_description,
+                        isEnabled = true
+                    )
+                ),
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.login_registration_title, // "تسجيل الدخول"
+            descriptionRes = R.string.login_registration_description,
+            fields = fields
+        )
+    }
+
+    /**
+     * Mobile Phone Verification Step (إضافة رقم هاتفك المفعل)
+     * Used for: Phone number verification via electronic authentication
+     *
+     * Collects mobile phone number with country code selection
+     */
+    fun mobilePhoneVerificationStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.PhoneNumberField(
+                id = "mobilePhoneNumber",
+                labelRes = R.string.mobile_phone_verification_label,
+                countryCodes = listOf(
+                    "+968", // Oman
+                    "+966", // Saudi Arabia
+                    "+971", // UAE
+                    "+974", // Qatar
+                    "+965", // Kuwait
+                    "+973"  // Bahrain
+                ),
+                selectedCountryCode = "+968",
+                placeholder = "أدخل رقم الهاتف",
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.mobile_phone_verification_title,
+            descriptionRes = R.string.mobile_phone_verification_description,
+            fields = fields
+        )
+    }
+    /**
+     * OTP Verification Step (تحقق من رقم هاتفك المحمول)
+     * Used for: Verifying mobile phone number via OTP code
+     *
+     * Shows:
+     * - Phone number entered by user
+     * - OTP input field (6 digits)
+     * - Countdown timer
+     * - Resend OTP option
+     */
+    fun otpVerificationStep(
+        phoneNumber: String = ""
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.OTPField(
+                id = "otpCode",
+                labelRes = R.string.otp_verification_label,
+                phoneNumber = phoneNumber,
+                otpLength = 6,
+                remainingTime = 33,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.otp_verification_title, // "تحقق من رقم هاتفك المحمول"
+            descriptionRes = R.string.otp_verification_description, // "لقد أرسلنا رمزاً مكوّن من 6 أرقام إلى رقم هاتفك المحمول."
+            fields = fields
+        )
+    }
+
 }
 
 /**
@@ -753,7 +986,17 @@ object SharedSteps {
 data class DocumentConfig(
     val id: String,
     val labelRes: Int,
-    val allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "txt"),
+    val allowedTypes: List<String> = listOf(
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "txt"
+    ),
     val maxSizeMB: Int = 5,
     val mandatory: Boolean = true
 )
@@ -787,7 +1030,27 @@ data class MarineUnit(
 
     // الديون والمستحقات
     val amountDue: String = "",                     // المبلغ المستحق
-    val paymentStatus: String = ""                  // حالة السداد
+    val paymentStatus: String = "",                 // حالة السداد
+
+    // NEW: Extended fields for business validation (fetched from backend)
+    val registrationStatus: String = "ACTIVE",      // حالة التسجيل: ACTIVE, SUSPENDED, CANCELLED
+    val registrationType: String = "PERMANENT",     // نوع التسجيل: PERMANENT, TEMPORARY
+    val isMortgaged: Boolean = false,               // هل مرهونة؟
+    val mortgageDetails: MortgageDetails? = null,   // تفاصيل الرهن إن وجدت
+
+    // NEW: Inspection fields for Temporary Registration
+    val isInspected: Boolean = false,               // هل تم الفحص؟
+    val inspectionStatus: String = "NOT_VERIFIED",  // حالة الفحص: VALID, PENDING, NOT_VERIFIED, REJECTED, EXPIRED
+    val inspectionRemarks: String = ""              // ملاحظات الفحص
 )
 
-
+/**
+ * Mortgage details for a marine unit
+ */
+data class MortgageDetails(
+    val mortgageId: String,
+    val bankName: String,
+    val startDate: String,
+    val endDate: String,
+    val amount: String
+)

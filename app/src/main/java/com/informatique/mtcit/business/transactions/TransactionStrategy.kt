@@ -36,7 +36,8 @@ interface TransactionStrategy {
      * @param step Current step index
      * @param data Form data
      */
-    fun processStepData(step: Int, data: Map<String, String>): Map<String, String>
+    // fun processStepData(step: Int, data: Map<String, String>): Map<String, String>
+    fun processStepData(step: Int, data: Map<String, String>): Int
 
     /**
      * Submit the transaction

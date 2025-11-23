@@ -17,13 +17,17 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.business.transactions.marineunit.rules.MortgageCertificateRules
+import com.informatique.mtcit.business.transactions.marineunit.usecases.ValidateMarineUnitUseCase
+import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
+import com.informatique.mtcit.data.repository.MarineUnitRepository
 
 /**
  * Strategy for Mortgage Certificate Issuance
  * Steps:
  * 1. Person Type Selection (Individual/Company)
  * 2. Commercial Registration (conditional - only for Company)
- * 3. Unit Selection (choose from user's ships)
+ * 3. Unit Selection (choose from user's ships) - WITH BUSINESS VALIDATION
  * 4. Mortgage Data (bank info and mortgage details)
  * 5. Review
  */
@@ -31,7 +35,11 @@ class MortgageCertificateStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val mortgageRules: MortgageCertificateRules,
+    private val validateMarineUnitUseCase: ValidateMarineUnitUseCase,
+    private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
+    private val marineUnitRepository: MarineUnitRepository
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -50,64 +58,8 @@ class MortgageCertificateStrategy @Inject constructor(
         countryOptions = countries
         personTypeOptions = personTypes
         commercialOptions = commercialRegistrations
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false
-            ),
 
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true // ⚠️ مملوكة
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false
-            )
-        )
+        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
 
         return mapOf(
             "registrationPort" to ports,
@@ -132,10 +84,10 @@ class MortgageCertificateStrategy @Inject constructor(
                 options = commercialOptions
             ),
 
-            // Step 3: marine Selection
+            // Step 3: Marine Unit Selection - WITH BUSINESS RULES
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false,
+                allowMultipleSelection = mortgageRules.allowMultipleSelection(),
                 showOwnedUnitsWarning = true
             ),
 
@@ -212,14 +164,156 @@ class MortgageCertificateStrategy @Inject constructor(
         )
     }
 
+    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+        val unit = marineUnits.find { it.id == unitId }
+            ?: return ValidationResult.Error("الوحدة البحرية غير موجودة")
+
+        // SIMULATION: استدعاء بيانات السفينة ومراجعة سجل الالتزام
+        // Simulate API call to retrieve ship data and review compliance record
+        val complianceCheckResult = simulateComplianceRecordCheck(unit, userId)
+
+        // If compliance check finds blocking issues, return ShowComplianceDetailScreen
+        if (complianceCheckResult.hasBlockingIssues()) {
+            return ValidationResult.Success(
+                validationResult = complianceCheckResult.validationResult,
+                navigationAction = com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen(
+                    marineUnit = unit,
+                    complianceIssues = complianceCheckResult.issues,
+                    rejectionReason = complianceCheckResult.rejectionReason,
+                    rejectionTitle = "تم رفض الطلب - مشاكل في سجل الالتزام"
+                )
+            )
+        }
+
+        // Otherwise, proceed with normal validation
+        val (validationResult, navigationAction) = validateMarineUnitUseCase.executeAndGetAction(
+            unit = unit,
+            userId = userId,
+            rules = mortgageRules
+        )
+
+        return ValidationResult.Success(validationResult, navigationAction)
+    }
+
+    /**
+     * SIMULATION: Simulates calling "استدعاء بيانات السفينة ومراجعة سجل الالتزام"
+     * This represents the API that retrieves full marine unit data and checks compliance record
+     */
+    private fun simulateComplianceRecordCheck(
+        unit: MarineUnit,
+        userId: String
+    ): ComplianceCheckResult {
+        // SIMULATION SCENARIOS - Using EXACT maritime IDs to avoid false positives:
+        // 1. Maritime ID "470123456" (first unit) - simulate violations found
+        // 2. Maritime ID "OMN000123" - simulate debts found
+        // 3. Maritime ID "OMN000999" - simulate detention found
+        // 4. All others - proceed normally (NO ISSUES)
+
+        val issues = mutableListOf<com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue>()
+
+        // Scenario 1: Violations - ONLY for exact maritime ID "470123456"
+        if (unit.maritimeId == "470123456") {
+            issues.add(
+                com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
+                    category = "المخالفات",
+                    title = "وجود مخالفات نشطة",
+                    description = "تم رصد 3 مخالفات نشطة على هذه الوحدة البحرية تمنع استكمال المعاملة",
+                    severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
+                    details = mapOf(
+                        "عدد المخالفات" to "3",
+                        "تاريخ آخر مخالفة" to "2024-10-15",
+                        "نوع المخالفة" to "مخالفة سلامة بحرية"
+                    )
+                )
+            )
+        }
+
+        // Scenario 2: Debts - for maritime IDs containing "OMN000123"
+        if (unit.maritimeId == "OMN000123") {
+            issues.add(
+                com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
+                    category = "الديون والمستحقات",
+                    title = "وجود ديون مستحقة",
+                    description = "يوجد مبلغ مستحق غير مسدد يجب تسديده قبل المتابعة",
+                    severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
+                    details = mapOf(
+                        "المبلغ المستحق" to "2,500 ريال عماني",
+                        "نوع المستحق" to "رسوم تجديد سنوية",
+                        "تاريخ الاستحقاق" to "2024-09-01"
+                    )
+                )
+            )
+        }
+
+        // Scenario 3: Detention - for maritime ID "OMN000999"
+//        if (unit.maritimeId == "OMN000999") {
+//            issues.add(
+//                com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
+//                    category = "الاحتجازات",
+//                    title = "الوحدة محتجزة",
+//                    description = "الوحدة البحرية محتجزة حالياً ولا يمكن استغلالها",
+//                    severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
+//                    details = mapOf(
+//                        "سبب الاحتجاز" to "مخالفة أمنية",
+//                        "تاريخ الاحتجاز" to "2024-11-01",
+//                        "الجهة المحتجزة" to "خفر السواحل"
+//                    )
+//                )
+//            )
+//        }
+
+        // Build rejection reason
+        val rejectionReason = if (issues.isNotEmpty()) {
+            buildString {
+                append("تم رفض طلبكم بسبب: ")
+                issues.forEach { issue ->
+                    append("\n• ${issue.title}")
+                }
+                append("\n\nيرجى حل هذه المشاكل أولاً ثم المحاولة مرة أخرى.")
+            }
+        } else {
+            ""
+        }
+
+        return ComplianceCheckResult(
+            issues = issues,
+            rejectionReason = rejectionReason,
+            validationResult = if (issues.isEmpty()) {
+                com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult.Eligible(
+                    unit = unit,
+                    additionalData = emptyMap()
+                )
+            } else {
+                com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult.Ineligible.CustomError(
+                    unit = unit,
+                    reason = rejectionReason,
+                    suggestion = "يرجى حل المشاكل المذكورة أعلاه قبل المتابعة"
+                )
+            }
+        )
+    }
+
+    /**
+     * Result of compliance record check
+     */
+    private data class ComplianceCheckResult(
+        val issues: List<com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue>,
+        val rejectionReason: String,
+        val validationResult: com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult
+    ) {
+        fun hasBlockingIssues(): Boolean {
+            return issues.any { it.severity == com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING }
+        }
+    }
+
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
-        return data
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
+        return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {

@@ -1,6 +1,5 @@
 package com.informatique.mtcit.ui.screens
 
-import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,7 +21,6 @@ import com.informatique.mtcit.ui.components.localizedApp
 import androidx.core.net.toUri
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.util.UriPermissionManager
-import java.net.URLEncoder
 
 /**
  * Ship Data Modification Screen

@@ -23,7 +23,6 @@ import kotlinx.serialization.json.Json
 
 @Composable
 fun DynamicStepForm(
-    navController: NavController,
     stepData: StepData,
     formData: Map<String, String> = emptyMap(), // Add formData parameter
     onFieldChange: (String, String, Boolean?) -> Unit,
@@ -35,12 +34,14 @@ fun DynamicStepForm(
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
     onDeclarationChange: ((Boolean) -> Unit)? = null, // Changed to declaration callback
-    onTriggerNext: () -> Unit // ✅ أضف الـ parameter ده
+    onTriggerNext: () -> Unit, // ✅ أضف الـ parameter ده
+    // NEW: Validation parameters
+    validationState: com.informatique.mtcit.ui.viewmodels.ValidationState = com.informatique.mtcit.ui.viewmodels.ValidationState.Idle,
+    onMarineUnitSelected: ((String) -> Unit)? = null
 ) {
 
-    val scope = rememberCoroutineScope()
     var selectedId by remember { mutableStateOf<String?>(null) }
-    var selectedPersonId by remember { mutableStateOf("PT-2024-001") }
+    var selectedPersonId by remember { mutableStateOf("فرد") }
 
     // Detect Review Step: If no fields, show ReviewStepContent
     if (stepData.fields.isEmpty() && allSteps.isNotEmpty()) {
@@ -48,7 +49,7 @@ fun DynamicStepForm(
         ReviewStepContent(
             steps = allSteps,
             formData = formData,
-//            onDeclarationChange = onDeclarationChange
+            onDeclarationChange = onDeclarationChange
         )
     } else {
         // Regular step - show form fields
@@ -154,7 +155,7 @@ fun DynamicStepForm(
                             // Parse owners from JSON value
                             val owners = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<OwnerData>>(
+                                    Json.decodeFromString<List<OwnerData>>(
                                         field.value
                                     )
                                     Json.decodeFromString<List<OwnerData>>(field.value)
@@ -211,7 +212,7 @@ fun DynamicStepForm(
                             // Parse selected unit IDs from JSON
                             val selectedIds = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(field.value)
+                                    Json.decodeFromString<List<String>>(field.value)
                                 } catch (_: Exception) {
                                     emptyList<String>()
                                 }
@@ -229,26 +230,23 @@ fun DynamicStepForm(
                                 selectedUnitIds = selectedIds,
                                 allowMultipleSelection = field.allowMultipleSelection,
                                 showOwnedUnitsWarning = field.showOwnedUnitsWarning,
-                                showAddNewButton = field.showAddNewButton, // ✅ مرر القيمة
+                                showAddNewButton = field.showAddNewButton,
                                 addNewUnit = {
-                                    // ✅ نحط flag أن المستخدم عايز يضيف سفينة جديدة
-                                    onFieldChange(field.id, "[]", null) // نفضي الـ selection
-                                    onFieldChange("isAddingNewUnit", "true", null) // نحط flag
+                                    // Clear selection and set flag
+                                    onFieldChange(field.id, "[]", null)
+                                    onFieldChange("isAddingNewUnit", "true", null)
 
-                                    shouldTriggerNext = true // ✅ هنا
+                                    // Trigger next step immediately (no need to wait for Next button)
+                                    onTriggerNext()
                                 },
                                 onSelectionChange = { updatedSelection ->
                                     val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
-                                    if (updatedSelection[0] == "470123456") {
-                                        scope.launch {
-                                            delay(1000)
-                                            navController.navigate(NavRoutes.RequestDetailRoute.createRoute(
-                                                CheckShipCondition("470123456")
-                                            ))
-                                        }
-                                    }
-                                }
+                                    // Remove hardcoded navigation - let validation handle it
+                                },
+                                // Pass validation parameters down to MarineUnitSelectorManager
+                                validationState = validationState,
+                                onMarineUnitSelected = onMarineUnitSelected
                             )
                         }
 
@@ -260,7 +258,8 @@ fun DynamicStepForm(
                                         uiItem = { item ->
                                             PersonTypeCard(
                                                 item = item as PersonType,
-                                                isSelected = selectedPersonId == item.id,
+                                                defaultValue = selectedPersonId == item.title,
+                                                isSelected = selectedPersonId == item.title,
                                                 onClick = {
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
                                                     println("🎯 PersonType clicked")
@@ -269,7 +268,7 @@ fun DynamicStepForm(
                                                     println("📊 Item Title: ${item.title}")
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-                                                    selectedPersonId = item.id
+                                                    selectedPersonId = item.title
 
                                                     // ✅ الحل: ابعت الـ title مش الـ JSON
                                                     onFieldChange(field.id, item.title, null)
@@ -317,6 +316,66 @@ fun DynamicStepForm(
                                 onValueChange = { newValue ->
                                     localSelection = newValue // ✅ Update local state first
                                     onFieldChange(field.id, newValue, null) // Then notify parent
+                                }
+                            )
+                        }
+                        is FormField.InfoCard -> {
+                            InfoCardComponent(
+                                items = field.items,
+                                showCheckmarks = field.showCheckmarks
+                            )
+                        }
+                        is FormField.PhoneNumberField -> {
+                            // Get current country code from formData or use default
+                            val currentCountryCode = formData["${field.id}_countryCode"] ?: field.selectedCountryCode
+
+                            PhoneNumberComponent(
+                                value = field.value,
+                                onValueChange = { onFieldChange(field.id, it, null) },
+                                label = field.label,
+                                countryCodes = field.countryCodes,
+                                selectedCountryCode = currentCountryCode,
+                                onCountryCodeChange = { newCode ->
+                                    onFieldChange("${field.id}_countryCode", newCode, null)
+                                },
+                                placeholder = field.placeholder,
+                                error = field.error,
+                                mandatory = field.mandatory
+                            )
+                        }
+                        is FormField.OTPField -> {
+                            OTPComponent(
+                                value = field.value,
+                                onValueChange = { onFieldChange(field.id, it, null) },
+                                label = field.label,
+                                phoneNumber = field.phoneNumber,
+                                otpLength = field.otpLength,
+                                remainingTime = field.remainingTime,
+                                onResendOTP = {
+                                    // Trigger resend OTP action
+                                    // You can call your API here
+                                },
+                                error = field.error)
+                        }
+
+                        is FormField.SailorList -> {
+                            val sailors = remember(field.value) {
+                                try {
+                                    Json.decodeFromString<List<SailorData>>(
+                                        field.value
+                                    )
+                                    Json.decodeFromString<List<SailorData>>(field.value)
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            }
+
+                            SailorListManager(
+                                sailors = sailors,
+                                jobs = field.jobs,
+                                onSailorChange = { updatedSailors ->
+                                    val json = Json.encodeToString(updatedSailors)
+                                    onFieldChange(field.id, json, null)
                                 }
                             )
                         }

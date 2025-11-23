@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,6 +43,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -68,6 +70,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
+import com.informatique.mtcit.ui.components.CustomToolbar
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.providers.LocalCategories
@@ -122,7 +125,7 @@ fun HomePageScreen(navController: NavController) {
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.72f)
                     // Quadratic bezier to create a smooth wave
-                    quadraticBezierTo(
+                    quadraticTo(
                         x1 = w * 0.5f,
                         y1 = h * 0.5f,
                         x2 = w,
@@ -141,7 +144,7 @@ fun HomePageScreen(navController: NavController) {
                 // Optional: add a second subtle wave for depth
                 val path2 = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.82f)
-                    quadraticBezierTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
+                    quadraticTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
                     lineTo(w, h)
                     lineTo(0f, h)
                     close()
@@ -156,7 +159,14 @@ fun HomePageScreen(navController: NavController) {
                 // TopProfileBar will include statusBarsPadding to avoid overlap with status bar
                 TopProfileBar(navController = navController)
             },
-            containerColor = Color.Transparent // let the gradient show through
+//            floatingActionButton = {
+//                CustomToolbar(
+//                    navController = navController ,
+//                    currentRoute = "homepage"  // ضيف الـ currentRoute
+//                )
+//            },
+//            floatingActionButtonPosition = FabPosition.Center,
+            containerColor = Color.Transparent
         ) { innerPadding ->
             LazyColumn(
                 modifier = Modifier
@@ -181,9 +191,24 @@ fun HomePageScreen(navController: NavController) {
                     // Latest Events Section
                     Spacer(modifier = Modifier.height(24.dp))
                     LatestEventsSection()
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(60.dp))
                 }
             }
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(  bottom = WindowInsets.navigationBars
+                    .asPaddingValues()
+                    .calculateBottomPadding() + 4.dp
+                )
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            CustomToolbar(
+                navController = navController ,
+                currentRoute = "homepage"
+            )
         }
     }
 }
@@ -275,42 +300,42 @@ fun TopProfileBar(
                     modifier = Modifier.size(24.dp)
                 )
             }
-
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFF4A7BA7 ),
-                        shape = CircleShape
-                    )
-                    .shadow(
-                        elevation = 20.dp,
-                        shape = CircleShape,
-                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
-                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
-                    )
-                    .background(extraColors.iconBackBackground)
-                    .clickable { }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "الإشعارات",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.Center)
-                )
-                Badge(
-                    containerColor = Color.Red,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-4).dp, y = 4.dp)
-                ) {
-                    Text("3", fontSize = 10.sp, color = Color.White)
-                }
-            }
+//
+//            Box(
+//                modifier = Modifier
+//                    .size(38.dp)
+//                    .clip(CircleShape)
+//                    .border(
+//                        width = 1.dp,
+//                        color = Color(0xFF4A7BA7 ),
+//                        shape = CircleShape
+//                    )
+//                    .shadow(
+//                        elevation = 20.dp,
+//                        shape = CircleShape,
+//                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+//                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+//                    )
+//                    .background(extraColors.iconBackBackground)
+//                    .clickable { }
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Notifications,
+//                    contentDescription = "الإشعارات",
+//                    tint = Color.White,
+//                    modifier = Modifier
+//                        .size(24.dp)
+//                        .align(Alignment.Center)
+//                )
+//                Badge(
+//                    containerColor = Color.Red,
+//                    modifier = Modifier
+//                        .align(Alignment.TopEnd)
+//                        .offset(x = (-4).dp, y = 4.dp)
+//                ) {
+//                    Text("3", fontSize = 10.sp, color = Color.White)
+//                }
+//            }
         }
     }
 }
@@ -483,7 +508,7 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                 modifier = Modifier.height(34.dp).align(Alignment.CenterVertically)
             ) {
                 TextButton(
-                    onClick = { navController.navigate("mainCategoriesScreen") },
+                    onClick = { navController.navigate(NavRoutes.MainCategoriesRoute.route) },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = extracolors.viewAllText
                     ),

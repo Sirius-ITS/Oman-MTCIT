@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -61,9 +62,11 @@ import kotlinx.serialization.json.Json
 fun ReviewStepContent(
     steps: List<StepData>,
     formData: Map<String, String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDeclarationChange: ((Boolean) -> Unit)? = null // Add declaration callback
 ) {
     val extraColors = LocalExtraColors.current
+    var declarationAccepted by remember { mutableStateOf(false) }
 
     // Check if there's any data
     if (formData.isEmpty()) {
@@ -78,6 +81,39 @@ fun ReviewStepContent(
         Column(
             modifier = modifier.fillMaxWidth(),
         ) {
+
+            Card(
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = extraColors.blue2.copy(alpha = 0.05f)),
+                elevation = CardDefaults.cardElevation(0.dp),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                ) {
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = "المبلغ الواجب دفعه",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium ,
+                        color = extraColors.whiteInDarkMode
+                    )
+
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = "50 ريال عماني",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = extraColors.whiteInDarkMode,
+                        textAlign = TextAlign.End
+                    )
+                    Spacer(modifier.width(4.dp))
+                    Icon(imageVector = Icons.Default.Payment, contentDescription = null, tint = extraColors.whiteInDarkMode)
+                }
+            }
+
             steps.forEachIndexed { index, step ->
                 // Get fields for this step that have values
                 if (index == 0) return@forEachIndexed
@@ -97,6 +133,16 @@ fun ReviewStepContent(
                     )
                 }
             }
+
+            // Add Declaration Section at the end
+            Spacer(modifier = Modifier.height(8.dp))
+            DeclarationSection(
+                isAccepted = declarationAccepted,
+                onAcceptanceChange = { accepted ->
+                    declarationAccepted = accepted
+                    onDeclarationChange?.invoke(accepted)
+                }
+            )
         }
     }
 }
@@ -1035,74 +1081,51 @@ private fun OwnerDetailRow(
     }
 }
 
+/**
+ * Declaration checkbox section shown at the end of review
+ */
+@Composable
+private fun DeclarationSection(
+    isAccepted: Boolean,
+    onAcceptanceChange: (Boolean) -> Unit
+) {
+    val extraColors = LocalExtraColors.current
 
-//@Composable
-//private fun DisplayOwnerListData(
-//    value: String,
-//    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
-//) {
-//    val owners = remember(value) {
-//        try {
-//            Json.decodeFromString<List<OwnerData>>(value)
-//        } catch (_: Exception) {
-//            emptyList()
-//        }
-//    }
-//
-//    if (owners.isNotEmpty()) {
-//        Column(
-//            modifier = Modifier.fillMaxWidth(),
-//            verticalArrangement = Arrangement.spacedBy(12.dp)
-//        ) {
-//            owners.forEachIndexed { index, owner ->
-//                Card(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    colors = CardDefaults.cardColors(
-//                        containerColor = extraColors.background
-//                    ),
-//                    elevation = CardDefaults.cardElevation(2.dp),
-//                    shape = RoundedCornerShape(8.dp)
-//                ) {
-//                    Column(modifier = Modifier.padding(16.dp)) {
-//                        Text(
-//                            text = "${localizedApp(R.string.owner_info)} ${index + 1}",
-//                            style = MaterialTheme.typography.titleSmall.copy(
-//                                fontWeight = FontWeight.Bold
-//                            ),
-//                            color = extraColors.blue1,
-//                            modifier = Modifier.padding(bottom = 12.dp)
-//                        )
-//
-//                        // Owner Details
-//                        Column(
-//                            modifier = Modifier.fillMaxWidth(),
-//                            verticalArrangement = Arrangement.spacedBy(8.dp)
-//                        ) {
-//                            OwnerDetailRow(
-//                                label = localizedApp(R.string.owner_full_name),
-//                                value = owner.fullName
-//                            )
-//                            OwnerDetailRow(
-//                                label = localizedApp(R.string.owner_nationality),
-//                                value = owner.nationality
-//                            )
-//                            OwnerDetailRow(
-//                                label = localizedApp(R.string.owner_id_number),
-//                                value = owner.idNumber
-//                            )
-//                            if (owner.isCompany && owner.companyName.isNotBlank()) {
-//                                OwnerDetailRow(
-//                                    label = localizedApp(R.string.company_name),
-//                                    value = owner.companyName
-//                                )
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    } else {
-//        // Fallback - if JSON parsing fails, show the raw value
-//        DisplayRegularValue(value)
-//    }
-//}
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = extraColors.cardBackground
+        ),
+        elevation = CardDefaults.cardElevation(0.dp),
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onAcceptanceChange(!isAccepted) }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            androidx.compose.material3.Checkbox(
+                checked = isAccepted,
+                onCheckedChange = onAcceptanceChange,
+                colors = androidx.compose.material3.CheckboxDefaults.colors(
+                    checkedColor = extraColors.startServiceButton,
+                    uncheckedColor = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
+                    checkmarkColor = Color.White
+                )
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = localizedApp(R.string.declaration_acceptance_text),
+                style = MaterialTheme.typography.bodyMedium,
+                color = extraColors.whiteInDarkMode,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}

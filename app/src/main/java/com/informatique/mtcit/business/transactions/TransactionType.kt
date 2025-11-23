@@ -11,6 +11,8 @@ enum class TransactionType {
     CANCEL_PERMANENT_REGISTRATION,
     MORTGAGE_CERTIFICATE,
     RELEASE_MORTGAGE,
+    REQUEST_FOR_INSPECTION,
+
 
     // Ship Data Modifications Category
     SHIP_NAME_CHANGE,
@@ -19,5 +21,9 @@ enum class TransactionType {
     SHIP_DIMENSIONS_CHANGE,
     SHIP_ENGINE_CHANGE,
     SHIP_PORT_CHANGE,
-    SHIP_OWNERSHIP_CHANGE
+    SHIP_OWNERSHIP_CHANGE,
+
+    // Navigation permits
+    ISSUE_NAVIGATION_PERMIT,
+    RENEW_NAVIGATION_PERMIT,
 }
