@@ -26,6 +26,18 @@ class TemporaryRegistrationRules @Inject constructor(
         userId: String
     ): MarineUnitValidationResult {
 
+        // ✅ Special case: NEW marine unit (being added for the first time)
+        // New units have temporary IDs like "new_1234567890"
+        // They don't exist in database yet, so they're automatically "not verified"
+        if (unit.id.startsWith("new_")) {
+            println("🆕 NEW marine unit detected: ${unit.name}, treating as not verified")
+            return MarineUnitValidationResult.Ineligible.CustomError(
+                unit = unit,
+                reason = "الوحدة البحرية غير مفحوصة",
+                suggestion = "يجب إجراء الفحص أولاً قبل التسجيل المؤقت"
+            )
+        }
+
         // ONLY Check: Get inspection status (Backend API call)
         // API: /api/marine-units/{unitId}/inspection-status
         val inspectionStatus = checkInspectionStatus(unit)

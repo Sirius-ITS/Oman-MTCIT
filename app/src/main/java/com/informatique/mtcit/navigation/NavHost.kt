@@ -152,10 +152,21 @@ fun NavHost(themeViewModel: ThemeViewModel){
         // ========== TRANSACTION FORMS ==========
 
         // Ship Registration Forms
-        composable(NavRoutes.ShipRegistrationRoute.route) {
+        composable(
+            route = "${NavRoutes.ShipRegistrationRoute.route}?requestId={requestId}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE
+                transactionType = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
+                requestId = requestId
             )
         }
 

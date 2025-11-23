@@ -55,11 +55,9 @@ fun RequestDetailScreen(navController: NavController, requestDetail: RequestDeta
     }
 
     BackHandler {
-        navController.navigate(NavRoutes.MainCategoriesRoute.route) {
-            popUpTo(NavRoutes.MainCategoriesRoute.route) {
-                inclusive = true
-            }
-        }
+        // ✅ Simply pop the back stack to respect natural navigation flow
+        // This will go back to ProfileScreen if navigated from there
+        navController.popBackStack()
     }
 
     Column(

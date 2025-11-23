@@ -287,6 +287,14 @@
     <string name="remove_file">Remove</string>
     <string name="file_upload_instructions">Click to upload file (%s) - max %dMB</string>
     <string name="choose_file">Choose file</string>
+    <string name="optional">Optional</string>
+
+    <!-- Ministry of Agriculture Integration -->
+    <string name="agriculture_request_number">Ministry of Agriculture Request Number</string>
+    <string name="enter_agriculture_request_number">Enter Ministry of Agriculture request number</string>
+    <string name="agriculture_data_loaded">Boat data loaded successfully from Ministry of Agriculture</string>
+    <string name="agriculture_data_error">Failed to load boat data from Ministry of Agriculture</string>
+    <string name="fishing_boat_data_readonly">Boat data from Ministry of Agriculture (read-only)</string>
 
     <!-- Owner Information detailed fields -->
     <string name="owner_information">Owner Information</string>

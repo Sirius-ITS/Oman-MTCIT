@@ -13,5 +13,8 @@ data class TransactionState(
     val isLoading: Boolean = false,
     val isInitialized: Boolean = false,
     val canProceedToNext: Boolean = false,
-    val transactionType: TransactionType? = null
+    val transactionType: TransactionType? = null,
+    // ✅ NEW: For resumed transactions - locks previous steps (no back navigation)
+    val isResumedTransaction: Boolean = false,
+    val lockedSteps: Set<Int> = emptySet() // Steps that cannot be navigated to
 )

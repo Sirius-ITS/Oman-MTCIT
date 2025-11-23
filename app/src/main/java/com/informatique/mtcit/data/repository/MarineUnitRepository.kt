@@ -3,6 +3,7 @@ package com.informatique.mtcit.data.repository
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.serialization.Serializable
 
 /**
  * Repository for marine unit data operations
@@ -37,6 +38,13 @@ interface MarineUnitRepository {
      * Returns inspection status with details
      */
     suspend fun getInspectionStatus(unitId: String): InspectionStatus
+
+    /**
+     * ✅ NEW: Get fishing boat data from Ministry of Agriculture
+     * Backend API: /api/agriculture/fishing-boat?requestNumber={requestNumber}
+     * Returns complete fishing boat data for auto-filling form
+     */
+    suspend fun getFishingBoatData(requestNumber: String): Result<FishingBoatData>
 }
 
 /**
@@ -51,6 +59,100 @@ data class InspectionStatus(
     val expiryDate: String? = null,
     val status: String? = null, // "VALID", "EXPIRED", "PENDING"
     val remarks: String? = null
+)
+
+/**
+ * ✅ NEW: Fishing boat data from Ministry of Agriculture
+ */
+data class FishingBoatData(
+    // Unit Selection Data
+    val unitType: String,
+    val unitClassification: String,
+    val callSign: String,
+    val imoNumber: String?,
+    val registrationPort: String,
+    val mmsi: String?,
+    val manufacturerYear: String,
+    val maritimeActivity: String,
+    val buildingDock: String?,
+    val constructionPool: String?,
+    val buildingMaterial: String?,
+    val constructionStartDate: String?,
+    val constructionEndDate: String?,
+    val buildingCountry: String?,
+    val firstRegistrationDate: String?,
+    val registrationCountry: String?,
+
+    // Dimensions
+    val overallLength: String,
+    val overallWidth: String,
+    val depth: String,
+    val height: String?,
+    val decksCount: String?,
+
+    // Weights
+    val grossTonnage: String,
+    val netTonnage: String,
+    val staticLoad: String?,
+    val maxPermittedLoad: String?,
+
+    // Owner Info (Single Owner - Primary Owner)
+    val ownerFullNameAr: String,
+    val ownerFullNameEn: String?,
+    val ownerNationality: String,
+    val ownerIdNumber: String,
+    val ownerPassportNumber: String?,
+    val ownerMobile: String,
+    val ownerEmail: String?,
+    val ownerAddress: String?,
+    val ownerCity: String?,
+    val ownerCountry: String,
+    val ownerPostalCode: String?,
+
+    // ✅ NEW: Multiple Owners Support (JSON array of owners)
+    val owners: List<OwnerData>? = null,
+    val totalOwnersCount: String? = null,
+
+    // ✅ NEW: Engine Information (JSON array of engines)
+    val engines: List<EngineData>? = null
+)
+
+/**
+ * ✅ Owner data structure (matches OwnerListManager)
+ */
+@Serializable
+data class OwnerData(
+    val ownerFullNameAr: String = "",
+    val ownerFullNameEn: String = "",
+    val ownerNationality: String = "",
+    val ownerIdNumber: String = "",
+    val ownerPassportNumber: String = "",
+    val ownerMobile: String = "",
+    val ownerEmail: String = "",
+    val ownerAddress: String = "",
+    val ownerCity: String = "",
+    val ownerCountry: String = "",
+    val ownerPostalCode: String = "",
+    val ownershipPercentage: String = "",
+    val companyName: String = "",
+    val companyRegistrationNumber: String = ""
+)
+
+/**
+ * ✅ Engine data structure (matches EngineListManager)
+ */
+@Serializable
+data class EngineData(
+    val engineNumber: String = "",
+    val engineType: String = "",
+    val enginePower: String = "",
+    val cylindersCount: String = "",
+    val manufacturer: String = "",
+    val model: String = "",
+    val manufactureYear: String = "",
+    val producingCountry: String = "",
+    val fuelType: String = "",
+    val engineCondition: String = ""
 )
 
 @Singleton
@@ -150,6 +252,202 @@ class MarineUnitRepositoryImpl @Inject constructor(
                     remarks = "لا توجد ملاحظات"
                 )
             }
+        }
+    }
+
+    /**
+     * ✅ NEW: Fetch fishing boat data from Ministry of Agriculture
+     * Simulated API call - returns mock data like other methods
+     */
+    override suspend fun getFishingBoatData(requestNumber: String): Result<FishingBoatData> {
+        return try {
+            // Simulate API delay
+            kotlinx.coroutines.delay(1000)
+
+            println("🔍 Simulating Ministry of Agriculture API call for request: $requestNumber")
+
+            // Simulate different responses based on request number
+            when {
+                requestNumber == "12345" -> {
+                    // Success case - return mock fishing boat data with engines and owners
+                    val mockData = FishingBoatData(
+                        // Unit Selection Data
+                        unitType = "قارب صيد",
+                        unitClassification = "قارب صغير",
+                        callSign = "FB12345",
+                        imoNumber = null,
+                        registrationPort = "ميناء صحار",
+                        mmsi = "461234567",
+                        manufacturerYear = "2020",
+                        maritimeActivity = "صيد تجاري",
+                        buildingDock = "ترسانة صحار",
+                        constructionPool = "حوض البناء رقم 3",
+                        buildingMaterial = "فايبر جلاس",
+                        constructionStartDate = "2020-01-15",
+                        constructionEndDate = "2020-06-20",
+                        buildingCountry = "عمان",
+                        firstRegistrationDate = "2020-07-01",
+                        registrationCountry = "عمان",
+
+                        // Dimensions
+                        overallLength = "18.5",
+                        overallWidth = "5.2",
+                        depth = "2.1",
+                        height = "6.5",
+                        decksCount = "1",
+
+                        // Weights
+                        grossTonnage = "45.5",
+                        netTonnage = "38.2",
+                        staticLoad = "20.0",
+                        maxPermittedLoad = "50.0",
+
+                        // Primary Owner Info
+                        ownerFullNameAr = "أحمد بن محمد الحارثي",
+                        ownerFullNameEn = "Ahmed Mohammed Al Harthi",
+                        ownerNationality = "عمان",
+                        ownerIdNumber = "12345678",
+                        ownerPassportNumber = null,
+                        ownerMobile = "+96891234567",
+                        ownerEmail = "ahmed.alharthi@example.om",
+                        ownerAddress = "ولاية صحار، شارع الوادي الكبير",
+                        ownerCity = "صحار",
+                        ownerCountry = "عمان",
+                        ownerPostalCode = "321",
+
+                        // ✅ Multiple Owners (2 owners)
+                        totalOwnersCount = "2",
+                        owners = listOf(
+                            OwnerData(
+                                ownerFullNameAr = "أحمد بن محمد الحارثي",
+                                ownerFullNameEn = "Ahmed Mohammed Al Harthi",
+                                ownerNationality = "عمان",
+                                ownerIdNumber = "12345678",
+                                ownerPassportNumber = "",
+                                ownerMobile = "+96891234567",
+                                ownerEmail = "ahmed.alharthi@example.om",
+                                ownerAddress = "ولاية صحار، شارع الوادي الكبير",
+                                ownerCity = "صحار",
+                                ownerCountry = "عمان",
+                                ownerPostalCode = "321",
+                                ownershipPercentage = "60",
+                                companyName = "",
+                                companyRegistrationNumber = ""
+                            ),
+                            OwnerData(
+                                ownerFullNameAr = "سالم بن خميس البلوشي",
+                                ownerFullNameEn = "Salem Khamis Al Balushi",
+                                ownerNationality = "عمان",
+                                ownerIdNumber = "87654321",
+                                ownerPassportNumber = "",
+                                ownerMobile = "+96892345678",
+                                ownerEmail = "salem.balushi@example.om",
+                                ownerAddress = "ولاية صحار، حي النهضة",
+                                ownerCity = "صحار",
+                                ownerCountry = "عمان",
+                                ownerPostalCode = "321",
+                                ownershipPercentage = "40",
+                                companyName = "",
+                                companyRegistrationNumber = ""
+                            )
+                        ),
+
+                        // ✅ Engines (2 engines)
+                        engines = listOf(
+                            EngineData(
+                                engineNumber = "ENG001",
+                                engineType = "Diesel Marine",
+                                enginePower = "250",
+                                cylindersCount = "6",
+                                manufacturer = "Caterpillar",
+                                model = "C7.1",
+                                manufactureYear = "2019",
+                                producingCountry = "الولايات المتحدة",
+                                fuelType = "Diesel",
+                                engineCondition = "Used - Good"
+                            ),
+                            EngineData(
+                                engineNumber = "ENG002",
+                                engineType = "Diesel Marine",
+                                enginePower = "250",
+                                cylindersCount = "6",
+                                manufacturer = "Caterpillar",
+                                model = "C7.1",
+                                manufactureYear = "2019",
+                                producingCountry = "الولايات المتحدة",
+                                fuelType = "Diesel",
+                                engineCondition = "Used - Good"
+                            )
+                        )
+                    )
+
+                    println("✅ Mock data returned successfully with ${mockData.engines?.size ?: 0} engines and ${mockData.owners?.size ?: 0} owners")
+                    Result.success(mockData)
+                }
+                requestNumber == "99999" -> {
+                    // Error case - not found
+                    println("❌ Request number not found")
+                    Result.failure(Exception("رقم الطلب غير موجود في نظام وزارة الزراعة"))
+                }
+                requestNumber.length < 5 -> {
+                    // Validation error
+                    println("❌ Invalid request number")
+                    Result.failure(Exception("رقم الطلب غير صحيح"))
+                }
+                else -> {
+                    // Generic mock data for any other valid request number
+                    val genericData = FishingBoatData(
+                        unitType = "قارب صيد",
+                        unitClassification = "قارب متوسط",
+                        callSign = "FB${requestNumber.take(5)}",
+                        imoNumber = null,
+                        registrationPort = "ميناء مسقط",
+                        mmsi = "461${requestNumber.take(6)}",
+                        manufacturerYear = "2021",
+                        maritimeActivity = "صيد ساحلي",
+                        buildingDock = "ترسانة محلية",
+                        constructionPool = "حوض البناء رقم 1",
+                        buildingMaterial = "خشب",
+                        constructionStartDate = "2021-03-01",
+                        constructionEndDate = "2021-08-15",
+                        buildingCountry = "عمان",
+                        firstRegistrationDate = "2021-09-01",
+                        registrationCountry = "عمان",
+
+                        // Dimensions
+                        overallLength = "15.0",
+                        overallWidth = "4.5",
+                        depth = "1.8",
+                        height = "5.0",
+                        decksCount = "1",
+
+                        // Weights
+                        grossTonnage = "30.0",
+                        netTonnage = "25.0",
+                        staticLoad = "15.0",
+                        maxPermittedLoad = "35.0",
+
+                        // Owner Info
+                        ownerFullNameAr = "محمد بن سعيد البلوشي",
+                        ownerFullNameEn = "Mohammed Said Al Balushi",
+                        ownerNationality = "عمان",
+                        ownerIdNumber = "87654321",
+                        ownerPassportNumber = null,
+                        ownerMobile = "+96899887766",
+                        ownerEmail = "mohammed.balushi@example.om",
+                        ownerAddress = "ولاية مسقط، روي",
+                        ownerCity = "مسقط",
+                        ownerCountry = "عمان",
+                        ownerPostalCode = "100"
+                    )
+
+                    println("✅ Generic mock data returned")
+                    Result.success(genericData)
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception occurred: ${e.message}")
+            Result.failure(e)
         }
     }
 

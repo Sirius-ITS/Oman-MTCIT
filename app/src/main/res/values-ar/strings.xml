@@ -164,6 +164,14 @@
     <string name="file_upload_instructions">اضغط لرفع الملف (%s) - حد أقصى %dMB</string>
     <string name="choose_file">اختر ملف</string>
     <string name="view_file">عرض</string>
+    <string name="optional">اختياري</string>
+
+    <!-- Ministry of Agriculture Integration -->
+    <string name="agriculture_request_number">رقم طلب وزارة الزراعة</string>
+    <string name="enter_agriculture_request_number">أدخل رقم طلب وزارة الزراعة</string>
+    <string name="agriculture_data_loaded">تم تحميل بيانات القارب من وزارة الزراعة بنجاح</string>
+    <string name="agriculture_data_error">فشل تحميل بيانات القارب من وزارة الزراعة</string>
+    <string name="fishing_boat_data_readonly">بيانات القارب من وزارة الزراعة (للقراءة فقط)</string>
 
 
 
@@ -299,7 +307,7 @@
     <string name="data_accuracy">أتعهد بصحة جميع البيانات والمعلومات المقدمة</string>
     <string name="legal_responsibility">أتحمل المسؤولية القانونية الكاملة عن صحة المعلومات</string>
     <string name="shipbuilding_certificate_or_sale_contract">شهادة بناء السفينة او عقد البيع حالة الشراء</string>
-    <string name="inspection_documents">مستندات المعاينة ستتم داخل دورة المعاينة(إلزامي)</string>
+    <string name="inspection_documents">مستندات المعاينة ستتم داخل دورة المعاينة</string>
 
     <string name="marine_unit_Dimentions">الأبعاد الخاصة بالوحدة البحرية</string>
 

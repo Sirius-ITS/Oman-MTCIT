@@ -34,6 +34,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -50,12 +54,19 @@ import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.AlignmentLine
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.CustomToolbar
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
+import com.informatique.mtcit.data.model.UserRequest
+import com.informatique.mtcit.data.repository.RequestRepository
+import androidx.compose.runtime.collectAsState
 
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    viewModel: MarineRegistrationViewModel = hiltViewModel()  // ✅ Inject ViewModel
 ){
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
@@ -67,6 +78,61 @@ fun ProfileScreen(
             WindowCompat.setDecorFitsSystemWindows(it, false)
             it.statusBarColor = android.graphics.Color.TRANSPARENT
             WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightStatusBars = false
+        }
+    }
+
+    // ✅ KEY: Observe navigation to RequestDetailScreen
+    val navigationToDetail by viewModel.navigationToComplianceDetail.collectAsState()
+
+    LaunchedEffect(navigationToDetail) {
+        navigationToDetail?.let { action ->
+            println("📱 Navigating to RequestDetailScreen from Profile")
+
+            // Build marine unit data string with all details and compliance issues
+            val marineData = buildComplianceDetailData(action)
+
+            // Navigate to RequestDetailScreen with proper route
+            navController.navigate(
+                NavRoutes.RequestDetailRoute.createRoute(
+                    RequestDetail.CheckShipCondition(marineData)
+                )
+            ) {
+                // ✅ Don't clear the back stack - keep ProfileScreen so back button works correctly
+                launchSingleTop = true
+            }
+
+            // Clear the navigation state
+            viewModel.clearComplianceDetailNavigation()
+        }
+    }
+
+    // ✅ NEW: Observe navigation to transaction screen after resuming verified request
+    val shouldNavigateToTransaction by viewModel.navigateToTransactionScreen.collectAsState()
+
+    LaunchedEffect(shouldNavigateToTransaction) {
+        if (shouldNavigateToTransaction) {
+            println("📱 Navigating to transaction screen after resuming")
+
+            // Get the pending request ID from the ViewModel
+            val requestId = viewModel.getPendingRequestId()
+
+            // Navigate to the correct transaction form screen with the requestId
+            // The requestId will be passed as a navigation argument so it persists
+            // across ViewModel recreation
+            if (requestId != null) {
+                navController.navigate(NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId)) {
+                    launchSingleTop = true
+                    // Don't pop profile - allow back navigation
+                }
+            } else {
+                // Fallback to normal navigation if no requestId
+                navController.navigate(NavRoutes.ShipRegistrationRoute.route) {
+                    launchSingleTop = true
+                }
+            }
+
+            // Clear the navigation flag
+            viewModel.clearNavigationFlag()
         }
     }
 
@@ -142,7 +208,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Forms/Investments Section
-                    FormsSection()
+                    FormsSection(viewModel = viewModel)  // ✅ Pass ViewModel instance
 
                     Spacer(modifier = Modifier.height(50.dp))
                 }
@@ -401,8 +467,29 @@ fun LegendItem(
 }
 
 @Composable
-fun FormsSection() {
+fun FormsSection(
+    viewModel: MarineRegistrationViewModel = hiltViewModel()  // ✅ Inject ViewModel
+) {
     val extraColors = LocalExtraColors.current
+
+    // ✅ Fetch real requests from repository
+    var requests by remember { mutableStateOf<List<UserRequest>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        // Get repository and fetch user requests
+        val repository = RequestRepository()
+        repository.getUserRequests("currentUserId")
+            .onSuccess {
+                requests = it
+                isLoading = false
+                println("✅ Loaded ${it.size} requests from repository")
+            }
+            .onFailure {
+                isLoading = false
+                println("❌ Failed to load requests: ${it.message}")
+            }
+    }
 
     Column(
         modifier = Modifier
@@ -430,62 +517,230 @@ fun FormsSection() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Sample forms data
-        val forms = listOf(
-            FormData(
-                id = "AE1234567",
-                title = "إصدار شهادة تسجيل سفينة أو وحدة بحرية مؤقتة",
-                status = "استكمال بيانات",
-                statusColor = Color(0xFFFFB74D),
-                statusIcon = Icons.Default.Info,
-                statusMessage = "إلغاء الطلب",
-                lastUpdate = "آخر تحديث: 05 فبراير 2024"
-            ),
-            FormData(
-                id = "AE1234567",
-                title = "تطبيق شهادة تسجيل دائمة للسفن والوحدات البحرية",
-                status = "مرفوضة",
-                statusColor = Color(0xFFE74C3C),
-                statusIcon = Icons.Default.Info,
-                statusMessage = "تم رفض الطلب من قبلكم",
-                lastUpdate = "آخر تحديث: 05 فبراير 2024"
-            ),
-            FormData(
-                id = "AE1234567",
-                title = "تجديد تصريح ملاحة للسفن والوحدات البحرية",
-                status = "ملغي",
-                statusColor = Color(0xFFE91E63),
-                statusIcon = Icons.Default.Info,
-                statusMessage = "تتم الموافقة على الطلب",
-                lastUpdate = "آخر تحديث: 05 فبراير 2024"
-            ),
-            FormData(
-                id = "AE1234567",
-                title = "طلب معاينة للسفينة أو الوحدة البحرية",
-                status = "بيانات إضافية مطلوبة",
-                statusColor = Color(0xFFFFB74D),
-                statusIcon = Icons.Default.Info,
-                statusMessage = "إلغاء الطلب",
-                lastUpdate = "آخر تحديث: 05 فبراير 2024"
-            ),
-            FormData(
-                id = "AE1234567",
-                title = "طلب معاينة للسفينة أو الوحدة البحرية",
-                status = "تحت الموافقة",
-                statusColor = Color(0xFFE91E63),
-                statusIcon = Icons.Default.Info,
-                statusMessage = "تم إلغاء هذا الطلب من قبلكم",
-                lastUpdate = "آخر تحديث: 05 فبراير 2024"
-            )
-        )
-
-        forms.forEach { form ->
-            FormCard(form)
-            Spacer(modifier = Modifier.height(12.dp))
+        // ✅ Show real requests or loading state
+        if (isLoading) {
+            // Show loading indicator
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    color = extraColors.whiteInDarkMode
+                )
+            }
+        } else if (requests.isEmpty()) {
+            // Show empty state
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "📋",
+                        fontSize = 48.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "لا توجد استمارات",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = extraColors.whiteInDarkMode
+                    )
+                    Text(
+                        text = "ستظهر طلباتك هنا",
+                        fontSize = 14.sp,
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        } else {
+            // ✅ Show real requests
+            requests.forEach { request ->
+                RealRequestCard(
+                    request = request,
+                    onClick = {
+                        println("🔘 User clicked request: ${request.id}")
+                        // ✅ This triggers resumeTransaction
+                        viewModel.resumeTransaction(request.id)
+                    }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
 }
 
+// ✅ NEW: Card for real UserRequest data
+@Composable
+fun RealRequestCard(
+    request: UserRequest,
+    onClick: () -> Unit
+) {
+    val extraColors = LocalExtraColors.current
+
+    // Map RequestStatus to UI properties
+    val (statusText, statusColor, statusIcon) = when (request.status) {
+        com.informatique.mtcit.data.model.RequestStatus.PENDING ->
+            Triple("قيد المراجعة", Color(0xFFFFB74D), "⏳")
+        com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS ->
+            Triple("قيد المعالجة", Color(0xFF42A5F5), "⟳")
+        com.informatique.mtcit.data.model.RequestStatus.VERIFIED ->
+            Triple("تم التحقق", Color(0xFF66BB6A), "✓")
+        com.informatique.mtcit.data.model.RequestStatus.REJECTED ->
+            Triple("مرفوض", Color(0xFFE74C3C), "✗")
+        com.informatique.mtcit.data.model.RequestStatus.COMPLETED ->
+            Triple("مكتمل", Color(0xFF26A69A), "✓")
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),  // ✅ Clickable!
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Row 1: Status Badge + ID
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ID Badge
+                Surface(
+                    color = Color(0xFF6B7FD7).copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = request.id,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF6B7FD7),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+
+                // Status Badge
+                Surface(
+                    color = statusColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = statusIcon,
+                            fontSize = 14.sp,
+                            color = statusColor
+                        )
+                        Text(
+                            text = statusText,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = statusColor
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Row 2: Title
+            Text(
+                text = request.getDisplayTitle(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = extraColors.whiteInDarkMode,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Row 3: Marine Unit Name (if available)
+            request.marineUnit?.let { unit ->
+                Text(
+                    text = "🚢 ${unit.name}",
+                    fontSize = 13.sp,
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.8f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Row 4: Action hint
+            Text(
+                text = when (request.status) {
+                    com.informatique.mtcit.data.model.RequestStatus.VERIFIED ->
+                        "✓ اضغط للمتابعة"
+                    com.informatique.mtcit.data.model.RequestStatus.PENDING,
+                    com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS ->
+                        "⏳ اضغط للتحقق من الحالة"
+                    com.informatique.mtcit.data.model.RequestStatus.REJECTED ->
+                        "✗ اضغط لعرض السبب"
+                    com.informatique.mtcit.data.model.RequestStatus.COMPLETED ->
+                        "✓ الطلب مكتمل"
+                },
+                fontSize = 13.sp,
+                color = statusColor,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Row 5: Last Update
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AccessTime,
+                    contentDescription = null,
+                    tint = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "آخر تحديث: ${formatDate(request.lastUpdatedDate)}",
+                    fontSize = 12.sp,
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
+                )
+            }
+        }
+    }
+}
+
+// Helper function to format date
+fun formatDate(isoDate: String): String {
+    return try {
+        val instant = java.time.Instant.parse(isoDate)
+        val formatter = java.time.format.DateTimeFormatter
+            .ofPattern("dd MMMM yyyy")
+            .withZone(java.time.ZoneId.systemDefault())
+        formatter.format(instant)
+    } catch (e: Exception) {
+        isoDate.take(10) // Just show date part
+    }
+}
+
+// Keep the old FormData and FormCard for backward compatibility (if needed elsewhere)
 data class FormData(
     val id: String,
     val title: String,
@@ -601,5 +856,72 @@ fun FormCard(form: FormData) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Build compliance detail data string from ShowComplianceDetailScreen action
+ * This creates a formatted string with marine unit data and compliance issues
+ */
+private fun buildComplianceDetailData(action: com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen): String {
+    val unit = action.marineUnit
+    val issues = action.complianceIssues
+
+    return buildString {
+        appendLine("📋 بيانات الوحدة البحرية")
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine()
+
+        // Basic Info
+        appendLine("🚢 الاسم: ${unit.name}")
+        appendLine("🔢 رقم الهوية البحرية: ${unit.maritimeId}")
+        appendLine("📍 نوع الوحدة: ${unit.type}")
+        appendLine("⚓ ميناء التسجيل: ${unit.registrationPort}")
+        appendLine("🎯 النشاط البحري: ${unit.activity}")
+        appendLine()
+
+        // Dimensions
+        if (unit.totalLength.isNotEmpty()) {
+            appendLine("📏 الأبعاد:")
+            appendLine("   • الطول الكلي: ${unit.totalLength}")
+            if (unit.totalWidth.isNotEmpty()) appendLine("   • العرض الكلي: ${unit.totalWidth}")
+            if (unit.draft.isNotEmpty()) appendLine("   • الغاطس: ${unit.draft}")
+            appendLine()
+        }
+
+        // Compliance Issues Section
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine("⚠️ سجل الالتزام - المشاكل المكتشفة")
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine()
+
+        if (issues.isEmpty()) {
+            appendLine("✅ لا توجد مشاكل")
+        } else {
+            issues.forEachIndexed { index, issue ->
+                val icon = when (issue.severity) {
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING -> "🚫"
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING -> "⚠️"
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.INFO -> "ℹ️"
+                }
+
+                appendLine("$icon ${issue.category}")
+                appendLine("   العنوان: ${issue.title}")
+                appendLine("   التفاصيل: ${issue.description}")
+
+                if (issue.details.isNotEmpty()) {
+                    issue.details.forEach { (key, value) ->
+                        appendLine("   • $key: $value")
+                    }
+                }
+
+                if (index < issues.size - 1) appendLine()
+            }
+        }
+
+        appendLine()
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine("📌 سبب الرفض:")
+        appendLine(action.rejectionReason)
     }
 }

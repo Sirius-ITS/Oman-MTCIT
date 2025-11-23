@@ -17,6 +17,9 @@ import com.informatique.mtcit.business.transactions.ReleaseMortgageStrategy
 import com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy
 import com.informatique.mtcit.business.transactions.ValidationResult
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
+import com.informatique.mtcit.data.repository.RequestRepository  // ✅ FIXED: Changed from data.model to data.repository
+import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import kotlinx.coroutines.delay
 
 /**
  * Validation state sealed class for marine unit selection
@@ -45,7 +48,8 @@ sealed class ValidationState {
 class MarineRegistrationViewModel @Inject constructor(
     resourceProvider: ResourceProvider,
     navigationUseCase: StepNavigationUseCase,
-    private val strategyFactory: TransactionStrategyFactory
+    private val strategyFactory: TransactionStrategyFactory,
+    private val requestRepository: RequestRepository  // ✅ NEW: Inject request repository
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
     // NEW: Validation state for marine unit selection
@@ -58,6 +62,39 @@ class MarineRegistrationViewModel @Inject constructor(
     // NEW: Navigation to compliance detail screen (removed error dialog state)
     private val _navigationToComplianceDetail = MutableStateFlow<MarineUnitNavigationAction.ShowComplianceDetailScreen?>(null)
     val navigationToComplianceDetail: StateFlow<MarineUnitNavigationAction.ShowComplianceDetailScreen?> = _navigationToComplianceDetail.asStateFlow()
+
+    // ✅ NEW: Request saved successfully (show message to user)
+    private val _requestSaved = MutableStateFlow<String?>(null)
+    val requestSaved: StateFlow<String?> = _requestSaved.asStateFlow()
+
+    // ✅ NEW: Trigger navigation to transaction screen after resuming
+    private val _navigateToTransactionScreen = MutableStateFlow(false)
+    val navigateToTransactionScreen: StateFlow<Boolean> = _navigateToTransactionScreen.asStateFlow()
+
+    // ✅ NEW: Store request ID to resume after navigation
+    private var _pendingResumeRequestId: String? = null
+
+    // ✅ NEW: Flag to prevent normal initialization during resume
+    private val _isResuming = MutableStateFlow(false)
+    val isResuming: StateFlow<Boolean> = _isResuming.asStateFlow()
+
+    /**
+     * Check if there's a pending resume request
+     * Used by the screen to skip normal initialization
+     */
+    fun hasPendingResume(): Boolean {
+        val hasPending = _pendingResumeRequestId != null || _isResuming.value
+        println("🔍 hasPendingResume: $hasPending (_pendingResumeRequestId=$_pendingResumeRequestId, _isResuming=${_isResuming.value})")
+        return hasPending
+    }
+
+    /**
+     * ✅ NEW: Get pending request ID for navigation
+     * Used by ProfileScreen to pass requestId as navigation argument
+     */
+    fun getPendingRequestId(): String? {
+        return _pendingResumeRequestId
+    }
 
     /**
      * Create strategy for Marine Unit Registration transactions
@@ -302,6 +339,344 @@ class MarineRegistrationViewModel @Inject constructor(
         _storedValidationResult = null
     }
 
+    // ✅ NEW: Clear request saved message
+    fun clearRequestSavedMessage() {
+        _requestSaved.value = null
+    }
+
+    // ✅ NEW: Clear navigation flag after navigation is handled
+    fun clearNavigationFlag() {
+        _navigateToTransactionScreen.value = false
+    }
+
+    /**
+     * ✅ NEW: Resume transaction from saved request
+     * Called when user opens a request from their profile (الاستمارات)
+     *
+     * GENERIC APPROACH:
+     * 1. Initialize transaction type
+     * 2. Restore ALL form data to strategy's internal state
+     * 3. Rebuild steps based on restored state
+     * 4. Jump to the step specified by API (lastCompletedStep + 1)
+     * 5. Lock all previous steps (user cannot go back)
+     *
+     * Works for ALL transaction types - no special logic needed
+     *
+     * Flow:
+     * 1. Fetch latest request status from API
+     * 2. If PENDING → Show RequestDetailScreen (still under review)
+     * 3. If VERIFIED → Navigate to transaction screen, then resume
+     * 4. If REJECTED → Show RequestDetailScreen with rejection reason
+     */
+    fun resumeTransaction(requestId: String) {
+        viewModelScope.launch {
+            try {
+                println("🔄 Resuming transaction: $requestId")
+
+                // Fetch latest request status
+                val result = requestRepository.getRequestStatus(requestId)
+
+                result.onSuccess { request ->
+                    println("✅ Request found: ${request.id}, status: ${request.status}")
+
+                    when (request.status) {
+                        com.informatique.mtcit.data.model.RequestStatus.VERIFIED -> {
+                            // Inspection verified - resume transaction
+                            println("✅ Request VERIFIED - Will navigate to transaction screen")
+
+                            // Store request ID and trigger navigation
+                            _pendingResumeRequestId = requestId
+                            _navigateToTransactionScreen.value = true
+                        }
+
+                        com.informatique.mtcit.data.model.RequestStatus.PENDING,
+                        com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS -> {
+                            // Still under review - show detail screen
+                            println("⏳ Request still PENDING - Showing detail screen")
+
+                            val action = MarineUnitNavigationAction.ShowComplianceDetailScreen(
+                                marineUnit = request.marineUnit ?: createPlaceholderUnit(),
+                                complianceIssues = listOf(
+                                    com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
+                                        category = "حالة الفحص",
+                                        title = "الطلب قيد المراجعة",
+                                        description = "طلبك ��يد المراجعة من قبل الإدارة",
+                                        severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING,
+                                        details = mapOf(
+                                            "رقم الطلب" to request.id,
+                                            "تاري�� الإنشاء" to request.createdDate,
+                                            "الموعد الم��وقع" to (request.estimatedCompletionDate ?: "غير محدد")
+                                        )
+                                    )
+                                ),
+                                rejectionReason = "طلبك قيد المراجعة. سيتم إشعارك عند اكتمال المراجعة.",
+                                rejectionTitle = "طلب قيد المرا��عة"
+                            )
+
+                            _navigationToComplianceDetail.value = action
+                        }
+
+                        com.informatique.mtcit.data.model.RequestStatus.REJECTED -> {
+                            // Request rejected - show detail screen with reason
+                            println("❌ Request REJECTED - Showing detail screen")
+
+                            val action = MarineUnitNavigationAction.ShowComplianceDetailScreen(
+                                marineUnit = request.marineUnit ?: createPlaceholderUnit(),
+                                complianceIssues = listOf(
+                                    com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
+                                        category = "سبب الرفض",
+                                        title = "تم رفض الطلب",
+                                        description = request.rejectionReason ?: "لم يتم تحديد السبب",
+                                        severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
+                                        details = mapOf(
+                                            "رقم الطلب" to request.id,
+                                            "تاريخ الرفض" to request.lastUpdatedDate
+                                        )
+                                    )
+                                ),
+                                rejectionReason = request.rejectionReason ?: "تم رفض الطلب",
+                                rejectionTitle = "تم رفض الطلب"
+                            )
+
+                            _navigationToComplianceDetail.value = action
+                        }
+
+                        com.informatique.mtcit.data.model.RequestStatus.COMPLETED -> {
+                            // Transaction already completed
+                            println("✅ Request COMPLETED - Nothing to do")
+                            _error.value = com.informatique.mtcit.common.AppError.Unknown("هذا الطلب مكتمل بالفعل")
+                        }
+                    }
+                }
+
+                result.onFailure { error ->
+                    println("❌ Failed to get request status: ${error.message}")
+                    _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                        error.message ?: "فشل في تحميل حالة الطلب"
+                    )
+                }
+
+            } catch (e: Exception) {
+                println("❌ Exception during resume: ${e.message}")
+                e.printStackTrace()
+                _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                    e.message ?: "حدث خطأ أثناء استعادة الطلب"
+                )
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Complete the resume after navigation to transaction screen
+     * Called by MarineRegistrationScreen when it detects a pending resume
+     */
+    fun completeResumeAfterNavigation() {
+        val requestId = _pendingResumeRequestId ?: return
+
+        println("🔄 Completing resume for request: $requestId")
+
+        // ✅ Set resuming flag to prevent normal initialization
+        _isResuming.value = true
+
+        viewModelScope.launch {
+            try {
+                // Fetch request again
+                val result = requestRepository.getRequestStatus(requestId)
+
+                result.onSuccess { request ->
+                    println("✅ Request VERIFIED - Resuming transaction")
+                    println("📋 Transaction type: ${request.type}")
+                    println("📋 Form data keys: ${request.formData.keys}")
+                    println("📋 Last completed step: ${request.lastCompletedStep}")
+
+                    // ✅ Step 1: Initialize transaction with saved type
+                    initializeTransaction(request.type)
+
+                    // Wait for initialization
+                    delay(500)
+
+                    // ✅ Step 2: Restore form data to strategy's internal state
+                    val strategy = currentStrategy
+                    if (strategy == null) {
+                        println("❌ Strategy is null, cannot resume")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل في استعادة المعاملة")
+                        _isResuming.value = false
+                        _pendingResumeRequestId = null
+                        return@launch
+                    }
+
+                    println("🔧 Restoring form data to strategy...")
+
+                    // Call processStepData to update strategy's accumulatedFormData
+                    // This ensures getSteps() will return the correct steps
+                    strategy.processStepData(0, request.formData)
+
+                    println("✅ Strategy's internal state updated")
+
+                    // ✅ Step 3: Rebuild steps based on restored state
+                    val rebuiltSteps = strategy.getSteps()
+                    println("📊 Steps after rebuild: ${rebuiltSteps.size}")
+
+                    // Update UI state with rebuilt steps AND restored form data
+                    updateUiState { state ->
+                        state.copy(
+                            steps = rebuiltSteps,
+                            formData = request.formData
+                        )
+                    }
+
+                    // Small delay for UI state update
+                    delay(200)
+
+                    println("📊 Final steps in UI state: ${uiState.value.steps.size}")
+                    println("📊 Step titles:")
+                    uiState.value.steps.forEachIndexed { index, step ->
+                        println("   [$index] Step titleRes: ${step.titleRes}")
+                    }
+
+                    // ✅ Step 4: Calculate resume step
+                    // API tells us the last completed step, so we resume from next step
+                    val totalSteps = uiState.value.steps.size
+                    val resumeStep = request.lastCompletedStep + 1
+
+                    // Lock all previous steps (user cannot go back)
+                    val lockedSteps = (0 until resumeStep).toSet()
+
+                    println("🎯 Resume from step: $resumeStep (last completed was ${request.lastCompletedStep})")
+                    println("🎯 Total steps: $totalSteps")
+                    println("🔒 Locked steps: $lockedSteps")
+
+                    // ✅ Step 5: Mark as resumed transaction and lock previous steps
+                    updateUiState { currentState ->
+                        currentState.copy(
+                            isResumedTransaction = true,
+                            lockedSteps = lockedSteps,
+                            completedSteps = lockedSteps // Mark locked steps as completed
+                        )
+                    }
+
+                    // ✅ Step 6: Navigate to resume step - DIRECTLY update currentStep
+                    println("✅ Directly updating currentStep to $resumeStep")
+
+                    when {
+                        resumeStep < totalSteps -> {
+                            // Resume step exists - update current step directly
+                            updateUiState { currentState ->
+                                currentState.copy(currentStep = resumeStep)
+                            }
+                            println("✅ Updated currentStep to $resumeStep")
+                        }
+                        resumeStep == totalSteps -> {
+                            // Last step was completed, go to last step (review/submit)
+                            updateUiState { currentState ->
+                                currentState.copy(currentStep = totalSteps - 1)
+                            }
+                            println("✅ Updated currentStep to ${totalSteps - 1}")
+                        }
+                        else -> {
+                            // Error: resume step beyond total steps
+                            println("❌ Resume step $resumeStep exceeds total steps $totalSteps")
+                            _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة")
+                        }
+                    }
+
+                    // ✅ IMPORTANT: Wait for UI state to actually update
+                    delay(300)
+                    println("✅ Final currentStep: ${uiState.value.currentStep}")
+                    println("🎬 Resume complete, clearing flags")
+
+                    // Clear pending request ID and resuming flag
+                    _pendingResumeRequestId = null
+                    _isResuming.value = false
+                }
+
+                result.onFailure { error ->
+                    println("❌ Failed to complete resume: ${error.message}")
+                    _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                        error.message ?: "فشل في استعادة المعاملة"
+                    )
+                    _pendingResumeRequestId = null
+                    _isResuming.value = false
+                }
+
+            } catch (e: Exception) {
+                println("❌ Exception completing resume: ${e.message}")
+                e.printStackTrace()
+                _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                    e.message ?: "حدث خطأ أثناء استعادة الطلب"
+                )
+                _pendingResumeRequestId = null
+                _isResuming.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Set request ID and complete resume
+     * Called by MarineRegistrationScreen when requestId is passed as navigation argument
+     * This is the NEW approach that works across ViewModel recreation
+     */
+    fun setRequestIdAndCompleteResume(requestId: String) {
+        println("🔄 setRequestIdAndCompleteResume called with requestId: $requestId")
+        _pendingResumeRequestId = requestId
+        completeResumeAfterNavigation()
+    }
+
+    /**
+     * Clear all data and prepare for a new transaction
+     * Called when user starts a new transaction from the dashboard
+     */
+    fun clearForNewTransaction() {
+        // Clear marine unit selection and validation state
+        _validationState.value = ValidationState.Idle
+        _storedValidationResult = null
+        _navigationToComplianceDetail.value = null
+
+        // Clear request saved message
+        _requestSaved.value = null
+
+        // Clear pending resume request ID
+        _pendingResumeRequestId = null
+    }
+
+    /**
+     * ✅ NEW: Save request progress when inspection is PENDING
+     * Called after validation shows PENDING status
+     */
+    private suspend fun saveRequestProgress(
+        marineUnit: MarineUnit,
+        currentStep: Int
+    ) {
+        try {
+            val currentState = uiState.value
+            val userId = getCurrentUserId()
+
+            println("💾 Saving request progress for user $userId")
+
+            val result = requestRepository.saveRequestProgress(
+                userId = userId,
+                transactionType = currentState.transactionType ?: TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
+                marineUnit = marineUnit,
+                formData = currentState.formData,
+                lastCompletedStep = currentStep,
+                status = com.informatique.mtcit.data.model.RequestStatus.PENDING
+            )
+
+            result.onSuccess { requestId ->
+                println("✅ Request saved successfully: $requestId")
+                _requestSaved.value = requestId
+            }
+
+            result.onFailure { error ->
+                println("❌ Failed to save request: ${error.message}")
+            }
+
+        } catch (e: Exception) {
+            println("❌ Exception saving request: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
     /**
      * NEW: Validate and submit form for Temporary Registration
      * This method should be called from UI instead of submitForm() for Temporary Registration
@@ -324,31 +699,28 @@ class MarineRegistrationViewModel @Inject constructor(
             try {
                 // Get selected marine unit ID from form data
                 val selectedUnitsJson = currentState.formData["selectedMarineUnits"]
+                val isAddingNewUnit = currentState.formData["isAddingNewUnit"]?.toBoolean() ?: false
+
                 println("🔍 Selected units JSON: $selectedUnitsJson")
+                println("🔍 Is adding new unit: $isAddingNewUnit")
+                println("🔍 All form data keys: ${currentState.formData.keys}")
 
-                if (selectedUnitsJson.isNullOrEmpty() || selectedUnitsJson == "[]") {
-                    println("❌ No marine unit selected")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
+                // Check if user is adding a NEW marine unit by looking for multiple possible field indicators
+                val hasNewUnitData = currentState.formData.containsKey("marineUnitName") ||
+                                    currentState.formData.containsKey("unitName") ||
+                                    currentState.formData.containsKey("callSign") ||
+                                    currentState.formData.containsKey("imoNumber") ||
+                                    currentState.formData.containsKey("registrationPort") ||
+                                    (selectedUnitsJson == "[]" && currentState.formData.size > 2) // Has form data but no selection
+
+                println("🔍 hasNewUnitData: $hasNewUnitData")
+                println("🔍 Form data size: ${currentState.formData.size}")
+
+                if ((selectedUnitsJson.isNullOrEmpty() || selectedUnitsJson == "[]") && !hasNewUnitData) {
+                    println("❌ No marine unit selected and no new unit data")
+                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية أو إضافة وحدة جديدة")
                     return@launch
                 }
-
-                // Parse selected unit ID (maritimeId from JSON)
-                val selectedMaritimeIds = try {
-                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(selectedUnitsJson)
-                } catch (e: Exception) {
-                    println("❌ Failed to parse selected units: ${e.message}")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في قراءة الوحدة المختارة")
-                    return@launch
-                }
-
-                if (selectedMaritimeIds.isEmpty()) {
-                    println("❌ No units in selection")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
-                    return@launch
-                }
-
-                val selectedMaritimeId = selectedMaritimeIds.first()
-                println("🔍 Selected maritime ID: $selectedMaritimeId")
 
                 // Get the strategy
                 val strategy = currentStrategy as? TemporaryRegistrationStrategy
@@ -358,33 +730,109 @@ class MarineRegistrationViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Get marine units and find the selected one
-                val dynamicOptions = strategy.loadDynamicOptions()
-                val marineUnits = dynamicOptions["marineUnits"] as? List<*>
+                val userId = getCurrentUserId()
+                val validationResult: ValidationResult?
 
-                val selectedUnit = marineUnits?.firstOrNull {
-                    (it as? com.informatique.mtcit.business.transactions.shared.MarineUnit)?.maritimeId == selectedMaritimeId
-                } as? com.informatique.mtcit.business.transactions.shared.MarineUnit
+                // Case 1: User is adding a NEW marine unit
+                if (hasNewUnitData) {
+                    println("✅ User is adding a NEW marine unit")
 
-                if (selectedUnit == null) {
-                    println("❌ Selected unit not found")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الوحدة البحرية المختارة غير موجودة")
-                    return@launch
+                    // Extract new unit data from form - try multiple possible field names
+                    val unitName = currentState.formData["marineUnitName"]
+                        ?: currentState.formData["unitName"]
+                        ?: currentState.formData["callSign"]  // Fallback to callSign if name not found
+                        ?: "وحدة بحرية جديدة"
+
+                    val unitType = currentState.formData["unitType"]
+                        ?: currentState.formData["unitClassification"]
+                        ?: ""
+
+                    val registrationPort = currentState.formData["registrationPort"] ?: ""
+                    val imo = currentState.formData["imoNumber"] ?: currentState.formData["imo"] ?: ""
+                    val callSign = currentState.formData["callSign"] ?: ""
+                    val activity = currentState.formData["maritimeactivity"] ?: ""
+                    val length = currentState.formData["length"] ?: currentState.formData["totalLength"] ?: ""
+                    val width = currentState.formData["width"] ?: currentState.formData["totalWidth"] ?: ""
+                    val height = currentState.formData["height"] ?: ""
+
+                    println("📋 New unit data: name=$unitName, type=$unitType, port=$registrationPort, callSign=$callSign")
+
+                    // Create a temporary MarineUnit object for validation
+                    val newUnit = MarineUnit(
+                        id = "new_${System.currentTimeMillis()}", // Temporary ID
+                        name = unitName,
+                        type = unitType,
+                        imoNumber = imo,
+                        callSign = callSign,
+                        maritimeId = "", // Will be assigned after successful registration
+                        registrationPort = registrationPort,
+                        activity = activity,
+                        isOwned = true, // User is adding their own unit
+                        totalLength = length,
+                        totalWidth = width,
+                        height = height,
+                        registrationStatus = "ACTIVE",
+                        registrationType = "TEMPORARY"
+                    )
+
+                    // ✅ Use the NEW method for validating new units
+                    validationResult = try {
+                        strategy.validateNewMarineUnit(newUnit, userId)
+                    } catch (e: Exception) {
+                        println("❌ Validation error: ${e.message}")
+                        e.printStackTrace()
+                        ValidationResult.Error(e.message ?: "Validation failed")
+                    }
+
+                } else {
+                    // Case 2: User selected an EXISTING marine unit
+                    println("✅ User selected an EXISTING marine unit")
+
+                    // Parse selected unit ID (maritimeId from JSON)
+                    val selectedMaritimeIds = try {
+                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(selectedUnitsJson!!)
+                    } catch (e: Exception) {
+                        println("❌ Failed to parse selected units: ${e.message}")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في قراءة الوحدة المختارة")
+                        return@launch
+                    }
+
+                    if (selectedMaritimeIds.isEmpty()) {
+                        println("❌ No units in selection")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
+                        return@launch
+                    }
+
+                    val selectedMaritimeId = selectedMaritimeIds.first()
+                    println("🔍 Selected maritime ID: $selectedMaritimeId")
+
+                    // Get marine units and find the selected one
+                    val dynamicOptions = strategy.loadDynamicOptions()
+                    val marineUnits = dynamicOptions["marineUnits"] as? List<*>
+
+                    val selectedUnit = marineUnits?.firstOrNull {
+                        (it as? MarineUnit)?.maritimeId == selectedMaritimeId
+                    } as? MarineUnit
+
+                    if (selectedUnit == null) {
+                        println("❌ Selected unit not found")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الوحدة البحرية المختارة غير موجودة")
+                        return@launch
+                    }
+
+                    println("✅ Found selected unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
+
+                    // Validate the selected unit's inspection status
+                    validationResult = validateTemporaryRegistrationUnit(strategy, selectedUnit.id, userId)
                 }
 
-                println("✅ Found selected unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
-
-                // Now validate the unit's inspection status
-                val userId = getCurrentUserId()
-                val validationResult = validateTemporaryRegistrationUnit(strategy, selectedUnit.id, userId)
-
+                // Handle validation result (same for both cases)
                 if (validationResult == null) {
                     println("❌ Validation returned null")
                     _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل التحقق من حالة الفحص")
                     return@launch
                 }
 
-                // Handle validation result
                 when (validationResult) {
                     is ValidationResult.Success -> {
                         when (val action = validationResult.navigationAction) {
@@ -395,7 +843,18 @@ class MarineRegistrationViewModel @Inject constructor(
                             }
                             is MarineUnitNavigationAction.ShowComplianceDetailScreen -> {
                                 // Inspection failed (pending/not verified) - show RequestDetailScreen
-                                println("⚠️ Inspection validation failed, showing RequestDetailScreen")
+                                println("⏳ Inspection validation failed, showing RequestDetailScreen")
+
+                                // ✅ NEW: Save request progress if status is PENDING
+                                val isPending = action.rejectionTitle?.contains("قيد المعالجة") == true
+                                if (isPending) {
+                                    println("💾 Saving request progress (status: PENDING)")
+                                    saveRequestProgress(
+                                        marineUnit = action.marineUnit,
+                                        currentStep = currentState.currentStep
+                                    )
+                                }
+
                                 _navigationToComplianceDetail.value = action
                             }
                             else -> {
@@ -446,6 +905,23 @@ class MarineRegistrationViewModel @Inject constructor(
             println("➡️ Review Step: Proceeding to next step for other transaction")
             nextStep()
         }
+    }
+
+    /**
+     * Create placeholder marine unit for display purposes
+     */
+    private fun createPlaceholderUnit(): MarineUnit {
+        return com.informatique.mtcit.business.transactions.shared.MarineUnit(
+            id = "placeholder",
+            name = "وحدة بحرية",
+            type = "",
+            imoNumber = "",
+            callSign = "",
+            maritimeId = "",
+            registrationPort = "",
+            activity = "",
+            isOwned = true
+        )
     }
 
     /**

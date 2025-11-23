@@ -114,7 +114,9 @@ object SharedSteps {
         includeProofDocument: Boolean = true,
         includeConstructionDates: Boolean = true,
         includeRegistrationCountry: Boolean = true,
-        additionalFields: List<FormField> = emptyList()
+        additionalFields: List<FormField> = emptyList(),
+        isFishingBoat: Boolean = false, // ✅ NEW: Flag to show agriculture field
+        fishingBoatDataLoaded: Boolean = false // ✅ NEW: Flag to disable fields
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -129,6 +131,20 @@ object SharedSteps {
 
             )
         )
+
+        // ✅ NEW: Agriculture Request Number field (only for fishing boats)
+        if (isFishingBoat) {
+            fields.add(
+                FormField.TextField(
+                    id = "agricultureRequestNumber",
+                    labelRes = R.string.agriculture_request_number,
+                    mandatory = true,
+                    enabled = true, // Always enabled to allow input
+                    placeholder = R.string.enter_agriculture_request_number.toString()
+                )
+            )
+        }
+
         fields.add(
             FormField.DropDown(
                 id = "unitClassification",
@@ -140,24 +156,26 @@ object SharedSteps {
             )
         )
 
-        // Always included: Call Sign
+        // Always included: Call Sign - DISABLED if fishing boat data loaded
         fields.add(
             FormField.TextField(
                 id = "callSign",
                 labelRes = R.string.enter_call_sign,
                 mandatory = true,
-                placeholder = R.string.enter_call_sign.toString()  // استخدم placeholderRes
+                enabled = !fishingBoatDataLoaded, // ✅ Disabled when data loaded
+                placeholder = R.string.enter_call_sign.toString()
             )
         )
 
-        // Optional: IMO Number
+        // Optional: IMO Number - DISABLED if fishing boat data loaded
         if (includeIMO) {
             fields.add(
                 FormField.TextField(
                     id = "imoNumber",
                     labelRes = R.string.enter_imo_number,
                     isNumeric = true,
-                    mandatory = false
+                    mandatory = false,
+                    enabled = !fishingBoatDataLoaded // ✅ Disabled when data loaded
                 )
             )
         }
@@ -169,35 +187,33 @@ object SharedSteps {
                 labelRes = R.string.select_registration_port,
                 options = ports,
                 mandatory = true
+                // Note: DropDown fields will be disabled in the UI when fishingBoatDataLoaded is true
             )
         )
 
-        // Optional: MMSI Number
+        // Optional: MMSI Number - DISABLED if fishing boat data loaded
         if (includeMMSI) {
             fields.add(
                 FormField.TextField(
                     id = "mmsi",
                     labelRes = R.string.mmsi_number,
                     isNumeric = true,
-                    mandatory = false
+                    mandatory = false,
+                    enabled = !fishingBoatDataLoaded // ✅ Disabled when data loaded
                 )
             )
         }
 
-        // Optional: Manufacturer Information
+        // Optional: Manufacturer Information - DISABLED if fishing boat data loaded
         if (includeManufacturer) {
             fields.addAll(
                 listOf(
-//                    FormField.TextField(
-//                        id = "shipManufacturer",
-//                        labelRes = R.string.ship_manufacturer,
-//                        mandatory = true
-//                    ),
                     FormField.TextField(
                         id = "manufacturerYear",
                         labelRes = R.string.ship_manufacture_year,
                         isNumeric = true,
-                        mandatory = true
+                        mandatory = true,
+                        enabled = !fishingBoatDataLoaded // ✅ Disabled when data loaded
                     )
                 )
             )
@@ -346,6 +362,7 @@ object SharedSteps {
                 labelRes = R.string.overall_length_placeholder,
                 placeholder = R.string.overall_length_placeholder.toString(),
                 isNumeric = true,
+                isDecimal = true,
                 mandatory = true
             )
         )
@@ -357,6 +374,7 @@ object SharedSteps {
                 labelRes = R.string.overall_width_placeholder,
                 placeholder = R.string.overall_width_placeholder.toString(),
                 isNumeric = true,
+                isDecimal = true,
                 mandatory = true
             )
         )
@@ -368,6 +386,7 @@ object SharedSteps {
                 labelRes = R.string.depth_placeholder,
                 placeholder = R.string.depth_placeholder.toString(),
                 isNumeric = true,
+                isDecimal = true,
                 mandatory = true
             )
         )
@@ -380,6 +399,7 @@ object SharedSteps {
                     labelRes = R.string.height_placeholder,
                     placeholder = R.string.height_placeholder.toString(),
                     isNumeric = true,
+                    isDecimal = true,
                     mandatory = false
                 )
             )
@@ -564,10 +584,8 @@ object SharedSteps {
             } else {
                 R.string.marine_unit_registration_certificate_description_simple
             },
-            fields = fields
-        )
+            fields = fields)
     }
-
 
     /**
      * Marine Unit Weights and Loads Step
@@ -593,6 +611,7 @@ object SharedSteps {
                 labelRes = R.string.gross_tonnage_placeholder,
                 placeholder = R.string.gross_tonnage_placeholder.toString(),
                 isNumeric = true,
+                isDecimal = true,
                 mandatory = true
             )
         )
@@ -604,6 +623,7 @@ object SharedSteps {
                 labelRes = R.string.net_tonnage_placeholder,
                 placeholder = R.string.net_tonnage_placeholder.toString(),
                 isNumeric = true,
+                isDecimal = true,
                 mandatory = true
             )
         )
@@ -615,6 +635,7 @@ object SharedSteps {
                 labelRes = R.string.static_load_placeholder,
                 placeholder = R.string.static_load_placeholder.toString(),
                 isNumeric = true,
+                isDecimal = true,
                 mandatory = true
             )
         )
@@ -627,6 +648,7 @@ object SharedSteps {
                     labelRes = R.string.max_permitted_load_placeholder,
                     placeholder = R.string.max_permitted_load_placeholder.toString(),
                     isNumeric = true,
+                    isDecimal = true,
                     mandatory = false
                 )
             )
@@ -740,7 +762,6 @@ object SharedSteps {
             )
         )
     }
-
 }
 
 /**

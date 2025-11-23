@@ -23,6 +23,7 @@ sealed class FormField(
         override val value: String = "",
         val isPassword: Boolean = false,
         val isNumeric: Boolean = false,
+        val isDecimal: Boolean = false, // ✅ NEW: For decimal numbers like 18.5, 3.14
         val placeholder: String? = null,
         override val error: String? = null,
         val initialValue: String = "",
@@ -234,4 +235,3 @@ sealed class FormField(
     }
 
 }
-

@@ -61,7 +61,10 @@ fun CustomFileUpload(
         // Label
         if (label.isNotEmpty()) {
             Text(
-                text = if (mandatory) "$label *" else label,
+                text = when {
+                    mandatory -> "$label *"
+                    else -> "$label (${localizedApp(R.string.optional)})"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (error != null)
                     MaterialTheme.colorScheme.error

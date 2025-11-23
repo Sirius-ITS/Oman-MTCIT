@@ -15,7 +15,7 @@ class FormValidator @Inject constructor(
                     field.value.isBlank() -> {
                         if (field.mandatory) "${field.label} is required" else null
                     }
-                    field.isNumeric && field.value.any { !it.isDigit() } -> "Must be numeric"
+                    field.isNumeric && !field.isDecimal && field.value.any { !it.isDigit() } -> "Must be numeric"
                     field.isPassword && field.value.length < 6 -> "Password too short"
                     else -> null
                 }

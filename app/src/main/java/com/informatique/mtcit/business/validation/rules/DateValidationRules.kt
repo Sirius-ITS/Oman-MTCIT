@@ -26,7 +26,7 @@ object DateValidationRules {
         if (year == null) return@CustomValidation true
 
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
-        year in 1900..currentYear
+        year in currentYear-25..currentYear
     }
 
     /**

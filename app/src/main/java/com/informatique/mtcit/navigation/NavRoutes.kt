@@ -26,7 +26,12 @@ sealed class NavRoutes(val route: String) {
                 = "transaction_requirements/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}/${Uri.encode(parentTitleRes)}"
     }
 
-    data object ShipRegistrationRoute : NavRoutes("ship_registration_form")
+    data object ShipRegistrationRoute : NavRoutes("ship_registration_form") {
+        const val REQUEST_ID_ARG = "requestId"
+        fun createRouteWithResume(requestId: String): String {
+            return "ship_registration_form?requestId=$requestId"
+        }
+    }
 
     data object PermanentRegistrationRoute : NavRoutes("permanent_registration_form")
 

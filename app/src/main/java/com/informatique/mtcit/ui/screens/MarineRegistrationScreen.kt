@@ -62,19 +62,37 @@ import com.informatique.mtcit.util.UriPermissionManager
 @Composable
 fun MarineRegistrationScreen(
     navController: NavController,
-    transactionType: TransactionType
+    transactionType: TransactionType,
+    requestId: String? = null  // ✅ NEW: Accept optional request ID for resume
 ) {
     val viewModel: MarineRegistrationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
     val fileNavigationEvent by viewModel.fileNavigationEvent.collectAsStateWithLifecycle()
     val navigationToComplianceDetail by viewModel.navigationToComplianceDetail.collectAsStateWithLifecycle()
+    val isResuming by viewModel.isResuming.collectAsStateWithLifecycle()  // ✅ NEW: Observe resuming state
     val context = LocalContext.current
 
+    // ✅ NEW: Trigger resume if requestId is provided
+    LaunchedEffect(requestId) {
+        if (requestId != null) {
+            println("🎬 MarineRegistrationScreen mounted with requestId: $requestId - will complete resume")
+            viewModel.setRequestIdAndCompleteResume(requestId)
+        } else {
+            println("🎬 MarineRegistrationScreen mounted - no requestId provided")
+        }
+    }
 
     // Initialize transaction type on first composition
-    LaunchedEffect(transactionType) {
-        viewModel.initializeTransaction(transactionType)
+    // ✅ IMPORTANT: Only initialize if NOT resuming a transaction
+    LaunchedEffect(transactionType, isResuming, requestId) {
+        // Check if we're currently resuming - if yes, skip normal initialization
+        if (!isResuming && requestId == null) {
+            println("🆕 Normal initialization for transaction type: $transactionType")
+            viewModel.initializeTransaction(transactionType)
+        } else {
+            println("⏭️ Skipping normal initialization - resume in progress (isResuming=$isResuming, requestId=$requestId)")
+        }
     }
 
     // NEW: Handle navigation to RequestDetailScreen for compliance issues
@@ -200,8 +218,8 @@ fun MarineRegistrationScreen(
         }
     }
 
-    // Show loading during ViewModel initialization
-    if (uiState.isLoading || !uiState.isInitialized) {
+    // ✅ NEW: Show loading during resume OR during ViewModel initialization
+    if (uiState.isLoading || !uiState.isInitialized || (isResuming && requestId != null)) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center

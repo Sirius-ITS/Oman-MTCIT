@@ -30,6 +30,7 @@ fun CustomTextField(
     label: String,
     isPassword: Boolean = false,
     isNumeric: Boolean = false,
+    isDecimal: Boolean = false, // ✅ NEW: Support for decimal numbers
     error: String? = null,
     mandatory: Boolean = false,
     leadingIcon: ImageVector? = null,
@@ -92,7 +93,8 @@ fun CustomTextField(
             visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(
                 keyboardType = when {
-                    isNumeric -> KeyboardType.Number
+                    isDecimal -> KeyboardType.Decimal // ✅ Decimal keyboard (allows . or ,)
+                    isNumeric -> KeyboardType.Number   // Integer only
                     isPassword -> KeyboardType.Password
                     else -> KeyboardType.Text
                 }

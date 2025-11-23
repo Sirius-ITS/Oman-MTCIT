@@ -153,7 +153,7 @@ fun TransactionFormContent(
                         // Not on last step - check if we're on review step
                         if (isReviewStep && viewModel is MarineRegistrationViewModel) {
                             // On review step for Marine Registration - validate before proceeding
-                            viewModel.validateOnReviewStep()
+                            (viewModel as MarineRegistrationViewModel).validateOnReviewStep()
                         } else {
                             // Regular next step
                             nextStep()
@@ -161,7 +161,7 @@ fun TransactionFormContent(
                     } else {
                         // On last step (final submission)
                         if (viewModel is MarineRegistrationViewModel) {
-                            viewModel.validateAndSubmit()
+                            (viewModel as MarineRegistrationViewModel).validateAndSubmit()
                         } else {
                             submitForm()
                         }

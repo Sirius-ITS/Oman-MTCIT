@@ -10,14 +10,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.components.localizedApp
 
 @Composable
 fun CustomToolbar(
@@ -53,7 +54,7 @@ fun CustomToolbar(
                 // Home Tab
                 TabItem(
                     icon = Icons.Default.Home,
-                    label = "Home",
+                    label = localizedApp(R.string.home),
                     isSelected = selectedTab == 0,
                     onClick = {
                         navController.navigate("homepage") {
@@ -66,7 +67,7 @@ fun CustomToolbar(
                 // Profile Tab
                 TabItem(
                     icon = Icons.Default.Person,
-                    label = "Profile",
+                    label = localizedApp(R.string.profile),
                     isSelected = selectedTab == 1,
                     onClick = {
                         navController.navigate("profileScreen") {
@@ -80,7 +81,7 @@ fun CustomToolbar(
                 // Notifications Tab
                 TabItem(
                     icon = Icons.Default.Notifications,
-                    label = "Notifications",
+                    label = localizedApp(R.string.notification),
                     isSelected = selectedTab == 2,
                     onClick = {
                         navController.navigate("notificationScreen") {

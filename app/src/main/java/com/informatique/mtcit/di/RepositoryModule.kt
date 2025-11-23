@@ -37,4 +37,3 @@ abstract class RepositoryModule {
         impl: LookupRepositoryImpl
     ): LookupRepository
 }
-

@@ -76,6 +76,13 @@ abstract class BaseTransactionViewModel(
     private val _showToastEvent = MutableStateFlow<String?>(null)
     val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
 
+    /**
+     * ✅ NEW: Protected method to update UI state from child classes
+     * This allows child classes to update state without accessing private _uiState
+     */
+    protected fun updateUiState(update: (TransactionState) -> TransactionState) {
+        _uiState.value = update(_uiState.value)
+    }
 
     /**
      * Abstract method to create strategy for specific transaction type
@@ -135,14 +142,31 @@ abstract class BaseTransactionViewModel(
             // Handle dynamic field changes via strategy
             val updatedFormData = strategy.handleFieldChange(fieldId, value, newFormData)
 
+            // ✅ Check if we need to refresh steps (for fishing boat type selection)
+            val shouldRefreshSteps = fieldId == "unitType" && updatedFormData.containsKey("_triggerRefresh")
+
+            // Remove the trigger flag from form data if present
+            val cleanedFormData = updatedFormData.toMutableMap().apply {
+                remove("_triggerRefresh")
+            }
+
+            // ✅ Refresh steps if needed
+            val updatedSteps = if (shouldRefreshSteps) {
+                println("🔄 Refreshing steps because unitType changed")
+                strategy.getSteps()
+            } else {
+                currentState.steps
+            }
+
             // Update state
             _uiState.value = currentState.copy(
-                formData = updatedFormData,
+                formData = cleanedFormData,
                 fieldErrors = newFieldErrors,
+                steps = updatedSteps, // ✅ Update steps
                 canProceedToNext = navigationUseCase.canProceedToNext(
                     currentState.currentStep,
-                    currentState.steps,
-                    updatedFormData
+                    updatedSteps, // ✅ Use updated steps
+                    cleanedFormData
                 )
             )
         }
@@ -209,6 +233,17 @@ abstract class BaseTransactionViewModel(
 
     fun previousStep() {
         val currentState = _uiState.value
+
+        // ✅ NEW: Prevent back navigation if current step is locked (resumed transaction)
+        if (currentState.isResumedTransaction) {
+            val prevStep = navigationUseCase.getPreviousStep(currentState.currentStep)
+            if (prevStep != null && currentState.lockedSteps.contains(prevStep)) {
+                println("🔒 Cannot go back to locked step $prevStep (resumed transaction)")
+                _showToastEvent.value = "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة"
+                return
+            }
+        }
+
         navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
             _uiState.value = currentState.copy(
                 currentStep = prevStep,
@@ -223,6 +258,14 @@ abstract class BaseTransactionViewModel(
 
     fun goToStep(stepIndex: Int) {
         val currentState = _uiState.value
+
+        // ✅ NEW: Prevent navigation to locked steps (resumed transaction)
+        if (currentState.isResumedTransaction && currentState.lockedSteps.contains(stepIndex)) {
+            println("🔒 Cannot navigate to locked step $stepIndex (resumed transaction)")
+            _showToastEvent.value = "لا يمكن الوصول إلى هذه الخطوة في المعاملات المستأنفة"
+            return
+        }
+
         if (navigationUseCase.canJumpToStep(
                 stepIndex,
                 currentState.currentStep,

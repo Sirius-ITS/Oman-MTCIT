@@ -73,6 +73,22 @@ fun DynamicStepForm(
                                     label = field.label,
                                     isPassword = field.isPassword,
                                     isNumeric = field.isNumeric,
+                                    isDecimal = field.isDecimal, // ✅ Pass isDecimal
+                                    error = field.error,
+                                    mandatory = field.mandatory,
+                                    isLoading = isFieldLoading(field.id)
+                                )
+                            }
+                            // ✅ Special handling for agriculture request number field (fishing boats)
+                            else if (field.id == "agricultureRequestNumber") {
+                                FocusAwareTextField(
+                                    value = field.value,
+                                    onValueChange = { onFieldChange(field.id, it, null) },
+                                    onFocusLost = { value -> onFieldFocusLost(field.id, value) },
+                                    label = field.label,
+                                    isPassword = field.isPassword,
+                                    isNumeric = field.isNumeric,
+                                    isDecimal = field.isDecimal, // ✅ Pass isDecimal
                                     error = field.error,
                                     mandatory = field.mandatory,
                                     isLoading = isFieldLoading(field.id)
@@ -84,6 +100,7 @@ fun DynamicStepForm(
                                     value = field.value,
                                     onValueChange = { /* Read-only, no change allowed */ },
                                     label = field.label,
+                                    isDecimal = field.isDecimal, // ✅ Pass isDecimal
                                     error = field.error,
                                     mandatory = field.mandatory,
                                     readOnly = true
@@ -97,10 +114,11 @@ fun DynamicStepForm(
                                     label = field.label,
                                     isPassword = field.isPassword,
                                     isNumeric = field.isNumeric,
+                                    isDecimal = field.isDecimal, // ✅ Pass isDecimal
                                     error = field.error,
                                     mandatory = field.mandatory,
                                     placeholder = field.label,
-                                    enabled = true
+                                    enabled = field.enabled // ✅ Use the enabled property
                                 )
                             }
                         }
