@@ -76,16 +76,16 @@ fun OTPComponent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = phoneNumber,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = extraColors.whiteInDarkMode
-                    )
-                    Text(
                         text = "رقم هاتفك المحمول",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = phoneNumber,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = extraColors.whiteInDarkMode
                     )
                 }
             }
