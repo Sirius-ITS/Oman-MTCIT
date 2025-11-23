@@ -21,18 +21,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -53,12 +58,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
-import com.informatique.mtcit.ui.models.Transaction
+import com.informatique.mtcit.data.model.category.Transaction
 import com.informatique.mtcit.ui.theme.LocalExtraColors
-import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
+import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
+import com.informatique.mtcit.R
+import com.informatique.mtcit.data.model.category.Step
+import com.informatique.mtcit.data.model.category.Term
+import com.informatique.mtcit.ui.components.localizedPluralsApp
+import com.informatique.mtcit.ui.theme.ExtraColors
+import com.informatique.mtcit.ui.viewmodels.TransactionDetailUiState
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,36 +80,36 @@ fun TransactionRequirementsScreen(
     transaction: Transaction,
     onStart: () -> Unit,
     onBack: () -> Unit,
-    transactionId: String,
+    transactionId: Int,
     parentTitleRes: Int? = null,
     navController: NavController
 ) {
-    val viewModel: TransactionListViewModel = hiltViewModel()
+    // val viewModel: TransactionListViewModel = hiltViewModel()
+    val viewModel: MainCategoriesViewModel = hiltViewModel()
 
-
+    val locale = LocalAppLocale.current
     val extraColors = LocalExtraColors.current
 
-    LaunchedEffect(transactionId) {
-        viewModel.getTransactionRequirements(transactionId)
+    LaunchedEffect(transaction) {
+        viewModel.getTransactionDetailApi(transaction.id)
     }
 
-    val requirement by viewModel.requirements.collectAsState()
+    val uiState by viewModel.transactionDetail.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    var selectedSteps by remember { mutableStateOf(
-        transaction.requirements?.serviceInfoList[0]?.data ?: listOf()) }
-    val tabs = listOf("المستندات المطلوبة", "الخطوات", "الرسوم")
+    val tabs = viewModel.requirementsTabList.collectAsStateWithLifecycle()
+    var selectedStep by remember{ mutableStateOf("") }
 
     // Prepare simple derived data from Transaction model
-    val steps = transaction.steps.ifEmpty { List(transaction.stepCount.coerceAtLeast(0)) { index -> "خطوة ${index + 1}" } }
-    val documents = transaction.requirements
+//    val steps = transaction.steps.ifEmpty { List(transaction.stepCount.coerceAtLeast(0)) { index -> "خطوة ${index + 1}" } }
+//    val documents = transaction.requirements
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = parentTitleRes?.let { localizedApp(it) } ?: localizedApp(transaction.titleRes),
+                        text = if (locale.language == "ar") transaction.nameAr else transaction.nameEn,
                         fontSize = 22.sp,
                         color = extraColors.whiteInDarkMode,
                         fontWeight = FontWeight.Medium
@@ -109,7 +123,7 @@ fun TransactionRequirementsScreen(
                             .clip(CircleShape)
                             .border(
                                 width = 1.dp,
-                                color = Color(0xFF4A7BA7 ),
+                                color = Color(0xFF4A7BA7),
                                 shape = CircleShape
                             )
                             .shadow(
@@ -124,7 +138,7 @@ fun TransactionRequirementsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = localizedApp(R.string.back_button),
                             tint = extraColors.iconBack2
                         )
                     }
@@ -137,7 +151,7 @@ fun TransactionRequirementsScreen(
                             .clip(CircleShape)
                             .border(
                                 width = 1.dp,
-                                color = Color(0xFF4A7BA7 ),
+                                color = Color(0xFF4A7BA7),
                                 shape = CircleShape
                             )
                             .shadow(
@@ -152,7 +166,7 @@ fun TransactionRequirementsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
+                            contentDescription = localizedApp(R.string.settings_title),
                             tint = extraColors.iconBack2
                         )
                     }
@@ -166,11 +180,15 @@ fun TransactionRequirementsScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp )
+                    .padding(horizontal = 20.dp)
                     .padding(bottom = 26.dp)
             ) {
                 Button(
-                    onClick = onStart,
+                    onClick = {
+                        if (transaction.id == 4){
+                            navController.navigate(NavRoutes.IssueNavigationPermitRoute.route)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -184,118 +202,104 @@ fun TransactionRequirementsScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "ابدأ الخدمة", fontSize = 16.sp , fontWeight = FontWeight.Medium)
+                        Text(
+                            text = localizedApp(R.string.start_the_service),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
         },
         containerColor = extraColors.background
     ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-        ) {
-            item {
-                Spacer(Modifier.height(12.dp))
-
-                // Info card with icon
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = extraColors.cardBacground3
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp)
-                    ) {
-                    Text(text = localizedApp(transaction.titleRes),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 18.sp,
-                        color = extraColors.whiteInDarkMode,
-                        modifier = Modifier.padding(bottom = 8.dp))
-
-                    Text(
-                        text = localizedApp(transaction.descriptionRes),
-                        color = extraColors.textSubTitle
-                    )
-                }
+        if (uiState is TransactionDetailUiState.Loading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
+        }
+        else if (uiState is TransactionDetailUiState.Success) {
+            val detail = (uiState as TransactionDetailUiState.Success).detail
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
+            ) {
+                item {
+                    Spacer(Modifier.height(12.dp))
 
-                Spacer(Modifier.height(16.dp))
-
-                // Summary tiles with icons
-                Row (
-                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    requirement.serviceSummaryList.map{ summary ->
-                        SummaryTileWithIcon(
-                            label = summary.value,
-                            sub = summary.label,
-                            icon = Icons.Filled.AttachMoney,
-                            iconColor = Color(0xFF4CAF50),
-                            modifier = Modifier.weight(1f).fillMaxHeight()
-                            // modifier = Modifier.fillMaxWidth(fraction = 1f / transaction.requirements.serviceSummaryList.size.toFloat())
-                        )
-                    }
-//                    SummaryTileWithIcon(
-//                        label = transaction.fees,
-//                        sub = "الرسوم",
-//                        icon = Icons.Filled.AttachMoney,
-//                        iconColor = Color(0xFF4CAF50),
-//                        modifier = Modifier.weight(1f)
-//                    )
-//                    SummaryTileWithIcon(
-//                        label = (if (transaction.steps.isNotEmpty()) transaction.steps.size else transaction.stepCount).toString(),
-//                        sub = "الخطوات",
-//                        icon = Icons.AutoMirrored.Filled.List,
-//                        iconColor = Color(0xFF2196F3),
-//                        modifier = Modifier.weight(1f)
-//                    )
-//                    SummaryTileWithIcon(
-//                        label = transaction.duration,
-//                        sub = "مدة التنفيذ",
-//                        icon = Icons.Filled.AccessTime,
-//                        iconColor = Color(0xFFFF9800),
-//                        modifier = Modifier.weight(1f)
-//                    )
-                }
-
-                Spacer(Modifier.height(16.dp))
-
-                // Tabs
-                Column {
+                    // Info card with icon
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = extraColors.cardBacground3
                         ),
                         shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(0.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        val extraColors = LocalExtraColors.current
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        Column(
+                            modifier = Modifier.padding(20.dp)
                         ) {
-                            requirement.serviceInfoList.forEachIndexed { index, serviceInfo ->
-                                CustomTab(
-                                    title = serviceInfo.title,
-                                    selected = selectedTab == index,
-                                    onClick = {
-                                        selectedTab = index
-                                        selectedSteps = serviceInfo.data
-                                    },
-                                    modifier = Modifier.weight(1f)
+                            Row (
+                                horizontalArrangement = Arrangement.Center
+                            ){
+                                Box(
+                                    modifier = Modifier
+                                        .size(35.dp)
+                                        .background(
+                                            extraColors.iconLightBlueBackground,
+                                            shape = RoundedCornerShape(18.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Icon(
+                                        imageVector = Icons.Filled.Description,
+                                        contentDescription = null,
+                                        tint = extraColors.iconLightBlue,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(Modifier.width(8.dp))
+
+                                Text(
+                                    text = if (locale.language == "ar") detail.nameAr else detail.nameEn,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 18.sp,
+                                    textAlign = TextAlign.Center,
+                                    color = extraColors.whiteInDarkMode,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                text = if (locale.language == "ar") detail.descAr else detail.descEn,
+                                color = extraColors.textSubTitle
+                            )
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Surface(
+                                color = extraColors.iconLightBlueBackground,
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    text = localizedApp(R.string.categories_title),
+                                    fontSize = 12.sp,
+                                    color = extraColors.iconLightBlue,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
                             }
                         }
@@ -303,147 +307,168 @@ fun TransactionRequirementsScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    selectedSteps.map { step ->
-                        DocumentItem(
-                            number = step.stepNo,
-                            text = step.title,
-                            isRequired = false
-                        )
-
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-            }
-
-
-
-            // Tab content
-            /*when (selectedTab) {
-                0 -> {
-                    // Documents/requirements
-                    item {
-                        Text(
-                            text = "المستندات المطلوبة",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                            color = extraColors.blue1
-                        )
-                    }
-
-                    if (documents != null) {
-                        item {
-                            Column(
+                    // Summary tiles with icons
+                    Row (
+                        Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (detail.duration != null) {
+                            SummaryTileWithIcon(
+                                label = localizedPluralsApp(
+                                    R.plurals.requirements_duration_value,
+                                    detail.duration,
+                                    detail.duration
+                                ),
+                                sub = localizedApp(R.string.requirements_duration_title),
+                                icon = Icons.Filled.AccessTime,
+                                iconColor = Color(0xFFFF9800),
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 48.dp),
-                                verticalArrangement = Arrangement.Center,
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Description,
-                                    contentDescription = null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    text = "لا توجد مستندات محددة لهذه المعاملة.",
-                                    color = Color.Gray
-                                )
-                            }
-                        }
-                    } else {
-                        itemsIndexed(documents) { index, doc ->
-                            DocumentItem(
-                                number = index + 1,
-                                text = doc,
-                                isRequired = false
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
+                        }
+                        if (detail.steps.isNotEmpty()) {
+                            SummaryTileWithIcon(
+                                label = detail.steps.size.toString(),
+                                sub = localizedApp(R.string.requirements_steps_title),
+                                icon = Icons.AutoMirrored.Filled.List,
+                                iconColor = Color(0xFF2196F3),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                        }
+                        if (detail.fees != null) {
+                            SummaryTileWithIcon(
+                                label = localizedApp(R.string.requirements_fees_value, detail.fees),
+                                sub = localizedApp(R.string.requirements_fees_title),
+                                icon = Icons.Filled.AttachMoney,
+                                iconColor = Color(0xFF4CAF50),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Tabs
+                    if (tabs.value.isNotEmpty()) {
+                        Column {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = extraColors.cardBacground3
+                                ),
+                                shape = RoundedCornerShape(16.dp),
+                                elevation = CardDefaults.cardElevation(0.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    tabs.value.forEachIndexed { index, tab ->
+                                        CustomTab(
+                                            title = tab,
+                                            selected = selectedTab == index,
+                                            onClick = {
+                                                selectedTab = index
+                                                selectedStep = tab
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(16.dp))
+
+                            when (selectedStep) {
+                                localizedApp(R.string.requirements_terms_title) -> {
+
+                                    Text(
+                                        text = localizedApp(R.string.requirements_terms_title),
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = extraColors.whiteInDarkMode,
+                                        modifier = Modifier.padding(8.dp),
+                                        maxLines = 1
+                                    )
+
+                                    detail.terms.forEach { term ->
+                                        ServiceTerms(
+                                            locale = locale,
+                                            extraColors = extraColors,
+                                            term = term
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                    }
+                                }
+
+                                localizedApp(R.string.requirements_steps_title) -> {
+                                    Text(
+                                        text = localizedApp(R.string.requirements_steps_heading),
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = extraColors.whiteInDarkMode,
+                                        modifier = Modifier.padding(8.dp),
+                                        maxLines = 1
+                                    )
+
+                                    detail.steps.forEachIndexed { index, step ->
+                                        StepItem(
+                                            locale = locale,
+                                            extraColors = extraColors,
+                                            number = index + 1,
+                                            step = step
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                    }
+                                }
+
+                                localizedApp(R.string.requirements_fees_title) -> {
+                                    Text(
+                                        text = localizedApp(R.string.requirements_fees_heading),
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Medium
+                                        ),
+                                        color = extraColors.whiteInDarkMode,
+                                        modifier = Modifier.padding(8.dp),
+                                        maxLines = 1
+                                    )
+
+                                    FeesDurationItem(
+                                        title = localizedApp(R.string.requirements_fees_heading),
+                                        fees = detail.fees ?: 0,
+                                        backgroundColor = Color(0xFF4CAF50)
+                                    )
+
+                                    Spacer(Modifier.height(6.dp))
+
+                                    FeesDurationItem(
+                                        title = localizedApp(R.string.requirements_duration_title),
+                                        duration = detail.duration ?: 0,
+                                        backgroundColor = Color(0xFFFF9800)
+                                    )
+                                }
+                            }
+
                             Spacer(Modifier.height(8.dp))
                         }
                     }
                 }
-                1 -> {
-                    // Steps
-                    item {
-                        Text(
-                            text = "خطوات طلب الخدمة",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                            color = extraColors.whiteInDarkMode
-                        )
-                    }
 
-                    itemsIndexed(steps) { i, s ->
-                        StepItem(number = i + 1, text = s)
-                        Spacer(Modifier.height(2.dp))
-                    }
-                }
-                2 -> {
-                    // Fees
-                    item {
-                        Text(
-                            text = "رسوم الخدمة",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(bottom = 12.dp),
-                            color = extraColors.whiteInDarkMode
-                        )
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(0.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = extraColors.cardBackground
-                            )
-                        ) {
-                            Column(Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "رسوم الخدمة",
-                                        fontWeight = FontWeight.Medium,
-                                        color = extraColors.whiteInDarkMode
-                                    )
-                                    Text(
-                                        text = transaction.fees,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF4CAF50)
-                                    )
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                HorizontalDivider(
-                                    Modifier,
-                                    DividerDefaults.Thickness,
-                                    color = Color(0xFFEEEEEE)
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "مدة الطلب",
-                                        fontWeight = FontWeight.Medium,
-                                        color = extraColors.whiteInDarkMode
-                                    )
-                                    Text(
-                                        text = transaction.duration,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFFFF9800)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }*/
+            }
         }
     }
 }
@@ -530,82 +555,97 @@ private fun CustomTab(
 }
 
 @Composable
-private fun DocumentItem(number: Int, text: String, isRequired: Boolean = false) {
+private fun FeesDurationItem(
+    title: String,
+    fees: Int? = null,
+    duration: Int? = null,
+    backgroundColor: Color,
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(0.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = LocalExtraColors.current.cardBacground3)
+        colors = CardDefaults.cardColors(containerColor = backgroundColor.copy(alpha = 0.03f))
     ) {
         val extraColors = LocalExtraColors.current
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // show the document number at the start (right side in RTL will be visually correct)
-//            Text(
-//                text = "${number}.",
-//                style = MaterialTheme.typography.titleMedium,
-//                color = extraColors.whiteInDarkMode,
-//                modifier = Modifier.padding(end = 8.dp),
-//                maxLines = 1
-//            )
-
-            if (isRequired) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            Color(0x95802C38),
-                            RoundedCornerShape(6.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "إلزامي",
-                        color = Color(0xFFFF0000),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .background(
-                        extraColors.iconLightBlueBackground,
-                        shape = RoundedCornerShape(18.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ){
-            Icon(
-                imageVector = Icons.Filled.Description,
-                contentDescription = null,
-                tint = extraColors.iconLightBlue,
-                modifier = Modifier.size(28.dp)
-            )
-            }
-            Spacer(Modifier.width(12.dp))
             Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Right,
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 16.sp
+                ),
+                textAlign = TextAlign.Start,
                 modifier = Modifier.weight(1f),
                 color = extraColors.whiteInDarkMode
+            )
+
+            Text(
+                text = if (fees != null) localizedApp(R.string.requirements_fees_value, fees)
+                else localizedPluralsApp(R.plurals.requirements_duration_value, duration!!,
+                    duration),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 18.sp
+                ),
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+                color = if (fees != null) backgroundColor else extraColors.whiteInDarkMode
             )
         }
     }
 }
 
 @Composable
-private fun StepItem(number: Int, text: String) {
-    val extraColors = LocalExtraColors.current
+private fun StepItem(
+    locale: Locale,
+    extraColors: ExtraColors,
+    number: Int,
+    step: Step
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Number circle on the right
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .background(extraColors.iconLightBlue, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = number.toString(),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        // Step text (takes remaining space) - align to right for Arabic
+        Text(
+            text = if (locale.language == "ar") step.stepNameAr else step.stepNameEn,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Start,
+            color = extraColors.whiteInDarkMode
+        )
+
+    }
+}
+
+@Composable
+private fun ServiceTerms(
+    locale: Locale,
+    extraColors: ExtraColors,
+    term: Term
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(0.dp),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(extraColors.background )
+        colors = CardDefaults.cardColors(extraColors.iconLightBlue.copy(alpha = 0.03f) )
     ) {
         Row(
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
@@ -614,21 +654,24 @@ private fun StepItem(number: Int, text: String) {
             // Number circle on the right
             Box(
                 modifier = Modifier
-                    .size(26.dp)
-                    .background(extraColors.iconLightBlueBackground, CircleShape),
+                    .size(45.dp)
+                    .background(
+                        extraColors.iconLightBlue.copy(alpha = 0.10f),
+                        RoundedCornerShape(12.dp)
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = number.toString(),
-                    color = extraColors.iconLightBlue,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = extraColors.iconLightBlue,
+                    modifier = Modifier.size(30.dp)
                 )
             }
             Spacer(Modifier.width(12.dp))
             // Step text (takes remaining space) - align to right for Arabic
             Text(
-                text = text,
+                text = if (locale.language == "ar") term.nameAr else term.nameEn,
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Right,
                 color = extraColors.whiteInDarkMode

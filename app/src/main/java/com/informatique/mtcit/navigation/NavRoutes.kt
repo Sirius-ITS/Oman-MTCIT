@@ -1,6 +1,9 @@
 package com.informatique.mtcit.navigation
 
 import android.net.Uri
+import com.informatique.mtcit.data.model.category.Transaction
+import com.informatique.mtcit.data.model.category.TransactionDetail
+import kotlinx.serialization.json.Json
 
 sealed class NavRoutes(val route: String) {
     data object HomeRoute : NavRoutes("homepage")
@@ -16,9 +19,14 @@ sealed class NavRoutes(val route: String) {
                 = "transaction_list/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}"
     }
 
-    data object TransactionRequirementRoute : NavRoutes("transaction_requirements/{categoryId}/{subCategoryId}/{transactionId}/{parentTitleRes}"){
-        fun createRoute(categoryId: String, subCategoryId: String, transactionId: String, parentTitleRes: String)
-                = "transaction_requirements/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}/${Uri.encode(parentTitleRes)}"
+//    data object TransactionRequirementRoute : NavRoutes("transaction_requirements/{categoryId}/{subCategoryId}/{transactionId}/{parentTitleRes}"){
+//        fun createRoute(categoryId: String, subCategoryId: String, transactionId: String, parentTitleRes: String)
+//                = "transaction_requirements/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}/${Uri.encode(parentTitleRes)}"
+//    }
+
+    data object TransactionRequirementRoute : NavRoutes("transaction_requirements/{transactionId}"){
+        fun createRoute(transaction: Transaction)
+                = "transaction_requirements/${Uri.encode(Json.encodeToString(transaction))}"
     }
 
     data object ShipRegistrationRoute : NavRoutes("ship_registration_form")

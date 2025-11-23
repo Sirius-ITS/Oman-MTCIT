@@ -464,6 +464,21 @@
     <string name="subcategory_navigation_permits">تصاريح الملاحة</string>
     <string name="subcategory_ship_data_modifications">تعديل بيانات السفينة</string>
 
+    <!-- Service requirements -->
+    <string name="requirements_duration_title">مدة الطلب</string>
+    <plurals name="requirements_duration_value">
+        <item quantity="one">يوم واحد</item>
+        <item quantity="two">يومان</item>
+        <item quantity="many">%d أيام</item>
+        <item quantity="few">%d أيام</item>
+        <item quantity="zero">لم يحدد وقت</item>
+    </plurals>
+    <string name="requirements_steps_title">الخطوات</string>
+    <string name="requirements_steps_heading">خطوات طلب الخدمة</string>
+    <string name="requirements_fees_title">الرسوم</string>
+    <string name="requirements_fees_heading">رسوم الخدمة</string>
+    <string name="requirements_fees_value">%d ريال</string>
+    <string name="requirements_terms_title">شروط الخدمة</string>
     <string name="start_the_service">ابدأ الخدمة</string>
 
 

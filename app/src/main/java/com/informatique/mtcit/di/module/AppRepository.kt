@@ -10,8 +10,7 @@ import kotlinx.serialization.json.JsonObject
 class AppRepository(client: HttpClient): AppHttpRequests(client = client) {
 
     suspend fun onGet(url: String): RepoServiceState {
-        val data = onGetData(url = url)
-        return when (data){
+        return when (val data = onGetData(url = url)){
             is AppHttpRequest.AppHttpRequestModel -> {
                 if (data.response.status.value == 200 || data.response.status.value == 201){
                     RepoServiceState.Success(

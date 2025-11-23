@@ -471,6 +471,20 @@
     <string name="subcategory_navigation_permits">Navigation Permits</string>
     <string name="subcategory_ship_data_modifications">Ship Data Modifications</string>
 
+    <!-- Service requirements -->
+    <string name="requirements_duration_title">Request Duration</string>
+    <plurals name="requirements_duration_value">
+        <item quantity="one">One day</item>
+        <item quantity="many">%d days</item>
+        <item quantity="few">%d days</item>
+        <item quantity="zero">No time specified</item>
+    </plurals>
+    <string name="requirements_steps_title">Steps</string>
+    <string name="requirements_steps_heading">Steps to request the service</string>
+    <string name="requirements_fees_title">Fees</string>
+    <string name="requirements_fees_heading">Service fees</string>
+    <string name="requirements_fees_value">%d Rial</string>
+    <string name="requirements_terms_title">Service Terms</string>
     <string name="start_the_service">Start the service</string>
 
     <string name="hello_label">Hello</string>

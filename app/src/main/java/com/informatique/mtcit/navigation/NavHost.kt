@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.informatique.mtcit.business.transactions.TransactionType
+import com.informatique.mtcit.data.model.category.Transaction
 import com.informatique.mtcit.ui.defaultEnterTransition
 import com.informatique.mtcit.ui.defaultExitTransition
 import com.informatique.mtcit.ui.providers.LocalCategories
@@ -40,6 +41,7 @@ import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
+import kotlinx.serialization.json.Json
 import java.net.URLDecoder
 
 @Composable
@@ -86,7 +88,7 @@ fun NavHost(themeViewModel: ThemeViewModel){
             })
         ) { backStackEntry ->
             val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
-            MainCategoriesScreen(navController, sharedUserViewModel, categoryId)
+            MainCategoriesScreen(navController, categoryId)
         }
 
         // Transaction List Screen - Shows transactions for selected sub-category
@@ -98,7 +100,19 @@ fun NavHost(themeViewModel: ThemeViewModel){
 
         // Requirements screen: show transaction requirements before going to form/steps
         composable(NavRoutes.TransactionRequirementRoute.route) { backStackEntry ->
-            val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
+            val data = backStackEntry.arguments?.getString("transactionId") ?: ""
+            val transaction = Json.decodeFromString<Transaction>(data)
+
+            TransactionRequirementsScreen(
+                onStart = { navController.navigate(NavRoutes.ShipRegistrationRoute.route) },
+                onBack = { navController.popBackStack() },
+                // parentTitleRes = parentTitleRes,
+                transaction = transaction,
+                navController = navController,
+                transactionId = transaction.id
+            )
+
+            /*val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
             val subCategoryId = backStackEntry.arguments?.getString("subCategoryId") ?: ""
             val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
             val parentTitleResStr = backStackEntry.arguments?.getString("parentTitleRes") ?: ""
@@ -126,7 +140,7 @@ fun NavHost(themeViewModel: ThemeViewModel){
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            }
+            }*/
         }
 
         // ========== TRANSACTION FORMS ==========

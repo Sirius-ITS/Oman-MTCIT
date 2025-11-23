@@ -1,11 +1,15 @@
 package com.informatique.mtcit.ui.viewmodels
 
+import android.content.Context
 import androidx.lifecycle.viewModelScope
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.home.MainCategoriesStrategyInterface
 import com.informatique.mtcit.business.home.MainCategoriesStrategyFactory
 import com.informatique.mtcit.ui.models.MainCategory
-import com.informatique.mtcit.ui.models.SubCategory
+import com.informatique.mtcit.data.model.category.SubCategory
+import com.informatique.mtcit.data.model.category.TransactionDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +23,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MainCategoriesViewModel @Inject constructor(
-    strategyFactory: MainCategoriesStrategyFactory
+    @param:ApplicationContext val context: Context,
+    val strategyFactory: MainCategoriesStrategyFactory
 ) : BaseViewModel() {
 
     // Current strategy for categories management
@@ -40,12 +45,23 @@ class MainCategoriesViewModel @Inject constructor(
     private val _selectedOrganization = MutableStateFlow<String?>(null)
     val selectedOrganization: StateFlow<String?> = _selectedOrganization.asStateFlow()
 
+    private val _requirementsTabList = MutableStateFlow(listOf<String>().toMutableList())
+    val requirementsTabList: StateFlow<MutableList<String>> = _requirementsTabList.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _subCategories = MutableStateFlow<SubCategoriesUiState>(SubCategoriesUiState.Blank)
+    val subCategories: StateFlow<SubCategoriesUiState> = _subCategories.asStateFlow()
+
+    private val _transactionDetail = MutableStateFlow<TransactionDetailUiState>(TransactionDetailUiState.Blank)
+    val transactionDetail: StateFlow<TransactionDetailUiState> = _transactionDetail.asStateFlow()
 
     init {
         // Initialize strategy only
         currentStrategy = strategyFactory.createCategoriesStrategy()
+
+        getSubCategoriesApi()
     }
 
     /**
@@ -104,6 +120,51 @@ class MainCategoriesViewModel @Inject constructor(
         _expandedCategories.value = currentExpanded
     }
 
+    fun getSubCategoriesApi(){
+        viewModelScope.launch {
+            _subCategories.value = SubCategoriesUiState.Loading
+
+            strategyFactory.fetchSubCategories()
+                .onSuccess {
+                    _subCategories.value = SubCategoriesUiState.Success(it)
+                }
+                .onFailure { error ->
+                    _subCategories.value = SubCategoriesUiState.Error(
+                        error.message ?: "Unknown error"
+                    )
+                }
+        }
+    }
+
+    fun getTransactionDetailApi(serviceId: Int){
+        viewModelScope.launch {
+            _transactionDetail.value = TransactionDetailUiState.Loading
+
+            strategyFactory.fetchTransactionDetail(serviceId = serviceId)
+                .onSuccess {
+                    _transactionDetail.value = TransactionDetailUiState.Success(it)
+
+                    if (_transactionDetail.value is TransactionDetailUiState.Success){
+                        val requirements = (_transactionDetail.value as TransactionDetailUiState.Success).detail
+                        if (requirements.fees != null){
+                            _requirementsTabList.value.add(context.getString(R.string.requirements_fees_title))
+                        }
+                        if (requirements.steps.isNotEmpty()){
+                            _requirementsTabList.value.add(context.getString(R.string.requirements_steps_title))
+                        }
+                        if (requirements.terms.isNotEmpty()){
+                            _requirementsTabList.value.add(context.getString(R.string.requirements_terms_title))
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    _transactionDetail.value = TransactionDetailUiState.Error(
+                        error.message ?: "Unknown error"
+                    )
+                }
+        }
+    }
+
     /**
      * Expand a specific category (used when navigating from home screen)
      */
@@ -123,7 +184,7 @@ class MainCategoriesViewModel @Inject constructor(
     /**
      * Get subcategories for a category
      */
-    fun getSubCategories(categoryId: String): List<SubCategory> {
+    fun getSubCategories(categoryId: String): List<com.informatique.mtcit.ui.models.SubCategory> {
         return _filteredCategories.value.find { it.id == categoryId }?.subCategories ?: emptyList()
     }
 
@@ -150,4 +211,18 @@ class MainCategoriesViewModel @Inject constructor(
         val category = _categories.value.find { it.id == categoryId }
         return category?.subCategories?.sumOf { it.transactions.size } ?: 0
     }
+}
+
+sealed interface SubCategoriesUiState {
+    data object Blank: SubCategoriesUiState
+    data object Loading: SubCategoriesUiState
+    data class Success(val subcategories: List<SubCategory>) : SubCategoriesUiState
+    data class Error(val message: String) : SubCategoriesUiState
+}
+
+sealed interface TransactionDetailUiState {
+    data object Blank: TransactionDetailUiState
+    data object Loading: TransactionDetailUiState
+    data class Success(val detail: TransactionDetail) : TransactionDetailUiState
+    data class Error(val message: String) : TransactionDetailUiState
 }

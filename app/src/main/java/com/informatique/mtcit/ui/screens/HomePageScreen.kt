@@ -122,7 +122,7 @@ fun HomePageScreen(navController: NavController) {
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.72f)
                     // Quadratic bezier to create a smooth wave
-                    quadraticBezierTo(
+                    quadraticTo(
                         x1 = w * 0.5f,
                         y1 = h * 0.5f,
                         x2 = w,
@@ -141,7 +141,7 @@ fun HomePageScreen(navController: NavController) {
                 // Optional: add a second subtle wave for depth
                 val path2 = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.82f)
-                    quadraticBezierTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
+                    quadraticTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
                     lineTo(w, h)
                     lineTo(0f, h)
                     close()
@@ -483,7 +483,7 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                 modifier = Modifier.height(34.dp).align(Alignment.CenterVertically)
             ) {
                 TextButton(
-                    onClick = { navController.navigate("mainCategoriesScreen") },
+                    onClick = { navController.navigate(NavRoutes.MainCategoriesRoute.route) },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = extracolors.viewAllText
                     ),

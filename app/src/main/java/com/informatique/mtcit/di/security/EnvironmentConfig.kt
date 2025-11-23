@@ -61,7 +61,7 @@ data class Environment(
         fun createDefault(): Environment = Environment(
             id = EnvironmentType.DEVELOPMENT,
             name = "Development",
-            baseUrl = "http://192.168.1.2:3002/",
+            baseUrl = "http://10.0.40.10:8080/",
             apiKey = "dev_default_key_secure_123",
             features = FeatureFlags(
                 enableExperimentalFeatures = true,
