@@ -180,7 +180,39 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             val transaction = Json.decodeFromString<Transaction>(data)
 
             TransactionRequirementsScreen(
-                onStart = { navController.navigate(transaction.id.toString()) },
+                onStart = {
+                    // ✅ Navigate to LoginScreen first
+                    // Map transaction ID to transaction type name
+                    val transactionTypeName = when (transaction.id) {
+                        7 -> "TEMPORARY_REGISTRATION_CERTIFICATE"
+                        8 -> "PERMANENT_REGISTRATION_CERTIFICATE"
+                        9 -> "REQUEST_INSPECTION"
+                        10 -> "SUSPEND_REGISTRATION"
+                        11 -> "CANCEL_REGISTRATION"
+                        12 -> "MORTGAGE_CERTIFICATE"
+                        13 -> "RELEASE_MORTGAGE"
+                        14 -> "ISSUE_NAVIGATION_PERMIT"
+                        15 -> "RENEW_NAVIGATION_PERMIT"
+                        16 -> "SUSPEND_NAVIGATION_PERMIT"
+                        17 -> "SHIP_NAME_CHANGE"
+                        18 -> "CAPTAIN_NAME_CHANGE"
+                        19 -> "SHIP_ACTIVITY_CHANGE"
+                        20 -> "SHIP_PORT_CHANGE"
+                        21 -> "SHIP_OWNERSHIP_CHANGE"
+                        else -> "TEMPORARY_REGISTRATION_CERTIFICATE"
+                    }
+
+                    println("🚀 Navigating to Login with transactionType: $transactionTypeName")
+
+                    navController.navigate(
+                        NavRoutes.LoginRoute.createRoute(
+                            targetTransactionType = transactionTypeName,
+                            categoryId = "0",
+                            subCategoryId = "0",
+                            transactionId = transaction.id.toString()
+                        )
+                    )
+                },
                 onBack = { navController.popBackStack() },
                 // parentTitleRes = parentTitleRes,
                 transaction = transaction,

@@ -310,7 +310,7 @@ class RequestInspectionStrategy @Inject constructor(
         return rules
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
         println("🔄 processStepData called with: $data")
 
         // ✅ Update accumulated data
@@ -320,7 +320,7 @@ class RequestInspectionStrategy @Inject constructor(
 
         // ... rest of existing code
 
-        return data
+        return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
