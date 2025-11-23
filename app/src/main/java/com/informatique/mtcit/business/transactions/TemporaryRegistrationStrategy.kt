@@ -35,7 +35,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules
-) : TransactionStrategy {
+) : TransactionStrategy, MarineUnitValidatable {
 
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -608,7 +608,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
      * Validate marine unit selection using TemporaryRegistrationRules
      * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
      */
-    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+    override suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         return try {
             println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
 
@@ -624,6 +624,32 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             // Use TemporaryRegistrationRules to validate
             val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
+            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
+
+            println("✅ Validation result: ${validationResult::class.simpleName}")
+            println("✅ Navigation action: ${navigationAction::class.simpleName}")
+
+            ValidationResult.Success(
+                validationResult = validationResult,
+                navigationAction = navigationAction
+            )
+        } catch (e: Exception) {
+            println("❌ Validation error: ${e.message}")
+            e.printStackTrace()
+            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+        }
+    }
+
+    /**
+     * Validate a NEW marine unit that doesn't exist in the database yet
+     * This is used when user is adding a new marine unit during registration
+     */
+    override suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
+        return try {
+            println("🔍 TemporaryRegistrationStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
+
+            // Use TemporaryRegistrationRules to validate the new unit
+            val validationResult = temporaryRegistrationRules.validateUnit(newUnit, userId)
             val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
 
             println("✅ Validation result: ${validationResult::class.simpleName}")

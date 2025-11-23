@@ -31,7 +31,7 @@ class RequestInspectionStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules
-) : TransactionStrategy {
+) : TransactionStrategy, MarineUnitValidatable {
 
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -99,7 +99,7 @@ class RequestInspectionStrategy @Inject constructor(
                 selectedUnitsJson != "[]"
 
         // ✅ WORKAROUND: لو selectedMarineUnits موجود وفاضي "[]" ومفيش isAddingNewUnit flag
-        // معناها المستخدم ضغط على الزرار بس الفلاج مبعتش صح
+        // معناها المستخدم ضغط على الزرار بس الفلا�� مبعتش صح
         val isAddingNewUnit = isAddingNewUnitFlag ||
                 (selectedUnitsJson == "[]" && accumulatedFormData.containsKey("selectedMarineUnits"))
 
@@ -389,7 +389,7 @@ class RequestInspectionStrategy @Inject constructor(
      * Validate marine unit selection using TemporaryRegistrationRules
      * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
      */
-    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+    override suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         return try {
             println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
 
@@ -398,7 +398,7 @@ class RequestInspectionStrategy @Inject constructor(
 
             if (selectedUnit == null) {
                 println("❌ Unit not found with id: $unitId")
-                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
+                return ValidationResult.Error("الوحدة ال��حرية المختارة غير موجودة")
             }
 
             println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
@@ -425,7 +425,7 @@ class RequestInspectionStrategy @Inject constructor(
      * NEW: Validate a NEW marine unit that doesn't exist in the database yet
      * This is used when user is adding a new marine unit during registration
      */
-    suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
+    override suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
         return try {
             println("🔍 TemporaryRegistrationStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
 
