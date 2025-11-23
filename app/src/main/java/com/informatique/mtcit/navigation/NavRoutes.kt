@@ -3,6 +3,8 @@ package com.informatique.mtcit.navigation
 import android.net.Uri
 import com.informatique.mtcit.ui.screens.RequestDetail
 import kotlinx.serialization.json.Json
+import com.informatique.mtcit.data.model.category.Transaction
+import com.informatique.mtcit.data.model.category.TransactionDetail
 
 sealed class NavRoutes(val route: String) {
     data object HomeRoute : NavRoutes("homepage")
@@ -28,14 +30,19 @@ sealed class NavRoutes(val route: String) {
                 = "transaction_list/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}"
     }
 
-    data object TransactionRequirementRoute : NavRoutes("transaction_requirements/{categoryId}/{subCategoryId}/{transactionId}/{parentTitleRes}"){
-        fun createRoute(categoryId: String, subCategoryId: String, transactionId: String, parentTitleRes: String)
-                = "transaction_requirements/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}/${Uri.encode(parentTitleRes)}"
+//    data object TransactionRequirementRoute : NavRoutes("transaction_requirements/{categoryId}/{subCategoryId}/{transactionId}/{parentTitleRes}"){
+//        fun createRoute(categoryId: String, subCategoryId: String, transactionId: String, parentTitleRes: String)
+//                = "transaction_requirements/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}/${Uri.encode(parentTitleRes)}"
+//    }
+
+    data object TransactionRequirementRoute : NavRoutes("transaction_requirements/{transactionId}"){
+        fun createRoute(transaction: Transaction)
+                = "transaction_requirements/${Uri.encode(Json.encodeToString(transaction))}"
     }
 
-    data object ShipRegistrationRoute : NavRoutes("ship_registration_form")
+    data object ShipRegistrationRoute : NavRoutes("7"/*"ship_registration_form"*/)
 
-    data object PermanentRegistrationRoute : NavRoutes("permanent_registration_form")
+    data object PermanentRegistrationRoute : NavRoutes("8"/*"permanent_registration_form"*/)
 
     data object RequestForInspection : NavRoutes("request_for_inspection")
 
@@ -43,13 +50,13 @@ sealed class NavRoutes(val route: String) {
 
     data object CancelRegistrationRoute : NavRoutes("cancel_registration_form")
 
-    data object MortgageCertificateRoute : NavRoutes("mortgage_certificate_form")
+    data object MortgageCertificateRoute : NavRoutes("12"/*"mortgage_certificate_form"*/)
 
-    data object ReleaseMortgageRoute : NavRoutes("release_mortgage_form")
+    data object ReleaseMortgageRoute : NavRoutes("13"/*"release_mortgage_form"*/)
 
-    data object IssueNavigationPermitRoute : NavRoutes("issue_navigation_permit_form")
+    data object IssueNavigationPermitRoute : NavRoutes("4"/*"issue_navigation_permit_form"*/)
 
-    data object RenewNavigationPermitRoute : NavRoutes("renew_navigation_permit_form")
+    data object RenewNavigationPermitRoute : NavRoutes("5"/*"renew_navigation_permit_form"*/)
 
     data object SuspendNavigationPermitRoute : NavRoutes("suspend_navigation_permit_form")
 

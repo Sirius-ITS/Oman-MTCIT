@@ -302,8 +302,7 @@ fun TransactionFormContent(
                     onDeclarationChange = { accepted ->
                         declarationAccepted = accepted
                     },
-                    onTriggerNext = { viewModel.nextStep() },
-                    navController = navController,
+                    onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
                     // Pass only validation state for loading indicator
                     validationState = if (viewModel is MarineRegistrationViewModel) {
                         viewModel.validationState.collectAsState().value
@@ -479,6 +478,12 @@ private fun updateFieldWithFormData(
         is FormField.OTPField -> field.copy(
             label = localizedLabel,
             value = value,
+            error = error
+        )
+
+        is FormField.SailorList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
             error = error
         )
     }

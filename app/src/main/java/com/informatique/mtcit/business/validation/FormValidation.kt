@@ -137,6 +137,16 @@ class FormValidator @Inject constructor(
                 field.copy(error = error)
             }
 
+
+            is FormField.SailorList -> {
+                val error = when {
+                    field.value == "[]" || field.value.isBlank() -> {
+                        if (field.mandatory) "At least one sailor must be added" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
         }
     }
     /**

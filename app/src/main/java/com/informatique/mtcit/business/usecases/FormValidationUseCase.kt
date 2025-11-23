@@ -90,6 +90,7 @@ class FormValidationUseCase @Inject constructor(
             is FormField.InfoCard -> field.copy(value = value)
             is FormField.PhoneNumberField -> field.copy(value = value)
             is FormField.OTPField -> field.copy(value = value)
+            is FormField.SailorList -> field.copy(value = value)
         }
     }
 

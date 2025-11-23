@@ -86,6 +86,7 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">Issuance of a temporary registration certificate for a vessel or marine unit</string>
     <string name="ship_info">Ship Information</string>
     <string name="owner_info">Owner Information</string>
+    <string name="sailor_info">Sailor Information</string>
     <string name="documents">Documents</string>
     <string name="technical_details">Technical Details</string>
     <string name="insurance">Insurance</string>
@@ -137,6 +138,7 @@
     <string name="oman">Oman</string>
     <string name="next_button">Next</string>
     <string name="back_button">Back</string>
+    <string name="process_to_payment_button">Proceed to payment</string>
     <string name="submit_button">Submit</string>
     <string name="accept_and_send">Accept &amp; Send</string>
     <string name="declaration_acceptance_text">I declare that all the information provided is true and accurate, and I accept full responsibility for the data submitted.</string>
@@ -551,6 +553,20 @@
     <string name="subcategory_navigation_permits">Navigation Permits</string>
     <string name="subcategory_ship_data_modifications">Ship Data Modifications</string>
 
+    <!-- Service requirements -->
+    <string name="requirements_duration_title">Request Duration</string>
+    <plurals name="requirements_duration_value">
+        <item quantity="one">One day</item>
+        <item quantity="many">%d days</item>
+        <item quantity="few">%d days</item>
+        <item quantity="zero">No time specified</item>
+    </plurals>
+    <string name="requirements_steps_title">Steps</string>
+    <string name="requirements_steps_heading">Steps to request the service</string>
+    <string name="requirements_fees_title">Fees</string>
+    <string name="requirements_fees_heading">Service fees</string>
+    <string name="requirements_fees_value">%d Rial</string>
+    <string name="requirements_terms_title">Service Terms</string>
     <string name="start_the_service">Start the service</string>
 
     <string name="hello_label">Hello</string>
@@ -654,6 +670,19 @@
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
     <string name="request_detail_back_title">Services screen</string>
+
+    <!-- Sailors -->
+    <string name="sailor_info_description">Please provide information about the seafarers of the ship or naval unit</string>
+    <string name="sailor_add_title">Add Sailor</string>
+    <string name="sailor_edit_title">Edit Sailor</string>
+    <string name="sailor_job_title">Select sailor job</string>
+    <string name="sailor_name_title">Enter sailor name</string>
+    <string name="sailor_identity_number_title">Enter identity number</string>
+    <string name="sailor_seaman_passport_number_title">Enter seaman\'s passport number</string>
+    <string name="sailor_count">Total Number of Sailors</string>
+    <string name="sailor_identity_number">Identity number</string>
+    <string name="sailor_seaman_passport_number">Seaman\'s passport number</string>
+    <string name="sailor_delete_title">Delete Sailor</string>
 
 
 

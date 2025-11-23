@@ -117,8 +117,8 @@ class CancelRegistrationStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
-        return data
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
+        return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {

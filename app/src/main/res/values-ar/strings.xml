@@ -86,6 +86,7 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">إصدار شهادة تسجيل مؤقتة للسفينة أوالوحدة البحرية</string>
     <string name="ship_info">معلومات السفينة</string>
     <string name="owner_info">معلومات المالك</string>
+    <string name="sailor_info">معلومات البحار</string>
     <string name="documents">رفع المستندات</string>
     <string name="technical_details">التفاصيل الفنية</string>
     <string name="insurance">التأمين</string>
@@ -140,6 +141,7 @@
     <string name="step_7_title">الخطوة 7: التأكيد النهائي</string>
     <string name="step_placeholder_content">محتوى هذه الخطوة سيتم إضافته هنا</string>
     <string name="back_button">رجوع</string>
+    <string name="process_to_payment_button">المتابعة إلي الدفع</string>
     <string name="submit_button">إرسال</string>
     <string name="step_progress">الخطوة %1$d من %2$d</string>
     <string name="ship">سفينة</string>
@@ -557,6 +559,21 @@
     <string name="subcategory_marine_unit_request_for_inspection">المعاينات</string>
 
 
+    <!-- Service requirements -->
+    <string name="requirements_duration_title">مدة الطلب</string>
+    <plurals name="requirements_duration_value">
+        <item quantity="one">يوم واحد</item>
+        <item quantity="two">يومان</item>
+        <item quantity="many">%d أيام</item>
+        <item quantity="few">%d أيام</item>
+        <item quantity="zero">لم يحدد وقت</item>
+    </plurals>
+    <string name="requirements_steps_title">الخطوات</string>
+    <string name="requirements_steps_heading">خطوات طلب الخدمة</string>
+    <string name="requirements_fees_title">الرسوم</string>
+    <string name="requirements_fees_heading">رسوم الخدمة</string>
+    <string name="requirements_fees_value">%d ريال</string>
+    <string name="requirements_terms_title">شروط الخدمة</string>
     <string name="start_the_service">ابدأ الخدمة</string>
 
 
@@ -656,6 +673,19 @@
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
     <string name="request_detail_back_title">شاشة الخدمات</string>
+
+    <!-- Sailors -->
+    <string name="sailor_info_description">يرجى تقديم معلومات عن البحارة للسفينة او الوحدة البحرية</string>
+    <string name="sailor_add_title">إضافة بحار</string>
+    <string name="sailor_edit_title">تعديل بحار</string>
+    <string name="sailor_job_title">إختر وظيفة البحار</string>
+    <string name="sailor_name_title">أدخل اسم البحار</string>
+    <string name="sailor_identity_number_title">أدخل رقم الهوية</string>
+    <string name="sailor_seaman_passport_number_title">أدخل رقم الجواز البحري</string>
+    <string name="sailor_count">إجمالي عدد البحارة</string>
+    <string name="sailor_identity_number">رقم الهوية</string>
+    <string name="sailor_seaman_passport_number">رقم الجواز البحري</string>
+    <string name="sailor_delete_title">حذف بحار</string>
 
 
 

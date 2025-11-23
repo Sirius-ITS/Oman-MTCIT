@@ -174,6 +174,7 @@ class CrossFieldValidator @Inject constructor() {
             is FormField.InfoCard -> field.copy(error = error)
             is FormField.PhoneNumberField -> field.copy(error = error)
             is FormField.OTPField -> field.copy(error = error)
+            is FormField.SailorList -> field.copy(error = error)
         }
     }
 }

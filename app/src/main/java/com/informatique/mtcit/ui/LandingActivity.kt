@@ -26,6 +26,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.informatique.mtcit.navigation.NavHost
 import com.informatique.mtcit.common.util.LocalAppLocale
+import com.informatique.mtcit.navigation.NavigationManagerImpl
 import com.informatique.mtcit.ui.base.BaseActivity
 import com.informatique.mtcit.ui.theme.AppTheme
 import com.informatique.mtcit.ui.theme.ThemeOption
@@ -35,9 +36,13 @@ import com.informatique.mtcit.viewmodel.ThemeViewModel
 import com.informatique.mtcit.ui.providers.LocalCategories
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Locale
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class LandingActivity: BaseActivity() {
+
+    @Inject
+    lateinit var navigationManager: NavigationManagerImpl
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,7 +87,10 @@ class LandingActivity: BaseActivity() {
                     Surface(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        NavHost(themeViewModel = themeViewModel)
+                        NavHost(
+                            themeViewModel = themeViewModel,
+                            navigationManager = navigationManager
+                        )
                     }
                 }
             }

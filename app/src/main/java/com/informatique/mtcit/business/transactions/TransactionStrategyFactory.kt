@@ -23,8 +23,13 @@ class TransactionStrategyFactory @Inject constructor(
     private val shipRegistrationStrategy: Provider<ShipRegistrationStrategy>,
     private val shipNameChangeStrategy: Provider<ShipNameChangeStrategy>,
     private val captainNameChangeStrategy: Provider<CaptainNameChangeStrategy>,
-    private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>
-) {
+    private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>,
+
+    // Navigation permits
+    private val issueNavigationPermitStrategy: Provider<IssueNavigationPermitStrategy>,
+    private val renewNavigationPermitStrategy: Provider<RenewNavigationPermitStrategy>,
+
+    ) {
 
     /**
      * Create a strategy instance for the given transaction type
@@ -50,6 +55,10 @@ class TransactionStrategyFactory @Inject constructor(
             TransactionType.SHIP_ENGINE_CHANGE -> captainNameChangeStrategy.get()
             TransactionType.SHIP_PORT_CHANGE -> captainNameChangeStrategy.get()
             TransactionType.SHIP_OWNERSHIP_CHANGE -> captainNameChangeStrategy.get()
+
+            // Navigation permits
+            TransactionType.ISSUE_NAVIGATION_PERMIT -> issueNavigationPermitStrategy.get()
+            TransactionType.RENEW_NAVIGATION_PERMIT -> renewNavigationPermitStrategy.get()
 
         }
     }

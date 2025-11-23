@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,9 +19,12 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,34 +41,34 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.LocalAppLocale
+import com.informatique.mtcit.data.model.category.Transaction
 import com.informatique.mtcit.ui.components.localizedApp
-import com.informatique.mtcit.ui.models.MainCategory
-import com.informatique.mtcit.ui.models.SubCategory
-import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
-import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
+import com.informatique.mtcit.ui.viewmodels.SubCategoriesUiState
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainCategoriesScreen(
     navController: NavController,
-    sharedUserViewModel: SharedUserViewModel,
     categoryIdToExpand: String = ""
 ) {
-    val viewModel: MainCategoriesViewModel = hiltViewModel()
-    // Get categories from CompositionLocal instead of ViewModel
-    val categories = LocalCategories.current
 
-    // Set categories into ViewModel when they change
-    LaunchedEffect(categories) {
-        if (categories.isNotEmpty()) {
-            viewModel.setCategories(categories)
-        }
-    }
+    val locale = LocalAppLocale.current
+
+    val viewModel: MainCategoriesViewModel = hiltViewModel()
+
+    val uiState by viewModel.subCategories.collectAsStateWithLifecycle()
+
+//    LaunchedEffect(Unit) {
+//        viewModel.getSubCategoriesApi()
+//    }
 
     // Auto-expand the specified category when navigating from home
     LaunchedEffect(categoryIdToExpand) {
@@ -73,14 +77,12 @@ fun MainCategoriesScreen(
         }
     }
 
-    val expandedCategories by viewModel.expandedCategories.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
 
     // FAB menu state
-    var isFabMenuExpanded by remember { mutableStateOf(false) }
+    // var isFabMenuExpanded by remember { mutableStateOf(false) }
 
     // Allow drawing behind system bars and make status bar transparent so the gradient can extend into it
     LaunchedEffect(window) {
@@ -95,7 +97,9 @@ fun MainCategoriesScreen(
     // Calculate status bar height so the header gradient can cover it
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    Box(modifier = Modifier.fillMaxSize().background(extraColors.background)) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(extraColors.background)) {
         // Background gradient header with wave overlay extended to include status bar
         Box(
             modifier = Modifier
@@ -122,7 +126,7 @@ fun MainCategoriesScreen(
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.72f)
                     // Quadratic bezier to create a smooth wave
-                    quadraticBezierTo(
+                    quadraticTo(
                         x1 = w * 0.5f,
                         y1 = h * 0.5f,
                         x2 = w,
@@ -141,7 +145,7 @@ fun MainCategoriesScreen(
                 // Optional: add a second subtle wave for depth
                 val path2 = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.82f)
-                    quadraticBezierTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
+                    quadraticTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
                     lineTo(w, h)
                     lineTo(0f, h)
                     close()
@@ -155,7 +159,7 @@ fun MainCategoriesScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                        text = localizedApp(R.string.solutions_and_services),
+                        text = localizedApp(R.string.main_category_registration_department),
                         fontSize = 22.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Medium,
@@ -170,7 +174,7 @@ fun MainCategoriesScreen(
                                 .clip(CircleShape)
                                 .border(
                                     width = 1.dp,
-                                    color = Color(0xFF4A7BA7 ),
+                                    color = Color(0xFF4A7BA7),
                                     shape = CircleShape
                                 )
                                 .shadow(
@@ -180,12 +184,12 @@ fun MainCategoriesScreen(
                                     spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                                 )
                                 .background(extraColors.iconBackBackground)
-                                .clickable{ navController.popBackStack() },
+                                .clickable { navController.popBackStack() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
+                                contentDescription = localizedApp(R.string.back_button),
                                 tint = extraColors.iconBack
                             )
                         }
@@ -194,7 +198,7 @@ fun MainCategoriesScreen(
                         // Settings Icon Button
                         Box(
                             modifier = Modifier
-                                .padding( 12.dp)
+                                .padding(12.dp)
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .border(
@@ -214,7 +218,7 @@ fun MainCategoriesScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
+                                contentDescription = localizedApp(R.string.settings_title),
                                 tint = extraColors.iconBack
                             )
                         }
@@ -241,7 +245,7 @@ fun MainCategoriesScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp , end = 16.dp , bottom = 37.dp , top = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp, bottom = 37.dp, top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Institution Filter
@@ -262,33 +266,47 @@ fun MainCategoriesScreen(
                 }
 
                 // Categories List
-                if (isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(categories.size) { index ->
-                            val category = categories[index]
-                            CategoryCard(
-                                category = category,
-                                isExpanded = expandedCategories.contains(category.id),
-                                onToggleExpand = { viewModel.toggleCategoryExpansion(category.id) },
-                                onSubCategoryClick = { subCategory ->
-                                    navController.navigate(NavRoutes.TransactionListRoute.createRoute(category.id, subCategory.id))
-                                },
-                                availableServicesCount = viewModel.getAvailableServicesCount(category.id)
-                            )
+                when (uiState) {
+                    SubCategoriesUiState.Blank -> {}
+                    is SubCategoriesUiState.Loading -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
                     }
+                    is SubCategoriesUiState.Success -> {
+                        val subCategories = (uiState as SubCategoriesUiState.Success).subcategories
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            itemsIndexed(subCategories) { index, subCategory ->
+                                CategoryCard(
+                                    locale = locale,
+                                    category = subCategory,
+                                    isExpanded = index == 0,
+                                    onSubCategoryClick = { transaction ->
+                                        /*navController.navigate(NavRoutes.TransactionListRoute.createRoute(category.id, subCategory.id))*/
+                                        navController.navigate(
+                                            NavRoutes.TransactionRequirementRoute.createRoute(
+                                                transaction = transaction
+                                            )
+                                        )
+                                    },
+                                    availableServicesCount = subCategory.transactions.size
+                                )
+                            }
+                        }
+                    }
+                    is SubCategoriesUiState.Error -> {
+                        val error = (uiState as SubCategoriesUiState.Error).message
+                        Text(text = error)
+                    }
                 }
+
             }
         }
 
@@ -396,7 +414,7 @@ fun FilterDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(horizontal = 12.dp , vertical = 10.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -446,115 +464,123 @@ fun FilterDropdown(
 
 @Composable
 fun CategoryCard(
-    category: MainCategory,
+    locale: Locale,
+    category: com.informatique.mtcit.data.model.category.SubCategory,
     isExpanded: Boolean,
-    onToggleExpand: () -> Unit,
-    onSubCategoryClick: (SubCategory) -> Unit,
+    onSubCategoryClick: (Transaction) -> Unit,
     availableServicesCount: Int
 ) {
     val extraColors = LocalExtraColors.current
+    var expanded by remember(isExpanded) { mutableStateOf(isExpanded) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Category Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onToggleExpand() }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+    Column {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+            elevation = CardDefaults.cardElevation(2.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Category Header
                 Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Category Icon
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(
-                                extraColors.iconLightBlueBackground,
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(category.iconRes),
-                            contentDescription = null,
-                            tint = extraColors.iconLightBlue,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-
-                    // Category Title and Description
-                    Column {
-                        Text(
-                            text = localizedApp(category.titleRes),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = extraColors.whiteInDarkMode
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = localizedApp(category.descriptionRes),
-                            fontSize = 14.sp,
-                            color = extraColors.textSubTitle
-                        )
-                    }
-                }
-
-                // Expand/Collapse Icon
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = extraColors.whiteInDarkMode,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .rotate(if (isExpanded) 180f else 0f)
-                )
-            }
-
-            // Sub-categories List (Expandable)
-            AnimatedVisibility(
-                visible = isExpanded,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(extraColors.background.copy(alpha = 0.1f))
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clickable { expanded = !expanded }
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    category.subCategories.forEach { subCategory ->
-                        SubCategoryItem(
-                            subCategory = subCategory,
-                            onClick = { onSubCategoryClick(subCategory) }
-                        )
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Category Icon
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(
+                                    extraColors.iconLightBlueBackground,
+                                    CircleShape
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_ship_registration),
+                                contentDescription = null,
+                                tint = extraColors.iconLightBlue,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        // Category Title and Description
+                        Column {
+                            Text(
+                                text = if (locale.language == "ar") category.nameAr else category.nameEn,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = extraColors.whiteInDarkMode
+                            )
+                            if (category.descAr == null || category.descEn == null) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (locale.language == "ar") (category.descAr ?: "")
+                                        else (category.descEn ?: ""),
+                                    fontSize = 14.sp,
+                                    color = extraColors.textSubTitle
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Services available badge
-                    Text(
-                        text = "$availableServicesCount ${localizedApp(R.string.services_available)}",
-                        fontSize = 13.sp,
-                        color = extraColors.whiteInDarkMode,
+                    // Expand/Collapse Icon
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp
+                        else Icons.Default.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = extraColors.whiteInDarkMode,
                         modifier = Modifier
-                            .background(
-                                extraColors.cardBackground2.copy(alpha = 0.1f),
-                                RoundedCornerShape(16.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .size(28.dp)
+                            .rotate(if (expanded) 180f else 0f)
                     )
                 }
+            }
+        }
+
+        // Sub-categories List (Expandable)
+        AnimatedVisibility(
+            visible = expanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(extraColors.background.copy(alpha = 0.1f))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                category.transactions.forEach { transaction ->
+                    SubCategoryItem(
+                        locale = locale,
+                        transaction = transaction,
+                        onClick = { onSubCategoryClick(transaction) }
+                    )
+                }
+
+                // Spacer(modifier = Modifier.height(8.dp))
+
+                // Services available badge
+                /*Text(
+                    text = "$availableServicesCount ${localizedApp(R.string.services_available)}",
+                    fontSize = 13.sp,
+                    color = extraColors.whiteInDarkMode,
+                    modifier = Modifier
+                        .background(
+                            extraColors.cardBackground2.copy(alpha = 0.1f),
+                            RoundedCornerShape(16.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                )*/
             }
         }
     }
@@ -562,7 +588,8 @@ fun CategoryCard(
 
 @Composable
 fun SubCategoryItem(
-    subCategory: SubCategory,
+    locale: Locale,
+    transaction: Transaction,
     onClick: () -> Unit
 ) {
     val extraColors = LocalExtraColors.current
@@ -572,8 +599,8 @@ fun SubCategoryItem(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)),
-        elevation = CardDefaults.cardElevation(0.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(2.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(
@@ -584,7 +611,7 @@ fun SubCategoryItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = localizedApp(subCategory.titleRes),
+                text = if (locale.language == "ar") transaction.nameAr else transaction.nameEn,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = extraColors.whiteInDarkMode,
