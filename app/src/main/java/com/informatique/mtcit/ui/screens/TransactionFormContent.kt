@@ -32,6 +32,9 @@ import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.ui.viewmodels.StepData as ViewModelStepData
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
+import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
+import com.informatique.mtcit.ui.viewmodels.ValidationState
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -53,9 +56,16 @@ fun TransactionFormContent(
     goToStep: (Int) -> Unit,
     previousStep: () -> Unit,
     nextStep: () -> Unit,
-    submitForm: () -> Unit
+    submitForm: () -> Unit,
+    viewModel: BaseTransactionViewModel
 ) {
     val extraColors = LocalExtraColors.current
+
+    // Track declaration acceptance state for review step
+    var declarationAccepted by remember { mutableStateOf(false) }
+
+    // Check if current step is the review step (last step with no fields)
+    val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.fields?.isEmpty() == true
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -140,13 +150,31 @@ fun TransactionFormContent(
                 onPreviousClick = previousStep,
                 onNextClick = {
                     if (uiState.currentStep < uiState.steps.size - 1) {
-                        nextStep()
+                        // Not on last step - check if we're on review step
+                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
+                            // On review step for Marine Registration - validate before proceeding
+                            viewModel.validateOnReviewStep()
+                        } else {
+                            // Regular next step
+                            nextStep()
+                        }
                     } else {
-                        submitForm()
+                        // On last step (final submission)
+                        if (viewModel is MarineRegistrationViewModel) {
+                            viewModel.validateAndSubmit()
+                        } else {
+                            submitForm()
+                        }
                     }
                 },
-                canProceed = uiState.canProceedToNext,
-                isSubmitting = submissionState is UIState.Loading
+                canProceed = if (isReviewStep) {
+                    // On review step, require declaration to be accepted
+                    declarationAccepted && uiState.canProceedToNext
+                } else {
+                    uiState.canProceedToNext
+                },
+                isSubmitting = submissionState is UIState.Loading,
+                isReviewStep = isReviewStep // Pass the review step flag
             )
         }
     ) { paddingValues ->
@@ -224,7 +252,23 @@ fun TransactionFormContent(
                     onOpenFilePicker = onOpenFilePicker,
                     onViewFile = onViewFile,
                     onRemoveFile = onRemoveFile,
-                    allSteps = uiState.steps
+                    allSteps = uiState.steps,
+                    onDeclarationChange = { accepted ->
+                        declarationAccepted = accepted
+                    },
+                    onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
+                    // Pass only validation state for loading indicator
+                    validationState = if (viewModel is MarineRegistrationViewModel) {
+                        viewModel.validationState.collectAsState().value
+                    } else {
+                        ValidationState.Idle
+                    },
+                    // Pass unit selection callback - errors navigate to RequestDetailScreen
+                    onMarineUnitSelected = if (viewModel is MarineRegistrationViewModel) {
+                        { unitId -> viewModel.onMarineUnitSelected(unitId) }
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -238,7 +282,8 @@ fun GenericNavigationBottomBar(
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     canProceed: Boolean,
-    isSubmitting: Boolean = false
+    isSubmitting: Boolean = false,
+    isReviewStep: Boolean = false // Add parameter to detect review step
 ) {
     val extraColors = LocalExtraColors.current
     Card(
@@ -287,7 +332,10 @@ fun GenericNavigationBottomBar(
                 ),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                if (currentStep < totalSteps - 1) {
+                // Show "Accept & Send" on review step OR last step
+                if (isReviewStep || currentStep >= totalSteps - 1) {
+                    Text(localizedApp(R.string.accept_and_send))
+                } else {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -299,8 +347,6 @@ fun GenericNavigationBottomBar(
                             modifier = Modifier.size(18.dp)
                         )
                     }
-                } else {
-                    Text(localizedApp(R.string.submit_button))
                 }
             }
         }
@@ -368,6 +414,16 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" },
             error = error
         )
+        is FormField.RadioGroup -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
 
+        is FormField.SailorList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
     }
 }

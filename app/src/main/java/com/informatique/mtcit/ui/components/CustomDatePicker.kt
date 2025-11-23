@@ -151,6 +151,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
@@ -175,6 +176,13 @@ fun CustomDatePicker(
     val successColor = Color(0xFF2E7D32) // Green 700
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = if (mandatory) "$label *" else label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = extraColors.whiteInDarkMode,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+        )
         OutlinedTextField(
             value = value,
             onValueChange = {},

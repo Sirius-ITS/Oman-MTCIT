@@ -86,6 +86,7 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">Issuance of a temporary registration certificate for a vessel or marine unit</string>
     <string name="ship_info">Ship Information</string>
     <string name="owner_info">Owner Information</string>
+    <string name="sailor_info">Sailor Information</string>
     <string name="documents">Documents</string>
     <string name="technical_details">Technical Details</string>
     <string name="insurance">Insurance</string>
@@ -96,6 +97,12 @@
     <string name="unit_data_description">Please provide complete information about the ship or marine unit\nto facilitate request processing and necessary procedures</string>
     <string name="select_unit_type">Select Unit Type</string>
     <string name="select_unit_type_placeholder">Choose unit type</string>
+    <string name="select_unit_classification">تصنيف الوحدة</string>
+    <string name="select_unit_classification_placeholder">اختيار تصنيف الوحدة</string>
+    <string name="construction_pool">حوض البناء</string>
+    <string name="enter_construction_pool">أدخل اسم الترسانة</string>
+    <string name="building_material">مادة البناء</string>
+    <string name="select_building_material">اختيار مادة البناء</string>
     <string name="ship">Ship</string>
     <string name="marine_unit">Marine Unit</string>
     <string name="yacht">Yacht</string>
@@ -131,7 +138,10 @@
     <string name="oman">Oman</string>
     <string name="next_button">Next</string>
     <string name="back_button">Back</string>
+    <string name="process_to_payment_button">Proceed to payment</string>
     <string name="submit_button">Submit</string>
+    <string name="accept_and_send">Accept &amp; Send</string>
+    <string name="declaration_acceptance_text">I declare that all the information provided is true and accurate, and I accept full responsibility for the data submitted.</string>
     <string name="step_2_title">Step 2: Owner Information</string>
     <string name="step_3_title">Step 3: Documents</string>
     <string name="step_4_title">Step 4: Technical Details</string>
@@ -149,13 +159,75 @@
     <string name="duqm_port">Duqm Port</string>
     <string name="shinas_port">Shinas Port</string>
 
+
+
+    <!-- Marine Unit Dimensions -->
+    <string name="marine_unit_dimensions_title">الأبعاد الخاصة بالوحدة البحرية</string>
+    <string name="marine_unit_dimensions_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
+
+    <string name="overall_length">الطول الكلي</string>
+    <string name="overall_length_placeholder">أدخل الطول الأقصى للوحدة    متر</string>
+
+    <string name="overall_width">العرض الكلي</string>
+    <string name="overall_width_placeholder">أدخل العرض الأقصى للوحدة    متر</string>
+
+    <string name="depth">الغاطس</string>
+    <string name="depth_placeholder">أدخل الغاطس بالمتر    متر</string>
+
+    <string name="height_optional">الارتفاع (اختياري)</string>
+    <string name="height_placeholder">من قاعدة العارضة لأعلى نقطة    متر</string>
+
+    <string name="decks_count_optional">عدد الطوابق (اختياري)</string>
+    <string name="decks_count_placeholder">أدخل إجمالي الطوابق</string>
+
+
+
+    <!-- Marine Unit Weights and Loads -->
+    <string name="marine_unit_weights_title">الأوزان والحمولات الخاصة بالوحدة البحرية</string>
+    <string name="marine_unit_weights_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
+
+    <string name="gross_tonnage_placeholder">أدخل الحمولة الكلية</string>
+
+    <string name="net_tonnage_placeholder">أدخل الحمولة الصافية</string>
+
+    <string name="static_load">الحمولة الساكنة (اختياري)</string>
+    <string name="static_load_placeholder">أدخل الحمولة الساكنة (DWT)</string>
+
+    <string name="max_permitted_load_optional">أقصى حمولة مسموح بها (اختياري)</string>
+    <string name="max_permitted_load_placeholder">أدخل أقصى حمولة مسموحة</string>
+
+
+
+    <!-- Marine Unit Registration Certificate -->
+    <string name="marine_unit_registration_certificate_title">هل لدى الوحدة البحرية شهادة تسجيل مؤقتة؟</string>
+    <string name="marine_unit_registration_certificate_description">حدد ما إذا كانت وحدتك البحرية مسجلة مسبقاً بشهادة مؤقتة أم لا لتقديم الخدمات بشكل مخصص.</string>
+    <string name="marine_unit_registration_certificate_description_simple">يُرجى تحديد حالة التسجيل المؤقت للوحدة البحرية</string>
+
+    <string name="has_temporary_registration_certificate_question">حالة شهادة التسجيل المؤقتة</string>
+    <string name="yes_has_temporary_certificate">نعم، لدى الوحدة البحرية شهادة تسجيل مؤقتة</string>
+    <string name="no_temporary_certificate">لا، لا توجد شهادة تسجيل مؤقتة للوحدة البحرية</string>
+
+
+    <!-- Marine Unit Name Selection -->
+    <string name="marine_unit_name_selection_title">اختيار الاسم المطلوب للوحدة البحرية</string>
+    <string name="marine_unit_name_selection_description">يُرجى اختيار الاسم المطلوب للوحدة البحرية. سيتم حجز الاسم لفترة زمنية محددة بالدقائق، ويتعين عليكم سداد الرسوم خلال هذه المدة لضمان تثبيت الحجز.</string>
+    <string name="marine_unit_name_selection_description_simple">يُرجى إدخال الاسم المطلوب للوحدة البحرية</string>
+
+    <string name="marine_unit_name">اسم الوحدة البحرية</string>
+    <string name="marine_unit_name_placeholder">أدخل اسم الوحدة البحرية المطلوب تسجيله</string>
+
     <!-- Owner Information -->
     <string name="owner_info_description">Please provide complete owner information for the marine unit</string>
     <string name="is_company">Is this a company?</string>
-    <string name="owner_full_name">Owner Full Name</string>
+    <string name="owner_full_name_ar">Owner Full Name with arabic</string>
+    <string name="owner_full_name_en">الاسم الكامل للمالك بالانجليزية</string>
     <string name="owner_nationality">Owner Nationality</string>
     <string name="owner_id_number">Owner ID Number</string>
     <string name="owner_passport_number">Owner Passport Number</string>
+    <string name="ownershippercentage">نسبة الملكية %</string>
+    <string name="enter_ownershippercentage">أدخل نسبة الملكية %</string>
+    <string name="ownership_proof_attachments">مرفقات إثبات الملكية</string>
+    <string name="ownership_proof_document">مرفقات إثبات الملكية</string>
     <string name="owner_mobile">Owner Mobile Number</string>
     <string name="owner_address">Owner Address</string>
     <string name="owner_city">Owner City</string>
@@ -368,21 +440,20 @@
     <!-- Bank/Mortgage Related -->
     <string name="bank_information">Bank Information</string>
     <string name="bank_information_desc">Provide complete information about the mortgaging bank</string>
+    <string name="mortgage_data">Mortgage Data</string>
+    <string name="mortgage_data_desc">Enter the mortgage details and related information</string>
     <string name="bank_name">Bank Name</string>
     <string name="enter_bank_name">Enter bank name</string>
-    <string name="bank_branch">Bank Branch</string>
-    <string name="enter_bank_branch">Enter bank branch</string>
-    <string name="bank_country">Bank Country</string>
-    <string name="mortgage_amount">Mortgage Amount</string>
-    <string name="enter_amount">Enter amount</string>
-    <string name="currency">Currency</string>
-    <string name="select_currency">Select currency</string>
-    <string name="mortgage_start_date">Mortgage Start Date</string>
-    <string name="mortgage_end_date">Mortgage End Date</string>
-    <string name="mortgage_terms">Mortgage Terms and Conditions</string>
-    <string name="enter_mortgage_terms">Enter mortgage terms</string>
-    <string name="mortgage_agreement">Mortgage Agreement</string>
-    <string name="bank_approval_letter">Bank Approval Letter</string>
+    <string name="select_bank_name">Select bank name</string>
+    <string name="mortgage_contract_number">Mortgage Contract Number</string>
+    <string name="enter_mortgage_contract_number">Enter mortgage contract number</string>
+    <string name="mortgage_purpose">Mortgage Purpose</string>
+    <string name="select_mortgage_purpose">Select mortgage purpose</string>
+    <string name="mortgage_value">Mortgage Value (OMR)</string>
+    <string name="enter_mortgage_value">Enter mortgage value</string>
+    <string name="mortgage_start_date">Mortgage start date</string>
+    <string name="mortgage_end_date">Mortgage end date</string>
+    <string name="mortgage_application">Mortgage Application Document</string>
 
     <!-- Release Mortgage Related -->
     <string name="mortgage_information">Mortgage Information</string>
@@ -423,6 +494,17 @@
     <string name="no_file_attached">No File Attached</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
+
+    <!-- Rejection Step -->
+    <string name="request_rejected_title">Request Cannot Be Processed</string>
+    <string name="request_rejected_desc">Unfortunately, your request cannot be completed due to the following reasons</string>
+    <string name="rejection_reasons">Rejection Reasons</string>
+    <string name="restriction_details">Restriction Details</string>
+    <string name="captured_data">Captured Data at Rejection</string>
+    <string name="entered_data_summary">Data You Entered</string>
+    <string name="go_back_and_fix">Go Back and Fix Issue</string>
+    <string name="back_to_home">Back to Home</string>
+    <string name="contact_support">Contact Support</string>
 
     <!-- File Upload Actions -->
     <string name="replace_file">Replace</string>
@@ -549,5 +631,54 @@
     <string name="engine_condition_title">Select engine condition</string>
     <string name="engine_save_btn">Save</string>
 
+
+
+    <string name="attaching_the_engine_documents">ارفاق المستندات الخاصة بالمحرك</string>
+
+
+
+    <!-- Step Title and Description -->
+    <string name="insurance_document_title">بيانات وثيقة التأمين</string>
+    <string name="insurance_document_description">أدخل رقم وثيقة التأمين وحدد الشركة المصدرة والدولة. هذه المعلومات مطلوبة لإثبات التغطية التأمينية.</string>
+
+    <!-- Insurance Document Number -->
+    <string name="insurance_document_number">رقم وثيقة التأمين</string>
+    <string name="insurance_document_number_placeholder">أدخل رقم وثيقة التأمين</string>
+
+    <!-- Country -->
+    <string name="insurance_country">الدولة</string>
+    <string name="insurance_country_placeholder">اختر الدولة</string>
+
+    <!-- Insurance Company -->
+    <string name="insurance_company">الشركة المصدرة</string>
+    <string name="insurance_company_placeholder">أدخل الشركة التأمين المصدرة</string>
+
+    <!-- Insurance Document Attachment -->
+    <string name="insurance_document_attachment">أرفاق وثيقة التأمين (إذا كانت شركة التأمين خارج السلطنة)</string>
+    <string name="insurance_document_hint">فقط ملفات بحجم 5 ميجابايت أو أقل.\nيجب png أو jpeg أو jpg أو pdf.</string>
+    <string name="insurance_document_button">اختر الملف</string>
+
+    <!-- Validation Messages -->
+    <string name="insurance_document_number_required">رقم وثيقة التأمين مطلوب</string>
+    <string name="insurance_country_required">يجب اختيار الدولة</string>
+    <string name="insurance_company_required">يجب اختيار الشركة المصدرة</string>
+    <string name="insurance_document_required">يجب إرفاق وثيقة التأمين</string>
+    <string name="insurance_document_invalid_format">صيغة الملف غير مدعومة. يرجى رفع PDF أو صورة</string>
+    <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
+
+    <string name="request_detail_back_title">Services screen</string>
+
+    <!-- Sailors -->
+    <string name="sailor_info_description">Please provide information about the seafarers of the ship or naval unit</string>
+    <string name="sailor_add_title">Add Sailor</string>
+    <string name="sailor_edit_title">Edit Sailor</string>
+    <string name="sailor_job_title">Select sailor job</string>
+    <string name="sailor_name_title">Enter sailor name</string>
+    <string name="sailor_identity_number_title">Enter identity number</string>
+    <string name="sailor_seaman_passport_number_title">Enter seaman\'s passport number</string>
+    <string name="sailor_count">Total Number of Sailors</string>
+    <string name="sailor_identity_number">Identity number</string>
+    <string name="sailor_seaman_passport_number">Seaman\'s passport number</string>
+    <string name="sailor_delete_title">Delete Sailor</string>
 
 </resources>

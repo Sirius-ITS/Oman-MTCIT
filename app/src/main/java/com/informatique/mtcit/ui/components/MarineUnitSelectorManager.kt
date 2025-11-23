@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.ValidationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,9 +32,13 @@ fun MarineUnitSelectorManager(
     modifier: Modifier = Modifier,
     units: List<MarineUnit>,
     selectedUnitIds: List<String>,
+    addNewUnit: () -> Unit,
     allowMultipleSelection: Boolean = true,
     showOwnedUnitsWarning: Boolean = true,
-    onSelectionChange: (List<String>) -> Unit
+    showAddNewButton: Boolean ,
+    onSelectionChange: (List<String>) -> Unit,
+    validationState: ValidationState = ValidationState.Idle,
+    onMarineUnitSelected: ((String) -> Unit)? = null
 ) {
     val extraColors = LocalExtraColors.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -48,6 +53,57 @@ fun MarineUnitSelectorManager(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        if (showAddNewButton == true) {
+            Button(
+                onClick = addNewUnit,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = LocalExtraColors.current.startServiceButton
+                ),
+                border = ButtonDefaults.outlinedButtonBorder(
+                    enabled = true
+                )
+            ) {
+                Text(
+                    text = "اضافة سفينة او وحدة",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
+                )
+            }
+        }
+
+        // NEW: Validation loading indicator
+        if (validationState is ValidationState.Validating) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(Color(0xFFF3F4F6))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "جاري التحقق من الوحدة البحرية...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6B7280)
+                    )
+                }
+            }
+        }
+
         // عرض عدد السفن المختارة
         if (selectedUnitIds.isNotEmpty()) {
             Text(
@@ -63,21 +119,45 @@ fun MarineUnitSelectorManager(
             MarineUnitSelectionCard(
                 unit = unit,
                 isSelected = selectedUnitIds.contains(unit.maritimeId),
+                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.maritimeId),
                 onToggleSelection = {
-                    val newSelection = if (allowMultipleSelection) {
-                        if (selectedUnitIds.contains(unit.maritimeId)) {
-                            selectedUnitIds - unit.maritimeId
+                    // Check if validation is needed
+                    if (onMarineUnitSelected != null) {
+                        // Update selection state immediately for UI feedback
+                        val newSelection = if (allowMultipleSelection) {
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                selectedUnitIds - unit.maritimeId
+                            } else {
+                                selectedUnitIds + unit.maritimeId
+                            }
                         } else {
-                            selectedUnitIds + unit.maritimeId
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                emptyList()
+                            } else {
+                                listOf(unit.maritimeId)
+                            }
                         }
+                        onSelectionChange(newSelection)
+
+                        // Trigger validation - pass unit.id for backend validation
+                        onMarineUnitSelected(unit.id)
                     } else {
-                        if (selectedUnitIds.contains(unit.maritimeId)) {
-                            emptyList()
+                        // Regular selection without validation
+                        val newSelection = if (allowMultipleSelection) {
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                selectedUnitIds - unit.maritimeId
+                            } else {
+                                selectedUnitIds + unit.maritimeId
+                            }
                         } else {
-                            listOf(unit.maritimeId)
+                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                                emptyList()
+                            } else {
+                                listOf(unit.maritimeId)
+                            }
                         }
+                        onSelectionChange(newSelection)
                     }
-                    onSelectionChange(newSelection)
                 },
                 onShowDetails = {
                     selectedUnitForDetails = unit
@@ -94,21 +174,45 @@ fun MarineUnitSelectorManager(
                 MarineUnitSelectionCard(
                     unit = unit,
                     isSelected = selectedUnitIds.contains(unit.maritimeId),
+                    isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.maritimeId),
                     onToggleSelection = {
-                        val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
-                                selectedUnitIds - unit.maritimeId
+                        // Check if validation is needed
+                        if (onMarineUnitSelected != null) {
+                            // Update selection state immediately for UI feedback
+                            val newSelection = if (allowMultipleSelection) {
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    selectedUnitIds - unit.maritimeId
+                                } else {
+                                    selectedUnitIds + unit.maritimeId
+                                }
                             } else {
-                                selectedUnitIds + unit.maritimeId
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    emptyList()
+                                } else {
+                                    listOf(unit.maritimeId)
+                                }
                             }
+                            onSelectionChange(newSelection)
+
+                            // Trigger validation - will handle navigation on Next button
+                            onMarineUnitSelected(unit.id)
                         } else {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
-                                emptyList()
+                            // Regular selection
+                            val newSelection = if (allowMultipleSelection) {
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    selectedUnitIds - unit.maritimeId
+                                } else {
+                                    selectedUnitIds + unit.maritimeId
+                                }
                             } else {
-                                listOf(unit.maritimeId)
+                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                    emptyList()
+                                } else {
+                                    listOf(unit.maritimeId)
+                                }
                             }
+                            onSelectionChange(newSelection)
                         }
-                        onSelectionChange(newSelection)
                     },
                     onShowDetails = {
                         selectedUnitForDetails = unit
@@ -137,6 +241,7 @@ fun MarineUnitSelectorManager(
 private fun MarineUnitSelectionCard(
     unit: MarineUnit,
     isSelected: Boolean,
+    isValidating: Boolean = false,
     onToggleSelection: () -> Unit,
     onShowDetails: () -> Unit
 ) {
@@ -204,29 +309,38 @@ private fun MarineUnitSelectionCard(
                         modifier = Modifier.rotate(rotationAngle)
                     )
 
-                    // Checkbox
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .border(
-                                width = 2.dp,
-                                color = if (isSelected) Color(0xFF1E3A5F) else Color(0xFFD1D5DB),
-                                shape = CircleShape
-                            )
-                            .background(
-                                color = if (isSelected) Color(0xFF1E3A5F) else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable(onClick = onToggleSelection),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                    // NEW: Show loading indicator if validating
+                    if (isValidating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = Color(0xFF1E3A5F)
+                        )
+                    } else {
+                        // Checkbox
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .border(
+                                    width = 2.dp,
+                                    color = if (isSelected) Color(0xFF1E3A5F) else Color(0xFFD1D5DB),
+                                    shape = CircleShape
+                                )
+                                .background(
+                                    color = if (isSelected) Color(0xFF1E3A5F) else Color.Transparent,
+                                    shape = CircleShape
+                                )
+                                .clickable(onClick = onToggleSelection),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -327,7 +441,7 @@ private fun WarningCard() {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "هذه السفن مملوكة أو موظفة، ولن تتم السماح بتعاملها بشكل أنشطة يحتاج لها السماح.",
+                    text = "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF6B5D00),
                     fontSize = 13.sp,
@@ -370,44 +484,81 @@ private fun MarineUnitBottomSheet(unit: MarineUnit) {
         )
 
 
-        ExpandableBottomSheetSection(
-            title = "الأبعاد",
-            content = {
-                BottomSheetInfoCard(label = "الطول الكلي", value = "٢٤٠ متر")
-                BottomSheetInfoCard(label = "الطول بين العموديين", value = "٢١٠ متر")
-                BottomSheetInfoCard(label = "العرض الكلي", value = "٣٣ متر")
-                BottomSheetInfoCard(label = "الغاطس", value = "١٠ أمتار")
-                BottomSheetInfoCard(label = "الإرتفاع", value = "٤٥ متر")
-                BottomSheetInfoCard(label = "عدد الطوابق", value = "9")
-            }
-        )
+        // Dimensions Section - Show only if has data
+        if (unit.totalLength.isNotEmpty() || unit.lengthBetweenPerpendiculars.isNotEmpty() ||
+            unit.totalWidth.isNotEmpty() || unit.draft.isNotEmpty() ||
+            unit.height.isNotEmpty() || unit.numberOfDecks.isNotEmpty()) {
+            ExpandableBottomSheetSection(
+                title = "الأبعاد",
+                content = {
+                    if (unit.totalLength.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "الطول الكلي", value = unit.totalLength)
+                    }
+                    if (unit.lengthBetweenPerpendiculars.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "الطول بين العموديين", value = unit.lengthBetweenPerpendiculars)
+                    }
+                    if (unit.totalWidth.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "العرض الكلي", value = unit.totalWidth)
+                    }
+                    if (unit.draft.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "الغاطس", value = unit.draft)
+                    }
+                    if (unit.height.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "الإرتفاع", value = unit.height)
+                    }
+                    if (unit.numberOfDecks.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "عدد الطوابق", value = unit.numberOfDecks)
+                    }
+                }
+            )
+        }
 
-        // Capacity Section
-        ExpandableBottomSheetSection(
-            title = "السعة والحمولة",
-            content = {
-                BottomSheetInfoCard(label = "الحمولة الإجمالية", value = "٥٠٠٠٠ طن")
-                BottomSheetInfoCard(label = "سعة الحاويات", value = "٤٥٠٠ حاوية")
-            }
-        )
+        // Capacity Section - Show only if has data
+        if (unit.totalCapacity.isNotEmpty() || unit.containerCapacity.isNotEmpty()) {
+            ExpandableBottomSheetSection(
+                title = "السعة والحمولة",
+                content = {
+                    if (unit.totalCapacity.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "الحمولة الإجمالية", value = unit.totalCapacity)
+                    }
+                    if (unit.containerCapacity.isNotEmpty() && unit.containerCapacity != "-") {
+                        BottomSheetInfoCard(label = "سعة الحاويات", value = unit.containerCapacity)
+                    }
+                }
+            )
+        }
 
-        // Violations Section
-        ExpandableBottomSheetSection(
-            title = "المخالفات والاحتجازات",
-            content = {
-                BottomSheetInfoCard(label = "عدد المخالفات", value = "٢")
-                BottomSheetInfoCard(label = "عدد الاحتجازات", value = "٠")
-            }
-        )
+        // Violations Section - Show only if has violations or detentions
+        if ((unit.violationsCount.isNotEmpty() && unit.violationsCount != "0") ||
+            (unit.detentionsCount.isNotEmpty() && unit.detentionsCount != "0")) {
+            ExpandableBottomSheetSection(
+                title = "المخالفات والاحتجازات",
+                content = {
+                    if (unit.violationsCount.isNotEmpty() && unit.violationsCount != "0") {
+                        BottomSheetInfoCard(label = "عدد المخالفات", value = unit.violationsCount)
+                    }
+                    if (unit.detentionsCount.isNotEmpty() && unit.detentionsCount != "0") {
+                        BottomSheetInfoCard(label = "عدد الاحتجازات", value = unit.detentionsCount)
+                    }
+                }
+            )
+        }
 
-        // Debts Section
-        ExpandableBottomSheetSection(
-            title = "الديون والمستحقات",
-            content = {
-                BottomSheetInfoCard(label = "المبلغ المستحق", value = "١٢٠٠ ريال")
-                BottomSheetInfoCard(label = "حالة السداد", value = "مستحق")
-            }
-        )
+        // Debts Section - Show only if has debts
+        if ((unit.amountDue.isNotEmpty() && unit.amountDue != "0 ريال") ||
+            (unit.paymentStatus.isNotEmpty() && unit.paymentStatus != "مسدد")) {
+            ExpandableBottomSheetSection(
+                title = "الديون والمستحقات",
+                content = {
+                    if (unit.amountDue.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "المبلغ المستحق", value = unit.amountDue)
+                    }
+                    if (unit.paymentStatus.isNotEmpty()) {
+                        BottomSheetInfoCard(label = "حالة السداد", value = unit.paymentStatus)
+                    }
+                }
+            )
+        }
     }
 }
 

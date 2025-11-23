@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -42,6 +43,13 @@ fun CustomTextField(
     val successColor = Color(0xFF2E7D32) // Green 700
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = if (mandatory) "$label *" else label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = extraColors.whiteInDarkMode,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+        )
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,

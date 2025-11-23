@@ -1,6 +1,8 @@
 package com.informatique.mtcit.business.usecases
 
 import com.informatique.mtcit.R
+import com.informatique.mtcit.business.validation.FormValidator
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.common.ResourceProvider
 import com.informatique.mtcit.ui.viewmodels.StepData
@@ -10,8 +12,84 @@ import javax.inject.Inject
  * Use case for validating form fields
  */
 class FormValidationUseCase @Inject constructor(
-    private val resourceProvider: ResourceProvider
+    private val resourceProvider: ResourceProvider,
+    private val formValidator: FormValidator
+
 ) {
+    /**
+     * ✅ NEW: Validate step with accumulated form data
+     * This allows cross-step validation (e.g., check IMO when validating weights)
+     */
+    fun validateStepWithAccumulatedData(
+        stepData: StepData,
+        currentStepData: Map<String, String>,
+        allAccumulatedData: Map<String, String>,
+        crossFieldRules: List<ValidationRule> = emptyList()
+    ): Pair<Boolean, Map<String, String>> {
+
+        // Merge accumulated data with current step data
+        val combinedData = allAccumulatedData.toMutableMap()
+        combinedData.putAll(currentStepData)
+
+        // Update current step fields with their values
+        val fieldsWithData = stepData.fields.map { field ->
+            val value = currentStepData[field.id] ?: ""
+            updateFieldValue(field, value)
+        }
+
+        // Validate with accumulated data (enables cross-step validation)
+        val validatedFields = if (crossFieldRules.isNotEmpty()) {
+            formValidator.validateWithAccumulatedData(
+                fieldsWithData,
+                combinedData,
+                crossFieldRules
+            )
+        } else {
+            formValidator.validateAll(fieldsWithData)
+        }
+
+        // Extract errors
+        val errors = validatedFields
+            .filter { it.error != null }
+            .associate { it.id to it.error!! }
+
+        return Pair(errors.isEmpty(), errors)
+    }
+
+    /**
+     * Original method for backwards compatibility
+     */
+    fun validateStep(
+        stepData: StepData,
+        formData: Map<String, String>,
+        crossFieldRules: List<ValidationRule> = emptyList()
+    ): Pair<Boolean, Map<String, String>> {
+        return validateStepWithAccumulatedData(
+            stepData,
+            formData,
+            formData, // Use same data for both if not provided separately
+            crossFieldRules
+        )
+    }
+
+    /**
+     * Helper method to update field value based on field type
+     */
+    private fun updateFieldValue(field: FormField, value: String): FormField {
+        return when (field) {
+            is FormField.TextField -> field.copy(value = value)
+            is FormField.DropDown -> field.copy(value = value)
+            is FormField.CheckBox -> field.copy(checked = value.toBoolean())
+            is FormField.DatePicker -> field.copy(value = value)
+            is FormField.FileUpload -> field.copy(value = value)
+            is FormField.OwnerList -> field.copy(value = value)
+            is FormField.EngineList -> field.copy(value = value)
+            is FormField.SelectableList<*> -> field.copy(value = value)
+            is FormField.MarineUnitSelector -> field.copy(value = value)
+            is FormField.RadioGroup -> field.copy(value = value)
+            is FormField.SailorList -> field.copy(value = value)
+        }
+    }
 
     /**
      * Validates all fields in a step and returns validation result
@@ -57,6 +135,8 @@ class FormValidationUseCase @Inject constructor(
 
         return isValid to errors
     }
+
+
 
     /**
      * Checks if all mandatory fields are filled (without validating their correctness)

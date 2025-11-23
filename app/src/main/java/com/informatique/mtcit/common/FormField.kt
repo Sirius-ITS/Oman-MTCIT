@@ -11,6 +11,11 @@ sealed class FormField(
 
 
 ) {
+
+    abstract fun copyWithValue(newValue: String): FormField
+    abstract fun copyWithError(newError: String?): FormField
+
+
     data class TextField(
         override val id: String,
         override val label: String = "",
@@ -20,9 +25,18 @@ sealed class FormField(
         val isNumeric: Boolean = false,
         val placeholder: String? = null,
         override val error: String? = null,
+        val initialValue: String = "",
+        val enabled: Boolean = true, // ✅ إضافة الخاصية دي
         override val mandatory: Boolean = false
 
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class DropDown(
         override val id: String,
@@ -36,7 +50,14 @@ sealed class FormField(
         override val error: String? = null ,
         override val mandatory: Boolean = false
 
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, selectedOption = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class CheckBox(
         override val id: String,
@@ -45,7 +66,14 @@ sealed class FormField(
         val checked: Boolean = false,
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value = if (checked) "true" else "false", error = error, mandatory = mandatory)
+    ) : FormField(id, label, labelRes, value = if (checked) "true" else "false", error = error, mandatory = mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(checked = newValue == "true")
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class DatePicker(
         override val id: String,
@@ -55,7 +83,14 @@ sealed class FormField(
         val allowPastDates: Boolean = true, // ✅ الفلاج الجديد
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class FileUpload(
         override val id: String,
@@ -67,7 +102,14 @@ sealed class FormField(
         val selectedFiles: List<String> = emptyList(),
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     /**
      * Owner List Field - For managing multiple owners
@@ -90,7 +132,14 @@ sealed class FormField(
         val placeholder: String? = null,
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class MarineUnitSelector(
         override val id: String,
@@ -101,8 +150,17 @@ sealed class FormField(
         val allowMultipleSelection: Boolean = true, // Allow selecting multiple units
         val showOwnedUnitsWarning: Boolean = true, // Show warning for owned units
         override val error: String? = null,
+        val showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
 
     data class SelectableList<T>(
         override val id: String,
@@ -113,7 +171,14 @@ sealed class FormField(
         override val value: String = "",
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
 
     data class EngineList(
         override val id: String,
@@ -127,5 +192,63 @@ sealed class FormField(
         val placeholder: String? = null,
         override val error: String? = null,
         override val mandatory: Boolean = false
-    ) : FormField(id, label, labelRes, value, error, mandatory)
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
+    data class SailorList(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "[]",
+        val jobs: List<String> = emptyList(),
+        val placeholder: String? = null,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
+    data class RadioGroup(
+        override val id: String,
+        override val labelRes: Int,
+        override val label: String = "",
+        val options: List<RadioOption>,
+        override val value: String = "[]",
+        val selectedValue: String? = null,
+        val descriptionRes: Int? = null,
+        val orientation: RadioOrientation = RadioOrientation.VERTICAL,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory){
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, selectedValue = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
+    data class RadioOption(
+        val value: String,
+        val labelRes: Int,
+        val descriptionRes: Int? = null,
+        val isEnabled: Boolean = true,
+        val error: String? = null
+    )
+    enum class RadioOrientation {
+        VERTICAL,   // خيارات عمودية (الافتراضي)
+        HORIZONTAL  // خيارات أفقية
+    }
+
 }
+

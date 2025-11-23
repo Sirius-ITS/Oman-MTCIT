@@ -67,7 +67,7 @@ abstract class BaseTransactionViewModel(
     val fileNavigationEvent: StateFlow<FileNavigationEvent?> = _fileNavigationEvent.asStateFlow()
 
     // Error state
-    private val _error = MutableStateFlow<AppError?>(null)
+    protected val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
     // Current transaction strategy
@@ -87,7 +87,7 @@ abstract class BaseTransactionViewModel(
      * Initialize transaction with specific type
      * This must be called before using the ViewModel
      */
-    fun initializeTransaction(transactionType: TransactionType) {
+    fun  initializeTransaction(transactionType: TransactionType) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
@@ -148,14 +148,13 @@ abstract class BaseTransactionViewModel(
         }
     }
 
-    fun nextStep() {
+    open fun nextStep() {
         viewModelScope.launch {
             val currentState = _uiState.value
 
             if (validateAndCompleteCurrentStep()) {
                 val currentStepIndex = currentState.currentStep
-                val currentStep = currentState.steps.getOrNull(currentStepIndex)
-                if (currentStep == null) return@launch
+                val currentStep = currentState.steps.getOrNull(currentStepIndex) ?: return@launch
 
                 // 🔹 تحديد الـ fields الخاصة بالـ step الحالي
                 val currentStepFields = currentStep.fields.map { it.id }
@@ -163,39 +162,57 @@ abstract class BaseTransactionViewModel(
                 // 🔹 فلترة الداتا اللي تخص الـ step الحالي فقط
                 val currentStepData = currentState.formData.filterKeys { it in currentStepFields }
 
-                // 🧠 حفظ الداتا في SharedSteps
-                SharedSteps.saveStepData("Step_${currentStepIndex + 1}", currentStepData)
+                // ✅✅✅ الحل الأساسي: نادي processStepData و refresh الـ steps
+                val strategy = currentStrategy
+                if (strategy != null) {
+                    // Process the data
+                    val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
+                    if (requiredNextStep == -1) { return@launch }
 
-                // 🧾 عرض داتا الـ step الحالي في Toast
+                    // Refresh steps (critical for dynamic step logic!)
+                    val updatedSteps = strategy.getSteps()
+
+                    // Update state with new steps
+                    val updatedState = currentState.copy(steps = updatedSteps)
+                    _uiState.value = updatedState
+
+                    // Use updated state for navigation
+                    navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
+                        val newCompletedSteps = updatedState.completedSteps + currentStepIndex
+
+                        _uiState.value = updatedState.copy(
+                            currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
+                            completedSteps = newCompletedSteps,
+                            canProceedToNext = navigationUseCase.canProceedToNext(
+                                nextStep,
+                                updatedSteps,
+                                updatedState.formData
+                            )
+                        )
+                    }
+                }
+
+                // 🧠 حفظ الداتا في SharedSteps للـ review (اختياري)
+                SharedSteps.saveStepData(
+                    "Step_${currentStepIndex + 1}",
+                    currentStepData
+                )
+
+                // 🧾 عرض داتا الـ step الحالي في Toast (اختياري)
                 val dataSummary = currentStepData.entries.joinToString("\n") { (key, value) ->
                     "$key: $value"
                 }
                 _showToastEvent.value = "Step ${currentStepIndex + 1} Data:\n$dataSummary"
-
-                // ✅ الانتقال للـ Step التالي
-                navigationUseCase.getNextStep(currentStepIndex, currentState.steps.size)?.let { nextStep ->
-                    val newCompletedSteps = currentState.completedSteps + currentStepIndex
-
-                    _uiState.value = currentState.copy(
-                        currentStep = nextStep,
-                        completedSteps = newCompletedSteps,
-                        canProceedToNext = navigationUseCase.canProceedToNext(
-                            nextStep,
-                            currentState.steps,
-                            currentState.formData
-                        )
-                    )
-                }
             }
         }
     }
-
 
     fun previousStep() {
         val currentState = _uiState.value
         navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
             _uiState.value = currentState.copy(
-                currentStep = prevStep,
+                currentStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1)
+                    (0) else prevStep,
                 canProceedToNext = navigationUseCase.canProceedToNext(
                     prevStep,
                     currentState.steps,

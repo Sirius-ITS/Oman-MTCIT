@@ -2,14 +2,22 @@ package com.informatique.mtcit.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 
@@ -25,17 +33,23 @@ fun DynamicStepForm(
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
+    onDeclarationChange: ((Boolean) -> Unit)? = null, // Changed to declaration callback
+    onTriggerNext: () -> Unit, // ✅ أضف الـ parameter ده
+    // NEW: Validation parameters
+    validationState: com.informatique.mtcit.ui.viewmodels.ValidationState = com.informatique.mtcit.ui.viewmodels.ValidationState.Idle,
+    onMarineUnitSelected: ((String) -> Unit)? = null
 ) {
 
     var selectedId by remember { mutableStateOf<String?>(null) }
-    var selectedPersonId by remember { mutableStateOf("PT-2024-001") }
+    var selectedPersonId by remember { mutableStateOf("فرد") }
 
     // Detect Review Step: If no fields, show ReviewStepContent
     if (stepData.fields.isEmpty() && allSteps.isNotEmpty()) {
         // This is the review step - show summary of all collected data
         ReviewStepContent(
             steps = allSteps,
-            formData = formData
+            formData = formData,
+            onDeclarationChange = onDeclarationChange
         )
     } else {
         // Regular step - show form fields
@@ -83,7 +97,8 @@ fun DynamicStepForm(
                                     isNumeric = field.isNumeric,
                                     error = field.error,
                                     mandatory = field.mandatory,
-                                    placeholder = field.label
+                                    placeholder = field.label,
+                                    enabled = true
                                 )
                             }
                         }
@@ -140,7 +155,7 @@ fun DynamicStepForm(
                             // Parse owners from JSON value
                             val owners = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<OwnerData>>(
+                                    Json.decodeFromString<List<OwnerData>>(
                                         field.value
                                     )
                                     Json.decodeFromString<List<OwnerData>>(field.value)
@@ -197,9 +212,16 @@ fun DynamicStepForm(
                             // Parse selected unit IDs from JSON
                             val selectedIds = remember(field.value) {
                                 try {
-                                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(field.value)
+                                    Json.decodeFromString<List<String>>(field.value)
                                 } catch (_: Exception) {
                                     emptyList<String>()
+                                }
+                            }
+                            var shouldTriggerNext by remember { mutableStateOf(false) }
+                            LaunchedEffect(shouldTriggerNext) {
+                                if (shouldTriggerNext) {
+                                    onTriggerNext()
+                                    shouldTriggerNext = false
                                 }
                             }
 
@@ -208,52 +230,116 @@ fun DynamicStepForm(
                                 selectedUnitIds = selectedIds,
                                 allowMultipleSelection = field.allowMultipleSelection,
                                 showOwnedUnitsWarning = field.showOwnedUnitsWarning,
+                                showAddNewButton = field.showAddNewButton,
+                                addNewUnit = {
+                                    // Clear selection and set flag
+                                    onFieldChange(field.id, "[]", null)
+                                    onFieldChange("isAddingNewUnit", "true", null)
+
+                                    // Trigger next step immediately (no need to wait for Next button)
+                                    onTriggerNext()
+                                },
                                 onSelectionChange = { updatedSelection ->
                                     val json = kotlinx.serialization.json.Json.encodeToString(updatedSelection)
                                     onFieldChange(field.id, json, null)
-                                }
+                                    // Remove hardcoded navigation - let validation handle it
+                                },
+                                // Pass validation parameters down to MarineUnitSelectorManager
+                                validationState = validationState,
+                                onMarineUnitSelected = onMarineUnitSelected
                             )
                         }
 
                         is FormField.SelectableList<*> -> {
                             when(field.id){
                                 "selectionPersonType" -> {
-                                    val json = Json.encodeToString(selectedPersonId)
-                                    onFieldChange(field.id, json, null)
-
                                     SelectableList(
                                         items = field.options,
                                         uiItem = { item ->
                                             PersonTypeCard(
                                                 item = item as PersonType,
-                                                isSelected = selectedPersonId == item.id,
+                                                defaultValue = selectedPersonId == item.title,
+                                                isSelected = selectedPersonId == item.title,
                                                 onClick = {
-                                                    selectedPersonId = item.id
-                                                    val json = Json.encodeToString(item)
-                                                    onFieldChange(field.id, json, null)
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                                                    println("🎯 PersonType clicked")
+                                                    println("📝 Field ID: ${field.id}")
+                                                    println("🆔 Item ID: ${item.id}")
+                                                    println("📊 Item Title: ${item.title}")
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+                                                    selectedPersonId = item.title
+
+                                                    // ✅ الحل: ابعت الـ title مش الـ JSON
+                                                    onFieldChange(field.id, item.title, null)
                                                 }
                                             )
                                         }
                                     )
                                 }
+
                                 "selectionData" -> {
                                     SelectableList(
                                         items = field.options,
-                                        // selectedItemId = field.value,
                                         uiItem = { item ->
                                             SelectableItemCard(
                                                 item = item as SelectableItem,
                                                 isSelected = selectedId == item.id,
                                                 onClick = {
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                                                    println("🎯 SelectableItem clicked")
+                                                    println("📝 Field ID: ${field.id}")
+                                                    println("🆔 Item ID: ${item.id}")
+                                                    println("📊 Item Title: ${item.title}")
+                                                    println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
                                                     selectedId = item.id
-                                                    val json = Json.encodeToString(item)
-                                                    onFieldChange(field.id, json, null)
+
+                                                    // ✅ الحل: ابعت الـ title أو id حسب احتياجك
+                                                    onFieldChange(field.id, item.title, null)
                                                 }
                                             )
                                         }
                                     )
                                 }
                             }
+                        }
+                        is FormField.RadioGroup -> {
+                            // ✅ Create a local state to track selection
+                            var localSelection by remember {
+                                mutableStateOf(field.selectedValue)
+                            }
+
+                            RadioGroupManager(
+                                field = field as FormField.RadioGroup,
+                                selectedValue = localSelection, // ✅ Use local state
+                                onValueChange = { newValue ->
+                                    localSelection = newValue // ✅ Update local state first
+                                    onFieldChange(field.id, newValue, null) // Then notify parent
+                                }
+                            )
+                        }
+
+                        is FormField.SailorList -> {
+                            val sailors = remember(field.value) {
+                                try {
+                                    Json.decodeFromString<List<SailorData>>(
+                                        field.value
+                                    )
+                                    Json.decodeFromString<List<SailorData>>(field.value)
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            }
+
+                            SailorListManager(
+                                sailors = sailors,
+                                jobs = field.jobs,
+                                onSailorChange = { updatedSailors ->
+                                    val json = Json.encodeToString(updatedSailors)
+                                    onFieldChange(field.id, json, null)
+                                }
+                            )
                         }
                     }
                 }

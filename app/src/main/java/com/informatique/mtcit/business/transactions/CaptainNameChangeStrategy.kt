@@ -69,8 +69,8 @@ class CaptainNameChangeStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
-        return data
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
+        return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
@@ -103,7 +103,7 @@ class CaptainNameChangeStrategy @Inject constructor(
         fields = listOf(
             FormField.TextField(
                 id = "currentCaptainName",
-                labelRes = R.string.owner_full_name,
+                labelRes = R.string.owner_full_name_ar,
                 mandatory = true
             ),
             FormField.TextField(
@@ -121,7 +121,7 @@ class CaptainNameChangeStrategy @Inject constructor(
         fields = listOf(
             FormField.TextField(
                 id = "newCaptainName",
-                labelRes = R.string.owner_full_name,
+                labelRes = R.string.owner_full_name_ar,
                 mandatory = true
             ),
             FormField.TextField(

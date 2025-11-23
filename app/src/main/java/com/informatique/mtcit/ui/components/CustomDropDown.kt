@@ -71,6 +71,13 @@ fun CustomDropdown(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = if (mandatory) "$label *" else label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = extraColors.whiteInDarkMode,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()

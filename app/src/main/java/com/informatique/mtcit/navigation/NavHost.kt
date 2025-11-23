@@ -2,6 +2,7 @@ package com.informatique.mtcit.navigation
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.compose.foundation.layout.Box
@@ -32,8 +33,12 @@ import com.informatique.mtcit.ui.screens.LanguageScreen
 import com.informatique.mtcit.ui.screens.LoginScreen
 import com.informatique.mtcit.ui.screens.MainCategoriesScreen
 import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
+import com.informatique.mtcit.ui.screens.NotificationScreen
 import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
 import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
+import com.informatique.mtcit.ui.screens.ProfileScreen
+import com.informatique.mtcit.ui.screens.RequestDetail
+import com.informatique.mtcit.ui.screens.RequestDetailScreen
 import com.informatique.mtcit.ui.screens.SettingsScreen
 import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
@@ -45,13 +50,58 @@ import kotlinx.serialization.json.Json
 import java.net.URLDecoder
 
 @Composable
-fun NavHost(themeViewModel: ThemeViewModel){
+fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManagerImpl){
 
     val sharedUserViewModel: SharedUserViewModel = hiltViewModel()
 
     val navController = rememberNavController()
 
     val categories = LocalCategories.current
+
+    LaunchedEffect(navController) {
+        navigationManager.navigationCommands.collect { command ->
+            when (command) {
+                is NavigationCommand.Navigate -> {
+                    navController.navigate(command.route) {
+                        command.popUpTo?.let { route ->
+                            popUpTo(route) {
+                                inclusive = command.inclusive
+                            }
+                        }
+                        launchSingleTop = command.singleTop
+                    }
+                }
+
+                NavigationCommand.NavigateBack -> {
+                    navController.popBackStack()
+                }
+
+                NavigationCommand.NavigateUp -> {
+                    navController.navigateUp()
+                }
+
+                is NavigationCommand.PopBackStackTo -> {
+                    navController.popBackStack(
+                        route = command.route,
+                        inclusive = command.inclusive
+                    )
+                }
+
+                is NavigationCommand.NavigateAndClearBackStack -> {
+                    navController.navigate(command.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                }
+
+                is NavigationCommand.NavigateWithArgs -> {
+                    navController.navigate("${command.route}/${Uri.encode(command.data)}")
+                }
+            }
+        }
+    }
 
     NavHost(
         navController = navController,
@@ -90,7 +140,21 @@ fun NavHost(themeViewModel: ThemeViewModel){
             val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
             MainCategoriesScreen(navController, categoryId)
         }
-
+        composable(
+            route = NavRoutes.MainCategoriesRouteWithoutID.route)
+        { backStackEntry ->
+            MainCategoriesScreen(navController, sharedUserViewModel)
+        }
+        composable(
+            route = NavRoutes.ProfileScreenRoute.route)
+        { backStackEntry ->
+            ProfileScreen(navController)
+        }
+        composable(
+            route = NavRoutes.NotificationScreen.route)
+        { backStackEntry ->
+            NotificationScreen(navController)
+        }
         // Transaction List Screen - Shows transactions for selected sub-category
         composable(NavRoutes.TransactionListRoute.route) { backStackEntry ->
             val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
@@ -130,7 +194,8 @@ fun NavHost(themeViewModel: ThemeViewModel){
             if (transaction != null) {
                 TransactionRequirementsScreen(
                     transaction = transaction,
-                    onStart = { navController.navigate(transaction.route) },
+                    onStart = {
+                        navController.navigate(transaction.route) },
                     onBack = { navController.popBackStack() },
                     parentTitleRes = parentTitleRes,
                     navController = navController,
@@ -190,16 +255,16 @@ fun NavHost(themeViewModel: ThemeViewModel){
 
         // Navigation Forms
         composable(NavRoutes.IssueNavigationPermitRoute.route) {
-            ComingSoonScreen(
+            MarineRegistrationScreen(
                 navController = navController,
-                transactionName = "Issue Navigation Permit"
+                transactionType = TransactionType.ISSUE_NAVIGATION_PERMIT
             )
         }
 
         composable(NavRoutes.RenewNavigationPermitRoute.route) {
-            ComingSoonScreen(
+            MarineRegistrationScreen(
                 navController = navController,
-                transactionName = "Renew Navigation Permit"
+                transactionType = TransactionType.RENEW_NAVIGATION_PERMIT
             )
         }
 
@@ -392,6 +457,13 @@ fun NavHost(themeViewModel: ThemeViewModel){
         composable(NavRoutes.PaymentSuccessRoute.route) {
             PaymentSuccessScreen(navController = navController)
         }
+
+        composable(NavRoutes.RequestDetailRoute.route) { backStackEntry ->
+            val requestDetail = Json.decodeFromString<RequestDetail>(
+                backStackEntry.arguments?.getString("detail") ?: "")
+            RequestDetailScreen(navController = navController, requestDetail = requestDetail)
+        }
+
     }
 
 }

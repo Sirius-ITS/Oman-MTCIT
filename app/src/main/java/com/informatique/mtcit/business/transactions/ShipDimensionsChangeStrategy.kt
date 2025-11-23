@@ -62,8 +62,8 @@ class ShipDimensionsChangeStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Map<String, String> {
-        return data
+    override fun processStepData(step: Int, data: Map<String, String>): Int {
+        return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
@@ -96,19 +96,19 @@ class ShipDimensionsChangeStrategy @Inject constructor(
         fields = listOf(
             FormField.TextField(
                 id = "currentLength",
-                labelRes = R.string.owner_full_name, // TODO: Use proper string resource for "Length"
+                labelRes = R.string.owner_full_name_ar +R.string.owner_full_name_en, // TODO: Use proper string resource for "Length"
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "currentWidth",
-                labelRes = R.string.owner_full_name, // TODO: Use proper string resource for "Width"
+                labelRes = R.string.owner_full_name_ar +R.string.owner_full_name_en , // TODO: Use proper string resource for "Width"
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "currentHeight",
-                labelRes = R.string.owner_full_name, // TODO: Use proper string resource for "Height"
+                labelRes = R.string.owner_full_name_ar +R.string.owner_full_name_en, // TODO: Use proper string resource for "Height"
                 isNumeric = true,
                 mandatory = true
             )
@@ -122,19 +122,19 @@ class ShipDimensionsChangeStrategy @Inject constructor(
         fields = listOf(
             FormField.TextField(
                 id = "newLength",
-                labelRes = R.string.owner_full_name, // TODO: Use proper string resource for "New Length"
+                labelRes = R.string.owner_full_name_ar +R.string.owner_full_name_en, // TODO: Use proper string resource for "New Length"
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "newWidth",
-                labelRes = R.string.owner_full_name, // TODO: Use proper string resource for "New Width"
+                labelRes =R.string.owner_full_name_ar +R.string.owner_full_name_en, // TODO: Use proper string resource for "New Width"
                 isNumeric = true,
                 mandatory = true
             ),
             FormField.TextField(
                 id = "newHeight",
-                labelRes = R.string.owner_full_name, // TODO: Use proper string resource for "New Height"
+                labelRes = R.string.owner_full_name_ar +R.string.owner_full_name_en, // TODO: Use proper string resource for "New Height"
                 isNumeric = true,
                 mandatory = true
             )

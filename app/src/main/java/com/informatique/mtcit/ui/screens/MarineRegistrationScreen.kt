@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
 import com.informatique.mtcit.util.UriPermissionManager
 
@@ -68,12 +69,31 @@ fun MarineRegistrationScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
     val fileNavigationEvent by viewModel.fileNavigationEvent.collectAsStateWithLifecycle()
+    val navigationToComplianceDetail by viewModel.navigationToComplianceDetail.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
 
     // Initialize transaction type on first composition
     LaunchedEffect(transactionType) {
         viewModel.initializeTransaction(transactionType)
+    }
+
+    // NEW: Handle navigation to RequestDetailScreen for compliance issues
+    LaunchedEffect(navigationToComplianceDetail) {
+        navigationToComplianceDetail?.let { action ->
+            // Build marine unit data string with all details and compliance issues
+            val marineData = buildComplianceDetailData(action)
+
+            // Navigate to RequestDetailScreen
+            navController.navigate(
+                NavRoutes.RequestDetailRoute.createRoute(
+                    RequestDetail.CheckShipCondition(marineData)
+                )
+            )
+
+            // Clear navigation state
+            viewModel.clearComplianceDetailNavigation()
+        }
     }
 
     // State for file operations
@@ -168,8 +188,31 @@ fun MarineRegistrationScreen(
     LaunchedEffect(submissionState) {
         when (submissionState) {
             is UIState.Success -> {
-                navController.navigate(NavRoutes.PaymentDetailsRoute.route)
-                viewModel.resetSubmissionState()
+//                navController.navigate(NavRoutes.PaymentDetailsRoute.route)
+//                viewModel.resetSubmissionState()
+                val shipData = mapOf(
+                    "نوع الوحدة البحرية" to "سفينة صيد",
+                    "رقم IMO" to "9990001",
+                    "رمز النداء" to "A9BC2",
+                    "رقم الهوية البحرية" to "470123456",
+                    "ميناء التسجيل" to "صحار",
+                    "النشاط البحري" to "صيد",
+                    "سنة صنع السفينة" to "2018",
+                    "نوع الإثبات" to "شهادة بناء",
+                    "حوض البناء" to "Hyundai Shipyard",
+                    "تاريخ بدء البناء" to "2014-03-01",
+                    "تاريخ انتهاء البناء" to "2015-01-15",
+                    "تاريخ أول تسجيل" to "2015-02-01",
+                    "بلد البناء" to "سلطنة عمان"
+                )
+                navController.navigate(NavRoutes.RequestDetailRoute.createRoute(
+                    RequestDetail.AcceptedAndPayment(
+                        transactionTitle = "إصدار تصريح ملاحة للسفن و الوحدات البحرية",
+                        title = "قبول الطلب و إتمام الدفع",
+                        referenceNumber = "007 24 7865498",
+                        dataSubmitted = shipData
+                    )
+                ))
             }
 
             is UIState.Failure -> {
@@ -207,7 +250,8 @@ fun MarineRegistrationScreen(
         goToStep = viewModel::goToStep,
         previousStep = viewModel::previousStep,
         nextStep = viewModel::nextStep,
-        submitForm = viewModel::submitForm
+        submitForm = viewModel::submitForm,
+        viewModel = viewModel
     )
 }
 
@@ -220,6 +264,8 @@ private fun getMarineRegistrationTitle(transactionType: TransactionType): String
         TransactionType.CANCEL_PERMANENT_REGISTRATION -> localizedApp(R.string.transaction_cancel_permanent_registration)
         TransactionType.MORTGAGE_CERTIFICATE -> localizedApp(R.string.transaction_mortgage_certificate)
         TransactionType.RELEASE_MORTGAGE -> localizedApp(R.string.transaction_release_mortgage)
+        TransactionType.ISSUE_NAVIGATION_PERMIT -> localizedApp(R.string.transaction_issue_navigation_permit)
+        TransactionType.RENEW_NAVIGATION_PERMIT -> localizedApp(R.string.transaction_renew_navigation_permit)
         else -> "Unknown Transaction"
     }
 }
@@ -236,5 +282,72 @@ private fun getFileNameFromUri(context: android.content.Context, uri: android.ne
         }
     } catch (e: Exception) {
         uri.lastPathSegment
+    }
+}
+
+/**
+ * NEW: Build compliance detail data string from ShowComplianceDetailScreen action
+ * This creates a formatted string with marine unit data and compliance issues
+ */
+private fun buildComplianceDetailData(action: com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen): String {
+    val unit = action.marineUnit
+    val issues = action.complianceIssues
+
+    return buildString {
+        appendLine("📋 بيانات الوحدة البحرية")
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine()
+
+        // Basic Info
+        appendLine("🚢 الاسم: ${unit.name}")
+        appendLine("🔢 رقم الهوية البحرية: ${unit.maritimeId}")
+        appendLine("📍 نوع الوحدة: ${unit.type}")
+        appendLine("⚓ ميناء التسجيل: ${unit.registrationPort}")
+        appendLine("🎯 النشاط البحري: ${unit.activity}")
+        appendLine()
+
+        // Dimensions
+        if (unit.totalLength.isNotEmpty()) {
+            appendLine("📏 الأبعاد:")
+            appendLine("   • الطول الكلي: ${unit.totalLength}")
+            if (unit.totalWidth.isNotEmpty()) appendLine("   • العرض الكلي: ${unit.totalWidth}")
+            if (unit.draft.isNotEmpty()) appendLine("   • الغاطس: ${unit.draft}")
+            appendLine()
+        }
+
+        // Compliance Issues Section
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine("⚠️ سجل الالتزام - المشاكل المكتشفة")
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine()
+
+        if (issues.isEmpty()) {
+            appendLine("✅ لا توجد مشاكل")
+        } else {
+            issues.forEachIndexed { index, issue ->
+                val icon = when (issue.severity) {
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING -> "🚫"
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING -> "⚠️"
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.INFO -> "ℹ️"
+                }
+
+                appendLine("$icon ${issue.category}")
+                appendLine("   العنوان: ${issue.title}")
+                appendLine("   التفاصيل: ${issue.description}")
+
+                if (issue.details.isNotEmpty()) {
+                    issue.details.forEach { (key, value) ->
+                        appendLine("   • $key: $value")
+                    }
+                }
+
+                if (index < issues.size - 1) appendLine()
+            }
+        }
+
+        appendLine()
+        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine("📌 سبب الرفض:")
+        appendLine(action.rejectionReason)
     }
 }
