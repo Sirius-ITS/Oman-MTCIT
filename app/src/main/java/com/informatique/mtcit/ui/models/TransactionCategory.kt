@@ -1348,7 +1348,83 @@ fun getMainCategories(): List<MainCategory> {
                             titleRes = R.string.transaction_cancel_permanent_registration,
                             descriptionRes = R.string.transaction_cancel_permanent_registration_desc,
                             route = NavRoutes.CancelRegistrationRoute.route,
-                            routeInfo = "route-4"
+                            routeInfo = "route-4",
+                            fees = "20 ريال",
+                            requirements = Requirement(
+                                id = "temporary_registration_certificate_id",
+                                serviceSummaryList = listOf(
+                                    ServiceSummary(
+                                        type = "fee",
+                                        value = "20 ريال",
+                                        label = "الرسوم",
+                                        icon = Icons.Default.Timer,
+                                    ),
+                                    ServiceSummary(
+                                        type = "duration",
+                                        value = "5-1 أيام",
+                                        label = "المدة الزمنية",
+                                        icon = Icons.Default.Timer,
+                                    )
+                                ),
+                                serviceInfoList = listOf(
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المتطلبات",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 2,
+                                        title = "المتطلبات 2",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "نسخة من بطاقة الهوية2",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "صورة للسفينة (جديدة وواضحة)2",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إيصال دفع الرسوم2",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            duration = "3-1 أيام",
+                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام")
                         ),
                         Transaction(
                             id = "mortgage_certificate",
