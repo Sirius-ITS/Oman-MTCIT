@@ -420,4 +420,30 @@ class RequestInspectionStrategy @Inject constructor(
             ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
         }
     }
+
+    /**
+     * NEW: Validate a NEW marine unit that doesn't exist in the database yet
+     * This is used when user is adding a new marine unit during registration
+     */
+    suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
+        return try {
+            println("🔍 TemporaryRegistrationStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
+
+            // Use TemporaryRegistrationRules to validate the new unit
+            val validationResult = temporaryRegistrationRules.validateUnit(newUnit, userId)
+            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
+
+            println("✅ Validation result: ${validationResult::class.simpleName}")
+            println("✅ Navigation action: ${navigationAction::class.simpleName}")
+
+            ValidationResult.Success(
+                validationResult = validationResult,
+                navigationAction = navigationAction
+            )
+        } catch (e: Exception) {
+            println("❌ Validation error: ${e.message}")
+            e.printStackTrace()
+            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+        }
+    }
 }

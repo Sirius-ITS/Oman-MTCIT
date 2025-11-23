@@ -23,8 +23,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
-import kotlinx.serialization.encodeToString
+import com.informatique.mtcit.business.validation.rules.DocumentValidationRules
 import kotlinx.serialization.json.Json
+import com.informatique.mtcit.ui.components.EngineData as UIEngineData
+import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
 
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -622,32 +624,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             // Use TemporaryRegistrationRules to validate
             val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
-            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
-
-            println("✅ Validation result: ${validationResult::class.simpleName}")
-            println("✅ Navigation action: ${navigationAction::class.simpleName}")
-
-            ValidationResult.Success(
-                validationResult = validationResult,
-                navigationAction = navigationAction
-            )
-        } catch (e: Exception) {
-            println("❌ Validation error: ${e.message}")
-            e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
-        }
-    }
-
-    /**
-     * NEW: Validate a NEW marine unit that doesn't exist in the database yet
-     * This is used when user is adding a new marine unit during registration
-     */
-    suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
-        return try {
-            println("🔍 TemporaryRegistrationStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
-
-            // Use TemporaryRegistrationRules to validate the new unit
-            val validationResult = temporaryRegistrationRules.validateUnit(newUnit, userId)
             val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
 
             println("✅ Validation result: ${validationResult::class.simpleName}")

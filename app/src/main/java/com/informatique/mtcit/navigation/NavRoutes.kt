@@ -43,7 +43,7 @@ sealed class NavRoutes(val route: String) {
     data object ShipRegistrationRoute : NavRoutes("7") {
         const val REQUEST_ID_ARG = "requestId"
         fun createRouteWithResume(requestId: String): String {
-            return "ship_registration_form?requestId=$requestId"
+            return "7?requestId=$requestId"
         }
     }
 

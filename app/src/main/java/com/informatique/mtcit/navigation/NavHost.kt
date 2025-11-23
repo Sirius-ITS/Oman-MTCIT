@@ -198,7 +198,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                         18 -> "CAPTAIN_NAME_CHANGE"
                         19 -> "SHIP_ACTIVITY_CHANGE"
                         20 -> "SHIP_PORT_CHANGE"
-                        21 -> "SHIP_OWNERSHIP_CHANGE"
+                        21 -> "REQUEST_INSPECTION"
                         else -> "TEMPORARY_REGISTRATION_CERTIFICATE"
                     }
 
