@@ -5,15 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import android.widget.Toast
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -44,7 +37,6 @@ import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
-import com.informatique.mtcit.ui.viewmodels.TransactionListViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.serialization.json.Json
 import java.net.URLDecoder
@@ -143,7 +135,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         composable(
             route = NavRoutes.MainCategoriesRouteWithoutID.route)
         { backStackEntry ->
-            MainCategoriesScreen(navController, sharedUserViewModel)
+            MainCategoriesScreen(navController, "")
         }
         composable(
             route = NavRoutes.ProfileScreenRoute.route)
@@ -168,7 +160,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             val transaction = Json.decodeFromString<Transaction>(data)
 
             TransactionRequirementsScreen(
-                onStart = { navController.navigate(NavRoutes.ShipRegistrationRoute.route) },
+                onStart = { navController.navigate(transaction.id.toString()) },
                 onBack = { navController.popBackStack() },
                 // parentTitleRes = parentTitleRes,
                 transaction = transaction,

@@ -33,21 +33,21 @@ sealed class NavRoutes(val route: String) {
                 = "transaction_requirements/${Uri.encode(Json.encodeToString(transaction))}"
     }
 
-    data object ShipRegistrationRoute : NavRoutes("ship_registration_form")
+    data object ShipRegistrationRoute : NavRoutes("7"/*"ship_registration_form"*/)
 
-    data object PermanentRegistrationRoute : NavRoutes("permanent_registration_form")
+    data object PermanentRegistrationRoute : NavRoutes("8"/*"permanent_registration_form"*/)
 
     data object SuspendRegistrationRoute : NavRoutes("suspend_registration_form")
 
     data object CancelRegistrationRoute : NavRoutes("cancel_registration_form")
 
-    data object MortgageCertificateRoute : NavRoutes("mortgage_certificate_form")
+    data object MortgageCertificateRoute : NavRoutes("12"/*"mortgage_certificate_form"*/)
 
-    data object ReleaseMortgageRoute : NavRoutes("release_mortgage_form")
+    data object ReleaseMortgageRoute : NavRoutes("13"/*"release_mortgage_form"*/)
 
-    data object IssueNavigationPermitRoute : NavRoutes("issue_navigation_permit_form")
+    data object IssueNavigationPermitRoute : NavRoutes("4"/*"issue_navigation_permit_form"*/)
 
-    data object RenewNavigationPermitRoute : NavRoutes("renew_navigation_permit_form")
+    data object RenewNavigationPermitRoute : NavRoutes("5"/*"renew_navigation_permit_form"*/)
 
     data object SuspendNavigationPermitRoute : NavRoutes("suspend_navigation_permit_form")
 

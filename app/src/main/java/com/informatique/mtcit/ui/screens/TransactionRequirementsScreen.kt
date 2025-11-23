@@ -184,11 +184,7 @@ fun TransactionRequirementsScreen(
                     .padding(bottom = 26.dp)
             ) {
                 Button(
-                    onClick = {
-                        if (transaction.id == 4){
-                            navController.navigate(NavRoutes.IssueNavigationPermitRoute.route)
-                        }
-                    },
+                    onClick = onStart,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
