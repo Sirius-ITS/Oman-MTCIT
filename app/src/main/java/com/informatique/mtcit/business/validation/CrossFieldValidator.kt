@@ -62,6 +62,7 @@ package com.informatique.mtcit.business.validation
 import com.informatique.mtcit.business.validation.rules.ValidationResult
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.FormField
+import java.text.Normalizer
 import javax.inject.Inject
 
 class CrossFieldValidator @Inject constructor() {
@@ -170,6 +171,9 @@ class CrossFieldValidator @Inject constructor() {
             is FormField.SelectableList<*> -> field.copy(error = error)
             is FormField.MarineUnitSelector -> field.copy(error = error)
             is FormField.RadioGroup -> field.copy(error = error)
+            is FormField.InfoCard -> field.copy(error = error)
+            is FormField.PhoneNumberField -> field.copy(error = error)
+            is FormField.OTPField -> field.copy(error = error)
         }
     }
 }

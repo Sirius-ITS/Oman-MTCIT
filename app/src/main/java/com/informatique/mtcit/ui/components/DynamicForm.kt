@@ -320,6 +320,44 @@ fun DynamicStepForm(
                                 }
                             )
                         }
+                        is FormField.InfoCard -> {
+                            InfoCardComponent(
+                                items = field.items,
+                                showCheckmarks = field.showCheckmarks
+                            )
+                        }
+                        is FormField.PhoneNumberField -> {
+                            // Get current country code from formData or use default
+                            val currentCountryCode = formData["${field.id}_countryCode"] ?: field.selectedCountryCode
+
+                            PhoneNumberComponent(
+                                value = field.value,
+                                onValueChange = { onFieldChange(field.id, it, null) },
+                                label = field.label,
+                                countryCodes = field.countryCodes,
+                                selectedCountryCode = currentCountryCode,
+                                onCountryCodeChange = { newCode ->
+                                    onFieldChange("${field.id}_countryCode", newCode, null)
+                                },
+                                placeholder = field.placeholder,
+                                error = field.error,
+                                mandatory = field.mandatory
+                            )
+                        }
+                        is FormField.OTPField -> {
+                            OTPComponent(
+                                value = field.value,
+                                onValueChange = { onFieldChange(field.id, it, null) },
+                                label = field.label,
+                                phoneNumber = field.phoneNumber,
+                                otpLength = field.otpLength,
+                                remainingTime = field.remainingTime,
+                                onResendOTP = {
+                                    // Trigger resend OTP action
+                                    // You can call your API here
+                                },
+                                error = field.error)
+                        }
                     }
                 }
             }

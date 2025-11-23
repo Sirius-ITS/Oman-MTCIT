@@ -674,6 +674,263 @@ fun getMainCategories(): List<MainCategory> {
                     )
                 ),
                 SubCategory(
+                    id = "marine_unit_request_for_inspection",
+                    titleRes = R.string.subcategory_marine_unit_request_for_inspection,
+                    parentCategoryId = "registration_department",
+                    transactions = listOf(
+                        Transaction(
+                            id = "request_for_inspection",
+                            titleRes = R.string.request_for_inspection_title,
+                            descriptionRes = R.string.request_for_inspection_des,
+                            route = NavRoutes.RequestForInspection.route,
+                            routeInfo = "route-3",
+                            fees = "50 ر.ع",
+                            requirements = Requirement(
+                                id = "temporary_registration_certificate_id",
+                                serviceSummaryList = listOf(
+                                    ServiceSummary(
+                                        type = "fee",
+                                        icon = Icons.Default.MonetizationOn,
+                                        value = "50 ريال",
+                                        label = "رسوم الخدمة",
+                                    ),
+
+                                    ServiceSummary(
+                                        type = "duration",
+                                        icon = Icons.Default.Timer,
+                                        value = "10 دقائق",
+                                        label = "المدة الزمنية",
+                                    )
+                                ),
+                                serviceInfoList = listOf(
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المستندات المطلوبة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "مستندات المعاينة ستتم داخل دورة المعاينة",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 2,
+                                        title = "رسوم الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   25 ر.ع   " ,
+                                                subTitle = null,
+                                                value = "25 ر.ع"
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   30  ر.ع   ",
+                                                subTitle = null,
+                                                value = "30 ر.ع"
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "خطوات طلب الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "إدخال بيانات الوحدة البحرية",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "تسجيل الأبعاد الخاصة بالوحدة",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إدخال الأوزان والحمولات المعتمدة",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "تعبئة بيانات المحركات الخاصة بالوحدة",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "شروط الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "مالك السفينة / الموكل من مالك السفينة",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "ان يكون مواطن عماني مقيم",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            duration = "10 دقائق",
+                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
+                        ),
+                        Transaction(
+                            id = "request_for_inspection",
+                            titleRes = R.string.request_for_inspection_title,
+                            descriptionRes = R.string.request_for_inspection_des,
+                            route = NavRoutes.RequestForInspection.route,
+                            routeInfo = "route-3",
+                            fees = "50 ر.ع",
+                            requirements = Requirement(
+                                id = "temporary_registration_certificate_id",
+                                serviceSummaryList = listOf(
+                                    ServiceSummary(
+                                        type = "fee",
+                                        icon = Icons.Default.MonetizationOn,
+                                        value = "50 ريال",
+                                        label = "رسوم الخدمة",
+                                    ),
+
+                                    ServiceSummary(
+                                        type = "duration",
+                                        icon = Icons.Default.Timer,
+                                        value = "10 دقائق",
+                                        label = "المدة الزمنية",
+                                    )
+                                ),
+                                serviceInfoList = listOf(
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "المستندات المطلوبة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "مستندات المعاينة ستتم داخل دورة المعاينة",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 2,
+                                        title = "رسوم الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   25 ر.ع   " ,
+                                                subTitle = null,
+                                                value = "25 ر.ع"
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   30  ر.ع   ",
+                                                subTitle = null,
+                                                value = "30 ر.ع"
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "خطوات طلب الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "إدخال بيانات الوحدة البحرية",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "تسجيل الأبعاد الخاصة بالوحدة",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "إدخال الأوزان والحمولات المعتمدة",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 3,
+                                                stepNo = 3,
+                                                title = "تعبئة بيانات المحركات الخاصة بالوحدة",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    ),
+                                    ServiceInfo(
+                                        id = 1,
+                                        title = "شروط الخدمة",
+                                        data = listOf(
+                                            ServiceInfoSteps(
+                                                id = 1,
+                                                stepNo = 1,
+                                                title = "مالك السفينة / الموكل من مالك السفينة",
+                                                subTitle = null,
+                                                value = null
+                                            ),
+                                            ServiceInfoSteps(
+                                                id = 2,
+                                                stepNo = 2,
+                                                title = "ان يكون مواطن عماني مقيم",
+                                                subTitle = null,
+                                                value = null
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            duration = "10 دقائق",
+                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
+                        ),
+
+
+                        )),
+
+                SubCategory(
                     id = "navigation_permits",
                     titleRes = R.string.subcategory_navigation_permits,
                     parentCategoryId = "seamen_affairs_department",

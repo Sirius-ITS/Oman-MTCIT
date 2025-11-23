@@ -6,7 +6,14 @@ import kotlinx.serialization.json.Json
 
 sealed class NavRoutes(val route: String) {
     data object HomeRoute : NavRoutes("homepage")
-    data object LoginRoute : NavRoutes("login")
+    data object LoginRoute : NavRoutes("login/{targetTransactionType}/{categoryId}/{subCategoryId}/{transactionId}") {
+        fun createRoute(
+            targetTransactionType: String,
+            categoryId: String,
+            subCategoryId: String,
+            transactionId: String
+        ): String = "login/${Uri.encode(targetTransactionType)}/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}"
+    }
     data object SettingsRoute : NavRoutes("settings_screen")
 
     data object MainCategoriesRoute : NavRoutes("mainCategoriesScreen/{categoryId}"){
@@ -29,6 +36,8 @@ sealed class NavRoutes(val route: String) {
     data object ShipRegistrationRoute : NavRoutes("ship_registration_form")
 
     data object PermanentRegistrationRoute : NavRoutes("permanent_registration_form")
+
+    data object RequestForInspection : NavRoutes("request_for_inspection")
 
     data object SuspendRegistrationRoute : NavRoutes("suspend_registration_form")
 

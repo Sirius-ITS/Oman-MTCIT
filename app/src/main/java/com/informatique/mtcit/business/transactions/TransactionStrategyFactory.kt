@@ -16,6 +16,8 @@ class TransactionStrategyFactory @Inject constructor(
     private val cancelRegistrationStrategy: Provider<CancelRegistrationStrategy>,
     private val mortgageCertificateStrategy: Provider<MortgageCertificateStrategy>,
     private val releaseMortgageStrategy: Provider<ReleaseMortgageStrategy>,
+    // Marine Unit request for inspection
+    private val requestInspectionStrategy: Provider<RequestInspectionStrategy>,
 
     // Ship Data Modifications Category
     private val shipRegistrationStrategy: Provider<ShipRegistrationStrategy>,
@@ -36,6 +38,9 @@ class TransactionStrategyFactory @Inject constructor(
             TransactionType.CANCEL_PERMANENT_REGISTRATION -> cancelRegistrationStrategy.get()
             TransactionType.MORTGAGE_CERTIFICATE -> mortgageCertificateStrategy.get()
             TransactionType.RELEASE_MORTGAGE -> releaseMortgageStrategy.get()
+
+            //
+            TransactionType.REQUEST_FOR_INSPECTION -> requestInspectionStrategy.get()
 
             // Ship Data Modifications transactions
             TransactionType.SHIP_NAME_CHANGE -> shipNameChangeStrategy.get()

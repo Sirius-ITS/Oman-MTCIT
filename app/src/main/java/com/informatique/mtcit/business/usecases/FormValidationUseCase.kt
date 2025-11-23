@@ -87,6 +87,9 @@ class FormValidationUseCase @Inject constructor(
             is FormField.SelectableList<*> -> field.copy(value = value)
             is FormField.MarineUnitSelector -> field.copy(value = value)
             is FormField.RadioGroup -> field.copy(value = value)
+            is FormField.InfoCard -> field.copy(value = value)
+            is FormField.PhoneNumberField -> field.copy(value = value)
+            is FormField.OTPField -> field.copy(value = value)
         }
     }
 

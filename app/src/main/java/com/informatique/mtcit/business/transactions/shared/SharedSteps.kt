@@ -740,6 +740,221 @@ object SharedSteps {
             )
         )
     }
+    /**
+     * Inspection Purpose Step (الغرض من طلب المعاينة)
+     * Allows selection of inspection purpose from available list
+     * Used in inspection request transactions
+     */
+    fun inspectionPurposeStep(
+        inspectionPurposes: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Inspection Purpose Selection (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionPurpose",
+                labelRes = R.string.inspection_purpose_selection,
+                options = inspectionPurposes,
+                mandatory = false,
+                placeholder = R.string.select_inspection_purpose_placeholder.toString()
+            )
+        )
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionPurpose",
+                labelRes = R.string.inspection_purpose_selection,
+                options = inspectionPurposes,
+                mandatory = false,
+                placeholder = R.string.select_inspection_purpose_placeholder.toString()
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.inspection_purpose_title,
+            descriptionRes = R.string.inspection_purpose_description,
+            fields = fields
+        )
+    }
+
+    /**
+     * Inspection Authority Step (جهة المعاينة)
+     * Allows selection of authorized inspection authority
+     * Used in inspection request transactions
+     */
+    fun inspectionAuthorityStep(
+        inspectionAuthorities: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Inspection Authority Selection (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionAuthority",
+                labelRes = R.string.inspection_authority_selection,
+                options = inspectionAuthorities,
+                mandatory = false,
+                placeholder = R.string.select_inspection_authority_placeholder.toString()
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.inspection_authority_title,
+            descriptionRes = R.string.inspection_authority_description,
+            fields = fields
+        )
+    }
+    /**
+     * Transfer Inspection to Classification Society Step (تحويل المعاينة إلى هيئة تصنيف)
+     * Allows transferring inspection to one of the approved classification societies
+     * Used when redirecting inspection request to external classification body
+     */
+    fun transferInspectionToClassificationStep(
+        classificationSocieties: List<String>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Classification Society Selection (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "classificationSociety",
+                labelRes = R.string.classification_society_selection,
+                options = classificationSocieties,
+                mandatory = true,
+                placeholder = R.string.select_classification_society_placeholder.toString()
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.transfer_inspection_title,
+            descriptionRes = R.string.transfer_inspection_description,
+            fields = fields
+        )
+    }
+
+    /**
+     * Login Registration Step (تسجيل الدخول للبوابة)
+     * Used for: Initial authentication/registration before accessing portal services
+     *
+     * Allows user to choose between:
+     * - Mobile phone registration (requires locked phone SIM)
+     * - Civil ID number (requires card reader)
+     */
+    fun loginRegistrationStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // ✅ 1. Benefits Section (InfoCard)
+        fields.add(
+            FormField.InfoCard(
+                id = "loginBenefitsInfo",
+                labelRes = R.string.login_benefits_title, // "ماذا تستفيد من تسجيل الدخول إلى البوابة؟"
+                items = listOf(
+                    R.string.benefit_unified_access,
+                    R.string.benefit_personal_page,
+                    R.string.benefit_easy_transfer,
+                    R.string.benefit_edit_profile,
+                    R.string.benefit_custom_notifications
+                ),
+                showCheckmarks = true,
+                mandatory = false
+            )
+        )
+
+        // ✅ 2. Registration Method Selection (RadioGroup)
+        fields.add(
+            FormField.RadioGroup(
+                id = "registrationMethod",
+                labelRes = R.string.registration_method_selection,
+                options = listOf(
+                    FormField.RadioOption(
+                        value = "mobile_phone",
+                        labelRes = R.string.mobile_phone_option,
+                        descriptionRes = R.string.mobile_phone_description,
+                        isEnabled = true
+                    ),
+                    FormField.RadioOption(
+                        value = "civil_id",
+                        labelRes = R.string.civil_id_option,
+                        descriptionRes = R.string.civil_id_description,
+                        isEnabled = true
+                    )
+                ),
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.login_registration_title, // "تسجيل الدخول"
+            descriptionRes = R.string.login_registration_description,
+            fields = fields
+        )
+    }
+
+    /**
+     * Mobile Phone Verification Step (إضافة رقم هاتفك المفعل)
+     * Used for: Phone number verification via electronic authentication
+     *
+     * Collects mobile phone number with country code selection
+     */
+    fun mobilePhoneVerificationStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.PhoneNumberField(
+                id = "mobilePhoneNumber",
+                labelRes = R.string.mobile_phone_verification_label,
+                countryCodes = listOf(
+                    "+968", // Oman
+                    "+966", // Saudi Arabia
+                    "+971", // UAE
+                    "+974", // Qatar
+                    "+965", // Kuwait
+                    "+973"  // Bahrain
+                ),
+                selectedCountryCode = "+968",
+                placeholder = "أدخل رقم الهاتف",
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.mobile_phone_verification_title,
+            descriptionRes = R.string.mobile_phone_verification_description,
+            fields = fields
+        )
+    }
+    /**
+     * OTP Verification Step (تحقق من رقم هاتفك المحمول)
+     * Used for: Verifying mobile phone number via OTP code
+     *
+     * Shows:
+     * - Phone number entered by user
+     * - OTP input field (6 digits)
+     * - Countdown timer
+     * - Resend OTP option
+     */
+    fun otpVerificationStep(
+        phoneNumber: String = ""
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        fields.add(
+            FormField.OTPField(
+                id = "otpCode",
+                labelRes = R.string.otp_verification_label,
+                phoneNumber = phoneNumber,
+                otpLength = 6,
+                remainingTime = 33,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.otp_verification_title, // "تحقق من رقم هاتفك المحمول"
+            descriptionRes = R.string.otp_verification_description, // "لقد أرسلنا رمزاً مكوّن من 6 أرقام إلى رقم هاتفك المحمول."
+            fields = fields
+        )
+    }
 
 }
 

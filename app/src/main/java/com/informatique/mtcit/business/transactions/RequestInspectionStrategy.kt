@@ -1,5 +1,4 @@
 package com.informatique.mtcit.business.transactions
-
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
@@ -25,7 +24,7 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
 
-class TemporaryRegistrationStrategy @Inject constructor(
+class RequestInspectionStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
@@ -71,9 +70,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
-
-        // ✅ Login steps removed - handled by separate LoginScreen
-        // User must complete login before accessing this transaction
 
         // Step 1: Person Type
         steps.add(SharedSteps.personTypeStep(typeOptions))
@@ -192,15 +188,39 @@ class TemporaryRegistrationStrategy @Inject constructor(
             )
         }
 
+        steps.add(SharedSteps.inspectionPurposeStep(
+            listOf(
+                "New",
+                "Used - Like New",
+                "Used - Good",
+                "Used - Fair",
+                "Used - Poor"
+            )
+        ))
+        steps.add(SharedSteps.inspectionAuthorityStep(
+            listOf(
+                "New",
+                "Used - Like New",
+                "Used - Good",
+                "Used - Fair",
+                "Used - Poor"
+            )
+        ))
+
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
 
-        // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
-        steps.add(
-            SharedSteps.marineUnitNameSelectionStep(
-                showReservationInfo = true
+        steps.add(SharedSteps.transferInspectionToClassificationStep(
+            listOf(
+                "New",
+                "Used - Like New",
+                "Used - Good",
+                "Used - Fair",
+                "Used - Poor"
             )
-        )
+        ))
+
+
 
         println("📋 Total steps count: ${steps.size}")
         return steps
@@ -211,7 +231,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
         val formData = data.mapValues { it.value.toString() }
 
         // ✅ Get validation rules for this step
-        val rules = getValidationRulesForStep(stepData)
+        val rules = getValidationRulesForStep(step, stepData)
 
         // ✅ Use accumulated data for validation (enables cross-step validation)
         return validationUseCase.validateStepWithAccumulatedData(
@@ -225,7 +245,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
     /**
      * Get validation rules based on step content
      */
-    private fun getValidationRulesForStep(stepData: StepData): List<ValidationRule> {
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
         val fieldIds = stepData.fields.map { it.id }
         val rules = mutableListOf<ValidationRule>()
 
@@ -235,7 +255,11 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             // ✅ Marine Unit Weights Step - Always add cross-step rules
             if (fieldIds.contains("grossTonnage")) {
+
+
                 println("🔍 Step contains grossTonnage field")
+
+
                 // ✅ Pass accumulated data to validation rules
                 rules.addAll(MarineUnitValidationRules.getAllWeightRules(accumulatedFormData))
                 println("🔍 Added ${rules.size} marine unit validation rules")

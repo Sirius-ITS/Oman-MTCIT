@@ -57,7 +57,8 @@ fun TransactionFormContent(
     previousStep: () -> Unit,
     nextStep: () -> Unit,
     submitForm: () -> Unit,
-    viewModel: BaseTransactionViewModel
+    viewModel: BaseTransactionViewModel,
+    hideStepperForFirstStep: Boolean = false // New parameter for Login flow
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -185,13 +186,58 @@ fun TransactionFormContent(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            DynamicStepper(
-                steps = uiState.steps.map { localizedApp(it.titleRes) },
-                currentStep = uiState.currentStep,
-                completedSteps = uiState.completedSteps,
-                onStepClick = goToStep,
-                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 10.dp , bottom = 4.dp)
-            )
+            // Show stepper only if not hiding first step, or if we're past the first step
+            // AND ensure we have enough steps to display
+            val shouldShowStepper = if (hideStepperForFirstStep) {
+                // Only show stepper after first step (step > 0) and if we have at least 2 steps total
+                val show = uiState.currentStep > 0 && uiState.steps.size > 1
+                println("🔍 Stepper visibility - currentStep: ${uiState.currentStep}, totalSteps: ${uiState.steps.size}, shouldShow: $show")
+                show
+            } else {
+                // Normal behavior: always show if we have steps
+                uiState.steps.isNotEmpty()
+            }
+
+            if (shouldShowStepper) {
+                val stepsToShow = if (hideStepperForFirstStep) {
+                    // Exclude first step from stepper display
+                    uiState.steps.drop(1).map { localizedApp(it.titleRes) }
+                } else {
+                    uiState.steps.map { localizedApp(it.titleRes) }
+                }
+
+                val currentStepIndex = if (hideStepperForFirstStep) {
+                    // Adjust index: actual step 1→display 0, actual step 2→display 1
+                    // (We already know currentStep > 0 from shouldShowStepper check)
+                    uiState.currentStep - 1
+                } else {
+                    uiState.currentStep
+                }
+
+                val adjustedCompletedSteps = if (hideStepperForFirstStep) {
+                    // Adjust completed steps indices (exclude step 0, shift others down)
+                    uiState.completedSteps.filter { it > 0 }.map { it - 1 }.toSet()
+                } else {
+                    uiState.completedSteps
+                }
+
+                println("🔍 Stepper data - stepsToShow: ${stepsToShow.size}, currentIndex: $currentStepIndex, completed: $adjustedCompletedSteps")
+
+                DynamicStepper(
+                    steps = stepsToShow,
+                    currentStep = currentStepIndex,
+                    completedSteps = adjustedCompletedSteps,
+                    onStepClick = { clickedStep ->
+                        if (hideStepperForFirstStep) {
+                            // Adjust back to actual step index
+                            goToStep(clickedStep + 1)
+                        } else {
+                            goToStep(clickedStep)
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(top = 10.dp, bottom = 4.dp)
+                )
+            }
 
             // Form Content
             val currentStepData = uiState.steps.getOrNull(uiState.currentStep)
@@ -420,6 +466,20 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" },
             error = error
         )
-
+        is FormField.InfoCard -> field.copy(
+            label = localizedLabel,
+            value = value,
+            error = error
+        )
+        is FormField.PhoneNumberField -> field.copy(
+            label = localizedLabel,
+            value = value,
+            error = error
+        )
+        is FormField.OTPField -> field.copy(
+            label = localizedLabel,
+            value = value,
+            error = error
+        )
     }
 }

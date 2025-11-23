@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.informatique.mtcit.business.transactions.MortgageCertificateStrategy
 import com.informatique.mtcit.business.transactions.ReleaseMortgageStrategy
+import com.informatique.mtcit.business.transactions.RequestInspectionStrategy
 import com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy
 import com.informatique.mtcit.business.transactions.ValidationResult
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
@@ -171,7 +172,7 @@ class MarineRegistrationViewModel @Inject constructor(
      * Checks inspection status and ownership
      */
     private suspend fun validateTemporaryRegistrationUnit(
-        strategy: TemporaryRegistrationStrategy,
+        strategy: RequestInspectionStrategy,
         unitId: String,
         userId: String
     ): ValidationResult? {
@@ -312,7 +313,7 @@ class MarineRegistrationViewModel @Inject constructor(
         val transactionType = currentState.transactionType
 
         // Only intercept for Temporary Registration Certificate
-        if (transactionType != TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE) {
+        if (transactionType != TransactionType.REQUEST_FOR_INSPECTION) {
             println("📤 Not Temporary Registration, calling submitForm()")
             submitForm()
             return
@@ -351,7 +352,7 @@ class MarineRegistrationViewModel @Inject constructor(
                 println("🔍 Selected maritime ID: $selectedMaritimeId")
 
                 // Get the strategy
-                val strategy = currentStrategy as? TemporaryRegistrationStrategy
+                val strategy = currentStrategy as? RequestInspectionStrategy
                 if (strategy == null) {
                     println("❌ Strategy not found")
                     submitForm()
@@ -438,7 +439,7 @@ class MarineRegistrationViewModel @Inject constructor(
         }
 
         // For Temporary Registration, validate inspection on review step
-        if (transactionType == TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE) {
+        if (transactionType == TransactionType.REQUEST_FOR_INSPECTION) {
             println("🔍 Review Step: Validating inspection for Temporary Registration")
             validateAndSubmit()
         } else {
@@ -475,6 +476,7 @@ class MarineRegistrationViewModel @Inject constructor(
         return when (type) {
             TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
             TransactionType.PERMANENT_REGISTRATION_CERTIFICATE,
+            TransactionType.REQUEST_FOR_INSPECTION,
             TransactionType.SUSPEND_PERMANENT_REGISTRATION,
             TransactionType.CANCEL_PERMANENT_REGISTRATION,
             TransactionType.MORTGAGE_CERTIFICATE,

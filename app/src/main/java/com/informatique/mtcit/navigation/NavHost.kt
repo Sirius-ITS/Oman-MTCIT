@@ -65,8 +65,28 @@ fun NavHost(themeViewModel: ThemeViewModel){
             HomePageScreen(navController = navController)
         }
 
-        composable(NavRoutes.LoginRoute.route) {
-            LoginScreen(navController, sharedUserViewModel)
+        // ✅ Login Screen - handles authentication before accessing transactions
+        composable(
+            route = NavRoutes.LoginRoute.route,
+            arguments = listOf(
+                navArgument("targetTransactionType") { type = NavType.StringType },
+                navArgument("categoryId") { type = NavType.StringType },
+                navArgument("subCategoryId") { type = NavType.StringType },
+                navArgument("transactionId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val targetTransactionType = backStackEntry.arguments?.getString("targetTransactionType") ?: ""
+            val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
+            val subCategoryId = backStackEntry.arguments?.getString("subCategoryId") ?: ""
+            val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+
+            LoginScreen(
+                navController = navController,
+                targetTransactionType = targetTransactionType,
+                categoryId = categoryId,
+                subCategoryId = subCategoryId,
+                transactionId = transactionId
+            )
         }
 
         // ⚙️ شاشة الإعدادات (اختيار الثيم)
@@ -136,7 +156,21 @@ fun NavHost(themeViewModel: ThemeViewModel){
                 TransactionRequirementsScreen(
                     transaction = transaction,
                     onStart = {
-                        navController.navigate(transaction.route) },
+                        // ✅ Navigate to LoginScreen first, which will redirect to transaction after login
+                        // Extract transaction type from route name
+                        val transactionTypeName = transaction.route.uppercase()
+                            .replace("_ROUTE", "")
+                            .replace("_FORM", "")
+
+                        navController.navigate(
+                            NavRoutes.LoginRoute.createRoute(
+                                targetTransactionType = transactionTypeName,
+                                categoryId = categoryId,
+                                subCategoryId = subCategoryId,
+                                transactionId = transactionId
+                            )
+                        )
+                    },
                     onBack = { navController.popBackStack() },
                     parentTitleRes = parentTitleRes,
                     navController = navController,
@@ -159,6 +193,12 @@ fun NavHost(themeViewModel: ThemeViewModel){
             )
         }
 
+        composable(NavRoutes.RequestForInspection.route) {
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.REQUEST_FOR_INSPECTION
+            )
+        }
         composable(NavRoutes.PermanentRegistrationRoute.route) {
             MarineRegistrationScreen(
                 navController = navController,

@@ -11,6 +11,8 @@ enum class TransactionType {
     CANCEL_PERMANENT_REGISTRATION,
     MORTGAGE_CERTIFICATE,
     RELEASE_MORTGAGE,
+    REQUEST_FOR_INSPECTION,
+
 
     // Ship Data Modifications Category
     SHIP_NAME_CHANGE,
