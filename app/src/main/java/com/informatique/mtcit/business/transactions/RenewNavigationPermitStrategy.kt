@@ -2,15 +2,18 @@ package com.informatique.mtcit.business.transactions
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
+import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.navigation.NavigationManager
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
+import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
@@ -19,38 +22,32 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
 /**
- * Strategy for Cancel Permanent Registration (Deletion/Removal)
- * DEMONSTRATION: Highly simplified - minimal fields, just cancellation info
- * Shows extreme case of field removal for streamlined process
+ * Strategy for Temporary Registration Certificate
+ * Full baseline implementation with all steps
  */
-class CancelRegistrationStrategy @Inject constructor(
+class RenewNavigationPermitStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val navigationManager: NavigationManager
 ) : TransactionStrategy {
-
-    private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
-    private var shipTypeOptions: List<String> = emptyList()
-    private var commercialOptions: List<SelectableItem> = emptyList()
-    private var typeOptions: List<PersonType> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
 
-    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
-        // Load all dropdown options from API
-        val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
+    private var commercialOptions: List<SelectableItem> = emptyList()
+
+    private var typeOptions: List<PersonType> = emptyList()
+
+    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
-        // Cache the options for use in getSteps()
-        portOptions = ports
         countryOptions = countries
-        shipTypeOptions = shipTypes
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
+
         marineUnits = listOf(
             MarineUnit(
                 id = "1",
@@ -63,6 +60,7 @@ class CancelRegistrationStrategy @Inject constructor(
                 activity = "صيد",
                 isOwned = false
             ),
+
             MarineUnit(
                 id = "3",
                 name = "النجم الساطع",
@@ -111,101 +109,44 @@ class CancelRegistrationStrategy @Inject constructor(
 
         return mapOf(
             "marineUnits" to marineUnits.map { it.maritimeId },
-            "registrationPort" to ports,
-            "ownerNationality" to countries,
-            "ownerCountry" to countries,
             "registrationCountry" to countries,
-            "unitType" to shipTypes
+            "commercialRegistration" to commercialRegistrations,
+            "personType" to personTypes
         )
     }
 
     override fun getSteps(): List<StepData> {
         return listOf(
+            // User type
+            SharedSteps.personTypeStep(options = typeOptions),
 
-            // Step 1: No3 El Mosta5dem
-            SharedSteps.personTypeStep(typeOptions),
-
-            // Step 2: E5tar el Sigil el togary
             SharedSteps.commercialRegistrationStep(commercialOptions),
 
-            // Step 3: El sofon el mamloka
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
                 allowMultipleSelection = false, // اختيار وحدة واحدة فقط
-                showOwnedUnitsWarning = true),
+                showOwnedUnitsWarning = true
+            ),
 
-            // Step ..
-            /*StepData(
-                titleRes = R.string.registration_to_cancel,
-                descriptionRes = R.string.registration_to_cancel_desc,
-                fields = listOf(
-                    FormField.TextField(
-                        id = "registrationNumber",
-                        labelRes = R.string.registration_number,
+            SharedSteps.sailorInfoStep(
+                jobs = listOf("Captain", "Chief Engineer", "Boatswain", "Electro-Technical Officer", "Navigator", "Chief Medical Officer")
+            ),
+
+            SharedSteps.documentsStep(
+                requiredDocuments = listOf(
+                    DocumentConfig(
+                        id = "shipbuildingCertificate",
+                        labelRes = R.string.shipbuilding_certificate_or_sale_contract,
                         mandatory = true
                     ),
-                    FormField.TextField(
-                        id = "vesselName",
-                        labelRes = R.string.vessel_name,
-                        mandatory = true
-                    ),
-                    FormField.DropDown(
-                        id = "registrationPort",
-                        labelRes = R.string.registration_port,
-                        mandatory = true,
-                        options = portOptions
-                    )
-                )
-            ),*/
-
-            // Step 4: Sabab w el mostanadat el da3ema
-            StepData(
-                titleRes = R.string.cancellation_reason,
-                descriptionRes = R.string.cancellation_reason_desc,
-                fields = listOf(
-                    FormField.DropDown(
-                        id = "cancellationReason",
-                        labelRes = R.string.reason_for_cancellation,
-                        mandatory = true,
-                        options = listOf(
-                            "بيع السفينة",
-                            "تفكيك السفينة",
-                            "فقدان السفينة",
-                            "نقل التسجيل لدولة أخرى",
-                            "غرق السفينة",
-                            "أخرى"
-                        )
-                    ),
-                    FormField.FileUpload(
-                        id = "reasonProofDocument",
-                        labelRes = R.string.reason_proof_document,
+                    DocumentConfig(
+                        id = "inspectionDocuments",
+                        labelRes = R.string.inspection_documents,
                         mandatory = true
                     )
                 )
             ),
 
-            // Step ..
-            /*SharedSteps.documentsStep(
-                requiredDocuments = listOf(
-                    DocumentConfig(
-                        id = "registrationCertificate",
-                        labelRes = R.string.original_registration_certificate,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "ownerIdDocument",
-                        labelRes = R.string.identity_document,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "cancellationProof",
-                        labelRes = R.string.cancellation_proof,
-                        mandatory = true
-                    )
-                )
-            ),*/
-
-            // Step 5: Review
             SharedSteps.reviewStep()
         )
     }
@@ -217,6 +158,38 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Int {
+        if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
+            return 2
+        } else if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){
+            /*val shipData = mapOf(
+                "نوع الوحدة البحرية" to "سفينة صيد",
+                "رقم IMO" to "9990001",
+                "رمز النداء" to "A9BC2",
+                "رقم الهوية البحرية" to "470123456",
+                "ميناء التسجيل" to "صحار",
+                "النشاط البحري" to "صيد",
+                "سنة صنع السفينة" to "2018",
+                "نوع الإثبات" to "شهادة بناء",
+                "حوض البناء" to "Hyundai Shipyard",
+                "تاريخ بدء البناء" to "2014-03-01",
+                "تاريخ انتهاء البناء" to "2015-01-15",
+                "تاريخ أول تسجيل" to "2015-02-01",
+                "بلد البناء" to "سلطنة عمان"
+            )*/
+            navigationManager.navigate(NavRoutes.RequestDetailRoute.createRoute(
+                CheckShipCondition(
+//                    transactionTitle = "تجديد تصريح ملاحة للسفن و الوحدات البحرية",
+//                    title = "تم رفض الطلب",
+//                    referenceNumber = "007 24 7865498",
+//                    description = "تم رفض طلبكم، ولمزيد من التفاصيل يرجى الاطّلاع على القسم أدناه",
+//                    refuseReason = "تم رفض طلبكم بسبب وجود في  شطب على السفن مما تمنع استكمال المعاملة وفق الإجراءات القانونية المعتمدة",
+//                    shipData = shipData
+                    shipData = ""
+                )
+            ))
+            return -1
+        }
+
         return step
     }
 
@@ -225,18 +198,10 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
-        // Handle owner type change
         if (fieldId == "owner_type") {
             val mutableFormData = formData.toMutableMap()
             when (value) {
                 "فرد" -> {
-                    mutableFormData.remove("companyName")
-                    mutableFormData.remove("companyRegistrationNumber")
-                }
-                "شركة" -> {
-                    // Company fields will be shown and are required
-                }
-                "شراكة" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
@@ -259,18 +224,13 @@ class CancelRegistrationStrategy @Inject constructor(
         }
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error(
-                "companyRegistrationNumber",
-                "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام"
-            )
+            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
         }
 
         return try {
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
-                .catch { throwable ->
-                    throw Exception("حدث خطأ أثناء البحث عن الشركة: ${throwable.message}")
-                }
+                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
                 .first()
 
             when (result) {
@@ -287,16 +247,12 @@ class CancelRegistrationStrategy @Inject constructor(
                         FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
                     }
                 }
-                is BusinessState.Error -> {
-                    FieldFocusResult.Error("companyRegistrationNumber", result.message)
-                }
-                is BusinessState.Loading -> {
-                    FieldFocusResult.NoAction
-                }
+                is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
+                is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
         }
     }
-
 }
+

@@ -16,13 +16,20 @@ class TransactionStrategyFactory @Inject constructor(
     private val cancelRegistrationStrategy: Provider<CancelRegistrationStrategy>,
     private val mortgageCertificateStrategy: Provider<MortgageCertificateStrategy>,
     private val releaseMortgageStrategy: Provider<ReleaseMortgageStrategy>,
+    // Marine Unit request for inspection
+    private val requestInspectionStrategy: Provider<RequestInspectionStrategy>,
 
     // Ship Data Modifications Category
     private val shipRegistrationStrategy: Provider<ShipRegistrationStrategy>,
     private val shipNameChangeStrategy: Provider<ShipNameChangeStrategy>,
     private val captainNameChangeStrategy: Provider<CaptainNameChangeStrategy>,
-    private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>
-) {
+    private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>,
+
+    // Navigation permits
+    private val issueNavigationPermitStrategy: Provider<IssueNavigationPermitStrategy>,
+    private val renewNavigationPermitStrategy: Provider<RenewNavigationPermitStrategy>,
+
+    ) {
 
     /**
      * Create a strategy instance for the given transaction type
@@ -37,6 +44,9 @@ class TransactionStrategyFactory @Inject constructor(
             TransactionType.MORTGAGE_CERTIFICATE -> mortgageCertificateStrategy.get()
             TransactionType.RELEASE_MORTGAGE -> releaseMortgageStrategy.get()
 
+            //
+            TransactionType.REQUEST_FOR_INSPECTION -> requestInspectionStrategy.get()
+
             // Ship Data Modifications transactions
             TransactionType.SHIP_NAME_CHANGE -> shipNameChangeStrategy.get()
             TransactionType.CAPTAIN_NAME_CHANGE -> captainNameChangeStrategy.get()
@@ -45,6 +55,10 @@ class TransactionStrategyFactory @Inject constructor(
             TransactionType.SHIP_ENGINE_CHANGE -> captainNameChangeStrategy.get()
             TransactionType.SHIP_PORT_CHANGE -> captainNameChangeStrategy.get()
             TransactionType.SHIP_OWNERSHIP_CHANGE -> captainNameChangeStrategy.get()
+
+            // Navigation permits
+            TransactionType.ISSUE_NAVIGATION_PERMIT -> issueNavigationPermitStrategy.get()
+            TransactionType.RENEW_NAVIGATION_PERMIT -> renewNavigationPermitStrategy.get()
 
         }
     }

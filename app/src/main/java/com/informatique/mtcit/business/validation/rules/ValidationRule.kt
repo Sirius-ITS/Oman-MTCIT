@@ -27,18 +27,10 @@ sealed class ValidationRule {
         override fun validate(fields: List<FormField>): ValidationResult {
             return ValidationResult.Valid
         }
-
         fun validateWithAccumulatedData(accumulatedData: Map<String, String>): ValidationResult {
-            println("🔍 CrossStepValidation.validateWithAccumulatedData")
-            println("🔍 Trigger field: $triggerFieldId, Required field: $requiredFieldId")
-            println("🔍 Accumulated data: $accumulatedData")
 
             val triggerValue = accumulatedData[triggerFieldId]
             val requiredValue = accumulatedData[requiredFieldId]
-
-            println("🔍 Trigger value: $triggerValue")
-            println("🔍 Required value: $requiredValue")
-            println("🔍 Trigger condition result: ${triggerCondition(triggerValue)}")
 
             if (triggerCondition(triggerValue)) {
                 println("🔍 Condition met! Checking required field...")

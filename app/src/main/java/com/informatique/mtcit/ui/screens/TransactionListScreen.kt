@@ -159,9 +159,9 @@ fun TransactionListScreen(
                                 onClick = {
                                     // pass parent subCategory titleRes to the requirements screen so that its TopAppBar can show it
                                     val parentTitleRes = subCategory?.titleRes?.toString() ?: ""
-                                    navController.navigate(
-                                        NavRoutes.TransactionRequirementRoute.createRoute(categoryId, subCategoryId, transaction.id, parentTitleRes)
-                                    )
+//                                    navController.navigate(
+//                                        NavRoutes.TransactionRequirementRoute.createRoute(categoryId, subCategoryId, transaction.id, parentTitleRes)
+//                                    )
                                 },
                                 mainCategoryName = mainCategory?.let { localizedApp(it.titleRes) } ?: "",
                                 mainCategoryIconRes = mainCategory?.iconRes

@@ -109,6 +109,44 @@ class FormValidator @Inject constructor(
                 }
                 field.copy(error = error)
             }
+            is FormField.InfoCard -> {
+                val error = when {
+                    field.value.isBlank() -> {
+                        if (field.mandatory) "${field.label} is required" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
+            is FormField.PhoneNumberField -> {
+                val error = when {
+                    field.value.isBlank() -> {
+                        if (field.mandatory) "${field.label} is required" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
+            is FormField.OTPField -> {
+                val error = when {
+                    field.value.isBlank() -> {
+                        if (field.mandatory) "${field.label} is required" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
+
+
+            is FormField.SailorList -> {
+                val error = when {
+                    field.value == "[]" || field.value.isBlank() -> {
+                        if (field.mandatory) "At least one sailor must be added" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
         }
     }
     /**

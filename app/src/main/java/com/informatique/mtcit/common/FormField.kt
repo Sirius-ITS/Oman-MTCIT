@@ -202,6 +202,23 @@ sealed class FormField(
             copy(error = newError)
     }
 
+    data class SailorList(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "[]",
+        val jobs: List<String> = emptyList(),
+        val placeholder: String? = null,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
     data class RadioGroup(
         override val id: String,
         override val labelRes: Int,
@@ -217,6 +234,66 @@ sealed class FormField(
 
         override fun copyWithValue(newValue: String) =
             copy(value = newValue, selectedValue = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
+    data class InfoCard(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        val items: List<Int> = emptyList(), // List of string resource IDs
+        val iconRes: Int? = null, // Optional icon for each item
+        val showCheckmarks: Boolean = true, // Show ✓ before each item
+        override val value: String = "",
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+    data class PhoneNumberField(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "",
+        val countryCodes: List<String> = listOf("+968", "+966", "+971", "+974", "+965", "+973"), // Available country codes
+        val selectedCountryCode: String = "+968", // Default selected
+        val placeholder: String? = null,
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+
+        // Helper to update country code
+        fun copyWithCountryCode(newCode: String) =
+            copy(selectedCountryCode = newCode)
+    }
+    data class OTPField(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "",
+        val phoneNumber: String = "", // Display the phone number user entered
+        val otpLength: Int = 6, // Number of OTP digits
+        val resendEnabled: Boolean = false, // Can resend OTP?
+        val remainingTime: Int = 33, // Countdown timer in seconds
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
 
         override fun copyWithError(newError: String?) =
             copy(error = newError)

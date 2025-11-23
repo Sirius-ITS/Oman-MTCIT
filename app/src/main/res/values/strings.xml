@@ -86,6 +86,7 @@
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">Issuance of a temporary registration certificate for a vessel or marine unit</string>
     <string name="ship_info">Ship Information</string>
     <string name="owner_info">Owner Information</string>
+    <string name="sailor_info">Sailor Information</string>
     <string name="documents">Documents</string>
     <string name="technical_details">Technical Details</string>
     <string name="insurance">Insurance</string>
@@ -137,6 +138,7 @@
     <string name="oman">Oman</string>
     <string name="next_button">Next</string>
     <string name="back_button">Back</string>
+    <string name="process_to_payment_button">Proceed to payment</string>
     <string name="submit_button">Submit</string>
     <string name="accept_and_send">Accept &amp; Send</string>
     <string name="declaration_acceptance_text">I declare that all the information provided is true and accurate, and I accept full responsibility for the data submitted.</string>
@@ -378,6 +380,7 @@
     <string name="transaction_mortgage_certificate_desc">Issue a mortgage certificate for a marine unit</string>
     <string name="transaction_release_mortgage">Release Marine Unit Mortgage</string>
     <string name="transaction_release_mortgage_desc">Release the mortgage on a marine unit</string>
+    <string name="request_review_ship">Request for inspection of the ship or marine unit</string>
 
     <!-- Category 2: Navigation Transactions -->
     <string name="transaction_issue_navigation_permit">Issue Navigation Permit</string>
@@ -436,8 +439,9 @@
     <!-- Cancellation Related -->
     <string name="registration_to_cancel">Registration to Cancel</string>
     <string name="registration_to_cancel_desc">Enter details of the registration to be cancelled</string>
-    <string name="cancellation_reason">Cancellation Reason</string>
-    <string name="cancellation_reason_desc">Explain why you need to cancel the registration</string>
+    <string name="cancellation_reason">Reason and supporting documents</string>
+    <string name="reason_proof_document">Attach the document explaining the reason</string>
+    <string name="cancellation_reason_desc">Clearly state the reason for cancellation from the designated list, then attach all supporting documents and files related to the reason to ensure that the procedures are completed correctly.</string>
     <string name="reason_for_cancellation">Reason for Cancellation</string>
     <string name="cancellation_details">Cancellation Details</string>
     <string name="effective_date">Effective Date</string>
@@ -559,6 +563,20 @@
     <string name="subcategory_navigation_permits">Navigation Permits</string>
     <string name="subcategory_ship_data_modifications">Ship Data Modifications</string>
 
+    <!-- Service requirements -->
+    <string name="requirements_duration_title">Request Duration</string>
+    <plurals name="requirements_duration_value">
+        <item quantity="one">One day</item>
+        <item quantity="many">%d days</item>
+        <item quantity="few">%d days</item>
+        <item quantity="zero">No time specified</item>
+    </plurals>
+    <string name="requirements_steps_title">Steps</string>
+    <string name="requirements_steps_heading">Steps to request the service</string>
+    <string name="requirements_fees_title">Fees</string>
+    <string name="requirements_fees_heading">Service fees</string>
+    <string name="requirements_fees_value">%d Rial</string>
+    <string name="requirements_terms_title">Service Terms</string>
     <string name="start_the_service">Start the service</string>
 
     <string name="hello_label">Hello</string>
@@ -594,6 +612,7 @@
     <string name="event2_time">9:00 - 17:00</string>
     
     <string name="owned_ships" >Owned ships</string>
+    <string name="owned_ships_desc" >Choose the ship from among those owned and registered, or search using the identification number.</string>
     <string name="num_of_ships">Number of selected ships</string>
 
     <string name="commercial_registration_title">Choose the commercial registration that relates to your business.</string>
@@ -622,10 +641,13 @@
     <string name="engine_fuel_type">fuel type</string>
     <string name="engine_condition_title">Select engine condition</string>
     <string name="engine_save_btn">Save</string>
+    <string name="subcategory_marine_unit_request_for_inspection">المعاينات</string>
 
 
 
     <string name="attaching_the_engine_documents">ارفاق المستندات الخاصة بالمحرك</string>
+    <string name="request_for_inspection_title">طلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية</string>
+    <string name="request_for_inspection_des">تتيح هذه الخدمة إجراء معاينة للسمينة أو الوحدة البحرية للتحقق من مطابقتها للمعايير واللوائح البحرية الوطنية والدولية، وضمان سلامتها وكفاءتها التشغيلية قبل إصدار أو تجديد شهادات السلامة، ترخيص التشغيل، أو تسجيل الملكية.</string>
 
 
 
@@ -659,5 +681,84 @@
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
     <string name="request_detail_back_title">Services screen</string>
+
+    <!-- Sailors -->
+    <string name="sailor_info_description">Please provide information about the seafarers of the ship or naval unit</string>
+    <string name="sailor_add_title">Add Sailor</string>
+    <string name="sailor_edit_title">Edit Sailor</string>
+    <string name="sailor_job_title">Select sailor job</string>
+    <string name="sailor_name_title">Enter sailor name</string>
+    <string name="sailor_identity_number_title">Enter identity number</string>
+    <string name="sailor_seaman_passport_number_title">Enter seaman\'s passport number</string>
+    <string name="sailor_count">Total Number of Sailors</string>
+    <string name="sailor_identity_number">Identity number</string>
+    <string name="sailor_seaman_passport_number">Seaman\'s passport number</string>
+    <string name="sailor_delete_title">Delete Sailor</string>
+
+
+
+
+
+    <string name="inspection_purpose_title">الغرض من طلب المعاينة</string>
+
+    <string name="inspection_purpose_description">يرجى تحديد الغرض من المعاينة من القائمة المتاحة، بهدف توجيه الطلب إلى الإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية.</string>
+
+    <string name="inspection_purpose_selection">الغرض المعاينة</string>
+
+    <string name="select_inspection_purpose_placeholder">تحديد الغرض من المعاينة</string>
+
+
+    <!-- ======================================== -->
+    <!-- Inspection Authority Step (جهة المعاينة) -->
+    <!-- ======================================== -->
+
+    <string name="inspection_authority_title">جهة المعاينة</string>
+
+    <string name="inspection_authority_description">اختر الجهة التي ترغب في أن تتولى معاينة وحدتك البحرية من بين الجهات المعتمدة.</string>
+
+    <string name="inspection_authority_selection">الهيئة المعتمدة للمعاينة</string>
+
+    <string name="select_inspection_authority_placeholder">حدد من القائمة مكتب أو هيئة التصنيف</string>
+
+    <string name="transfer_inspection_title">تحويل المعاينة إلى هيئة تصنيف</string>
+
+    <string name="transfer_inspection_description">تم تحويل المعاينة إلى إحدى هيئات التصنيف المعتمدة. يرجى منكم اختيار مكتب أو هيئة التصنيف المناسبة لاستكمال إجراءات الطلب.</string>
+
+    <string name="classification_society_selection">الهيئة المعتمدة للمعاينة</string>
+
+    <string name="select_classification_society_placeholder">حدد من القائمة مكتب أو هيئة التصنيف</string>
+
+
+    <!-- Login Registration Step -->
+    <string name="login_registration_title">تسجيل الدخول</string>
+    <string name="login_registration_description">سجل دخولك بواسطة بياناتك الشخصية لتتمكن من تخصيص تجربتك في الاستفادة من خدمات البوابة الالكترونية بوزارة النقل والاتصالات وتقنية المعلومات.</string>
+
+    <!-- Registration Method Selection -->
+    <string name="registration_method_selection">يمكنك تسجيل الدخول للبوابة باستخدام بطاقتك الشخصية، أو رقم الهاتف.</string>
+    <string name="mobile_phone_option">هاتف نقال</string>
+    <string name="mobile_phone_description">تحتاج إلى شريحة هاتف مفعلة</string>
+    <string name="civil_id_option">الرقم المدني</string>
+    <string name="civil_id_description">تحتاج إلى قارئ البطاقة</string>
+
+    <!-- Login Benefits -->
+    <string name="login_benefits_title">ماذا تستفيد من تسجيل الدخول إلى البوابة؟</string>
+    <string name="login_benefits_description">اكتشف المزايا المتاحة لك عند تسجيل الدخول</string>
+    <string name="benefit_unified_access">✓ دخول موحد لكافة الخدمات الحكومية</string>
+    <string name="benefit_personal_page">✓ صفحة شخصية لمتابعة مستجدات الطلب الإلكترونيا</string>
+    <string name="benefit_easy_transfer">✓ سهولة التنقل بين حساباتك الشخصي والتجاري</string>
+    <string name="benefit_edit_profile">✓ إمكانية تعديل بيانات ملفك الشخصي</string>
+    <string name="benefit_custom_notifications">✓ إشعارات مخصصة بكل ما يهمك</string>
+
+
+    <string name="mobile_phone_verification_title">أضف رقم هاتفك المفعل عبر التصديق الإلكتروني</string>
+    <string name="mobile_phone_verification_description">يرجى إضافة رقم هاتفك المحمول المفعل بـ التصديق الالكتروني للتحقق.</string>
+    <string name="mobile_phone_verification_label">رقم الهاتف المحمول المفعل بالتصديق الإلكتروني</string>
+    <string name="mobile_phone_verification_placeholder">أدخل رقم الهاتف المحمول</string>
+
+    <!-- OTP Verification -->
+    <string name="otp_verification_title">تحقق من رقم هاتفك المحمول</string>
+    <string name="otp_verification_description">لقد أرسلنا رمزاً مكوّن من 6 أرقام إلى رقم هاتفك المحمول.</string>
+    <string name="otp_verification_label">رمز التحقق</string>
+
 
 </resources>

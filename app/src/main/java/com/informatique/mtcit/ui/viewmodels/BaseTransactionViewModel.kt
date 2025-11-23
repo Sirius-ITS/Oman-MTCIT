@@ -94,7 +94,7 @@ abstract class BaseTransactionViewModel(
      * Initialize transaction with specific type
      * This must be called before using the ViewModel
      */
-    fun initializeTransaction(transactionType: TransactionType) {
+    fun  initializeTransaction(transactionType: TransactionType) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
@@ -178,8 +178,7 @@ abstract class BaseTransactionViewModel(
 
             if (validateAndCompleteCurrentStep()) {
                 val currentStepIndex = currentState.currentStep
-                val currentStep = currentState.steps.getOrNull(currentStepIndex)
-                if (currentStep == null) return@launch
+                val currentStep = currentState.steps.getOrNull(currentStepIndex) ?: return@launch
 
                 // 🔹 تحديد الـ fields الخاصة بالـ step الحالي
                 val currentStepFields = currentStep.fields.map { it.id }
@@ -191,7 +190,8 @@ abstract class BaseTransactionViewModel(
                 val strategy = currentStrategy
                 if (strategy != null) {
                     // Process the data
-                    strategy.processStepData(currentStepIndex, currentStepData)
+                    val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
+                    if (requiredNextStep == -1) { return@launch }
 
                     // Refresh steps (critical for dynamic step logic!)
                     val updatedSteps = strategy.getSteps()
@@ -205,7 +205,7 @@ abstract class BaseTransactionViewModel(
                         val newCompletedSteps = updatedState.completedSteps + currentStepIndex
 
                         _uiState.value = updatedState.copy(
-                            currentStep = nextStep,
+                            currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
                             completedSteps = newCompletedSteps,
                             canProceedToNext = navigationUseCase.canProceedToNext(
                                 nextStep,
@@ -217,7 +217,7 @@ abstract class BaseTransactionViewModel(
                 }
 
                 // 🧠 حفظ الداتا في SharedSteps للـ review (اختياري)
-                com.informatique.mtcit.ui.viewmodels.SharedSteps.saveStepData(
+                SharedSteps.saveStepData(
                     "Step_${currentStepIndex + 1}",
                     currentStepData
                 )
@@ -246,7 +246,8 @@ abstract class BaseTransactionViewModel(
 
         navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
             _uiState.value = currentState.copy(
-                currentStep = prevStep,
+                currentStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1)
+                    (0) else prevStep,
                 canProceedToNext = navigationUseCase.canProceedToNext(
                     prevStep,
                     currentState.steps,

@@ -1,7 +1,7 @@
 package com.informatique.mtcit.business.transactions
-
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
+import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
@@ -22,11 +22,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
-import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
-class TemporaryRegistrationStrategy @Inject constructor(
+
+class RequestInspectionStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
@@ -42,8 +40,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
-    private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
-    private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -130,9 +126,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     maritimeactivity = shipTypeOptions,
                     includeProofDocument = false,
                     includeConstructionDates = true,
-                    includeRegistrationCountry = true,
-                    isFishingBoat = isFishingBoat, // ✅ Pass fishing boat flag
-                    fishingBoatDataLoaded = fishingBoatDataLoaded // ✅ Pass data loaded flag
+                    includeRegistrationCountry = true
                 )
             )
 
@@ -176,13 +170,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 )
             )
 
-            // ✅ Check overallLength to determine if inspection documents are mandatory
-            val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
-            val isInspectionDocMandatory = overallLength <= 24.0
-
-            println("🔍 DEBUG - overallLength: $overallLength")
-            println("🔍 DEBUG - isInspectionDocMandatory: $isInspectionDocMandatory")
-
             steps.add(
                 SharedSteps.documentsStep(
                     requiredDocuments = listOf(
@@ -194,22 +181,46 @@ class TemporaryRegistrationStrategy @Inject constructor(
                         DocumentConfig(
                             id = "inspectionDocuments",
                             labelRes = R.string.inspection_documents,
-                            mandatory = isInspectionDocMandatory // ✅ Dynamic based on length
+                            mandatory = true
                         )
                     )
                 )
             )
         }
 
+        steps.add(SharedSteps.inspectionPurposeStep(
+            listOf(
+                "New",
+                "Used - Like New",
+                "Used - Good",
+                "Used - Fair",
+                "Used - Poor"
+            )
+        ))
+        steps.add(SharedSteps.inspectionAuthorityStep(
+            listOf(
+                "New",
+                "Used - Like New",
+                "Used - Good",
+                "Used - Fair",
+                "Used - Poor"
+            )
+        ))
+
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
 
-        // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
-        steps.add(
-            SharedSteps.marineUnitNameSelectionStep(
-                showReservationInfo = true
+        steps.add(SharedSteps.transferInspectionToClassificationStep(
+            listOf(
+                "New",
+                "Used - Like New",
+                "Used - Good",
+                "Used - Fair",
+                "Used - Poor"
             )
-        )
+        ))
+
+
 
         println("📋 Total steps count: ${steps.size}")
         return steps
@@ -244,7 +255,11 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             // ✅ Marine Unit Weights Step - Always add cross-step rules
             if (fieldIds.contains("grossTonnage")) {
+
+
                 println("🔍 Step contains grossTonnage field")
+
+
                 // ✅ Pass accumulated data to validation rules
                 rules.addAll(MarineUnitValidationRules.getAllWeightRules(accumulatedFormData))
                 println("🔍 Added ${rules.size} marine unit validation rules")
@@ -254,18 +269,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
             if (accumulatedFormData.containsKey("mmsi")) {
                 println("🔍 ✅ Adding MMSI validation rule")
                 rules.add(MarineUnitValidationRules.mmsiRequiredForMediumVessels(accumulatedFormData ))
-            }
-        }
-
-        // ✅ Document Rules - Inspection document based on overallLength
-        if (fieldIds.contains("inspectionDocuments")) {
-            println("🔍 Step contains inspectionDocuments field")
-
-            // Check if we have overallLength in accumulated data
-            if (accumulatedFormData.containsKey("overallLength")) {
-                println("🔍 ✅ Adding inspection document validation rule based on overallLength")
-                rules.addAll(DocumentValidationRules.getAllDocumentRules(accumulatedFormData))
-                println("🔍 Added document validation rules")
             }
         }
 
@@ -335,36 +338,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
             }
             return mutableFormData
         }
-
-        // ✅ Handle fishing boat selection from unitType dropdown
-        if (fieldId == "unitType") {
-            println("🔍 DEBUG - unitType changed to: $value")
-
-            // Check if the selected type is fishing boat
-            if (value == "قارب صيد" || value.contains("صيد") || value.contains("Fishing")) {
-                println("✅ Fishing boat selected! Setting flag and storing in accumulated data")
-                isFishingBoat = true
-                fishingBoatDataLoaded = false // Reset loaded flag when type changes
-                accumulatedFormData["isFishingBoat"] = "true"
-                // ✅ Store the unitType value immediately
-                accumulatedFormData["unitType"] = value
-            } else {
-                println("❌ Not a fishing boat. Hiding agriculture field")
-                isFishingBoat = false
-                fishingBoatDataLoaded = false
-                accumulatedFormData.remove("isFishingBoat")
-                accumulatedFormData.remove("agricultureRequestNumber")
-                // ✅ Store the unitType value immediately
-                accumulatedFormData["unitType"] = value
-            }
-
-            // ✅ Return updated formData to trigger step refresh
-            val updatedFormData = formData.toMutableMap()
-            updatedFormData["unitType"] = value
-            updatedFormData["_triggerRefresh"] = System.currentTimeMillis().toString()
-            return updatedFormData
-        }
-
         return formData
     }
 
@@ -372,12 +345,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
         if (fieldId == "companyRegistrationNumber") {
             return handleCompanyRegistrationLookup(value)
         }
-
-        // ✅ Handle agriculture request number lookup for fishing boats
-        if (fieldId == "agricultureRequestNumber") {
-            return handleAgricultureRequestLookup(value)
-        }
-
         return FieldFocusResult.NoAction
     }
 
@@ -419,190 +386,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
     }
 
     /**
-     * Handle Ministry of Agriculture request number lookup for fishing boats
-     * Fetches all boat data from Ministry API and auto-fills form fields
-     */
-    private suspend fun handleAgricultureRequestLookup(requestNumber: String): FieldFocusResult {
-        if (requestNumber.isBlank()) {
-            return FieldFocusResult.Error("agricultureRequestNumber", "رقم طلب وزارة الزراعة مطلوب")
-        }
-
-        if (requestNumber.length < 5) {
-            return FieldFocusResult.Error("agricultureRequestNumber", "رقم الطلب يجب أن يكون 5 أرقام على الأقل")
-        }
-
-        return try {
-            println("🔍 Fetching fishing boat data from Ministry of Agriculture...")
-
-            // ✅ Use marineUnitRepository instead of agricultureRepository
-            val result = marineUnitRepository.getFishingBoatData(requestNumber)
-
-            if (result.isSuccess) {
-                val boatData = result.getOrNull()
-
-                if (boatData != null) {
-                    println("✅ Boat data loaded successfully from Ministry")
-
-                    // ✅ Mark that data has been loaded
-                    fishingBoatDataLoaded = true
-                    accumulatedFormData["fishingBoatDataLoaded"] = "true"
-
-                    // ✅ Auto-fill ALL form fields with data from Ministry
-                    val fieldsToUpdate = mutableMapOf<String, String>()
-
-                    // Unit Selection Data
-                    fieldsToUpdate["unitType"] = boatData.unitType
-                    fieldsToUpdate["unitClassification"] = boatData.unitClassification
-                    fieldsToUpdate["callSign"] = boatData.callSign
-                    boatData.imoNumber?.let { fieldsToUpdate["imoNumber"] = it }
-                    fieldsToUpdate["registrationPort"] = boatData.registrationPort
-                    boatData.mmsi?.let { fieldsToUpdate["mmsi"] = it }
-                    fieldsToUpdate["manufacturerYear"] = boatData.manufacturerYear
-                    fieldsToUpdate["maritimeActivity"] = boatData.maritimeActivity
-                    boatData.buildingDock?.let { fieldsToUpdate["buildingDock"] = it }
-                    boatData.constructionPool?.let { fieldsToUpdate["constructionPool"] = it }
-                    boatData.buildingMaterial?.let { fieldsToUpdate["buildingMaterial"] = it }
-                    boatData.constructionStartDate?.let { fieldsToUpdate["constructionStartDate"] = it }
-                    boatData.constructionEndDate?.let { fieldsToUpdate["constructionEndDate"] = it }
-                    boatData.buildingCountry?.let { fieldsToUpdate["buildingCountry"] = it }
-                    boatData.firstRegistrationDate?.let { fieldsToUpdate["registrationDate"] = it }
-                    boatData.registrationCountry?.let { fieldsToUpdate["registrationCountry"] = it }
-
-                    // Dimensions
-                    fieldsToUpdate["overallLength"] = boatData.overallLength
-                    fieldsToUpdate["overallWidth"] = boatData.overallWidth
-                    fieldsToUpdate["depth"] = boatData.depth
-                    boatData.height?.let { fieldsToUpdate["height"] = it }
-                    boatData.decksCount?.let { fieldsToUpdate["decksCount"] = it }
-
-                    // Weights
-                    fieldsToUpdate["grossTonnage"] = boatData.grossTonnage
-                    fieldsToUpdate["netTonnage"] = boatData.netTonnage
-                    boatData.staticLoad?.let { fieldsToUpdate["staticLoad"] = it }
-                    boatData.maxPermittedLoad?.let { fieldsToUpdate["maxPermittedLoad"] = it }
-
-                    // Owner Info (Primary Owner - for backward compatibility)
-                    fieldsToUpdate["ownerFullNameAr"] = boatData.ownerFullNameAr
-                    boatData.ownerFullNameEn?.let { fieldsToUpdate["ownerFullNameEn"] = it }
-                    fieldsToUpdate["ownerNationality"] = boatData.ownerNationality
-                    fieldsToUpdate["ownerIdNumber"] = boatData.ownerIdNumber
-                    boatData.ownerPassportNumber?.let { fieldsToUpdate["ownerPassportNumber"] = it }
-                    fieldsToUpdate["ownerMobile"] = boatData.ownerMobile
-                    boatData.ownerEmail?.let { fieldsToUpdate["ownerEmail"] = it }
-                    boatData.ownerAddress?.let { fieldsToUpdate["ownerAddress"] = it }
-                    boatData.ownerCity?.let { fieldsToUpdate["ownerCity"] = it }
-                    fieldsToUpdate["ownerCountry"] = boatData.ownerCountry
-                    boatData.ownerPostalCode?.let { fieldsToUpdate["ownerPostalCode"] = it }
-
-                    // ✅ NEW: Handle Multiple Owners (if provided by Ministry API)
-                    if (!boatData.owners.isNullOrEmpty()) {
-                        println("✅ Ministry API returned ${boatData.owners.size} owners - preparing to auto-fill")
-
-                        // ✅ Convert Ministry API format to UI format
-                        val uiOwners = boatData.owners.map { apiOwner ->
-                            convertApiOwnerToUI(apiOwner)
-                        }
-
-                        val ownersJson = Json.encodeToString(uiOwners)
-                        fieldsToUpdate["owners"] = ownersJson
-                        fieldsToUpdate["totalOwnersCount"] = boatData.totalOwnersCount ?: boatData.owners.size.toString()
-
-                        println("📋 Owners JSON: $ownersJson")
-                    } else {
-                        println("ℹ️ No multiple owners data from Ministry - using primary owner only")
-                    }
-
-                    // ✅ NEW: Handle Engine Information (if provided by Ministry API)
-                    if (!boatData.engines.isNullOrEmpty()) {
-                        println("✅ Ministry API returned ${boatData.engines.size} engines - preparing to auto-fill")
-
-                        // ✅ Convert Ministry API format to UI format
-                        val uiEngines = boatData.engines.map { apiEngine ->
-                            convertApiEngineToUI(apiEngine)
-                        }
-
-                        val enginesJson = Json.encodeToString(uiEngines)
-                        fieldsToUpdate["engines"] = enginesJson
-
-                        println("🔧 Engines JSON: $enginesJson")
-                    } else {
-                        println("ℹ️ No engine data from Ministry - user will need to add manually")
-                    }
-
-                    // Store in accumulated data
-                    accumulatedFormData.putAll(fieldsToUpdate)
-
-                    println("✅ Auto-filled ${fieldsToUpdate.size} fields from Ministry data")
-                    println("   - Engines: ${boatData.engines?.size ?: 0}")
-                    println("   - Owners: ${boatData.owners?.size ?: 0}")
-
-                    FieldFocusResult.UpdateFields(fieldsToUpdate)
-                } else {
-                    FieldFocusResult.Error("agricultureRequestNumber", "لم يتم العثور على بيانات القارب")
-                }
-            } else {
-                FieldFocusResult.Error(
-                    "agricultureRequestNumber",
-                    result.exceptionOrNull()?.message ?: "فشل في تحميل بيانات القارب من وزارة الزراعة"
-                )
-            }
-        } catch (e: Exception) {
-            println("❌ Error fetching agriculture data: ${e.message}")
-            e.printStackTrace()
-            FieldFocusResult.Error(
-                "agricultureRequestNumber",
-                e.message ?: "حدث خطأ غير متوقع"
-            )
-        }
-    }
-
-    /**
-     * Convert Ministry API EngineData to UI EngineData format
-     */
-    private fun convertApiEngineToUI(apiEngine: com.informatique.mtcit.data.repository.EngineData): UIEngineData {
-        return UIEngineData(
-            id = java.util.UUID.randomUUID().toString(),
-            number = apiEngine.engineNumber,
-            type = apiEngine.engineType,
-            power = apiEngine.enginePower,
-            cylinder = apiEngine.cylindersCount,
-            manufacturer = apiEngine.manufacturer,
-            model = apiEngine.model,
-            manufactureYear = apiEngine.manufactureYear,
-            productionCountry = apiEngine.producingCountry,
-            fuelType = apiEngine.fuelType,
-            condition = apiEngine.engineCondition,
-            documentUri = "",
-            documentName = ""
-        )
-    }
-
-    /**
-     * Convert Ministry API OwnerData to UI OwnerData format
-     */
-    private fun convertApiOwnerToUI(apiOwner: com.informatique.mtcit.data.repository.OwnerData): UIOwnerData {
-        return UIOwnerData(
-            id = java.util.UUID.randomUUID().toString(),
-            fullName = apiOwner.ownerFullNameAr, // UI uses single fullName field
-            nationality = apiOwner.ownerNationality,
-            idNumber = apiOwner.ownerIdNumber,
-            ownerShipPercentage = apiOwner.ownershipPercentage, // Note: different spelling
-            email = apiOwner.ownerEmail,
-            mobile = apiOwner.ownerMobile,
-            address = apiOwner.ownerAddress,
-            city = apiOwner.ownerCity,
-            country = apiOwner.ownerCountry,
-            postalCode = apiOwner.ownerPostalCode,
-            isCompany = apiOwner.companyName.isNotEmpty(), // Set isCompany if company name exists
-            companyRegistrationNumber = apiOwner.companyRegistrationNumber,
-            companyName = apiOwner.companyName,
-            companyType = "", // Ministry API doesn't provide company type
-            ownershipProofDocument = "", // Document will be empty initially
-            documentName = ""
-        )
-    }
-
-    /**
      * Validate marine unit selection using TemporaryRegistrationRules
      * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
      */
@@ -622,32 +405,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             // Use TemporaryRegistrationRules to validate
             val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
-            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
-
-            println("✅ Validation result: ${validationResult::class.simpleName}")
-            println("✅ Navigation action: ${navigationAction::class.simpleName}")
-
-            ValidationResult.Success(
-                validationResult = validationResult,
-                navigationAction = navigationAction
-            )
-        } catch (e: Exception) {
-            println("❌ Validation error: ${e.message}")
-            e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
-        }
-    }
-
-    /**
-     * NEW: Validate a NEW marine unit that doesn't exist in the database yet
-     * This is used when user is adding a new marine unit during registration
-     */
-    suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
-        return try {
-            println("🔍 TemporaryRegistrationStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
-
-            // Use TemporaryRegistrationRules to validate the new unit
-            val validationResult = temporaryRegistrationRules.validateUnit(newUnit, userId)
             val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
 
             println("✅ Validation result: ${validationResult::class.simpleName}")
