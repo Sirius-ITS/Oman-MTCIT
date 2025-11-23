@@ -89,11 +89,11 @@
     <string name="documents">رفع المستندات</string>
     <string name="technical_details">التفاصيل الفنية</string>
     <string name="insurance">التأمين</string>
-    <string name="review">المراجعة</string>
+    <string name="review">مراجعة طلبك</string>
     <string name="confirmation">التأكيد</string>
     <string name="step_x_of_y">الخطوة %1$d من %2$d</string>
-    <string name="unit_data">بيانات الوحدة البحرية</string>
-    <string name="unit_data_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
+    <string name="unit_data">بيانات الوحدة</string>
+    <string name="unit_data_description">يرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية\nلتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
     <string name="select_unit_type">اختيار نوع الوحدة البحرية</string>
     <string name="select_unit_type_placeholder">اختيار نوع الوحدة</string>
     <string name="select_unit_classification">تصنيف الوحدة</string>
@@ -136,7 +136,7 @@
     <string name="step_5_title">الخطوة 5: التأمين</string>
     <string name="step_6_title">الخطوة 6: المراجعة</string>
     <string name="step_7_title">الخطوة 7: التأكيد النهائي</string>
-    <string name="step_placeholder_content">محتوى هذه الخطوة سيتم إضافته هنا</string>
+    <string name="step_placeholder_content">يرجى مراجعة بياناتك والتأكد من صحتها قبل الإرسال، حيث سيتم اعتمادها وإحالتها إلى الجهة المختصة.</string>
     <string name="back_button">رجوع</string>
     <string name="submit_button">إرسال</string>
     <string name="step_progress">الخطوة %1$d من %2$d</string>
@@ -372,6 +372,7 @@
     <string name="transaction_mortgage_certificate_desc">إصدار شهادة رهن لوحدة بحرية</string>
     <string name="transaction_release_mortgage">فك رهن وحدة بحرية</string>
     <string name="transaction_release_mortgage_desc">فك الرهن على وحدة بحرية</string>
+    <string name="request_review_ship">طلب معاينة للسفينة أو الوحدة البحرية</string>
 
     <!-- Category 2: Navigation Transactions - Arabic -->
     <string name="transaction_issue_navigation_permit">إصدار تصريح ملاحة للسفن و الوحدات البحرية</string>
@@ -430,8 +431,9 @@
     <!-- Cancellation Related -->
     <string name="registration_to_cancel">التسجيل المراد شطبه</string>
     <string name="registration_to_cancel_desc">أدخل تفاصيل التسجيل المراد شطبه</string>
-    <string name="cancellation_reason">سبب الشطب</string>
-    <string name="cancellation_reason_desc">اشرح سبب الحاجة لشطب التسجيل</string>
+    <string name="cancellation_reason">السبب والمستندات الداعمة</string>
+    <string name="reason_proof_document">إرفاق المستند الخاص بالسبب</string>
+    <string name="cancellation_reason_desc">قم بإضافة سبب الشطب بشكل واضح من القائمة المخصصة لذلك، ثم أرفق جميع المستندات والملفات الداعمة المرتبطة بالسبب لضمان استكمال الإجراءات بشكل صحيح.</string>
     <string name="reason_for_cancellation">سبب الشطب</string>
     <string name="cancellation_details">تفاصيل الشطب</string>
     <string name="effective_date">تاريخ السريان</string>
@@ -590,7 +592,8 @@
     <string name="person_type_desc">يرجى اختيار نوع الحساب المناسب لك لتقديم الخدمات بشكل مخصص</string>
 
 
-    <string name="owned_ships" >اختر السفينة من بين المملوكة و المسجّلة او ابحث باستخدام الرقم التعريفي</string>
+    <string name="owned_ships" >السفن المملوكة</string>
+    <string name="owned_ships_desc" >اختر السفينة من بين المملوكة و المسجّلة، او ابحث باستخدام الرقم التعريفي</string>
     <string name="num_of_ships">عدد السفن المختارة </string>
 
     <string name="engine_title">بيانات المحركات الخاصة بالوحدة البحرية</string>

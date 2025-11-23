@@ -368,6 +368,7 @@
     <string name="transaction_mortgage_certificate_desc">Issue a mortgage certificate for a marine unit</string>
     <string name="transaction_release_mortgage">Release Marine Unit Mortgage</string>
     <string name="transaction_release_mortgage_desc">Release the mortgage on a marine unit</string>
+    <string name="request_review_ship">Request for inspection of the ship or marine unit</string>
 
     <!-- Category 2: Navigation Transactions -->
     <string name="transaction_issue_navigation_permit">Issue Navigation Permit</string>
@@ -426,8 +427,9 @@
     <!-- Cancellation Related -->
     <string name="registration_to_cancel">Registration to Cancel</string>
     <string name="registration_to_cancel_desc">Enter details of the registration to be cancelled</string>
-    <string name="cancellation_reason">Cancellation Reason</string>
-    <string name="cancellation_reason_desc">Explain why you need to cancel the registration</string>
+    <string name="cancellation_reason">Reason and supporting documents</string>
+    <string name="reason_proof_document">Attach the document explaining the reason</string>
+    <string name="cancellation_reason_desc">Clearly state the reason for cancellation from the designated list, then attach all supporting documents and files related to the reason to ensure that the procedures are completed correctly.</string>
     <string name="reason_for_cancellation">Reason for Cancellation</string>
     <string name="cancellation_details">Cancellation Details</string>
     <string name="effective_date">Effective Date</string>
@@ -584,6 +586,7 @@
     <string name="event2_time">9:00 - 17:00</string>
     
     <string name="owned_ships" >Owned ships</string>
+    <string name="owned_ships_desc" >Choose the ship from among those owned and registered, or search using the identification number.</string>
     <string name="num_of_ships">Number of selected ships</string>
 
     <string name="commercial_registration_title">Choose the commercial registration that relates to your business.</string>
