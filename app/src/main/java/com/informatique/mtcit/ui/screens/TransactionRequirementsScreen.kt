@@ -90,8 +90,12 @@ fun TransactionRequirementsScreen(
     val locale = LocalAppLocale.current
     val extraColors = LocalExtraColors.current
 
-    LaunchedEffect(transaction) {
-        viewModel.getTransactionDetailApi(transaction.id)
+    LaunchedEffect(transactionId) {
+        val currentState = viewModel.transactionDetail.value
+        if (currentState !is TransactionDetailUiState.Success ||
+            currentState.detail.id != transactionId) {
+            viewModel.getTransactionDetailApi(transactionId)
+        }
     }
 
     val uiState by viewModel.transactionDetail.collectAsState()

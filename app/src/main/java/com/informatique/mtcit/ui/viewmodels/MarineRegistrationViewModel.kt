@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import com.informatique.mtcit.business.transactions.MarineUnitValidatable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +19,7 @@ import com.informatique.mtcit.business.transactions.RequestInspectionStrategy
 import com.informatique.mtcit.business.transactions.ValidationResult
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
 import com.informatique.mtcit.business.transactions.shared.MarineActivity
-import com.informatique.mtcit.data.repository.RequestRepository  // ✅ FIXED: Changed from data.model to data.repository
+import com.informatique.mtcit.data.repository.RequestRepository
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.business.transactions.shared.ShipType
@@ -211,7 +212,7 @@ class MarineRegistrationViewModel @Inject constructor(
      * Checks inspection status and ownership
      */
     private suspend fun validateTemporaryRegistrationUnit(
-        strategy: RequestInspectionStrategy,
+        strategy: MarineUnitValidatable,
         unitId: String,
         userId: String
     ): ValidationResult? {
@@ -687,16 +688,6 @@ class MarineRegistrationViewModel @Inject constructor(
      */
     fun validateAndSubmit() {
         val currentState = uiState.value
-        val transactionType = currentState.transactionType
-
-        // Only intercept for Temporary Registration Certificate
-        if (transactionType != TransactionType.REQUEST_FOR_INSPECTION) {
-            println("📤 Not Temporary Registration, calling submitForm()")
-            submitForm()
-            return
-        }
-
-        println("🔍 Temporary Registration: Validating inspection before submit")
 
         viewModelScope.launch {
             try {
@@ -725,13 +716,15 @@ class MarineRegistrationViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Get the strategy
-                val strategy = currentStrategy as? RequestInspectionStrategy
-                if (strategy == null) {
-                    println("❌ Strategy not found")
+                // ✅ DYNAMIC: Check if the current strategy supports marine unit validation
+                val validatableStrategy = currentStrategy as? MarineUnitValidatable
+                if (validatableStrategy == null) {
+                    println("⚠️ Current strategy (${currentStrategy!!::class.simpleName}) does not support marine unit validation - proceeding with normal flow")
                     submitForm()
                     return@launch
                 }
+
+                println("✅ Strategy ${validatableStrategy::class.simpleName} supports marine unit validation")
 
                 val userId = getCurrentUserId()
                 val validationResult: ValidationResult?
@@ -776,9 +769,9 @@ class MarineRegistrationViewModel @Inject constructor(
                         height = height
                     )
 
-                    // ✅ Use the NEW method for validating new units
+                    // ✅ DYNAMIC: Use the interface method for validating new units
                     validationResult = try {
-                        strategy.validateNewMarineUnit(newUnit, userId)
+                        validatableStrategy.validateNewMarineUnit(newUnit, userId)
                     } catch (e: Exception) {
                         println("❌ Validation error: ${e.message}")
                         e.printStackTrace()
@@ -807,13 +800,33 @@ class MarineRegistrationViewModel @Inject constructor(
                     val selectedMaritimeId = selectedMaritimeIds.first()
                     println("🔍 Selected maritime ID: $selectedMaritimeId")
 
-                    // Get marine units and find the selected one
-                    val dynamicOptions = strategy.loadDynamicOptions()
-                    val marineUnits = dynamicOptions["marineUnits"]
+                    // Get marine units from the strategy (cast to TransactionStrategy to access loadDynamicOptions)
+                    val strategyAsTransaction = validatableStrategy as? TransactionStrategy
+                    if (strategyAsTransaction == null) {
+                        println("❌ Strategy doesn't implement TransactionStrategy")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في النظام")
+                        return@launch
+                    }
 
-                    val selectedUnit = marineUnits?.firstOrNull {
-                        (it as? MarineUnit)?.maritimeId == selectedMaritimeId
-                    } as? MarineUnit
+                    val dynamicOptions = strategyAsTransaction.loadDynamicOptions()
+                    val marineUnitsAny = dynamicOptions["marineUnits"]
+
+                    // Marine units are returned as List<MarineUnit> from the strategy
+                    val marineUnits = when (marineUnitsAny) {
+                        is List<*> -> {
+                            // Filter and safely cast to MarineUnit
+                            marineUnitsAny.mapNotNull { it as? MarineUnit }
+                        }
+                        else -> emptyList()
+                    }
+
+                    if (marineUnits.isEmpty()) {
+                        println("⚠️ No marine units found in dynamic options")
+                    }
+
+                    val selectedUnit = marineUnits.firstOrNull { unit ->
+                        unit.maritimeId == selectedMaritimeId
+                    }
 
                     if (selectedUnit == null) {
                         println("❌ Selected unit not found")
@@ -824,7 +837,7 @@ class MarineRegistrationViewModel @Inject constructor(
                     println("✅ Found selected unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
 
                     // Validate the selected unit's inspection status
-                    validationResult = validateTemporaryRegistrationUnit(strategy, selectedUnit.id, userId)
+                    validationResult = validateTemporaryRegistrationUnit(validatableStrategy, selectedUnit.id, userId)
                 }
 
                 // Handle validation result (same for both cases)
@@ -838,9 +851,9 @@ class MarineRegistrationViewModel @Inject constructor(
                     is ValidationResult.Success -> {
                         when (val action = validationResult.navigationAction) {
                             is MarineUnitNavigationAction.ProceedToNextStep -> {
-                                // Inspection is valid - proceed to next step (Marine Unit Name Selection)
-                                println("✅ Inspection validated, proceeding to next step")
-                                super.nextStep()
+                                // Inspection is valid - proceed with actual submission
+                                println("✅ Inspection validated, proceeding with submission")
+                                submitForm()
                             }
                             is MarineUnitNavigationAction.ShowComplianceDetailScreen -> {
                                 // Inspection failed (pending/not verified) - show RequestDetailScreen
@@ -897,9 +910,10 @@ class MarineRegistrationViewModel @Inject constructor(
             return
         }
 
+        // ✅ DYNAMIC: Check if the current strategy supports marine unit validation
+        val validatableStrategy = currentStrategy as? MarineUnitValidatable
         // For Temporary Registration, validate inspection on review step
-        if (transactionType == TransactionType.REQUEST_FOR_INSPECTION) {
-            println("🔍 Review Step: Validating inspection for Temporary Registration")
+        if (validatableStrategy != null) {
             validateAndSubmit()
         } else {
             // For other transactions, just proceed to next step
@@ -912,7 +926,7 @@ class MarineRegistrationViewModel @Inject constructor(
      * Create placeholder marine unit for display purposes
      */
     private fun createPlaceholderUnit(): MarineUnit {
-        return com.informatique.mtcit.business.transactions.shared.MarineUnit(
+        return MarineUnit(
             id = "placeholder",
             shipName = "وحدة بحرية",
             callSign = "",
