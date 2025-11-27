@@ -248,14 +248,13 @@ fun MainCategoriesScreen(
                         .padding(start = 16.dp, end = 16.dp, bottom = 37.dp, top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Institution Filter
-                    FilterDropdown(
-                        label = localizedApp(R.string.institution),
-                        icon = Icons.Default.Person,
-                        modifier = Modifier.weight(1f),
-                        onSelected = { viewModel.selectInstitution(it) }
-                    )
-
+//                    // Institution Filter
+//                    FilterDropdown(
+//                        label = localizedApp(R.string.institution),
+//                        icon = Icons.Default.Person,
+//                        modifier = Modifier.weight(1f),
+//                        onSelected = { viewModel.selectInstitution(it) }
+//                    )
                     // Organization Filter
                     FilterDropdown(
                         label = localizedApp(R.string.organization),

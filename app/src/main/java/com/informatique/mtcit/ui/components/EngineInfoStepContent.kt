@@ -70,26 +70,24 @@ fun EngineFormBottomSheet(
     var productionCountry by remember { mutableStateOf(engine?.productionCountry ?: "") }
     var fuelType by remember { mutableStateOf(engine?.fuelType ?: "") }
     var condition by remember { mutableStateOf(engine?.condition ?: "") }
-    var documentUri by remember { mutableStateOf<Uri?>(null) }
-    var documentName by remember { mutableStateOf(engine?.documentName ?: "") }
+    var documentUri by remember { mutableStateOf(engine?.documentUri ?: "") }
 
+    // File upload callbacks
+    var filePickerFieldId by remember { mutableStateOf<String?>(null) }
+    var filePickerAllowedTypes by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // File Picker Launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            documentUri = it
-            // استخراج اسم الملف من Uri
-            val cursor = context.contentResolver.query(it, null, null, null, null)
-            cursor?.use { c ->
-                if (c.moveToFirst()) {
-                    val nameIndex = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (nameIndex != -1) {
-                        documentName = c.getString(nameIndex)
-                    }
-                }
-            }
+            documentUri = it.toString()
+        }
+    }
+
+    LaunchedEffect(filePickerFieldId) {
+        filePickerFieldId?.let {
+            filePickerLauncher.launch("*/*")
+            filePickerFieldId = null
         }
     }
 
@@ -237,89 +235,19 @@ fun EngineFormBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // File Upload Section
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = localizedApp(R.string.attaching_the_engine_documents),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = extraColors.whiteInDarkMode
-                    )
-                    Text(
-                        text = " *",
-                        color = Color.Red,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { filePickerLauncher.launch("*/*") }
-                        .border(
-                            width = 1.dp,
-                            color = if (documentUri != null) extraColors.startServiceButton
-                            else extraColors.whiteInDarkMode.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    colors = CardDefaults.cardColors(
-                        containerColor = extraColors.background
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = if (documentUri != null) Icons.Default.CheckCircle
-                                else Icons.Default.UploadFile,
-                                contentDescription = null,
-                                tint = if (documentUri != null) extraColors.startServiceButton
-                                else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
-                                modifier = Modifier.size(24.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Text(
-                                text = if (documentName.isNotEmpty()) documentName
-                                else localizedApp(R.string.attaching_the_engine_documents),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (documentUri != null) extraColors.whiteInDarkMode
-                                else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
-                                maxLines = 1
-                            )
-                        }
-
-                        Icon(
-                            imageVector = Icons.Default.AttachFile,
-                            contentDescription = "اختر ملف",
-                            tint = extraColors.startServiceButton,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                if (documentUri != null) {
-                    Text(
-                        text = "تم اختيار الملف بنجاح ✓",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = extraColors.startServiceButton,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
+            // File Upload Section using CustomFileUpload
+            CustomFileUpload(
+                value = documentUri,
+                onValueChange = { documentUri = it },
+                label = localizedApp(R.string.attaching_the_engine_documents),
+                mandatory = true,
+                fieldId = "engineDocument",
+                onOpenFilePicker = { fieldId, allowedTypes ->
+                    filePickerFieldId = fieldId
+                    filePickerAllowedTypes = allowedTypes
+                },
+                onRemoveFile = { documentUri = "" }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -349,8 +277,8 @@ fun EngineFormBottomSheet(
                             productionCountry = productionCountry,
                             fuelType = fuelType,
                             condition = condition,
-                            documentUri = documentUri?.toString() ?: "",
-                            documentName = documentName
+                            documentUri = documentUri,
+                            documentName = ""
 
                         )
                         onSave(engineData)

@@ -68,7 +68,8 @@ fun DynamicStepForm(
         ReviewStepContent(
             steps = allSteps,
             formData = formData,
-            onDeclarationChange = onDeclarationChange
+            onDeclarationChange = onDeclarationChange,
+            onViewFile = onViewFile
         )
     } else {
         // Regular step - show form fields

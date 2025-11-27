@@ -1,4 +1,4 @@
-package com.informatique.mtcit.ui.components
+ package com.informatique.mtcit.ui.components
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -78,31 +78,24 @@ fun OwnerFormBottomSheet(
     var companyRegistrationNumber by remember { mutableStateOf(owner?.companyRegistrationNumber ?: "") }
     var companyName by remember { mutableStateOf(owner?.companyName ?: "") }
     var companyType by remember { mutableStateOf(owner?.companyType ?: "") }
-    var documentUri by remember { mutableStateOf<Uri?>(null) }
-    var documentName by remember { mutableStateOf(owner?.documentName ?: "") }
+    var documentUri by remember { mutableStateOf(owner?.ownershipProofDocument ?: "") }
 
-    // Initialize with existing document if editing
-    LaunchedEffect(owner?.ownershipProofDocument) {
-        if (!owner?.ownershipProofDocument.isNullOrEmpty()) {
-            documentUri = Uri.parse(owner?.ownershipProofDocument)
-        }
-    }
+    // File upload callbacks
+    var filePickerFieldId by remember { mutableStateOf<String?>(null) }
+    var filePickerAllowedTypes by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    // File Picker Launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            documentUri = it
-            val cursor = context.contentResolver.query(it, null, null, null, null)
-            cursor?.use { c ->
-                if (c.moveToFirst()) {
-                    val nameIndex = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (nameIndex != -1) {
-                        documentName = c.getString(nameIndex)
-                    }
-                }
-            }
+            documentUri = it.toString()
+        }
+    }
+
+    LaunchedEffect(filePickerFieldId) {
+        filePickerFieldId?.let {
+            filePickerLauncher.launch("*/*")
+            filePickerFieldId = null
         }
     }
 
@@ -321,102 +314,19 @@ fun OwnerFormBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // File Upload Section
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = localizedApp(R.string.ownership_proof_document),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = extraColors.whiteInDarkMode
-                    )
-                }
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { filePickerLauncher.launch("*/*") }
-                        .border(
-                            width = 1.dp,
-                            color = if (documentUri != null) extraColors.startServiceButton
-                            else extraColors.whiteInDarkMode.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(8.dp)
-                        ),
-                    colors = CardDefaults.cardColors(
-                        containerColor = extraColors.background
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = if (documentUri != null) Icons.Default.CheckCircle
-                                else Icons.Default.UploadFile,
-                                contentDescription = null,
-                                tint = if (documentUri != null) extraColors.startServiceButton
-                                else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
-                                modifier = Modifier.size(24.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Text(
-                                text = if (documentName.isNotEmpty()) documentName
-                                else localizedApp(R.string.ownership_proof_document),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (documentUri != null) extraColors.whiteInDarkMode
-                                else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        if (documentUri != null) {
-                            IconButton(
-                                onClick = {
-                                    documentUri = null
-                                    documentName = ""
-                                },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "حذف الملف",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.AttachFile,
-                                contentDescription = "اختر ملف",
-                                tint = extraColors.startServiceButton,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (documentUri != null) {
-                    Text(
-                        text = "تم اختيار الملف بنجاح ✓",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = extraColors.startServiceButton,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
+            // File Upload Section using CustomFileUpload
+            CustomFileUpload(
+                value = documentUri,
+                onValueChange = { documentUri = it },
+                label = localizedApp(R.string.ownership_proof_document),
+                mandatory = true,
+                fieldId = "ownershipProofDocument",
+                onOpenFilePicker = { fieldId, allowedTypes ->
+                    filePickerFieldId = fieldId
+                    filePickerAllowedTypes = allowedTypes
+                },
+                onRemoveFile = { documentUri = "" }
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -446,12 +356,12 @@ fun OwnerFormBottomSheet(
                             city = city,
                             country = country,
                             postalCode = postalCode,
-                            isCompany = isCompany,
-                            companyRegistrationNumber = companyRegistrationNumber,
-                            companyName = companyName,
-                            companyType = companyType,
-                            ownershipProofDocument = documentUri?.toString() ?: "",
-                            documentName = documentName
+                        isCompany = isCompany,
+                        companyRegistrationNumber = companyRegistrationNumber,
+                        companyName = companyName,
+                        companyType = companyType,
+                        ownershipProofDocument = documentUri,
+                        documentName = ""
                         )
                         onSave(ownerData)
                     },

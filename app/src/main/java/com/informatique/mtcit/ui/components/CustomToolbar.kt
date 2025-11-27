@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,8 +35,8 @@ fun CustomToolbar(
     }
     Column(
         modifier = Modifier
-            .width(285.dp)
-            .widthIn( max = 350.dp)
+            .width(320.dp)
+            .widthIn( max = 380.dp)
             .background(Color.Transparent)
     ) {
         // الشريط السفلي
@@ -48,12 +50,12 @@ fun CustomToolbar(
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Home Tab
                 TabItem(
-                    icon = Icons.Default.Home,
+                    icon = Icons.Rounded.Home,
                     label = localizedApp(R.string.home),
                     isSelected = selectedTab == 0,
                     onClick = {
@@ -130,7 +132,7 @@ fun TabItem(
                     color = textColor,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.width(50.dp)
+                    modifier = Modifier.width(65.dp)
                 )
 //            }
         }

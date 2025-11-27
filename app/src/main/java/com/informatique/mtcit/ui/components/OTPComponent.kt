@@ -12,6 +12,7 @@ import com.informatique.mtcit.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -87,7 +88,8 @@ fun OTPComponent(
                         text = phoneNumber,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = extraColors.whiteInDarkMode
+                        color = extraColors.whiteInDarkMode,
+                        maxLines = 1
                     )
                 }
             }
@@ -152,6 +154,7 @@ fun OTPComponent(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Number
                 ),
+                cursorBrush = SolidColor(Color.Transparent), // إخفاء الـ cursor
                 decorationBox = { innerTextField ->
                     Box(modifier = Modifier.fillMaxSize()) {
                         innerTextField()

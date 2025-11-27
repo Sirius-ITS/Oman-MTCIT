@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -63,7 +64,8 @@ fun ReviewStepContent(
     steps: List<StepData>,
     formData: Map<String, String>,
     modifier: Modifier = Modifier,
-    onDeclarationChange: ((Boolean) -> Unit)? = null // Add declaration callback
+    onDeclarationChange: ((Boolean) -> Unit)? = null, // Add declaration callback
+    onViewFile: ((String, String) -> Unit)? = null // Add file viewing callback
 ) {
     val extraColors = LocalExtraColors.current
     var declarationAccepted by remember { mutableStateOf(false) }
@@ -132,7 +134,8 @@ fun ReviewStepContent(
                         step = step,
                         stepFieldsWithData = stepFieldsWithData,
                         formData = formData,
-                        isExpandedByDefault = index == 1 // First step expanded by default
+                        isExpandedByDefault = index == 1, // First step expanded by default
+                        onViewFile = onViewFile
                     )
                 }
             }
@@ -158,7 +161,8 @@ private fun ExpandableStepCard(
     step: StepData,
     stepFieldsWithData: List<com.informatique.mtcit.common.FormField>,
     formData: Map<String, String>,
-    isExpandedByDefault: Boolean
+    isExpandedByDefault: Boolean,
+    onViewFile: ((String, String) -> Unit)? = null
 ) {
     val extraColors = LocalExtraColors.current
     var isExpanded by remember { mutableStateOf(isExpandedByDefault) }
@@ -227,7 +231,8 @@ private fun ExpandableStepCard(
                             ReviewFieldItem(
                                 label = if (field.labelRes != 0) localizedApp(field.labelRes) else field.label,
                                 value = value,
-                                field = field
+                                field = field,
+                                onViewFile = onViewFile
                             )
                         }
                     }
@@ -245,7 +250,8 @@ private fun ExpandableStepCard(
 private fun ReviewFieldItem(
     label: String,
     value: String,
-    field: com.informatique.mtcit.common.FormField
+    field: com.informatique.mtcit.common.FormField,
+    onViewFile: ((String, String) -> Unit)? = null
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -265,16 +271,7 @@ private fun ReviewFieldItem(
 
             is com.informatique.mtcit.common.FormField.FileUpload -> {
                 // This is a file upload field - show filename
-                // Field Label
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                DisplayFileAttachment(value, field, extraColors)
+                DisplayFileAttachment(value, field, extraColors, onViewFile, label)
             }
 
             is com.informatique.mtcit.common.FormField.CheckBox -> {
@@ -655,21 +652,29 @@ private fun DisplayOwnerListData(
 private fun DisplayFileAttachment(
     value: String,
     field: com.informatique.mtcit.common.FormField.FileUpload,
-    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
+    onViewFile: ((String, String) -> Unit)? = null,
+    label: String = ""
 ) {
     if (value.isNotBlank()) {
-        val fileName = remember(value) {
-            // Extract filename from URI
+        val context = androidx.compose.ui.platform.LocalContext.current
+        var showMenu by remember { mutableStateOf(false) }
+
+        val fileName = remember(value, context) {
+            // Extract filename from URI using ContentResolver (same as CustomFileUpload)
             try {
                 when {
                     value.startsWith("content://") -> {
-                        // Content URI - extract last segment
-                        val lastSegment = value.substringAfterLast("/")
-                        if (lastSegment.contains(".")) {
-                            lastSegment
-                        } else {
-                            "document.${field.allowedTypes.firstOrNull() ?: "pdf"}"
-                        }
+                        val uri = android.net.Uri.parse(value)
+                        // Try to get actual file name from ContentResolver
+                        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            if (nameIndex >= 0 && cursor.moveToFirst()) {
+                                cursor.getString(nameIndex)
+                            } else {
+                                uri.lastPathSegment ?: "document.${field.allowedTypes.firstOrNull() ?: "pdf"}"
+                            }
+                        } ?: "document.${field.allowedTypes.firstOrNull() ?: "pdf"}"
                     }
                     value.startsWith("file://") -> {
                         value.substringAfterLast("/")
@@ -680,45 +685,92 @@ private fun DisplayFileAttachment(
                     else -> value
                 }
             } catch (_: Exception) {
-                "Attached File"
+                "document.${field.allowedTypes.firstOrNull() ?: "pdf"}"
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
-            ),
-            elevation = CardDefaults.cardElevation(0.dp),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Row(
+        val mimeType = remember(value) {
+            try {
+                if (value.startsWith("content://")) {
+                    context.contentResolver.getType(android.net.Uri.parse(value)) ?: "application/*"
+                } else {
+                    "application/*"
+                }
+            } catch (_: Exception) {
+                "application/*"
+            }
+        }
+
+        Box {
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .clickable { showMenu = true },
+                colors = CardDefaults.cardColors(
+                    containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
+                ),
+                elevation = CardDefaults.cardElevation(0.dp),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = fileName,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = extraColors.whiteInDarkMode
-                    )
-                    Text(
-                        text = localizedApp(R.string.file_attached),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = extraColors.textSubTitle
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        // Display file name first (what user selected)
+                        Text(
+                            text = fileName,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = extraColors.whiteInDarkMode
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        // Display field label below (file type)
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = extraColors.textSubTitle
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.AttachFile,
+                        contentDescription = null,
+                        tint = extraColors.whiteInDarkMode,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
+            }
 
-                Icon(
-                    imageVector = Icons.Default.AttachFile,
-                    contentDescription = null,
-                    tint = extraColors.whiteInDarkMode,
-                    modifier = Modifier.size(20.dp)
+            // Dropdown menu for file actions
+            androidx.compose.material3.DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp)
+            ) {
+                // View/Open option
+                androidx.compose.material3.DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.Visibility,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(localizedApp(R.string.view_file))
+                        }
+                    },
+                    onClick = {
+                        showMenu = false
+                        onViewFile?.invoke(value, mimeType)
+                    }
                 )
             }
         }
