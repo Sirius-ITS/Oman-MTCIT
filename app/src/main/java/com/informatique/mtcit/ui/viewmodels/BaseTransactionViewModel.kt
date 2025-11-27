@@ -375,50 +375,56 @@ abstract class BaseTransactionViewModel(
                 val prevStep = navigationUseCase.getPreviousStep(currentState.currentStep)
                 if (prevStep != null && currentState.lockedSteps.contains(prevStep)) {
                     println("🔒 Cannot go back to locked step $prevStep (resumed transaction)")
-                    _showToastEvent.value = "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة"
+                    _showToastEvent.value =
+                        "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة"
                     return@launch
                 }
             }
 
-        viewModelScope.launch {
-            navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
-                // ✅ Check if we're going back FROM marine unit selection step
-                // If so, we need to check if we should clear ships and refresh steps
-                val currentStepFields = currentState.steps.getOrNull(currentState.currentStep)?.fields?.map { it.id } ?: emptyList()
-                val isLeavingMarineUnitStep = currentStepFields.contains("selectedMarineUnits")
+            viewModelScope.launch {
+                navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
+                    // ✅ Check if we're going back FROM marine unit selection step
+                    // If so, we need to check if we should clear ships and refresh steps
+                    val currentStepFields =
+                        currentState.steps.getOrNull(currentState.currentStep)?.fields?.map { it.id }
+                            ?: emptyList()
+                    val isLeavingMarineUnitStep = currentStepFields.contains("selectedMarineUnits")
 
-                val prevStepFields = currentState.steps.getOrNull(prevStep)?.fields?.map { it.id } ?: emptyList()
-                val isGoingToPersonTypeStep = prevStepFields.contains("selectionPersonType")
-                val isGoingToCommercialRegStep = prevStepFields.contains("commercialRegistration")
+                    val prevStepFields =
+                        currentState.steps.getOrNull(prevStep)?.fields?.map { it.id } ?: emptyList()
+                    val isGoingToPersonTypeStep = prevStepFields.contains("selectionPersonType")
+                    val isGoingToCommercialRegStep =
+                        prevStepFields.contains("commercialRegistration")
 
-                // ✅ Clear ships if going back to person type or commercial reg step
-                if (isLeavingMarineUnitStep && (isGoingToPersonTypeStep || isGoingToCommercialRegStep)) {
-                    println("🧹 Going back from marine unit selection to person type/commercial reg - clearing ships")
-                    val strategy = currentStrategy
-                    strategy?.clearLoadedShips()
+                    // ✅ Clear ships if going back to person type or commercial reg step
+                    if (isLeavingMarineUnitStep && (isGoingToPersonTypeStep || isGoingToCommercialRegStep)) {
+                        println("🧹 Going back from marine unit selection to person type/commercial reg - clearing ships")
+                        val strategy = currentStrategy
+                        strategy?.clearLoadedShips()
 
-                    // ✅ Refresh steps to reflect cleared ships
-                    val updatedSteps = strategy?.getSteps() ?: currentState.steps
+                        // ✅ Refresh steps to reflect cleared ships
+                        val updatedSteps = strategy?.getSteps() ?: currentState.steps
 
-                    _uiState.value = currentState.copy(
-                        currentStep = prevStep, // ✅ Simply go to previous step
-                        steps = updatedSteps,
-                        canProceedToNext = navigationUseCase.canProceedToNext(
-                            prevStep,
-                            updatedSteps,
-                            currentState.formData
+                        _uiState.value = currentState.copy(
+                            currentStep = prevStep, // ✅ Simply go to previous step
+                            steps = updatedSteps,
+                            canProceedToNext = navigationUseCase.canProceedToNext(
+                                prevStep,
+                                updatedSteps,
+                                currentState.formData
+                            )
                         )
-                    )
-                } else {
-                    // ✅ Normal back navigation - keep ships cached
-                    _uiState.value = currentState.copy(
-                        currentStep = prevStep, // ✅ Simply go to previous step
-                        canProceedToNext = navigationUseCase.canProceedToNext(
-                            prevStep,
-                            currentState.steps,
-                            currentState.formData
+                    } else {
+                        // ✅ Normal back navigation - keep ships cached
+                        _uiState.value = currentState.copy(
+                            currentStep = prevStep, // ✅ Simply go to previous step
+                            canProceedToNext = navigationUseCase.canProceedToNext(
+                                prevStep,
+                                currentState.steps,
+                                currentState.formData
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
