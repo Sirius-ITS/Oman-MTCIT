@@ -1,11 +1,14 @@
 package com.informatique.mtcit.ui.components
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,6 +20,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -37,6 +42,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -58,7 +66,10 @@ fun CustomDropdown(
     mandatory: Boolean = false,
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
-    placeholder: String? = null
+    placeholder: String? = null,
+    // ✅ NEW: Shimmer loading parameters
+    isLoading: Boolean = false,
+    loadingMessage: String? = "جاري التحميل..."
 ) {
     var showSheet by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -70,18 +81,26 @@ fun CustomDropdown(
         it.contains(searchQuery, ignoreCase = true)
     }
 
+    // ✅ Disable interaction when loading
+    val isInteractionEnabled = enabled && !isLoading
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = if (mandatory) "$label *" else label,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = extraColors.whiteInDarkMode,
+            color = when {
+                error != null -> Color(0xFFE74C3C)
+                !isInteractionEnabled -> extraColors.whiteInDarkMode.copy(alpha = 0.38f)
+                else -> extraColors.whiteInDarkMode
+            },
             modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
         )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = enabled) {
+                .clickable(enabled = isInteractionEnabled) {
                     showSheet = true
                 }
         ) {
@@ -122,24 +141,61 @@ fun CustomDropdown(
                     }
                 } else null,
                 trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowDropDown,
-                        contentDescription = "Dropdown Icon",
-                        tint = if (enabled) extraColors.textSubTitle
-                        else extraColors.gray0.copy(alpha = 0.3f)
-                    )
+                    // ✅ Show different icon based on state
+                    when {
+                        isLoading -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = extraColors.blue1
+                            )
+                        }
+                        error != null -> {
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = Color(0xFFE74C3C)
+                            )
+                        }
+                        else -> {
+                            Icon(
+                                imageVector = Icons.Rounded.ArrowDropDown,
+                                contentDescription = "Dropdown Icon",
+                                tint = if (isInteractionEnabled) extraColors.textSubTitle
+                                else extraColors.gray0.copy(alpha = 0.3f)
+                            )
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 isError = error != null,
                 singleLine = true
             )
+
+            // ✅ Shimmer effect overlay when loading
+            if (isLoading) {
+                ShimmerEffect(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(1.dp)
+                )
+            }
         }
 
+        // ✅ Show error or loading message
         if (error != null) {
             Text(
                 text = error,
                 fontSize = 12.sp,
                 color = Color(0xFFE74C3C),
+                modifier = Modifier.padding(top = 4.dp, start = 4.dp)
+            )
+        } else if (isLoading && loadingMessage != null) {
+            Text(
+                text = loadingMessage,
+                fontSize = 12.sp,
+                color = extraColors.blue1,
                 modifier = Modifier.padding(top = 4.dp, start = 4.dp)
             )
         }
@@ -152,7 +208,7 @@ fun CustomDropdown(
                 searchQuery = ""
             },
             sheetState = sheetState,
-            containerColor = extraColors.background
+            containerColor = extraColors.cardBackground
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -277,4 +333,44 @@ fun CustomDropdown(
             }
         }
     }
+}
+
+/**
+ * ✅ Shimmer effect with animation for loading states
+ */
+@Composable
+fun ShimmerEffect(
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1200,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_translate"
+    )
+
+    val shimmerColors = listOf(
+        Color.Gray.copy(alpha = 0.3f),
+        Color.Gray.copy(alpha = 0.5f),
+        Color.Gray.copy(alpha = 0.3f)
+    )
+
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset(translateAnim - 200f, translateAnim - 200f),
+        end = Offset(translateAnim, translateAnim)
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(brush)
+    )
 }

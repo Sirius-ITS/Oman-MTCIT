@@ -5,6 +5,8 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.DateValidationRules
 import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.validation.rules.DocumentValidationRules
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
 import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
@@ -34,44 +37,80 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
-    private val temporaryRegistrationRules: TemporaryRegistrationRules
+    private val temporaryRegistrationRules: TemporaryRegistrationRules,
+    private val registrationRequestManager: RegistrationRequestManager
 ) : TransactionStrategy, MarineUnitValidatable {
 
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
+    private var shipCategoryOptions: List<String> = emptyList()
+    private var marineActivityOptions: List<String> = emptyList()
+    private var proofTypeOptions: List<String> = emptyList()
+    private var engineStatusOptions: List<String> = emptyList()
+    private var buildMaterialOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
+
+    // NEW: Store filtered ship types based on selected category
+    private var filteredShipTypeOptions: List<String> = emptyList()
+    private var isShipTypeFiltered: Boolean = false
+
+    // Map to store category name -> category ID for ship types filtering
+    private var shipCategoryIdMap: Map<String, Int> = emptyMap()
+
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
 
+    // ✅ Override the callback property from TransactionStrategy interface
+    override var onStepsNeedRebuild: (() -> Unit)? = null
+
+    // ✅ NEW: Override the per-lookup callbacks for loading indicators
+    override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
+    override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
+
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
-        val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
-        val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
+
+        // ✅ Load only ESSENTIAL lookups needed for initial steps
+        // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
+
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
 
-        portOptions = ports
-        countryOptions = countries
-        shipTypeOptions = shipTypes
-        commercialOptions = commercialRegistrations
+        // Store in instance variables
         typeOptions = personTypes
+        commercialOptions = commercialRegistrations
 
+        // Load marine units list (needed for marine unit selection step)
         marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
+
+        println("✅ Loaded essential lookups:")
+        println("   - Person Types: ${personTypes.size}")
+        println("   - Commercial Registrations: ${commercialRegistrations.size}")
+        println("   - Marine Units: ${marineUnits.size}")
+        println("   - Other lookups will be loaded lazily when their steps are opened")
 
         return mapOf(
             "marineUnits" to marineUnits, // ✅ Return actual MarineUnit objects for validation
-            "registrationPort" to ports,
-            "ownerNationality" to countries,
-            "ownerCountry" to countries,
-            "registrationCountry" to countries,
-            "unitType" to shipTypes,
-            "commercialRegistration" to commercialRegistrations,
-            "personType" to personTypes
+            "personType" to personTypes,
+            "commercialRegistration" to commercialRegistrations
+            // ❌ Removed: ports, countries, shipTypes, shipCategories, marineActivities, proofTypes, engineStatuses
+            // These will be loaded lazily via onStepOpened() when user reaches those steps
         )
+    }
+
+    /**
+     * Build a map of category name -> category ID
+     * TODO: Replace with actual mapping when ShipCategory objects are returned from API
+     */
+    private fun buildCategoryIdMap(categoryNames: List<String>): Map<String, Int> {
+        // Mock mapping - replace with actual IDs from API
+        return categoryNames.mapIndexed { index, name ->
+            name to (index + 1)
+        }.toMap()
     }
 
     override fun getSteps(): List<StepData> {
@@ -121,20 +160,28 @@ class TemporaryRegistrationStrategy @Inject constructor(
         if (isAddingNewUnit && !hasSelectedExistingUnit) {
             println("✅ Adding new unit steps")
 
+            // Use filtered ship types if available, otherwise use empty list
+            val shipTypesToUse = if (isShipTypeFiltered) filteredShipTypeOptions else emptyList()
+
+            println("🔧 getSteps - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}")
+
             steps.add(
                 SharedSteps.unitSelectionStep(
-                    shipTypes = shipTypeOptions,
+                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
+                    shipCategories = shipCategoryOptions,
                     ports = portOptions,
                     countries = countryOptions,
+                    marineActivities = marineActivityOptions,
+                    proofTypes = proofTypeOptions,
+                    buildingMaterials = buildMaterialOptions, // ✅ Now uses loaded options
                     includeIMO = true,
                     includeMMSI = true,
                     includeManufacturer = true,
-                    maritimeactivity = shipTypeOptions,
                     includeProofDocument = false,
                     includeConstructionDates = true,
                     includeRegistrationCountry = true,
-                    isFishingBoat = isFishingBoat, // ✅ Pass fishing boat flag
-                    fishingBoatDataLoaded = fishingBoatDataLoaded // ✅ Pass data loaded flag
+                    isFishingBoat = isFishingBoat,
+                    fishingBoatDataLoaded = fishingBoatDataLoaded
                 )
             )
 
@@ -160,13 +207,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     ),
                     countries = countryOptions,
                     fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
-                    engineConditions = listOf(
-                        "New",
-                        "Used - Like New",
-                        "Used - Good",
-                        "Used - Fair",
-                        "Used - Poor"
-                    ),
+                    engineConditions = engineStatusOptions,
                 )
             )
 
@@ -317,7 +358,33 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         println("📦 accumulatedFormData after update: $accumulatedFormData")
 
-        // ... rest of existing code
+        // ✅ Use RegistrationRequestManager to process step data
+        val currentStepData = getSteps().getOrNull(step)
+        if (currentStepData != null) {
+            val stepFieldIds = currentStepData.fields.map { it.id }
+
+            // Call the manager in a blocking manner (we're already in the right context)
+            val result = kotlinx.coroutines.runBlocking {
+                registrationRequestManager.processStepIfNeeded(
+                    stepFields = stepFieldIds,
+                    formData = accumulatedFormData,
+                    requestTypeId = 1 // 1 = Temporary Registration
+                )
+            }
+
+            when (result) {
+                is StepProcessResult.Success -> {
+                    println("✅ ${result.message}")
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Error: ${result.message}")
+                    return -1 // Indicate error
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No API call needed for this step")
+                }
+            }
+        }
 
         return step
     }
@@ -327,8 +394,47 @@ class TemporaryRegistrationStrategy @Inject constructor(
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
+        val mutableFormData = formData.toMutableMap()
+
+        // NEW: Handle ship category change - fetch filtered ship types
+        if (fieldId == "unitClassification" && value.isNotBlank()) {
+            println("🚢 Ship category changed to: $value")
+
+            // Get category ID from category name
+            val categoryId = lookupRepository.getShipCategoryId(value)
+
+            if (categoryId != null) {
+                println("🔍 Found category ID: $categoryId")
+
+                // Fetch filtered ship types
+                kotlinx.coroutines.runBlocking {
+                    val filteredTypes = lookupRepository.getShipTypesByCategory(categoryId).getOrNull()
+                    if (filteredTypes != null && filteredTypes.isNotEmpty()) {
+                        println("✅ Loaded ${filteredTypes.size} ship types for category $categoryId")
+                        filteredShipTypeOptions = filteredTypes
+                        isShipTypeFiltered = true
+
+                        // Clear the unitType field since the options changed
+                        mutableFormData.remove("unitType")
+
+                        // Add a flag to trigger step refresh
+                        mutableFormData["_triggerRefresh"] = "true"
+                    } else {
+                        println("⚠️ No ship types found for category $categoryId")
+                        filteredShipTypeOptions = emptyList()
+                        isShipTypeFiltered = true
+                        mutableFormData.remove("unitType")
+                        mutableFormData["_triggerRefresh"] = "true"
+                    }
+                }
+            } else {
+                println("❌ Could not find category ID for: $value")
+            }
+
+            return mutableFormData
+        }
+
         if (fieldId == "owner_type") {
-            val mutableFormData = formData.toMutableMap()
             when (value) {
                 "فرد" -> {
                     mutableFormData.remove("companyName")
@@ -663,6 +769,160 @@ class TemporaryRegistrationStrategy @Inject constructor(
             println("❌ Validation error: ${e.message}")
             e.printStackTrace()
             ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+        }
+    }
+
+    /**
+     * Called when a step is opened - loads only the required lookups for that step
+     * ✅ NEW: Loads lookups in PARALLEL with per-field loading indicators
+     */
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+
+        if (step.requiredLookups.isEmpty()) {
+            println("ℹ️ Step $stepIndex has no required lookups")
+            return
+        }
+
+        println("🔄 Loading ${step.requiredLookups.size} lookups in PARALLEL for step $stepIndex: ${step.requiredLookups}")
+
+        // ✅ Notify ViewModel that all lookups are starting (sets loading state immediately)
+        step.requiredLookups.forEach { lookupKey ->
+            onLookupStarted?.invoke(lookupKey)
+        }
+
+        // ✅ Launch all lookups in parallel - each updates UI independently when done
+        kotlinx.coroutines.coroutineScope {
+            step.requiredLookups.forEach { lookupKey ->
+                launch {
+                    loadLookup(lookupKey)
+                }
+            }
+        }
+
+        println("✅ Finished loading all lookups for step $stepIndex")
+
+        // ✅ Rebuild steps after all lookups complete
+        onStepsNeedRebuild?.invoke()
+    }
+
+    /**
+     * ✅ NEW: Helper method to load a single lookup and notify completion
+     * Reduces code duplication and makes it easier to add new lookups
+     */
+    private suspend fun loadLookup(lookupKey: String) {
+        try {
+            when (lookupKey) {
+                "ports" -> {
+                    if (portOptions.isEmpty()) {
+                        println("📥 Loading ports...")
+                        val data = lookupRepository.getPorts().getOrNull() ?: emptyList()
+                        portOptions = data
+                        println("✅ Loaded ${portOptions.size} ports")
+                        onLookupCompleted?.invoke("ports", data, true)
+                    } else {
+                        // Already loaded - notify with cached data
+                        onLookupCompleted?.invoke("ports", portOptions, true)
+                    }
+                }
+                "countries" -> {
+                    if (countryOptions.isEmpty()) {
+                        println("📥 Loading countries...")
+                        val data = lookupRepository.getCountries().getOrNull() ?: emptyList()
+                        countryOptions = data
+                        println("✅ Loaded ${countryOptions.size} countries")
+                        onLookupCompleted?.invoke("countries", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("countries", countryOptions, true)
+                    }
+                }
+                "nationalities" -> {
+                    if (countryOptions.isEmpty()) {
+                        println("📥 Loading nationalities/countries...")
+                        val data = lookupRepository.getCountries().getOrNull() ?: emptyList()
+                        countryOptions = data
+                        println("✅ Loaded ${countryOptions.size} countries/nationalities")
+                        onLookupCompleted?.invoke("nationalities", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("nationalities", countryOptions, true)
+                    }
+                }
+                "shipTypes" -> {
+                    if (shipTypeOptions.isEmpty()) {
+                        println("📥 Loading ship types...")
+                        val data = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
+                        shipTypeOptions = data
+                        println("✅ Loaded ${shipTypeOptions.size} ship types")
+                        onLookupCompleted?.invoke("shipTypes", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("shipTypes", shipTypeOptions, true)
+                    }
+                }
+                "shipCategories" -> {
+                    if (shipCategoryOptions.isEmpty()) {
+                        println("📥 Loading ship categories...")
+                        val data = lookupRepository.getShipCategories().getOrNull() ?: emptyList()
+                        shipCategoryOptions = data
+                        println("✅ Loaded ${shipCategoryOptions.size} ship categories")
+                        onLookupCompleted?.invoke("shipCategories", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("shipCategories", shipCategoryOptions, true)
+                    }
+                }
+                "marineActivities" -> {
+                    if (marineActivityOptions.isEmpty()) {
+                        println("📥 Loading marine activities...")
+                        val data = lookupRepository.getMarineActivities().getOrNull() ?: emptyList()
+                        marineActivityOptions = data
+                        println("✅ Loaded ${marineActivityOptions.size} marine activities")
+                        onLookupCompleted?.invoke("marineActivities", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("marineActivities", marineActivityOptions, true)
+                    }
+                }
+                "proofTypes" -> {
+                    if (proofTypeOptions.isEmpty()) {
+                        println("📥 Loading proof types...")
+                        val data = lookupRepository.getProofTypes().getOrNull() ?: emptyList()
+                        proofTypeOptions = data
+                        println("✅ Loaded ${proofTypeOptions.size} proof types")
+                        onLookupCompleted?.invoke("proofTypes", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("proofTypes", proofTypeOptions, true)
+                    }
+                }
+                "engineStatuses" -> {
+                    if (engineStatusOptions.isEmpty()) {
+                        println("📥 Loading engine statuses...")
+                        val data = lookupRepository.getEngineStatuses().getOrNull() ?: emptyList()
+                        engineStatusOptions = data
+                        println("✅ Loaded ${engineStatusOptions.size} engine statuses")
+                        onLookupCompleted?.invoke("engineStatuses", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("engineStatuses", engineStatusOptions, true)
+                    }
+                }
+                "buildMaterials" -> {
+                    if (buildMaterialOptions.isEmpty()) {
+                        println("📥 Loading build materials...")
+                        val data = lookupRepository.getBuildMaterials().getOrNull() ?: emptyList()
+                        buildMaterialOptions = data
+                        println("✅ Loaded ${buildMaterialOptions.size} build materials")
+                        onLookupCompleted?.invoke("buildMaterials", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("buildMaterials", buildMaterialOptions, true)
+                    }
+                }
+                else -> {
+                    println("⚠️ Unknown lookup key: $lookupKey")
+                    onLookupCompleted?.invoke(lookupKey, emptyList(), false)
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Failed to load lookup '$lookupKey': ${e.message}")
+            e.printStackTrace()
+            // ✅ Notify ViewModel even on failure (with empty list and success=false)
+            onLookupCompleted?.invoke(lookupKey, emptyList(), false)
         }
     }
 }

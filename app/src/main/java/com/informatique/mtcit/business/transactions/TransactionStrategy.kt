@@ -65,6 +65,44 @@ interface TransactionStrategy {
     suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
         return FieldFocusResult.NoAction
     }
+
+    /**
+     * Called when a step is opened by the UI
+     * Used for lazy loading of lookups specific to that step
+     * @param stepIndex Index of the step being opened
+     */
+    suspend fun onStepOpened(stepIndex: Int) {
+        // Default no-op implementation - strategies can override to load step-specific lookups
+    }
+
+    /**
+     * ✅ NEW: Callback to notify ViewModel when steps need to be rebuilt
+     * This is used after lazy-loading lookups to refresh the UI with updated dropdown options
+     * Strategies can set this callback and invoke it when their step data changes
+     */
+    var onStepsNeedRebuild: (() -> Unit)?
+        get() = null
+        set(_) {}
+
+    /**
+     * ✅ NEW: Callback to notify ViewModel when a specific lookup starts loading
+     * This enables per-field loading indicators in the UI
+     * @param lookupKey The lookup identifier (e.g., "ports", "countries", "shipTypes")
+     */
+    var onLookupStarted: ((lookupKey: String) -> Unit)?
+        get() = null
+        set(_) {}
+
+    /**
+     * ✅ NEW: Callback to notify ViewModel when a specific lookup finishes loading
+     * This enables per-field loading indicators in the UI
+     * @param lookupKey The lookup identifier (e.g., "ports", "countries", "shipTypes")
+     * @param data The loaded data for this lookup (empty list on error)
+     * @param success Whether the lookup succeeded
+     */
+    var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)?
+        get() = null
+        set(_) {}
 }
 
 /**

@@ -37,8 +37,27 @@ fun DynamicStepForm(
     onTriggerNext: () -> Unit, // ✅ أضف الـ parameter ده
     // NEW: Validation parameters
     validationState: com.informatique.mtcit.ui.viewmodels.ValidationState = com.informatique.mtcit.ui.viewmodels.ValidationState.Idle,
-    onMarineUnitSelected: ((String) -> Unit)? = null
+    onMarineUnitSelected: ((String) -> Unit)? = null,
+    // ✅ NEW: Lookup loading state parameters
+    lookupLoadingStates: Map<String, Boolean> = emptyMap(),
+    loadedLookupData: Map<String, Pair<List<String>, Boolean>> = emptyMap()
 ) {
+
+    // ✅ Helper function to map field ID to lookup key
+    fun getLookupKeyForField(fieldId: String): String? {
+        return when (fieldId) {
+            "registrationPort" -> "ports"
+            "buildingCountry", "productionCountry", "ownerCountry" -> "countries"
+            "ownerNationality" -> "nationalities"
+            "unitType" -> "shipTypes"
+            "unitClassification" -> "shipCategories"
+            "maritimeActivity" -> "marineActivities"
+            "proofType" -> "proofTypes"
+            "engineCondition" -> "engineStatuses"
+            "buildingMaterial" -> "buildMaterials"
+            else -> null
+        }
+    }
 
     var selectedId by remember { mutableStateOf<String?>(null) }
     var selectedPersonId by remember { mutableStateOf("فرد") }
@@ -122,14 +141,21 @@ fun DynamicStepForm(
                         }
 
                         is FormField.DropDown -> {
+                            // Get the lookup key for the field
+                            val lookupKey = getLookupKeyForField(field.id)
+
+                            // Determine if shimmer loading should be shown
+                            val isShimmerLoading = lookupKey != null && lookupLoadingStates[lookupKey] == true
+
                             CustomDropdown(
                                 label = field.label,
-                                options = field.options,
+                                options = if (isShimmerLoading) emptyList() else field.options,
                                 selectedOption = field.selectedOption,
                                 onOptionSelected = { onFieldChange(field.id, it, null) },
                                 error = field.error,
                                 mandatory = field.mandatory,
-                                placeholder = field.label
+                                placeholder = field.label,
+                                isLoading = isShimmerLoading // Pass loading state to dropdown
                             )
                         }
 

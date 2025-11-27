@@ -1,176 +1,367 @@
 package com.informatique.mtcit.data.api
 
-import com.informatique.mtcit.data.model.City
-import com.informatique.mtcit.data.model.Country
-import com.informatique.mtcit.data.model.LookupResponse
-import com.informatique.mtcit.data.model.Port
-import com.informatique.mtcit.data.model.ShipType
-import com.informatique.mtcit.di.module.AppHttpRequests
+import com.informatique.mtcit.data.model.*
+import com.informatique.mtcit.di.module.AppRepository
+import com.informatique.mtcit.di.module.RepoServiceState
 import com.informatique.mtcit.ui.components.DefaultBusinessIcon
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
-import io.ktor.client.HttpClient
-import kotlinx.coroutines.delay
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Lookup API Service for fetching dropdown options
- * Currently using MOCK data - will be replaced with real API endpoints
+ * Lookup API Service for fetching dropdown options from real APIs
  */
 @Singleton
 class LookupApiService @Inject constructor(
-    client: HttpClient
-) : AppHttpRequests(client) {
+    private val repo: AppRepository,
+    private val json: Json
+) {
+
+    /**
+     * Get list of ship types
+     * API: api/v1/coremdshiptype
+     */
+    suspend fun getShipTypes(): Result<LookupResponse<ShipType>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdshiptype")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, shipTypes))
+                        } else {
+                            Result.failure(Exception("Failed to fetch ship types"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty ship types response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get ship types: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get ship types: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get ship types by category ID
+     * API: api/v1/coremdshiptype/category/{categoryId}
+     */
+    suspend fun getShipTypesByCategory(categoryId: Int): Result<LookupResponse<ShipType>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdshiptype/category/$categoryId")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, shipTypes))
+                        } else {
+                            Result.failure(Exception("Failed to fetch ship types by category"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty ship types response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get ship types by category: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get ship types by category: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of ship categories
+     * API: api/v1/coremdshipcategory
+     */
+    suspend fun getShipCategories(): Result<LookupResponse<ShipCategory>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdshipcategory")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val categories: List<ShipCategory> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, categories))
+                        } else {
+                            Result.failure(Exception("Failed to fetch ship categories"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty ship categories response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get ship categories: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get ship categories: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of engine statuses
+     * API: api/v1/coremdshipenginestatus
+     */
+    suspend fun getEngineStatuses(): Result<LookupResponse<EngineStatus>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdshipenginestatus")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val statuses: List<EngineStatus> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, statuses))
+                        } else {
+                            Result.failure(Exception("Failed to fetch engine statuses"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty engine statuses response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get engine statuses: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get engine statuses: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of proof types
+     * API: api/v1/coremdprooftype
+     */
+    suspend fun getProofTypes(): Result<LookupResponse<ProofType>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdprooftype")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val proofTypes: List<ProofType> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, proofTypes))
+                        } else {
+                            Result.failure(Exception("Failed to fetch proof types"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty proof types response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get proof types: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get proof types: ${e.message}"))
+        }
+    }
 
     /**
      * Get list of ports
-     * TODO: Replace with real endpoint when API is ready
+     * API: api/v1/coremdportofregistry
      */
     suspend fun getPorts(): Result<LookupResponse<Port>> {
-        // Simulate API delay
-        delay(500)
+        return try {
+            when (val response = repo.onGet("api/v1/coremdportofregistry")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
 
-        // TODO: Replace with actual API call
-        // val result = onGetData("${BASE_URL}/api/lookups/ports")
-        // return when (result) {
-        //     is AppHttpRequest.AppHttpRequestModel -> {
-        //         Result.success(result.response.body<LookupResponse<Port>>())
-        //     }
-        //     is AppHttpRequest.AppHttpRequestErrorModel -> {
-        //         Result.failure(Exception(result.message))
-        //     }
-        // }
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
 
-        // Mock implementation
-        return Result.success(createMockPortsResponse())
+                            val ports: List<Port> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, ports))
+                        } else {
+                            Result.failure(Exception("Failed to fetch ports"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty ports response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get ports: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get ports: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of marine activities
+     * API: api/v1/coremdmarineactivity
+     */
+    suspend fun getMarineActivities(): Result<LookupResponse<MarineActivity>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdmarineactivity")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val activities: List<MarineActivity> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, activities))
+                        } else {
+                            Result.failure(Exception("Failed to fetch marine activities"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty marine activities response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get marine activities: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get marine activities: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of building materials
+     * API: api/v1/coremdbuildmaterial
+     */
+    suspend fun getBuildMaterials(): Result<LookupResponse<BuildMaterial>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdbuildmaterial")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val materials: List<BuildMaterial> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, materials))
+                        } else {
+                            Result.failure(Exception("Failed to fetch building materials"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty building materials response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get building materials: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get building materials: ${e.message}"))
+        }
     }
 
     /**
      * Get list of countries
-     * TODO: Replace with real endpoint when API is ready
+     * API: api/v1/coremdcountry
      */
     suspend fun getCountries(): Result<LookupResponse<Country>> {
-        delay(500)
+        return try {
+            when (val response = repo.onGet("api/v1/coremdcountry")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
 
-        // TODO: Replace with actual API call
-        // val result = onGetData("${BASE_URL}/api/lookups/countries")
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
 
-        return Result.success(createMockCountriesResponse())
+                            val countries: List<Country> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, countries))
+                        } else {
+                            Result.failure(Exception("Failed to fetch countries"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty countries response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get countries: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get countries: ${e.message}"))
+        }
     }
 
     /**
-     * Get list of ship types
-     * TODO: Replace with real endpoint when API is ready
-     */
-    suspend fun getShipTypes(): Result<LookupResponse<ShipType>> {
-        delay(500)
-
-        // TODO: Replace with actual API call
-        // val result = onGetData("${BASE_URL}/api/lookups/ship-types")
-
-        return Result.success(createMockShipTypesResponse())
-    }
-
-    /**
-     * Get cities by country
-     * TODO: Replace with real endpoint when API is ready
+     * Get cities by country (keeping mock for now - no API provided)
      */
     suspend fun getCitiesByCountry(countryId: String): Result<LookupResponse<City>> {
-        delay(500)
-
-        // TODO: Replace with actual API call
-        // val result = onGetData("${BASE_URL}/api/lookups/cities?countryId=$countryId")
-
-        return Result.success(createMockCitiesResponse(countryId))
+        // TODO: Replace with real API when available
+        return Result.success(LookupResponse(true, emptyList()))
     }
 
     /**
-     * Get list of commercial registrations
-     * TODO: Replace with real endpoint when API is ready
+     * Get list of commercial registrations (keeping mock for now - no API provided)
      */
     suspend fun getCommercialRegistrations(): Result<LookupResponse<SelectableItem>> {
-        delay(500)
-
-        // TODO: Replace with actual API call
-        // val result = onGetData("${BASE_URL}/api/lookups/commercial-registrations")
-
-        return Result.success(createMockCommercialRegistrationsResponse())
-    }
-
-    /**
-     * Get list of person types
-     * TODO: Replace with real endpoint when API is ready
-     */
-    suspend fun getPersonTypes(): Result<LookupResponse<PersonType>> {
-        delay(500)
-
-        // TODO: Replace with actual API call
-        // val result = onGetData("${BASE_URL}/api/lookups/person-type")
-
-        return Result.success(createMockPersonTypesResponse())
-    }
-
-    // ========== MOCK DATA GENERATION ==========
-    // Remove these methods when real API is ready
-
-    private fun createMockPortsResponse(): LookupResponse<Port> {
-        val ports = listOf(
-            Port("1", "ميناء صحار", "Sohar Port", "SOH"),
-            Port("2", "ميناء صلالة", "Salalah Port", "SAL"),
-            Port("3", "ميناء مسقط", "Muscat Port", "MUS"),
-            Port("4", "ميناء الدقم", "Duqm Port", "DUQ"),
-            Port("5", "ميناء شناص", "Shinas Port", "SHI")
-        )
-        return LookupResponse(true, ports)
-    }
-
-    private fun createMockCountriesResponse(): LookupResponse<Country> {
-        val countries = listOf(
-            Country("1", "عُمان", "Oman", "OM"),
-            Country("2", "الإمارات العربية المتحدة", "United Arab Emirates", "AE"),
-            Country("3", "المملكة العربية السعودية", "Saudi Arabia", "SA"),
-            Country("4", "الكويت", "Kuwait", "KW"),
-            Country("5", "البحرين", "Bahrain", "BH"),
-            Country("6", "قطر", "Qatar", "QA"),
-            Country("7", "مصر", "Egypt", "EG"),
-            Country("8", "الأردن", "Jordan", "JO")
-        )
-        return LookupResponse(true, countries)
-    }
-
-    private fun createMockShipTypesResponse(): LookupResponse<ShipType> {
-        val shipTypes = listOf(
-            ShipType("1", "سفينة شحن", "Cargo Ship"),
-            ShipType("2", "سفينة ركاب", "Passenger Ship"),
-            ShipType("3", "ناقلة نفط", "Oil Tanker"),
-            ShipType("4", "يخت", "Yacht"),
-            ShipType("5", "قارب صيد", "Fishing Boat"),
-            ShipType("6", "قارب نزهة", "Pleasure Boat")
-        )
-        return LookupResponse(true, shipTypes)
-    }
-
-    private fun createMockCitiesResponse(countryId: String): LookupResponse<City> {
-        val cities = when (countryId) {
-            "1" -> listOf( // Oman
-                City("1", "مسقط", "Muscat", "1"),
-                City("2", "صلالة", "Salalah", "1"),
-                City("3", "صحار", "Sohar", "1"),
-                City("4", "نزوى", "Nizwa", "1"),
-                City("5", "صور", "Sur", "1")
-            )
-            "2" -> listOf( // UAE
-                City("6", "دبي", "Dubai", "2"),
-                City("7", "أبوظبي", "Abu Dhabi", "2"),
-                City("8", "الشارقة", "Sharjah", "2")
-            )
-            else -> listOf()
-        }
-        return LookupResponse(true, cities)
-    }
-
-    private fun createMockCommercialRegistrationsResponse(): LookupResponse<SelectableItem> {
+        // TODO: Replace with real API when available
         val data = listOf(
             SelectableItem(
                 id = "CR-2024-001",
@@ -183,24 +374,16 @@ class LookupApiService @Inject constructor(
                 title = "مؤسسة البحر للملاحة",
                 code = "CR-2024-002",
                 description = "مؤسسة متخصصة في النقل البحري\nوالخدمات اللوجستية"
-            ),
-            SelectableItem(
-                id = "CR-2024-003",
-                title = "مؤسسة فلامنجو للملاحة",
-                code = "CR-2024-003",
-                description = "مؤسسة متخصصة في النقل البحري\nوالخدمات اللوجستية"
-            ),
-            SelectableItem(
-                id = "CR-2024-004",
-                title = "شركة الأفق للاستثمار",
-                code = "CR-2024-004",
-                description = "شركة استثمارية في مجال العقارات"
             )
         )
-        return LookupResponse(true, data)
+        return Result.success(LookupResponse(true, data))
     }
 
-    private fun createMockPersonTypesResponse(): LookupResponse<PersonType> {
+    /**
+     * Get list of person types (keeping mock for now - no API provided)
+     */
+    suspend fun getPersonTypes(): Result<LookupResponse<PersonType>> {
+        // TODO: Replace with real API when available
         val data = listOf(
             PersonType(
                 id = "PT-2024-001",
@@ -214,6 +397,6 @@ class LookupApiService @Inject constructor(
                 code = "PT-2024-002"
             )
         )
-        return LookupResponse(true, data)
+        return Result.success(LookupResponse(true, data))
     }
 }

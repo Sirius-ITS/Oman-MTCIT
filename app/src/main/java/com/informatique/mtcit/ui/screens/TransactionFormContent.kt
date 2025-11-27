@@ -282,6 +282,10 @@ fun TransactionFormContent(
                     }
                 )
 
+                // ✅ Observe lookup loading states for shimmer effect
+                val lookupLoadingStates by viewModel.lookupLoadingStates.collectAsState()
+                val loadedLookupData by viewModel.loadedLookupData.collectAsState()
+
                 DynamicStepForm(
                     stepData = componentStepData,
                     formData = uiState.formData,
@@ -302,19 +306,20 @@ fun TransactionFormContent(
                     onDeclarationChange = { accepted ->
                         declarationAccepted = accepted
                     },
-                    onTriggerNext = { viewModel.nextStep() }, // ✅ مرر الـ ViewModel function
-                    // Pass only validation state for loading indicator
+                    onTriggerNext = { viewModel.nextStep() },
                     validationState = if (viewModel is MarineRegistrationViewModel) {
                         viewModel.validationState.collectAsState().value
                     } else {
                         ValidationState.Idle
                     },
-                    // Pass unit selection callback - errors navigate to RequestDetailScreen
                     onMarineUnitSelected = if (viewModel is MarineRegistrationViewModel) {
                         { unitId -> viewModel.onMarineUnitSelected(unitId) }
                     } else {
                         null
-                    }
+                    },
+                    // ✅ NEW: Pass lookup loading states for automatic shimmer
+                    lookupLoadingStates = lookupLoadingStates,
+                    loadedLookupData = loadedLookupData
                 )
             }
         }

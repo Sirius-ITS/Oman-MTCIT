@@ -51,10 +51,14 @@ open class AppHttpRequests(val client: HttpClient) {
         }
     }
 
-    protected suspend fun onPutData(url: String, data: Any?): JsonElement {
-        return client.put(url){
-            setBody(data)
-        }.body(TypeInfo(JsonElement::class))
+    protected suspend fun onPutData(url: String, data: Any): AppHttpRequest {
+        return try {
+            val response = client.put(url) { setBody(data) }
+            AppHttpRequest.AppHttpRequestModel(key = "", response = response)
+        } catch (ex: Exception){
+            AppHttpRequest.AppHttpRequestErrorModel(
+                key = "", code = 0, message = ex.message.toString())
+        }
     }
 
     protected suspend fun onPostMultipartData(url: String, data: List<PartData>): AppHttpRequest {

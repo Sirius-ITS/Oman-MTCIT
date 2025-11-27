@@ -5,7 +5,6 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.ui.repo.CompanyRepo
@@ -32,38 +31,69 @@ class ShipRegistrationStrategy @Inject constructor(
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
+    private var shipCategoryOptions: List<String> = emptyList()
+    private var marineActivityOptions: List<String> = emptyList()
+    private var proofTypeOptions: List<String> = emptyList()
+    private var engineStatusOptions: List<String> = emptyList()
+
+    // NEW: Store filtered ship types based on selected category
+    private var filteredShipTypeOptions: List<String> = emptyList()
+    private var isShipTypeFiltered: Boolean = false
 
     override suspend fun loadDynamicOptions(): Map<String, List<String>> {
-        // Load all dropdown options from API
+        // Load all dropdown options from API with caching
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
+        val shipCategories = lookupRepository.getShipCategories().getOrNull() ?: emptyList()
+        val marineActivities = lookupRepository.getMarineActivities().getOrNull() ?: emptyList()
+        val proofTypes = lookupRepository.getProofTypes().getOrNull() ?: emptyList()
+        val engineStatuses = lookupRepository.getEngineStatuses().getOrNull() ?: emptyList()
 
         // Cache the options for use in getSteps()
         portOptions = ports
         countryOptions = countries
         shipTypeOptions = shipTypes
+        shipCategoryOptions = shipCategories
+        marineActivityOptions = marineActivities
+        proofTypeOptions = proofTypes
+        engineStatusOptions = engineStatuses
 
         return mapOf(
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
             "registrationCountry" to countries,
-            "unitType" to shipTypes
+            "unitType" to shipTypes,
+            "unitClassification" to shipCategories,
+            "maritimeActivity" to marineActivities,
+            "proofType" to proofTypes,
+            "engineStatus" to engineStatuses
         )
     }
 
     override fun getSteps(): List<StepData> {
+        // Use filtered ship types if available, otherwise use all ship types
+        val shipTypesToUse = if (isShipTypeFiltered) filteredShipTypeOptions else emptyList()
+        val isShipTypeEnabled = isShipTypeFiltered && filteredShipTypeOptions.isNotEmpty()
+
+        println("🔧 getSteps called - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}, enabled: $isShipTypeEnabled")
+        println("🔧 filteredShipTypeOptions: $filteredShipTypeOptions")
+        println("🔧 shipTypesToUse: $shipTypesToUse")
+
         return listOf(
-            // ✅ Using SharedSteps.unitSelectionStep with full configuration
+            // ✅ Using SharedSteps.unitSelectionStep with filtered ship types
             SharedSteps.unitSelectionStep(
-                shipTypes = shipTypeOptions,
+                shipTypes = shipTypesToUse,  // Use filtered types or empty list
+                shipCategories = shipCategoryOptions,
                 ports = portOptions,
                 countries = countryOptions,
+                marineActivities = marineActivityOptions,
+                proofTypes = proofTypeOptions,
+                buildingMaterials = emptyList(),
                 includeIMO = true,
                 includeMMSI = true,
                 includeManufacturer = true,
-                maritimeactivity = shipTypeOptions,
                 includeProofDocument = true,
                 includeConstructionDates = true,
                 includeRegistrationCountry = true
@@ -113,9 +143,48 @@ class ShipRegistrationStrategy @Inject constructor(
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
+        val mutableFormData = formData.toMutableMap()
+
+        // NEW: Handle ship category change - fetch filtered ship types
+        if (fieldId == "unitClassification" && value.isNotBlank()) {
+            println("🚢 Ship category changed to: $value")
+
+            // Get category ID from category name
+            val categoryId = lookupRepository.getShipCategoryId(value)
+
+            if (categoryId != null) {
+                println("🔍 Found category ID: $categoryId")
+
+                // Fetch filtered ship types in a blocking manner (using runBlocking is acceptable here for UI updates)
+                kotlinx.coroutines.runBlocking {
+                    val filteredTypes = lookupRepository.getShipTypesByCategory(categoryId).getOrNull()
+                    if (filteredTypes != null && filteredTypes.isNotEmpty()) {
+                        println("✅ Loaded ${filteredTypes.size} ship types for category $categoryId")
+                        filteredShipTypeOptions = filteredTypes
+                        isShipTypeFiltered = true
+
+                        // Clear the unitType field since the options changed
+                        mutableFormData.remove("unitType")
+
+                        // Add a flag to trigger step refresh
+                        mutableFormData["_triggerRefresh"] = "true"
+                    } else {
+                        println("⚠️ No ship types found for category $categoryId")
+                        filteredShipTypeOptions = emptyList()
+                        isShipTypeFiltered = true
+                        mutableFormData.remove("unitType")
+                        mutableFormData["_triggerRefresh"] = "true"
+                    }
+                }
+            } else {
+                println("❌ Could not find category ID for: $value")
+            }
+
+            return mutableFormData
+        }
+
         // Handle owner type change
         if (fieldId == "owner_type") {
-            val mutableFormData = formData.toMutableMap()
             when (value) {
                 "فرد" -> {
                     mutableFormData.remove("companyName")
@@ -131,6 +200,7 @@ class ShipRegistrationStrategy @Inject constructor(
             }
             return mutableFormData
         }
+
         return formData
     }
 

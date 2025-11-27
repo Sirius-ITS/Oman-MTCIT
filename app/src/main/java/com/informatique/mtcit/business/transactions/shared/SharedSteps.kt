@@ -84,7 +84,8 @@ object SharedSteps {
         return StepData(
             titleRes = R.string.engine_title,
             descriptionRes = R.string.engine_description,
-            fields = fields
+            fields = fields,
+            requiredLookups = listOf("countries", "engineStatuses")
         )
     }
 
@@ -127,30 +128,46 @@ object SharedSteps {
      */
     fun unitSelectionStep(
         shipTypes: List<String>,
+        shipCategories: List<String>,
         ports: List<String>,
         countries: List<String>,
+        marineActivities: List<String>,
+        proofTypes: List<String>,
+        buildingMaterials: List<String> = emptyList(),
+        engineStatuses: List<String> = emptyList(),
         includeIMO: Boolean = true,
         includeMMSI: Boolean = true,
         includeManufacturer: Boolean = true,
-        maritimeactivity: List<String>,
         includeProofDocument: Boolean = true,
         includeConstructionDates: Boolean = true,
         includeRegistrationCountry: Boolean = true,
         additionalFields: List<FormField> = emptyList(),
-        isFishingBoat: Boolean = false, // ✅ NEW: Flag to show agriculture field
-        fishingBoatDataLoaded: Boolean = false // ✅ NEW: Flag to disable fields
+        isFishingBoat: Boolean = false,
+        fishingBoatDataLoaded: Boolean = false
     ): StepData {
         val fields = mutableListOf<FormField>()
 
-        // Always included: Unit Type
+        // Ship Category Dropdown (تصنيف الوحدة البحرية) - Select this first
+        fields.add(
+            FormField.DropDown(
+                id = "unitClassification",
+                labelRes = R.string.select_unit_classification_placeholder,
+                options = shipCategories,
+                mandatory = true,
+                placeholder = R.string.select_unit_classification_placeholder.toString()
+            )
+        )
+
+        // Ship Type Dropdown (نوع الوحدة البحرية) - Dependent on category selection
+        // Starts empty and disabled until category is selected
+        // When shipTypes are provided (after category selection), it becomes enabled
         fields.add(
             FormField.DropDown(
                 id = "unitType",
                 labelRes = R.string.select_unit_type_placeholder,
-                options = shipTypes,
+                options = shipTypes, // Use provided ship types (empty initially, populated after category selection)
                 mandatory = true,
                 placeholder = R.string.select_unit_type_placeholder.toString()
-
             )
         )
 
@@ -161,30 +178,19 @@ object SharedSteps {
                     id = "agricultureRequestNumber",
                     labelRes = R.string.agriculture_request_number,
                     mandatory = true,
-                    enabled = true, // Always enabled to allow input
+                    enabled = true,
                     placeholder = R.string.enter_agriculture_request_number.toString()
                 )
             )
         }
 
-        fields.add(
-            FormField.DropDown(
-                id = "unitClassification",
-                labelRes = R.string.select_unit_classification_placeholder,
-                options = shipTypes,
-                mandatory = true,
-                placeholder = R.string.select_unit_classification_placeholder.toString()
-
-            )
-        )
-
-        // Always included: Call Sign - DISABLED if fishing boat data loaded
+        // Call Sign - DISABLED if fishing boat data loaded
         fields.add(
             FormField.TextField(
                 id = "callSign",
                 labelRes = R.string.enter_call_sign,
                 mandatory = true,
-                enabled = !fishingBoatDataLoaded, // ✅ Disabled when data loaded
+                enabled = !fishingBoatDataLoaded,
                 placeholder = R.string.enter_call_sign.toString()
             )
         )
@@ -197,19 +203,18 @@ object SharedSteps {
                     labelRes = R.string.enter_imo_number,
                     isNumeric = true,
                     mandatory = false,
-                    enabled = !fishingBoatDataLoaded // ✅ Disabled when data loaded
+                    enabled = !fishingBoatDataLoaded
                 )
             )
         }
 
-        // Always included: Registration Port
+        // Registration Port Dropdown (ميناء التسجيل)
         fields.add(
             FormField.DropDown(
                 id = "registrationPort",
                 labelRes = R.string.select_registration_port,
                 options = ports,
                 mandatory = true
-                // Note: DropDown fields will be disabled in the UI when fishingBoatDataLoaded is true
             )
         )
 
@@ -221,7 +226,7 @@ object SharedSteps {
                     labelRes = R.string.mmsi_number,
                     isNumeric = true,
                     mandatory = false,
-                    enabled = !fishingBoatDataLoaded // ✅ Disabled when data loaded
+                    enabled = !fishingBoatDataLoaded
                 )
             )
         }
@@ -235,75 +240,62 @@ object SharedSteps {
                         labelRes = R.string.ship_manufacture_year,
                         isNumeric = true,
                         mandatory = true,
-                        enabled = !fishingBoatDataLoaded // ✅ Disabled when data loaded
+                        enabled = !fishingBoatDataLoaded
                     )
                 )
             )
         }
 
+        // Marine Activity Dropdown (النشاط البحري)
         fields.add(
             FormField.DropDown(
-                id = "unitClassification",
+                id = "maritimeActivity",
                 labelRes = R.string.select_maritime_activity,
-                options = maritimeactivity,
+                options = marineActivities,
                 mandatory = true,
                 placeholder = R.string.select_maritime_activity.toString()
-
             )
         )
 
-        // Always included: Call Sign
+        // Construction Pool TextField
         fields.add(
             FormField.TextField(
                 id = "constructionpool",
                 labelRes = R.string.enter_construction_pool,
                 mandatory = false,
-                placeholder = R.string.enter_construction_pool.toString()  // استخدم placeholderRes
+                placeholder = R.string.enter_construction_pool.toString()
             )
         )
 
+        // Proof Type Dropdown (نوع الإثبات)
         fields.add(
             FormField.DropDown(
-                id = "unitClassification",
+                id = "proofType",
                 labelRes = R.string.select_proof_type,
-                options = shipTypes,
+                options = proofTypes,
                 mandatory = true,
                 placeholder = R.string.select_proof_type.toString()
-
             )
         )
 
         // Optional: Proof Document
         if (includeProofDocument) {
-            fields.addAll(
-                listOf(
-                    FormField.DropDown(
-                        id = "proofType",
-                        labelRes = R.string.proof_type,
-                        optionRes = listOf(
-                            R.string.ownership_certificate,
-                            R.string.sale_contract,
-                            R.string.registration_document,
-                            R.string.other
-                        ),
-                        mandatory = true
+            fields.add(
+                FormField.FileUpload(
+                    id = "proofDocument",
+                    labelRes = R.string.proof_document,
+                    allowedTypes = listOf(
+                        "pdf",
+                        "jpg",
+                        "jpeg",
+                        "png",
+                        "doc",
+                        "docx",
+                        "xls",
+                        "xlsx",
+                        "txt"
                     ),
-                    FormField.FileUpload(
-                        id = "proofDocument",
-                        labelRes = R.string.proof_document,
-                        allowedTypes = listOf(
-                            "pdf",
-                            "jpg",
-                            "jpeg",
-                            "png",
-                            "doc",
-                            "docx",
-                            "xls",
-                            "xlsx",
-                            "txt"
-                        ),
-                        mandatory = true
-                    )
+                    mandatory = true
                 )
             )
         }
@@ -328,7 +320,7 @@ object SharedSteps {
             )
         }
 
-        // Optional: Registration Country
+        // Optional: Registration Country Dropdown (دولة البناء)
         if (includeRegistrationCountry) {
             fields.add(
                 FormField.DropDown(
@@ -339,16 +331,19 @@ object SharedSteps {
                 )
             )
         }
-        fields.add(
-            FormField.DropDown(
-                id = "unitClassification",
-                labelRes = R.string.select_building_material,
-                options = maritimeactivity,
-                mandatory = true,
-                placeholder = R.string.select_building_material.toString()
 
+        // Building Material Dropdown (مادة البناء)
+        if (buildingMaterials.isNotEmpty()) {
+            fields.add(
+                FormField.DropDown(
+                    id = "buildingMaterial",
+                    labelRes = R.string.select_building_material,
+                    options = buildingMaterials,
+                    mandatory = true,
+                    placeholder = R.string.select_building_material.toString()
+                )
             )
-        )
+        }
 
         // Add transaction-specific fields
         fields.addAll(additionalFields)
@@ -356,7 +351,8 @@ object SharedSteps {
         return StepData(
             titleRes = R.string.unit_data,
             descriptionRes = R.string.unit_data_description,
-            fields = fields
+            fields = fields,
+            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildMaterials")
         )
     }
 
@@ -720,7 +716,8 @@ object SharedSteps {
         return StepData(
             titleRes = R.string.owner_info,
             descriptionRes = R.string.owner_info_description,
-            fields = fields
+            fields = fields,
+            requiredLookups = listOf("countries", "nationalities")
         )
     }
 

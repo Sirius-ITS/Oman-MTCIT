@@ -26,7 +26,8 @@ import kotlinx.coroutines.launch
 data class StepData(
     val titleRes: Int,
     val descriptionRes: Int,
-    val fields: List<FormField>
+    val fields: List<FormField>,
+    val requiredLookups: List<String> = emptyList() // List of lookup keys to fetch when step is opened
 )
 
 /**
@@ -61,6 +62,16 @@ abstract class BaseTransactionViewModel(
     // Field-specific loading states (e.g., company lookup)
     private val _fieldLoadingStates = MutableStateFlow<Set<String>>(emptySet())
     val fieldLoadingStates: StateFlow<Set<String>> = _fieldLoadingStates.asStateFlow()
+
+    // ✅ NEW: Per-lookup loading states (e.g., "ports", "countries", "shipTypes")
+    // Map<lookupKey, Boolean> - true = loading, false = loaded
+    private val _lookupLoadingStates = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val lookupLoadingStates: StateFlow<Map<String, Boolean>> = _lookupLoadingStates.asStateFlow()
+
+    // ✅ NEW: Loaded lookup data with success status
+    // Map<lookupKey, Pair<data, success>>
+    private val _loadedLookupData = MutableStateFlow<Map<String, Pair<List<String>, Boolean>>>(emptyMap())
+    val loadedLookupData: StateFlow<Map<String, Pair<List<String>, Boolean>>> = _loadedLookupData.asStateFlow()
 
     // File navigation events
     private val _fileNavigationEvent = MutableStateFlow<FileNavigationEvent?>(null)
@@ -102,6 +113,33 @@ abstract class BaseTransactionViewModel(
                 // Create category-specific strategy
                 currentStrategy = createStrategy(transactionType)
 
+                // ✅ Set up callback to rebuild steps when lookups are loaded (generic for all strategies)
+                currentStrategy?.onStepsNeedRebuild = {
+                    viewModelScope.launch {
+                        println("🔄 Rebuilding steps after loading lookups...")
+                        val rebuiltSteps = currentStrategy?.getSteps() ?: emptyList()
+                        _uiState.value = _uiState.value.copy(steps = rebuiltSteps)
+                        println("✅ Steps rebuilt with ${rebuiltSteps.size} steps")
+                    }
+                }
+
+                // ✅ NEW: Set up callback for when a lookup starts loading
+                currentStrategy?.onLookupStarted = { lookupKey ->
+                    viewModelScope.launch {
+                        println("📥 Lookup started: $lookupKey")
+                        _lookupLoadingStates.value = _lookupLoadingStates.value + (lookupKey to true)
+                    }
+                }
+
+                // ✅ NEW: Set up callback for when a lookup completes (success or failure)
+                currentStrategy?.onLookupCompleted = { lookupKey, data, success ->
+                    viewModelScope.launch {
+                        println("✅ Lookup completed: $lookupKey (success=$success, items=${data.size})")
+                        _lookupLoadingStates.value = _lookupLoadingStates.value + (lookupKey to false)
+                        _loadedLookupData.value = _loadedLookupData.value + (lookupKey to (data to success))
+                    }
+                }
+
                 // Load dynamic options FIRST (before getting steps)
                 val dynamicOptions = currentStrategy?.loadDynamicOptions() ?: emptyMap()
 
@@ -142,8 +180,8 @@ abstract class BaseTransactionViewModel(
             // Handle dynamic field changes via strategy
             val updatedFormData = strategy.handleFieldChange(fieldId, value, newFormData)
 
-            // ✅ Check if we need to refresh steps (for fishing boat type selection)
-            val shouldRefreshSteps = fieldId == "unitType" && updatedFormData.containsKey("_triggerRefresh")
+            // ✅ Check if we need to refresh steps (for fishing boat type selection OR ship category selection)
+            val shouldRefreshSteps = updatedFormData.containsKey("_triggerRefresh")
 
             // Remove the trigger flag from form data if present
             val cleanedFormData = updatedFormData.toMutableMap().apply {
@@ -152,7 +190,7 @@ abstract class BaseTransactionViewModel(
 
             // ✅ Refresh steps if needed
             val updatedSteps = if (shouldRefreshSteps) {
-                println("🔄 Refreshing steps because unitType changed")
+                println("🔄 Refreshing steps because field '$fieldId' changed and triggered refresh")
                 strategy.getSteps()
             } else {
                 currentState.steps
@@ -213,6 +251,10 @@ abstract class BaseTransactionViewModel(
                                 updatedState.formData
                             )
                         )
+
+                        // ✅ NEW: Load lookups for the next step
+                        val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
+                        strategy.onStepOpened(targetStep)
                     }
                 }
 
@@ -232,56 +274,75 @@ abstract class BaseTransactionViewModel(
     }
 
     fun previousStep() {
-        val currentState = _uiState.value
+        viewModelScope.launch {
+            val currentState = _uiState.value
 
-        // ✅ NEW: Prevent back navigation if current step is locked (resumed transaction)
-        if (currentState.isResumedTransaction) {
-            val prevStep = navigationUseCase.getPreviousStep(currentState.currentStep)
-            if (prevStep != null && currentState.lockedSteps.contains(prevStep)) {
-                println("🔒 Cannot go back to locked step $prevStep (resumed transaction)")
-                _showToastEvent.value = "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة"
-                return
+            // ✅ NEW: Prevent back navigation if current step is locked (resumed transaction)
+            if (currentState.isResumedTransaction) {
+                val prevStep = navigationUseCase.getPreviousStep(currentState.currentStep)
+                if (prevStep != null && currentState.lockedSteps.contains(prevStep)) {
+                    println("🔒 Cannot go back to locked step $prevStep (resumed transaction)")
+                    _showToastEvent.value = "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة"
+                    return@launch
+                }
             }
-        }
 
-        navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
-            _uiState.value = currentState.copy(
-                currentStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1)
-                    (0) else prevStep,
-                canProceedToNext = navigationUseCase.canProceedToNext(
-                    prevStep,
-                    currentState.steps,
-                    currentState.formData
+            navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
+                _uiState.value = currentState.copy(
+                    currentStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1)
+                        (0) else prevStep,
+                    canProceedToNext = navigationUseCase.canProceedToNext(
+                        prevStep,
+                        currentState.steps,
+                        currentState.formData
+                    )
                 )
-            )
+
+                // ✅ NEW: Load lookups for the previous step
+                val targetStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1) 0 else prevStep
+                currentStrategy?.let { strategy ->
+                    viewModelScope.launch {
+                        strategy.onStepOpened(targetStep)
+                    }
+                }
+            }
         }
     }
 
     fun goToStep(stepIndex: Int) {
-        val currentState = _uiState.value
+        viewModelScope.launch {
+            val currentState = _uiState.value
 
-        // ✅ NEW: Prevent navigation to locked steps (resumed transaction)
-        if (currentState.isResumedTransaction && currentState.lockedSteps.contains(stepIndex)) {
-            println("🔒 Cannot navigate to locked step $stepIndex (resumed transaction)")
-            _showToastEvent.value = "لا يمكن الوصول إلى هذه الخطوة في المعاملات المستأنفة"
-            return
-        }
+            // ✅ NEW: Prevent navigation to locked steps (resumed transaction)
+            if (currentState.isResumedTransaction && currentState.lockedSteps.contains(stepIndex)) {
+                println("🔒 Cannot navigate to locked step $stepIndex (resumed transaction)")
+                _showToastEvent.value = "لا يمكن الوصول إلى هذه الخطوة في المعاملات المستأنفة"
+                return@launch
+            }
 
-        if (navigationUseCase.canJumpToStep(
-                stepIndex,
-                currentState.currentStep,
-                currentState.completedSteps,
-                currentState.steps.size
-            )
-        ) {
-            _uiState.value = currentState.copy(
-                currentStep = stepIndex,
-                canProceedToNext = navigationUseCase.canProceedToNext(
+            if (navigationUseCase.canJumpToStep(
                     stepIndex,
-                    currentState.steps,
-                    currentState.formData
+                    currentState.currentStep,
+                    currentState.completedSteps,
+                    currentState.steps.size
                 )
-            )
+            ) {
+                _uiState.value = currentState.copy(
+                    currentStep = stepIndex,
+                    canProceedToNext = navigationUseCase.canProceedToNext(
+                        stepIndex,
+                        currentState.steps,
+                        currentState.formData
+                    )
+                )
+
+                // ✅ NEW: Load lookups for the target step
+                currentStrategy?.let { strategy ->
+                    launch {
+                        strategy.onStepOpened(stepIndex)
+                    }
+                }
+            }
         }
     }
 
@@ -397,6 +458,24 @@ abstract class BaseTransactionViewModel(
 
     fun isFieldLoading(fieldId: String): Boolean {
         return fieldId in _fieldLoadingStates.value
+    }
+
+    /**
+     * ✅ NEW: Check if a specific lookup is currently loading
+     * @param lookupKey The lookup identifier (e.g., "ports", "countries")
+     * @return true if loading, false if loaded or not started
+     */
+    fun isLookupLoading(lookupKey: String): Boolean {
+        return _lookupLoadingStates.value[lookupKey] == true
+    }
+
+    /**
+     * ✅ NEW: Get loaded data for a specific lookup
+     * @param lookupKey The lookup identifier
+     * @return Pair of (data, success) or null if not loaded yet
+     */
+    fun getLookupData(lookupKey: String): Pair<List<String>, Boolean>? {
+        return _loadedLookupData.value[lookupKey]
     }
 
     // File navigation methods

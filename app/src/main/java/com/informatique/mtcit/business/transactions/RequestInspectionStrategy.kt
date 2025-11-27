@@ -36,33 +36,50 @@ class RequestInspectionStrategy @Inject constructor(
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
+    private var shipCategoryOptions: List<String> = emptyList()
+    private var marineActivityOptions: List<String> = emptyList()
+    private var proofTypeOptions: List<String> = emptyList()
+    private var engineStatusOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        // Load all lookups from repository with caching
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
+        val shipCategories = lookupRepository.getShipCategories().getOrNull() ?: emptyList()
+        val marineActivities = lookupRepository.getMarineActivities().getOrNull() ?: emptyList()
+        val proofTypes = lookupRepository.getProofTypes().getOrNull() ?: emptyList()
+        val engineStatuses = lookupRepository.getEngineStatuses().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         portOptions = ports
         countryOptions = countries
         shipTypeOptions = shipTypes
+        shipCategoryOptions = shipCategories
+        marineActivityOptions = marineActivities
+        proofTypeOptions = proofTypes
+        engineStatusOptions = engineStatuses
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
         marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
 
         return mapOf(
-            "marineUnits" to marineUnits, // ✅ Return actual MarineUnit objects for validation
+            "marineUnits" to marineUnits,
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
             "registrationCountry" to countries,
             "unitType" to shipTypes,
+            "unitClassification" to shipCategories,
+            "maritimeActivity" to marineActivities,
+            "proofType" to proofTypes,
+            "engineStatus" to engineStatuses,
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes
         )
@@ -118,12 +135,15 @@ class RequestInspectionStrategy @Inject constructor(
             steps.add(
                 SharedSteps.unitSelectionStep(
                     shipTypes = shipTypeOptions,
+                    shipCategories = shipCategoryOptions,
                     ports = portOptions,
                     countries = countryOptions,
+                    marineActivities = marineActivityOptions,
+                    proofTypes = proofTypeOptions,
+                    buildingMaterials = emptyList(),
                     includeIMO = true,
                     includeMMSI = true,
                     includeManufacturer = true,
-                    maritimeactivity = shipTypeOptions,
                     includeProofDocument = false,
                     includeConstructionDates = true,
                     includeRegistrationCountry = true

@@ -5,8 +5,11 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
@@ -26,186 +29,57 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val marineUnitRepository: MarineUnitRepository,
+    private val registrationRequestManager: RegistrationRequestManager
 ) : TransactionStrategy {
 
     // Cache for loaded dropdown options
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
+    private var shipCategoryOptions: List<String> = emptyList()
+    private var marineActivityOptions: List<String> = emptyList()
+    private var proofTypeOptions: List<String> = emptyList()
+    private var engineStatusOptions: List<String> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
 
+    // NEW: Store filtered ship types based on selected category
+    private var filteredShipTypeOptions: List<String> = emptyList()
+    private var isShipTypeFiltered: Boolean = false
 
     // ✅ الحل: اعمل cache للـ form data
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
 
-    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
-        // Load all dropdown options from API
-        val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
-        val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
+    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
+
+        // ✅ Load only ESSENTIAL lookups needed for initial steps
+        // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
+
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
 
-        portOptions = ports
-        countryOptions = countries
-        shipTypeOptions = shipTypes
+        // Store in instance variables
         typeOptions = personTypes
         commercialOptions = commercialRegistrations
 
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false,
-                // الأبعاد
-                totalLength = "45 متر",
-                lengthBetweenPerpendiculars = "40 متر",
-                totalWidth = "12 متر",
-                draft = "4 أمتار",
-                height = "15 متر",
-                numberOfDecks = "2",
-                // السعة والحمولة
-                totalCapacity = "500 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "0",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
+        // Load marine units list (needed for marine unit selection step)
+        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
 
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true, // ⚠️ مملوكة - هتظهر مع التحذير
-                // الأبعاد
-                totalLength = "240 متر",
-                lengthBetweenPerpendiculars = "210 متر",
-                totalWidth = "33 متر",
-                draft = "10 أمتار",
-                height = "45 متر",
-                numberOfDecks = "9",
-                // السعة والحمولة
-                totalCapacity = "50000 طن",
-                containerCapacity = "4500 حاوية",
-                // المخالفات والاحتجازات
-                violationsCount = "2",
-                detentionsCount = "1",
-                // الديون والمستحقات
-                amountDue = "15000 ريال",
-                paymentStatus = "مستحق"
-            ),
-
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true, // ⚠️ مملوكة
-                // الأبعاد
-                totalLength = "180 متر",
-                lengthBetweenPerpendiculars = "165 متر",
-                totalWidth = "28 متر",
-                draft = "12 أمتار",
-                height = "38 متر",
-                numberOfDecks = "7",
-                // السعة والحمولة
-                totalCapacity = "75000 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "3",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "8500 ريال",
-                paymentStatus = "تحت المراجعة"
-            ),
-
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false,
-                // الأبعاد
-                totalLength = "120 متر",
-                lengthBetweenPerpendiculars = "105 متر",
-                totalWidth = "22 متر",
-                draft = "6 أمتار",
-                height = "30 متر",
-                numberOfDecks = "8",
-                // السعة والحمولة
-                totalCapacity = "3000 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "0",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false,
-                // الأبعاد
-                totalLength = "35 متر",
-                lengthBetweenPerpendiculars = "30 متر",
-                totalWidth = "8 متر",
-                draft = "3 أمتار",
-                height = "25 متر",
-                numberOfDecks = "1",
-                // السعة والحمولة
-                totalCapacity = "150 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "0",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            )
-        )
+        println("✅ Loaded essential lookups:")
+        println("   - Person Types: ${personTypes.size}")
+        println("   - Commercial Registrations: ${commercialRegistrations.size}")
+        println("   - Marine Units: ${marineUnits.size}")
+        println("   - Other lookups will be loaded lazily when their steps are opened")
 
         return mapOf(
-            "marineUnits" to marineUnits.map { it.maritimeId },
-
-            "registrationPort" to ports,
-            "ownerNationality" to countries,
-            "ownerCountry" to countries,
-            "registrationCountry" to countries,
-            "unitType" to shipTypes
+            "marineUnits" to marineUnits, // ✅ Return actual MarineUnit objects for validation
+            "personType" to personTypes,
+            "commercialRegistration" to commercialRegistrations
         )
     }
 
@@ -255,26 +129,23 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         } else if (hasTemporaryCertificate == "no") {
 
-//            // ✅ نشيك لو المستخدم ضاف سفينة جديدة او اختار سفينة موجودة
-//            val isAddingNewUnit = accumulatedFormData["isAddingNewUnit"] == "true"
-//            val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"] ?: "[]"
-//            val selectedUnits = try {
-//                kotlinx.serialization.json.Json.decodeFromString<List<String>>(selectedUnitsJson)
-//            } catch (_: Exception) {
-//                emptyList()
-//            }
-//
-//
-//            if (isAddingNewUnit || selectedUnits.isEmpty()) {
+            // Use filtered ship types if available, otherwise use empty list
+            val shipTypesToUse = if (isShipTypeFiltered) filteredShipTypeOptions else emptyList()
+
+            println("🔧 getSteps - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}")
+
             steps.add(
                 SharedSteps.unitSelectionStep(
-                    shipTypes = shipTypeOptions,
+                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
+                    shipCategories = shipCategoryOptions,
                     ports = portOptions,
                     countries = countryOptions,
+                    marineActivities = marineActivityOptions,
+                    proofTypes = proofTypeOptions,
+                    buildingMaterials = emptyList(), // TODO: Add when API ready
                     includeIMO = true,
                     includeMMSI = true,
                     includeManufacturer = true,
-                    maritimeactivity = shipTypeOptions,
                     includeProofDocument = false,
                     includeConstructionDates = true,
                     includeRegistrationCountry = true
@@ -373,6 +244,34 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         println("📦 Accumulated Data After Update: $accumulatedFormData")
 
+        // ✅ Use RegistrationRequestManager to process step data
+        val currentStepData = getSteps().getOrNull(step)
+        if (currentStepData != null) {
+            val stepFieldIds = currentStepData.fields.map { it.id }
+
+            // Call the manager in a blocking manner (we're already in the right context)
+            val result = kotlinx.coroutines.runBlocking {
+                registrationRequestManager.processStepIfNeeded(
+                    stepFields = stepFieldIds,
+                    formData = accumulatedFormData,
+                    requestTypeId = 2 // 2 = Permanent Registration
+                )
+            }
+
+            when (result) {
+                is StepProcessResult.Success -> {
+                    println("✅ ${result.message}")
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Error: ${result.message}")
+                    return -1 // Indicate error
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No API call needed for this step")
+                }
+            }
+        }
+
         return step
     }
 
@@ -383,8 +282,47 @@ class PermanentRegistrationStrategy @Inject constructor(
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
+        val mutableFormData = formData.toMutableMap()
+
+        // NEW: Handle ship category change - fetch filtered ship types
+        if (fieldId == "unitClassification" && value.isNotBlank()) {
+            println("🚢 Ship category changed to: $value")
+
+            // Get category ID from category name
+            val categoryId = lookupRepository.getShipCategoryId(value)
+
+            if (categoryId != null) {
+                println("🔍 Found category ID: $categoryId")
+
+                // Fetch filtered ship types
+                kotlinx.coroutines.runBlocking {
+                    val filteredTypes = lookupRepository.getShipTypesByCategory(categoryId).getOrNull()
+                    if (filteredTypes != null && filteredTypes.isNotEmpty()) {
+                        println("✅ Loaded ${filteredTypes.size} ship types for category $categoryId")
+                        filteredShipTypeOptions = filteredTypes
+                        isShipTypeFiltered = true
+
+                        // Clear the unitType field since the options changed
+                        mutableFormData.remove("unitType")
+
+                        // Add a flag to trigger step refresh
+                        mutableFormData["_triggerRefresh"] = "true"
+                    } else {
+                        println("⚠️ No ship types found for category $categoryId")
+                        filteredShipTypeOptions = emptyList()
+                        isShipTypeFiltered = true
+                        mutableFormData.remove("unitType")
+                        mutableFormData["_triggerRefresh"] = "true"
+                    }
+                }
+            } else {
+                println("❌ Could not find category ID for: $value")
+            }
+
+            return mutableFormData
+        }
+
         if (fieldId == "owner_type") {
-            val mutableFormData = formData.toMutableMap()
             when (value) {
                 "فرد" -> {
                     mutableFormData.remove("companyName")
@@ -440,4 +378,3 @@ class PermanentRegistrationStrategy @Inject constructor(
         }
     }
 }
-
