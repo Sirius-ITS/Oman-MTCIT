@@ -67,20 +67,55 @@ class PermanentRegistrationStrategy @Inject constructor(
         typeOptions = personTypes
         commercialOptions = commercialRegistrations
 
-        // Load marine units list (needed for marine unit selection step)
-        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
-
-        println("✅ Loaded essential lookups:")
-        println("   - Person Types: ${personTypes.size}")
-        println("   - Commercial Registrations: ${commercialRegistrations.size}")
-        println("   - Marine Units: ${marineUnits.size}")
-        println("   - Other lookups will be loaded lazily when their steps are opened")
-
         return mapOf(
-            "marineUnits" to marineUnits, // ✅ Return actual MarineUnit objects for validation
+            "marineUnits" to emptyList<MarineUnit>(), // ✅ Empty initially
             "personType" to personTypes,
             "commercialRegistration" to commercialRegistrations
         )
+    }
+
+    /**
+     * ✅ NEW: Load ships when user selects type and presses Next
+     */
+    override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
+        val personType = formData["selectionPersonType"]
+        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+        val commercialReg = formData["selectionData"]
+
+        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+
+        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        // Because current API only returns data when using ownerCivilId filter
+        // In production, company should use commercialRegNumber
+        val (ownerCivilId, commercialRegNumber) = when (personType) {
+            "فرد" -> {
+                println("✅ Individual: Using ownerCivilId")
+                Pair("12345678", null)
+            }
+            "شركة" -> {
+                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
+                Pair("12345678", null) // ✅ Use ownerCivilId instead of commercialRegNumber for testing
+            }
+            else -> Pair(null, null)
+        }
+
+        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
+
+        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        println("✅ Loaded ${marineUnits.size} ships")
+
+        return marineUnits
+    }
+
+    override suspend fun clearLoadedShips() {
+        println("🧹 Clearing loaded ships cache")
+        marineUnits = emptyList()
+    }
+
+    override fun updateAccumulatedData(data: Map<String, String>) {
+        accumulatedFormData.putAll(data)
+        println("📦 PermanentRegistration - Updated accumulated data: $accumulatedFormData")
     }
 
     override fun getSteps(): List<StepData> {

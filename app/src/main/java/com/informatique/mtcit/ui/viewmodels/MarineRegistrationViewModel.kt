@@ -8,17 +8,21 @@ import com.informatique.mtcit.common.ResourceProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
-import com.informatique.mtcit.business.transactions.MarineUnitValidatable
 import kotlinx.coroutines.launch
+import com.informatique.mtcit.business.transactions.MarineUnitValidatable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import com.informatique.mtcit.business.transactions.MortgageCertificateStrategy
 import com.informatique.mtcit.business.transactions.ReleaseMortgageStrategy
+import com.informatique.mtcit.business.transactions.RequestInspectionStrategy
 import com.informatique.mtcit.business.transactions.ValidationResult
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
+import com.informatique.mtcit.business.transactions.shared.MarineActivity
 import com.informatique.mtcit.data.repository.RequestRepository
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
+import com.informatique.mtcit.business.transactions.shared.ShipType
 import kotlinx.coroutines.delay
 
 /**
@@ -752,19 +756,17 @@ class MarineRegistrationViewModel @Inject constructor(
                     // Create a temporary MarineUnit object for validation
                     val newUnit = MarineUnit(
                         id = "new_${System.currentTimeMillis()}", // Temporary ID
-                        name = unitName,
-                        type = unitType,
+                        shipName = unitName,
                         imoNumber = imo,
                         callSign = callSign,
-                        maritimeId = "", // Will be assigned after successful registration
-                        registrationPort = registrationPort,
-                        activity = activity,
-                        isOwned = true, // User is adding their own unit
+                        mmsiNumber = "", // Will be assigned after successful registration
+                        portOfRegistry = PortOfRegistry(registrationPort),
+                        marineActivity = MarineActivity(0), // Default or parse from activity
+                        shipType = ShipType(0), // Default or parse from unitType
+                        isTemp = "1", // Temporary registration
                         totalLength = length,
                         totalWidth = width,
-                        height = height,
-                        registrationStatus = "ACTIVE",
-                        registrationType = "TEMPORARY"
+                        height = height
                     )
 
                     // ✅ DYNAMIC: Use the interface method for validating new units
@@ -926,14 +928,10 @@ class MarineRegistrationViewModel @Inject constructor(
     private fun createPlaceholderUnit(): MarineUnit {
         return MarineUnit(
             id = "placeholder",
-            name = "وحدة بحرية",
-            type = "",
-            imoNumber = "",
+            shipName = "وحدة بحرية",
             callSign = "",
-            maritimeId = "",
-            registrationPort = "",
-            activity = "",
-            isOwned = true
+            mmsiNumber = "",
+            portOfRegistry = com.informatique.mtcit.business.transactions.shared.PortOfRegistry("")
         )
     }
 

@@ -3,76 +3,46 @@ package com.informatique.mtcit.ui.screens
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.AlignmentLine
-import com.informatique.mtcit.navigation.NavRoutes
-import com.informatique.mtcit.ui.components.CustomToolbar
-import com.informatique.mtcit.ui.theme.LocalExtraColors
-import androidx.hilt.navigation.compose.hiltViewModel
-import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 import com.informatique.mtcit.data.model.UserRequest
 import com.informatique.mtcit.data.repository.RequestRepository
-import androidx.compose.runtime.collectAsState
+import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.components.CustomToolbar
+import com.informatique.mtcit.ui.components.localizedApp
+import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 
 @Composable
 fun ProfileScreen(
     navController: NavController,
-    viewModel: MarineRegistrationViewModel = hiltViewModel()  // ✅ Inject ViewModel
+    viewModel: MarineRegistrationViewModel = hiltViewModel()
 ){
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
 
-    // Allow drawing behind system bars
     LaunchedEffect(window) {
         window?.let {
             WindowCompat.setDecorFitsSystemWindows(it, false)
@@ -81,57 +51,38 @@ fun ProfileScreen(
         }
     }
 
-    // ✅ KEY: Observe navigation to RequestDetailScreen
     val navigationToDetail by viewModel.navigationToComplianceDetail.collectAsState()
 
     LaunchedEffect(navigationToDetail) {
         navigationToDetail?.let { action ->
             println("📱 Navigating to RequestDetailScreen from Profile")
-
-            // Build marine unit data string with all details and compliance issues
-            val marineData = buildComplianceDetailData(action)
-
-            // Navigate to RequestDetailScreen with proper route
+            val marineData = buildComplianceDetailData(action, context)
             navController.navigate(
                 NavRoutes.RequestDetailRoute.createRoute(
                     RequestDetail.CheckShipCondition(marineData)
                 )
             ) {
-                // ✅ Don't clear the back stack - keep ProfileScreen so back button works correctly
                 launchSingleTop = true
             }
-
-            // Clear the navigation state
             viewModel.clearComplianceDetailNavigation()
         }
     }
 
-    // ✅ NEW: Observe navigation to transaction screen after resuming verified request
     val shouldNavigateToTransaction by viewModel.navigateToTransactionScreen.collectAsState()
 
     LaunchedEffect(shouldNavigateToTransaction) {
         if (shouldNavigateToTransaction) {
             println("📱 Navigating to transaction screen after resuming")
-
-            // Get the pending request ID from the ViewModel
             val requestId = viewModel.getPendingRequestId()
-
-            // Navigate to the correct transaction form screen with the requestId
-            // The requestId will be passed as a navigation argument so it persists
-            // across ViewModel recreation
             if (requestId != null) {
                 navController.navigate(NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId)) {
                     launchSingleTop = true
-                    // Don't pop profile - allow back navigation
                 }
             } else {
-                // Fallback to normal navigation if no requestId
                 navController.navigate(NavRoutes.ShipRegistrationRoute.route) {
                     launchSingleTop = true
                 }
             }
-
-            // Clear the navigation flag
             viewModel.clearNavigationFlag()
         }
     }
@@ -139,7 +90,6 @@ fun ProfileScreen(
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     Box(modifier = Modifier.fillMaxSize().background(extraColors.background)) {
-        // Background gradient header
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -150,14 +100,10 @@ fun ProfileScreen(
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                extraColors.blue1,
-                                extraColors.blue2
-                            )
+                            colors = listOf(extraColors.blue1, extraColors.blue2)
                         )
                     )
             )
-            // Wave overlay
             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
                 val w = size.width
                 val h = size.height
@@ -183,16 +129,7 @@ fun ProfileScreen(
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            topBar = {
-                TopProfileBar(navController = navController)
-            },
-//            floatingActionButton = {
-//                CustomToolbar(
-//                    navController = navController,
-//                    currentRoute = "profileScreen"
-//                )
-//            },
-//            floatingActionButtonPosition = FabPosition.Center,
+            topBar = { TopProfileBar(navController = navController) },
             containerColor = Color.Transparent
         ){
             LazyColumn(
@@ -202,14 +139,9 @@ fun ProfileScreen(
                     .padding(bottom = 16.dp)
             ) {
                 item {
-                    // Request Statistics Section
                     RequestStatisticsSection()
-
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Forms/Investments Section
-                    FormsSection(viewModel = viewModel)  // ✅ Pass ViewModel instance
-
+                    FormsSection(viewModel = viewModel)
                     Spacer(modifier = Modifier.height(50.dp))
                 }
             }
@@ -217,15 +149,16 @@ fun ProfileScreen(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(  bottom = WindowInsets.navigationBars
-                    .asPaddingValues()
-                    .calculateBottomPadding() + 4.dp
+                .padding(
+                    bottom = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding() + 4.dp
                 )
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
             CustomToolbar(
-                navController = navController ,
+                navController = navController,
                 currentRoute = "profileScreen"
             )
         }
@@ -261,7 +194,7 @@ fun RequestStatisticsSection() {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "إحصائيات سير الطلبات",
+                    text = localizedApp(R.string.request_statistics_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
                     color = extraColors.whiteInDarkMode
@@ -270,7 +203,6 @@ fun RequestStatisticsSection() {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Donut Chart
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -288,31 +220,30 @@ fun RequestStatisticsSection() {
 
             Spacer(modifier = Modifier.height(42.dp))
 
-            // Legend
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 LegendItem(
-                    label = "الطلبات المكتملة",
+                    label = localizedApp(R.string.completed_requests),
                     value = 40,
                     percentage = 1.47f,
                     color = Color(0xFF6B7FD7)
                 )
                 LegendItem(
-                    label = "الطلبات قيد المعالجة",
+                    label = localizedApp(R.string.processing_requests),
                     value = 5,
                     percentage = 4.17f,
                     color = Color(0xFF5DD7A7)
                 )
                 LegendItem(
-                    label = "الطلبات تحتاج إجراء",
+                    label = localizedApp(R.string.action_needed_requests),
                     value = 5,
                     percentage = 4.48f,
                     color = Color(0xFFFF9F6E)
                 )
                 LegendItem(
-                    label = "الطلبات المرفوضة",
+                    label = localizedApp(R.string.rejected_requests),
                     value = 4,
                     percentage = 10.35f,
                     color = Color(0xFFFF6B8A)
@@ -336,19 +267,13 @@ fun DonutChart(
         modifier = Modifier.size(200.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Draw donut chart
         androidx.compose.foundation.Canvas(
             modifier = Modifier.fillMaxSize()
         ) {
             val strokeWidth = 45.dp.toPx()
-            val radius = (size.minDimension - strokeWidth) / 2
-            val centerX = size.width / 2
-            val centerY = size.height / 2
-
             val total = totalRequests.toFloat()
             var startAngle = -90f
 
-            // Completed (Blue)
             val completedSweep = (completedRequests / total) * 360f
             drawArc(
                 color = Color(0xFF6B7FD7),
@@ -359,7 +284,6 @@ fun DonutChart(
             )
             startAngle += completedSweep
 
-            // Processing (Green)
             val processingSweep = (processingRequests / total) * 360f
             drawArc(
                 color = Color(0xFF5DD7A7),
@@ -370,7 +294,6 @@ fun DonutChart(
             )
             startAngle += processingSweep
 
-            // Action Needed (Orange)
             val actionSweep = (actionNeededRequests / total) * 360f
             drawArc(
                 color = Color(0xFFFF9F6E),
@@ -381,7 +304,6 @@ fun DonutChart(
             )
             startAngle += actionSweep
 
-            // Rejected (Red)
             val rejectedSweep = (rejectedRequests / total) * 360f
             drawArc(
                 color = Color(0xFFFF6B8A),
@@ -392,10 +314,7 @@ fun DonutChart(
             )
         }
 
-        // Center text
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "$totalRequests",
                 fontSize = 36.sp,
@@ -403,7 +322,7 @@ fun DonutChart(
                 color = extraColors.whiteInDarkMode
             )
             Text(
-                text = "طلب",
+                text = localizedApp(R.string.total_requests_label),
                 fontSize = 14.sp,
                 color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
             )
@@ -422,10 +341,9 @@ fun LegendItem(
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -440,7 +358,6 @@ fun LegendItem(
                 fontSize = 14.sp,
                 color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
             )
-
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -454,30 +371,25 @@ fun LegendItem(
                 maxLines = 1
             )
             Text(
-                text = "($percentage%))",
+                text = "(%.2f%%)".format(percentage),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = extraColors.whiteInDarkMode,
                 maxLines = 1
             )
-
         }
-
     }
 }
 
 @Composable
 fun FormsSection(
-    viewModel: MarineRegistrationViewModel = hiltViewModel()  // ✅ Inject ViewModel
+    viewModel: MarineRegistrationViewModel = hiltViewModel()
 ) {
     val extraColors = LocalExtraColors.current
-
-    // ✅ Fetch real requests from repository
     var requests by remember { mutableStateOf<List<UserRequest>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        // Get repository and fetch user requests
         val repository = RequestRepository()
         repository.getUserRequests("currentUserId")
             .onSuccess {
@@ -508,7 +420,7 @@ fun FormsSection(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "الاستمارات",
+                text = localizedApp(R.string.forms_section_title),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
                 color = extraColors.whiteInDarkMode
@@ -517,21 +429,16 @@ fun FormsSection(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // ✅ Show real requests or loading state
         if (isLoading) {
-            // Show loading indicator
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
                 contentAlignment = Alignment.Center
             ) {
-                androidx.compose.material3.CircularProgressIndicator(
-                    color = extraColors.whiteInDarkMode
-                )
+                CircularProgressIndicator(color = extraColors.whiteInDarkMode)
             }
         } else if (requests.isEmpty()) {
-            // Show empty state
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -545,31 +452,29 @@ fun FormsSection(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "📋",
+                        text = localizedApp(R.string.empty_state_icon),
                         fontSize = 48.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "لا توجد استمارات",
+                        text = localizedApp(R.string.no_forms_available),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
                         color = extraColors.whiteInDarkMode
                     )
                     Text(
-                        text = "ستظهر طلباتك هنا",
+                        text = localizedApp(R.string.forms_will_appear_here),
                         fontSize = 14.sp,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                     )
                 }
             }
         } else {
-            // ✅ Show real requests
             requests.forEach { request ->
                 RealRequestCard(
                     request = request,
                     onClick = {
                         println("🔘 User clicked request: ${request.id}")
-                        // ✅ This triggers resumeTransaction
                         viewModel.resumeTransaction(request.id)
                     }
                 )
@@ -579,7 +484,6 @@ fun FormsSection(
     }
 }
 
-// ✅ NEW: Card for real UserRequest data
 @Composable
 fun RealRequestCard(
     request: UserRequest,
@@ -587,24 +491,35 @@ fun RealRequestCard(
 ) {
     val extraColors = LocalExtraColors.current
 
-    // Map RequestStatus to UI properties
-    val (statusText, statusColor, statusIcon) = when (request.status) {
+    val (statusTextRes, statusColor, statusIconText) = when (request.status) {
         com.informatique.mtcit.data.model.RequestStatus.PENDING ->
-            Triple("قيد المراجعة", Color(0xFFFFB74D), "⏳")
+            Triple(R.string.status_pending, Color(0xFFFFB74D), "⏳")
         com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS ->
-            Triple("قيد المعالجة", Color(0xFF42A5F5), "⟳")
+            Triple(R.string.status_in_progress, Color(0xFF42A5F5), "⟳")
         com.informatique.mtcit.data.model.RequestStatus.VERIFIED ->
-            Triple("تم التحقق", Color(0xFF66BB6A), "✓")
+            Triple(R.string.status_verified, Color(0xFF66BB6A), "✓")
         com.informatique.mtcit.data.model.RequestStatus.REJECTED ->
-            Triple("مرفوض", Color(0xFFE74C3C), "✗")
+            Triple(R.string.status_rejected, Color(0xFFE74C3C), "✗")
         com.informatique.mtcit.data.model.RequestStatus.COMPLETED ->
-            Triple("مكتمل", Color(0xFF26A69A), "✓")
+            Triple(R.string.status_completed, Color(0xFF26A69A), "✓")
+    }
+
+    val actionHintRes = when (request.status) {
+        com.informatique.mtcit.data.model.RequestStatus.VERIFIED ->
+            R.string.action_hint_verified
+        com.informatique.mtcit.data.model.RequestStatus.PENDING,
+        com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS ->
+            R.string.action_hint_pending
+        com.informatique.mtcit.data.model.RequestStatus.REJECTED ->
+            R.string.action_hint_rejected
+        com.informatique.mtcit.data.model.RequestStatus.COMPLETED ->
+            R.string.action_hint_completed
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),  // ✅ Clickable!
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
         elevation = CardDefaults.cardElevation(0.dp)
@@ -614,13 +529,11 @@ fun RealRequestCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Row 1: Status Badge + ID
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ID Badge
                 Surface(
                     color = Color(0xFF6B7FD7).copy(alpha = 0.15f),
                     shape = RoundedCornerShape(8.dp)
@@ -634,7 +547,6 @@ fun RealRequestCard(
                     )
                 }
 
-                // Status Badge
                 Surface(
                     color = statusColor.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(20.dp)
@@ -645,12 +557,12 @@ fun RealRequestCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = statusIcon,
+                            text = statusIconText,
                             fontSize = 14.sp,
                             color = statusColor
                         )
                         Text(
-                            text = statusText,
+                            text = localizedApp(statusTextRes),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = statusColor
@@ -661,7 +573,6 @@ fun RealRequestCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Row 2: Title
             Text(
                 text = request.getDisplayTitle(),
                 fontSize = 15.sp,
@@ -672,10 +583,9 @@ fun RealRequestCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Row 3: Marine Unit Name (if available)
-            request.marineUnit?.let { unit ->
+            request.marineUnit.let { unit ->
                 Text(
-                    text = "🚢 ${unit.name}",
+                    text = "🚢 ${unit?.name}",
                     fontSize = 13.sp,
                     color = extraColors.whiteInDarkMode.copy(alpha = 0.8f),
                     modifier = Modifier.fillMaxWidth()
@@ -683,19 +593,8 @@ fun RealRequestCard(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Row 4: Action hint
             Text(
-                text = when (request.status) {
-                    com.informatique.mtcit.data.model.RequestStatus.VERIFIED ->
-                        "✓ اضغط للمتابعة"
-                    com.informatique.mtcit.data.model.RequestStatus.PENDING,
-                    com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS ->
-                        "⏳ اضغط للتحقق من الحالة"
-                    com.informatique.mtcit.data.model.RequestStatus.REJECTED ->
-                        "✗ اضغط لعرض السبب"
-                    com.informatique.mtcit.data.model.RequestStatus.COMPLETED ->
-                        "✓ الطلب مكتمل"
-                },
+                text = localizedApp(actionHintRes),
                 fontSize = 13.sp,
                 color = statusColor,
                 fontWeight = FontWeight.Medium,
@@ -704,7 +603,6 @@ fun RealRequestCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Row 5: Last Update
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -718,7 +616,7 @@ fun RealRequestCard(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "آخر تحديث: ${formatDate(request.lastUpdatedDate)}",
+                    text = "${localizedApp(R.string.last_update_prefix)} ${formatDate(request.lastUpdatedDate)}",
                     fontSize = 12.sp,
                     color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
                 )
@@ -727,7 +625,6 @@ fun RealRequestCard(
     }
 }
 
-// Helper function to format date
 fun formatDate(isoDate: String): String {
     return try {
         val instant = java.time.Instant.parse(isoDate)
@@ -736,182 +633,66 @@ fun formatDate(isoDate: String): String {
             .withZone(java.time.ZoneId.systemDefault())
         formatter.format(instant)
     } catch (e: Exception) {
-        isoDate.take(10) // Just show date part
+        isoDate.take(10)
     }
 }
 
-// Keep the old FormData and FormCard for backward compatibility (if needed elsewhere)
-data class FormData(
-    val id: String,
-    val title: String,
-    val status: String,
-    val statusColor: Color,
-    val statusIcon: ImageVector,
-    val statusMessage: String,
-    val lastUpdate: String
-)
-
-@Composable
-fun FormCard(form: FormData) {
-    val extraColors = LocalExtraColors.current
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            // Row 1: Status Badge + ID
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Status Badge on the left
-
-                // ID Badge on the right
-                Surface(
-                    color = Color(0xFF6B7FD7).copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = form.id,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF6B7FD7),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-                Surface(
-                    color = form.statusColor.copy(alpha = 0.15f),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = form.statusIcon,
-                            contentDescription = null,
-                            tint = form.statusColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = form.status,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = form.statusColor
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Row 2: Title (aligned to the right)
-            Text(
-                text = form.title,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                color = extraColors.whiteInDarkMode,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Row 3: Status Message (aligned to the right)
-            Text(
-                text = form.statusMessage,
-                fontSize = 13.sp,
-                color = form.statusColor,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Row 4: Last Update (aligned to the left)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AccessTime,
-                    contentDescription = null,
-                    tint = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = form.lastUpdate,
-                    fontSize = 12.sp,
-                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
-                )
-            }
-        }
-    }
-}
-
-/**
- * Build compliance detail data string from ShowComplianceDetailScreen action
- * This creates a formatted string with marine unit data and compliance issues
- */
-private fun buildComplianceDetailData(action: com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen): String {
+private fun buildComplianceDetailData(
+    action: com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen,
+    context: android.content.Context
+): String {
     val unit = action.marineUnit
     val issues = action.complianceIssues
 
     return buildString {
-        appendLine("📋 بيانات الوحدة البحرية")
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine(context.getString(R.string.marine_unit_data_title))
+        appendLine(context.getString(R.string.divider_line))
         appendLine()
 
-        // Basic Info
-        appendLine("🚢 الاسم: ${unit.name}")
-        appendLine("🔢 رقم الهوية البحرية: ${unit.maritimeId}")
-        appendLine("📍 نوع الوحدة: ${unit.type}")
-        appendLine("⚓ ميناء التسجيل: ${unit.registrationPort}")
-        appendLine("🎯 النشاط البحري: ${unit.activity}")
+        appendLine(context.getString(R.string.marine_unit_namee, unit.name))
+        appendLine(context.getString(R.string.marine_unit_id, unit.maritimeId))
+        appendLine(context.getString(R.string.marine_unit_type, unit.type))
+        appendLine(context.getString(R.string.marine_unit_port, unit.registrationPort))
+        appendLine(context.getString(R.string.marine_unit_activity, unit.activity))
         appendLine()
 
-        // Dimensions
         if (unit.totalLength.isNotEmpty()) {
-            appendLine("📏 الأبعاد:")
-            appendLine("   • الطول الكلي: ${unit.totalLength}")
-            if (unit.totalWidth.isNotEmpty()) appendLine("   • العرض الكلي: ${unit.totalWidth}")
-            if (unit.draft.isNotEmpty()) appendLine("   • الغاطس: ${unit.draft}")
+            appendLine(context.getString(R.string.dimensions_title))
+            appendLine(context.getString(R.string.dimension_total_length, unit.totalLength))
+            if (unit.totalWidth.isNotEmpty()) {
+                appendLine(context.getString(R.string.dimension_total_width, unit.totalWidth))
+            }
+            if (unit.draft.isNotEmpty()) {
+                appendLine(context.getString(R.string.dimension_draft, unit.draft))
+            }
             appendLine()
         }
 
-        // Compliance Issues Section
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        appendLine("⚠️ سجل الالتزام - المشاكل المكتشفة")
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        appendLine(context.getString(R.string.divider_line))
+        appendLine(context.getString(R.string.compliance_issues_title))
+        appendLine(context.getString(R.string.divider_line))
         appendLine()
 
         if (issues.isEmpty()) {
-            appendLine("✅ لا توجد مشاكل")
+            appendLine(context.getString(R.string.no_issues_found))
         } else {
             issues.forEachIndexed { index, issue ->
-                val icon = when (issue.severity) {
-                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING -> "🚫"
-                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING -> "⚠️"
-                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.INFO -> "ℹ️"
+                val iconRes = when (issue.severity) {
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING ->
+                        R.string.issue_blocking_icon
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING ->
+                        R.string.issue_warning_icon
+                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.INFO ->
+                        R.string.issue_info_icon
                 }
 
-                appendLine("$icon ${issue.category}")
-                appendLine("   العنوان: ${issue.title}")
-                appendLine("   التفاصيل: ${issue.description}")
+                appendLine("${context.getString(iconRes)} ${issue.category}")
+                appendLine(context.getString(R.string.issue_title_label, issue.title))
+                appendLine(context.getString(R.string.issue_description_label, issue.description))
 
                 if (issue.details.isNotEmpty()) {
                     issue.details.forEach { (key, value) ->
-                        appendLine("   • $key: $value")
+                        appendLine(context.getString(R.string.issue_detail_item, key, value))
                     }
                 }
 
@@ -920,8 +701,8 @@ private fun buildComplianceDetailData(action: com.informatique.mtcit.business.tr
         }
 
         appendLine()
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        appendLine("📌 سبب الرفض:")
+        appendLine(context.getString(R.string.divider_line))
+        appendLine(context.getString(R.string.rejection_reason_title))
         appendLine(action.rejectionReason)
     }
 }

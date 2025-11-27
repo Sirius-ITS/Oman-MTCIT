@@ -49,9 +49,11 @@ sealed class NavRoutes(val route: String) {
 
     data object PermanentRegistrationRoute : NavRoutes("8"/*"permanent_registration_form"*/)
 
-    data object RequestForInspection : NavRoutes("request_for_inspection")
+    data object RequestForInspection : NavRoutes("21")
 
     data object SuspendRegistrationRoute : NavRoutes("suspend_registration_form")
+
+    data object ChangeNameOfShipOrUnitRoute : NavRoutes("14")
 
     data object CancelRegistrationRoute : NavRoutes("cancel_registration_form")
 

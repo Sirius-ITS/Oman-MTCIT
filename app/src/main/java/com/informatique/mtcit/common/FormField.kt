@@ -264,7 +264,7 @@ sealed class FormField(
         override val value: String = "",
         val countryCodes: List<String> = listOf("+968", "+966", "+971", "+974", "+965", "+973"), // Available country codes
         val selectedCountryCode: String = "+968", // Default selected
-        val placeholder: String? = null,
+        val placeholder: Int? = null,
         override val error: String? = null,
         override val mandatory: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory) {

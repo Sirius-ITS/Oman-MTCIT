@@ -67,10 +67,10 @@ class RequestInspectionStrategy @Inject constructor(
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
-        marineUnits = marineUnitRepository.getUserMarineUnits("currentUserId")
+        println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
 
         return mapOf(
-            "marineUnits" to marineUnits,
+            "marineUnits" to emptyList<MarineUnit>(),
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
@@ -83,6 +83,44 @@ class RequestInspectionStrategy @Inject constructor(
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes
         )
+    }
+
+    override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
+        val personType = formData["selectionPersonType"]
+        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+        val commercialReg = formData["selectionData"]
+
+        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+
+        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        val (ownerCivilId, commercialRegNumber) = when (personType) {
+            "فرد" -> {
+                println("✅ Individual: Using ownerCivilId")
+                Pair("12345678", null)
+            }
+            "شركة" -> {
+                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
+                Pair("12345678", null)
+            }
+            else -> Pair(null, null)
+        }
+
+        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
+
+        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        println("✅ Loaded ${marineUnits.size} ships")
+        return marineUnits
+    }
+
+    override suspend fun clearLoadedShips() {
+        println("🧹 Clearing loaded ships cache")
+        marineUnits = emptyList()
+    }
+
+    override fun updateAccumulatedData(data: Map<String, String>) {
+        accumulatedFormData.putAll(data)
+        println("📦 RequestInspection - Updated accumulated data: $accumulatedFormData")
     }
 
     override fun getSteps(): List<StepData> {
@@ -414,7 +452,7 @@ class RequestInspectionStrategy @Inject constructor(
             println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
 
             // Find the selected unit
-            val selectedUnit = marineUnits.firstOrNull { it.id == unitId }
+            val selectedUnit = marineUnits.firstOrNull { it.id.toString() == unitId }
 
             if (selectedUnit == null) {
                 println("❌ Unit not found with id: $unitId")

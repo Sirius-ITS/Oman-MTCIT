@@ -379,7 +379,7 @@ fun ModernOwnerCard(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (owner.isCompany) "شركة" else "فرد",
+                            text = if (owner.isCompany) localizedApp(R.string.company)  else localizedApp(R.string.person),
                             style = MaterialTheme.typography.bodySmall,
                             color = extraColors.startServiceButton,
                             fontSize = 12.sp,

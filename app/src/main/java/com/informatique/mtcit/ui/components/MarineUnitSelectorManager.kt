@@ -35,7 +35,7 @@ fun MarineUnitSelectorManager(
     addNewUnit: () -> Unit,
     allowMultipleSelection: Boolean = true,
     showOwnedUnitsWarning: Boolean = true,
-    showAddNewButton: Boolean ,
+    showAddNewButton: Boolean,
     onSelectionChange: (List<String>) -> Unit,
     validationState: ValidationState = ValidationState.Idle,
     onMarineUnitSelected: ((String) -> Unit)? = null
@@ -68,7 +68,7 @@ fun MarineUnitSelectorManager(
                 )
             ) {
                 Text(
-                    text = "اضافة سفينة او وحدة",
+                    text = localizedApp(R.string.add_ship),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.White
@@ -140,7 +140,7 @@ fun MarineUnitSelectorManager(
                         onSelectionChange(newSelection)
 
                         // Trigger validation - pass unit.id for backend validation
-                        onMarineUnitSelected(unit.id)
+                        onMarineUnitSelected(unit.id.toString())
                     } else {
                         // Regular selection without validation
                         val newSelection = if (allowMultipleSelection) {
@@ -195,7 +195,7 @@ fun MarineUnitSelectorManager(
                             onSelectionChange(newSelection)
 
                             // Trigger validation - will handle navigation on Next button
-                            onMarineUnitSelected(unit.id)
+                            onMarineUnitSelected(unit.id.toString())
                         } else {
                             // Regular selection
                             val newSelection = if (allowMultipleSelection) {
@@ -357,7 +357,7 @@ private fun MarineUnitSelectionCard(
                     HorizontalDivider(color = Color(0xFFE5E7EB))
 
                     MarineInfoRow(label = "نوع الوحدة البحرية", value = unit.type)
-                    MarineInfoRow(label = "رقم IMO", value = unit.imoNumber)
+                    MarineInfoRow(label = "رقم IMO", value = unit.imoNumber?.toString() ?: "-")
                     MarineInfoRow(label = "رمز النداء", value = unit.callSign)
                     MarineInfoRow(label = "رقم الهوية البحرية", value = unit.maritimeId)
                     MarineInfoRow(label = "ميناء التسجيل", value = unit.registrationPort)
@@ -485,76 +485,76 @@ private fun MarineUnitBottomSheet(unit: MarineUnit) {
 
 
         // Dimensions Section - Show only if has data
-        if (unit.totalLength.isNotEmpty() || unit.lengthBetweenPerpendiculars.isNotEmpty() ||
-            unit.totalWidth.isNotEmpty() || unit.draft.isNotEmpty() ||
-            unit.height.isNotEmpty() || unit.numberOfDecks.isNotEmpty()) {
+        if (!unit.totalLength.isNullOrEmpty() || !unit.lengthBetweenPerpendiculars.isNullOrEmpty() ||
+            !unit.totalWidth.isNullOrEmpty() || !unit.draft.isNullOrEmpty() ||
+            !unit.height.isNullOrEmpty() || !unit.numberOfDecks.isNullOrEmpty()) {
             ExpandableBottomSheetSection(
                 title = "الأبعاد",
                 content = {
-                    if (unit.totalLength.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "الطول الكلي", value = unit.totalLength)
+                    if (!unit.totalLength.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "الطول الكلي", value = unit.totalLength!!)
                     }
-                    if (unit.lengthBetweenPerpendiculars.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "الطول بين العموديين", value = unit.lengthBetweenPerpendiculars)
+                    if (!unit.lengthBetweenPerpendiculars.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "الطول بين العموديين", value = unit.lengthBetweenPerpendiculars!!)
                     }
-                    if (unit.totalWidth.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "العرض الكلي", value = unit.totalWidth)
+                    if (!unit.totalWidth.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "العرض الكلي", value = unit.totalWidth!!)
                     }
-                    if (unit.draft.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "الغاطس", value = unit.draft)
+                    if (!unit.draft.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "الغاطس", value = unit.draft!!)
                     }
-                    if (unit.height.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "الإرتفاع", value = unit.height)
+                    if (!unit.height.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "الإرتفاع", value = unit.height!!)
                     }
-                    if (unit.numberOfDecks.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "عدد الطوابق", value = unit.numberOfDecks)
+                    if (!unit.numberOfDecks.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "عدد الطوابق", value = unit.numberOfDecks!!)
                     }
                 }
             )
         }
 
         // Capacity Section - Show only if has data
-        if (unit.totalCapacity.isNotEmpty() || unit.containerCapacity.isNotEmpty()) {
+        if (unit.totalCapacity.isNotEmpty() || !unit.containerCapacity.isNullOrEmpty()) {
             ExpandableBottomSheetSection(
                 title = "السعة والحمولة",
                 content = {
                     if (unit.totalCapacity.isNotEmpty()) {
                         BottomSheetInfoCard(label = "الحمولة الإجمالية", value = unit.totalCapacity)
                     }
-                    if (unit.containerCapacity.isNotEmpty() && unit.containerCapacity != "-") {
-                        BottomSheetInfoCard(label = "سعة الحاويات", value = unit.containerCapacity)
+                    if (!unit.containerCapacity.isNullOrEmpty() && unit.containerCapacity != "-") {
+                        BottomSheetInfoCard(label = "سعة الحاويات", value = unit.containerCapacity!!)
                     }
                 }
             )
         }
 
         // Violations Section - Show only if has violations or detentions
-        if ((unit.violationsCount.isNotEmpty() && unit.violationsCount != "0") ||
-            (unit.detentionsCount.isNotEmpty() && unit.detentionsCount != "0")) {
+        if ((!unit.violationsCount.isNullOrEmpty() && unit.violationsCount != "0") ||
+            (!unit.detentionsCount.isNullOrEmpty() && unit.detentionsCount != "0")) {
             ExpandableBottomSheetSection(
                 title = "المخالفات والاحتجازات",
                 content = {
-                    if (unit.violationsCount.isNotEmpty() && unit.violationsCount != "0") {
-                        BottomSheetInfoCard(label = "عدد المخالفات", value = unit.violationsCount)
+                    if (!unit.violationsCount.isNullOrEmpty() && unit.violationsCount != "0") {
+                        BottomSheetInfoCard(label = "عدد المخالفات", value = unit.violationsCount!!)
                     }
-                    if (unit.detentionsCount.isNotEmpty() && unit.detentionsCount != "0") {
-                        BottomSheetInfoCard(label = "عدد الاحتجازات", value = unit.detentionsCount)
+                    if (!unit.detentionsCount.isNullOrEmpty() && unit.detentionsCount != "0") {
+                        BottomSheetInfoCard(label = "عدد الاحتجازات", value = unit.detentionsCount!!)
                     }
                 }
             )
         }
 
         // Debts Section - Show only if has debts
-        if ((unit.amountDue.isNotEmpty() && unit.amountDue != "0 ريال") ||
-            (unit.paymentStatus.isNotEmpty() && unit.paymentStatus != "مسدد")) {
+        if ((!unit.amountDue.isNullOrEmpty() && unit.amountDue != "0 ريال") ||
+            (!unit.paymentStatus.isNullOrEmpty() && unit.paymentStatus != "مسدد")) {
             ExpandableBottomSheetSection(
                 title = "الديون والمستحقات",
                 content = {
-                    if (unit.amountDue.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "المبلغ المستحق", value = unit.amountDue)
+                    if (!unit.amountDue.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "المبلغ المستحق", value = unit.amountDue!!)
                     }
-                    if (unit.paymentStatus.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "حالة السداد", value = unit.paymentStatus)
+                    if (!unit.paymentStatus.isNullOrEmpty()) {
+                        BottomSheetInfoCard(label = "حالة السداد", value = unit.paymentStatus!!)
                     }
                 }
             )

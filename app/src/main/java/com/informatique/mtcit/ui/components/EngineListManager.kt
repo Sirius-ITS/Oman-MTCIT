@@ -61,10 +61,10 @@ fun EngineListManager(
         CustomTextField(
             value = engines.size.toString(),
             onValueChange = { /* Read-only */ },
-            label = stringResource(R.string.engine_count),
+            label = localizedApp(R.string.engine_count),
             isNumeric = true,
             mandatory = false,
-            placeholder = stringResource(R.string.engine_count),
+            placeholder = localizedApp(R.string.engine_count),
             enabled = true
         )
 
@@ -106,7 +106,7 @@ fun EngineListManager(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.engine_add_title),
+                text = localizedApp(R.string.engine_add_title),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White
@@ -212,7 +212,7 @@ fun ModernEngineCard(
 
                     // ID Number
                     InfoRow(
-                        label = stringResource(R.string.engine_fuel_type),
+                        label = localizedApp(R.string.engine_fuel_type),
                         value = engine.fuelType,
                         extraColors = extraColors
                     )
@@ -220,7 +220,7 @@ fun ModernEngineCard(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     InfoRow(
-                        label = stringResource(R.string.engine_power),
+                        label = localizedApp(R.string.engine_power),
                         value = engine.power,
                         extraColors = extraColors
                     )
@@ -250,7 +250,7 @@ fun ModernEngineCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = stringResource(R.string.engine_edit_title),
+                                text = localizedApp(R.string.engine_edit_title),
                                 fontSize = 12.sp,
                                 color = extraColors.whiteInDarkMode
                             )
@@ -273,7 +273,7 @@ fun ModernEngineCard(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = stringResource(R.string.engine_delete_title),
+                                text = localizedApp(R.string.engine_delete_title),
                                 fontSize = 12.sp
                             )
                         }

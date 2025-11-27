@@ -35,7 +35,7 @@ class ReleaseMortgageRules @Inject constructor(
 
         // Check 3: MUST be mortgaged (opposite of MortgageCertificate)
         // Backend API: /api/mortgage/check-status/{unitId}
-        val mortgageStatus = mortgageRepository.getMortgageStatus(unit.id)
+        val mortgageStatus = mortgageRepository.getMortgageStatus(unit.id.toString())
         if (!mortgageStatus.isMortgaged) {
             return MarineUnitValidationResult.Ineligible.NotMortgaged(unit)
         }
@@ -86,7 +86,7 @@ class ReleaseMortgageRules @Inject constructor(
                             action = MarineUnitNavigationAction.RedirectToTransaction(
                                 transactionType = TransactionType.MORTGAGE_CERTIFICATE,
                                 reason = "Unit not mortgaged",
-                                prefilledData = mapOf("selectedMarineUnitId" to result.unit.id)
+                                prefilledData = mapOf("selectedMarineUnitId" to result.unit.id.toString())
                             )
                         ),
                         ErrorAction(

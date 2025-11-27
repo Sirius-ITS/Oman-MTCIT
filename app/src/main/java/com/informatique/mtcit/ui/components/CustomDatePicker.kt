@@ -151,7 +151,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
@@ -177,10 +180,19 @@ fun CustomDatePicker(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = if (mandatory) "$label *" else label,
+            text = buildAnnotatedString {
+                withStyle(style = SpanStyle(color = extraColors.whiteInDarkMode)) {
+                    append(label)
+                }
+                if (mandatory) {
+                    append(" ")
+                    withStyle(style = SpanStyle(color = Color.Red)) {
+                        append("*")
+                    }
+                }
+            },
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = extraColors.whiteInDarkMode,
             modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
         )
         OutlinedTextField(

@@ -47,64 +47,6 @@ class IssueNavigationPermitStrategy @Inject constructor(
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false
-            ),
-
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true // ⚠️ مملوكة
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false
-            )
-        )
 
         return mapOf(
             "marineUnits" to marineUnits.map { it.maritimeId },

@@ -8,6 +8,7 @@ import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
@@ -27,6 +28,7 @@ class CancelRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
+    private val marineUnitRepository: MarineUnitRepository,
     private val lookupRepository: LookupRepository
 ) : TransactionStrategy {
 
@@ -36,8 +38,9 @@ class CancelRegistrationStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
+    private var accumulatedFormData: MutableMap<String, String> = mutableMapOf() // ✅ Track form data
 
-    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
+    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // Load all dropdown options from API
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
@@ -51,66 +54,11 @@ class CancelRegistrationStrategy @Inject constructor(
         shipTypeOptions = shipTypes
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false
-            ),
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true // ⚠️ مملوكة
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false
-            )
-        )
+
+        println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
 
         return mapOf(
-            "marineUnits" to marineUnits.map { it.maritimeId },
+            "marineUnits" to emptyList<MarineUnit>(),
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
@@ -119,46 +67,67 @@ class CancelRegistrationStrategy @Inject constructor(
         )
     }
 
+    override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
+        val personType = formData["selectionPersonType"]
+        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+        val commercialReg = formData["selectionData"]
+
+        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+
+        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        val (ownerCivilId, commercialRegNumber) = when (personType) {
+            "فرد" -> {
+                println("✅ Individual: Using ownerCivilId")
+                Pair("12345678", null)
+            }
+            "شركة" -> {
+                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
+                Pair("12345678", null)
+            }
+            else -> Pair(null, null)
+        }
+
+        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
+
+        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        println("✅ Loaded ${marineUnits.size} ships")
+        return marineUnits
+    }
+
+    override suspend fun clearLoadedShips() {
+        println("🧹 Clearing loaded ships cache")
+        marineUnits = emptyList()
+    }
+
+    override fun updateAccumulatedData(data: Map<String, String>) {
+        accumulatedFormData.putAll(data)
+        println("📦 CancelRegistration - Updated accumulated data: $accumulatedFormData")
+    }
+
     override fun getSteps(): List<StepData> {
-        return listOf(
+        val steps = mutableListOf<StepData>()
 
-            // Step 1: No3 El Mosta5dem
-            SharedSteps.personTypeStep(typeOptions),
+        // Step 1: Person Type
+        steps.add(SharedSteps.personTypeStep(typeOptions))
 
-            // Step 2: E5tar el Sigil el togary
-            SharedSteps.commercialRegistrationStep(commercialOptions),
+        // Step 2: Commercial Registration (only for companies)
+        val selectedPersonType = accumulatedFormData["selectionPersonType"]
+        if (selectedPersonType == "شركة") {
+            steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
+        }
 
-            // Step 3: El sofon el mamloka
+        // Step 3: Marine Unit Selection
+        steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false, // اختيار وحدة واحدة فقط
-                showOwnedUnitsWarning = true),
+                allowMultipleSelection = false,
+                showOwnedUnitsWarning = true
+            )
+        )
 
-            // Step ..
-            /*StepData(
-                titleRes = R.string.registration_to_cancel,
-                descriptionRes = R.string.registration_to_cancel_desc,
-                fields = listOf(
-                    FormField.TextField(
-                        id = "registrationNumber",
-                        labelRes = R.string.registration_number,
-                        mandatory = true
-                    ),
-                    FormField.TextField(
-                        id = "vesselName",
-                        labelRes = R.string.vessel_name,
-                        mandatory = true
-                    ),
-                    FormField.DropDown(
-                        id = "registrationPort",
-                        labelRes = R.string.registration_port,
-                        mandatory = true,
-                        options = portOptions
-                    )
-                )
-            ),*/
-
-            // Step 4: Sabab w el mostanadat el da3ema
+        // Step 4: Cancellation Reason
+        steps.add(
             StepData(
                 titleRes = R.string.cancellation_reason,
                 descriptionRes = R.string.cancellation_reason_desc,
@@ -182,32 +151,13 @@ class CancelRegistrationStrategy @Inject constructor(
                         mandatory = true
                     )
                 )
-            ),
-
-            // Step ..
-            /*SharedSteps.documentsStep(
-                requiredDocuments = listOf(
-                    DocumentConfig(
-                        id = "registrationCertificate",
-                        labelRes = R.string.original_registration_certificate,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "ownerIdDocument",
-                        labelRes = R.string.identity_document,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "cancellationProof",
-                        labelRes = R.string.cancellation_proof,
-                        mandatory = true
-                    )
-                )
-            ),*/
-
-            // Step 5: Review
-            SharedSteps.reviewStep()
+            )
         )
+
+        // Step 5: Review
+        steps.add(SharedSteps.reviewStep())
+
+        return steps
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
@@ -217,6 +167,9 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Int {
+        // ✅ Accumulate form data for dynamic step logic
+        accumulatedFormData.putAll(data)
+        println("📦 CancelRegistration - Accumulated data: $accumulatedFormData")
         return step
     }
 

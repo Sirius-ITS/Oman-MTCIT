@@ -2,6 +2,7 @@ package com.informatique.mtcit.data.repository
 
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.data.model.UserRequest
 import com.informatique.mtcit.data.model.RequestStatus
 import com.informatique.mtcit.data.model.SaveRequestBody
@@ -204,136 +205,128 @@ class RequestRepository @Inject constructor() {
             userId = "currentUserId",
             type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
             status = RequestStatus.PENDING,
+            // Use the shared MarineUnit model (fields have defaults) - set minimal identifying values
             marineUnit = MarineUnit(
                 id = "new_123456",
-                name = "Sea Falcon",
-                type = "سفينة شحن",
-                imoNumber = "IMO1234567",
+                shipName = "Sea Falcon",
                 callSign = "ABC123",
-                maritimeId = "",
-                registrationPort = "ميناء صحار",
-                activity = "Commercial Shipping",
-                isOwned = true
+                imoNumber = "IMO1234567",
+                mmsiNumber = "",
+                portOfRegistry = PortOfRegistry("ميناء صحار")
             ),
-            createdDate = "2025-11-15T10:30:00Z",
-            lastUpdatedDate = "2025-11-15T10:30:00Z",
-            formData = mapOf(
-                "selectionPersonType" to "فرد",
-                "callSign" to "ABC123",
-                "registrationPort" to "ميناء صحار",
-                "unitType" to "سفينة شحن"
-            ),
-            lastCompletedStep = 8, // Completed up to review step
-            estimatedCompletionDate = "2025-11-22T10:30:00Z"
-        )
+             createdDate = "2025-11-15T10:30:00Z",
+             lastUpdatedDate = "2025-11-15T10:30:00Z",
+             formData = mapOf(
+                 "selectionPersonType" to "فرد",
+                 "callSign" to "ABC123",
+                 "registrationPort" to "ميناء صحار",
+                 "unitType" to "سفينة شحن"
+             ),
+             lastCompletedStep = 8, // Completed up to review step
+             estimatedCompletionDate = "2025-11-22T10:30:00Z"
+         )
 
-        // Sample Request 2: VERIFIED (inspection approved - can resume)
-        // ✅ This simulates: User added NEW unit, completed up to Review step,
-        // inspection was done and VERIFIED, now user can continue from Marine Unit Name step
-        mockRequests["REQ_002"] = UserRequest(
-            id = "REQ_002",
-            userId = "currentUserId",
-            type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
-            status = RequestStatus.VERIFIED,
-            marineUnit = MarineUnit(
-                id = "new_789012",
-                name = "Ocean Star",
-                type = "قارب صيد",
-                imoNumber = "",
-                callSign = "XYZ789",
-                maritimeId = "",
-                registrationPort = "ميناء صلالة",
-                activity = "Fishing",
-                isOwned = true,
-                totalLength = "15.5",
-                totalWidth = "4.2",
-                height = "3.0"
-            ),
-            createdDate = "2025-11-10T14:20:00Z",
-            lastUpdatedDate = "2025-11-18T09:15:00Z",
-            formData = mapOf(
-                // Step 0: Person Type
-                "selectionPersonType" to "فرد",
+         // Sample Request 2: VERIFIED (inspection approved - can resume)
+         // ✅ This simulates: User added NEW unit, completed up to Review step,
+         // inspection was done and VERIFIED, now user can continue from Marine Unit Name step
+         mockRequests["REQ_002"] = UserRequest(
+             id = "REQ_002",
+             userId = "currentUserId",
+             type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
+             status = RequestStatus.VERIFIED,
+             marineUnit = MarineUnit(
+                 id = "new_789012",
+                 shipName = "Ocean Star",
+                 callSign = "XYZ789",
+                 imoNumber = "",
+                 mmsiNumber = "",
+                 portOfRegistry = PortOfRegistry("ميناء صلالة"),
+                 totalLength = "15.5",
+                 totalWidth = "4.2",
+                 height = "3.0"
+             ),
+             createdDate = "2025-11-10T14:20:00Z",
+             lastUpdatedDate = "2025-11-18T09:15:00Z",
+             formData = mapOf(
+                 // Step 0: Person Type
+                 "selectionPersonType" to "فرد",
 
-                // Step 2: Marine Unit Selection (chose to add new)
-                "isAddingNewUnit" to "true",
-                "selectedMarineUnits" to "[]",
+                 // Step 2: Marine Unit Selection (chose to add new)
+                 "isAddingNewUnit" to "true",
+                 "selectedMarineUnits" to "[]",
 
-                // Step 3: Unit Selection (new unit details)
-                "callSign" to "XYZ789",
-                "registrationPort" to "ميناء صلالة",
-                "unitType" to "قارب صيد",
-                "imoNumber" to "",
-                "mmsi" to "123456789",
-                "manufacturer" to "Yamaha",
-                "maritimeactivity" to "صيد",
-                "constructionDate" to "2020-01-01",
-                "registrationCountry" to "عمان",
+                 // Step 3: Unit Selection (new unit details)
+                 "callSign" to "XYZ789",
+                 "registrationPort" to "ميناء صلالة",
+                 "unitType" to "قارب صيد",
+                 "imoNumber" to "",
+                 "mmsi" to "123456789",
+                 "manufacturer" to "Yamaha",
+                 "maritimeactivity" to "صيد",
+                 "constructionDate" to "2020-01-01",
+                 "registrationCountry" to "عمان",
 
-                // Step 4: Dimensions
-                "length" to "15.5",
-                "width" to "4.2",
-                "height" to "3.0",
-                "decksCount" to "1",
+                 // Step 4: Dimensions
+                 "length" to "15.5",
+                 "width" to "4.2",
+                 "height" to "3.0",
+                 "decksCount" to "1",
 
-                // Step 5: Weights
-                "grossTonnage" to "25.5",
-                "netTonnage" to "20.0",
-                "maxPermittedLoad" to "5000",
+                 // Step 5: Weights
+                 "grossTonnage" to "25.5",
+                 "netTonnage" to "20.0",
+                 "maxPermittedLoad" to "5000",
 
-                // Step 6: Engine Info
-                "engineManufacturer" to "Yamaha",
-                "engineModel" to "F150",
-                "enginePower" to "150",
-                "engineManufacturerCountry" to "اليابان",
-                "fuelType" to "Diesel",
-                "engineCondition" to "New",
+                 // Step 6: Engine Info
+                 "engineManufacturer" to "Yamaha",
+                 "engineModel" to "F150",
+                 "enginePower" to "150",
+                 "engineManufacturerCountry" to "اليابان",
+                 "fuelType" to "Diesel",
+                 "engineCondition" to "New",
 
-                // Step 7: Owner Info
-                "ownerName" to "أحمد محمد",
-                "ownerNationality" to "عمان",
-                "ownerCountry" to "عمان",
-                "ownerPhone" to "+96812345678",
+                 // Step 7: Owner Info
+                 "ownerName" to "أحمد محمد",
+                 "ownerNationality" to "عمان",
+                 "ownerCountry" to "عمان",
+                 "ownerPhone" to "+96812345678",
 
-                // Step 8: Documents (uploaded)
-                "shipbuildingCertificate" to "uploaded",
-                "inspectionDocuments" to "uploaded"
-            ),
-            lastCompletedStep = 8, // Completed Review step, should resume at step 9 (Marine Unit Name)
-            inspectionCertificateUrl = "https://example.com/certificates/12345.pdf"
-        )
+                 // Step 8: Documents (uploaded)
+                 "shipbuildingCertificate" to "uploaded",
+                 "inspectionDocuments" to "uploaded"
+             ),
+             lastCompletedStep = 8, // Completed Review step, should resume at step 9 (Marine Unit Name)
+             inspectionCertificateUrl = "https://example.com/certificates/12345.pdf"
+         )
 
-        // Sample Request 3: REJECTED (inspection failed)
-        mockRequests["REQ_003"] = UserRequest(
-            id = "REQ_003",
-            userId = "currentUserId",
-            type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
-            status = RequestStatus.REJECTED,
-            marineUnit = MarineUnit(
-                id = "new_345678",
-                name = "Wave Runner",
-                type = "يخت",
-                imoNumber = "",
-                callSign = "WR2024",
-                maritimeId = "",
-                registrationPort = "ميناء مسقط",
-                activity = "Recreation",
-                isOwned = true
-            ),
-            createdDate = "2025-11-05T11:00:00Z",
-            lastUpdatedDate = "2025-11-12T16:45:00Z",
-            formData = mapOf(
-                "selectionPersonType" to "فرد",
-                "callSign" to "WR2024",
-                "registrationPort" to "ميناء مسقط",
-                "unitType" to "يخت"
-            ),
-            lastCompletedStep = 8,
-            rejectionReason = "الوحدة البحرية لا تستوفي متطلبات السلامة البحرية"
-        )
+         // Sample Request 3: REJECTED (inspection failed)
+         mockRequests["REQ_003"] = UserRequest(
+             id = "REQ_003",
+             userId = "currentUserId",
+             type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
+             status = RequestStatus.REJECTED,
+             marineUnit = MarineUnit(
+                 id = "new_345678",
+                 shipName = "Wave Runner",
+                 callSign = "WR2024",
+                 imoNumber = "",
+                 mmsiNumber = "",
+                 portOfRegistry = PortOfRegistry("ميناء مسقط")
+             ),
+             createdDate = "2025-11-05T11:00:00Z",
+             lastUpdatedDate = "2025-11-12T16:45:00Z",
+             formData = mapOf(
+                 "selectionPersonType" to "فرد",
+                 "callSign" to "WR2024",
+                 "registrationPort" to "ميناء مسقط",
+                 "unitType" to "يخت"
+             ),
+             lastCompletedStep = 8,
+             rejectionReason = "الوحدة البحرية لا تستوفي متطلبات السلامة البحرية"
+         )
 
-        println("✅ RequestRepository: Initialized with ${mockRequests.size} mock requests")
-    }
+         println("✅ RequestRepository: Initialized with ${mockRequests.size} mock requests")
+     }
 
     /**
      * Simulate status change (for testing)

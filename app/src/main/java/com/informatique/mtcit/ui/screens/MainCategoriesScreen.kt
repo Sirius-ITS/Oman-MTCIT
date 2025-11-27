@@ -159,12 +159,12 @@ fun MainCategoriesScreen(
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                        text = localizedApp(R.string.main_category_registration_department),
-                        fontSize = 22.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(start = 8.dp ))
-                            },
+                            text = localizedApp(R.string.main_category_registration_department),
+                            fontSize = 22.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = 8.dp ))
+                    },
                     navigationIcon = {
                         // Back Icon Button
                         Box(
@@ -471,7 +471,7 @@ fun CategoryCard(
     availableServicesCount: Int
 ) {
     val extraColors = LocalExtraColors.current
-    var expanded by remember(isExpanded) { mutableStateOf(isExpanded) }
+    var expanded by remember { mutableStateOf(false) }
 
     Column {
         Card(
@@ -525,7 +525,7 @@ fun CategoryCard(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = if (locale.language == "ar") (category.descAr ?: "")
-                                        else (category.descEn ?: ""),
+                                    else (category.descEn ?: ""),
                                     fontSize = 14.sp,
                                     color = extraColors.textSubTitle
                                 )
@@ -617,12 +617,12 @@ fun SubCategoryItem(
                 color = extraColors.whiteInDarkMode,
                 modifier = Modifier.weight(1f)
             )
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                    contentDescription = null,
-                    tint = extraColors.whiteInDarkMode,
-                    modifier = Modifier.size(16.dp)
-                )
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                contentDescription = null,
+                tint = extraColors.whiteInDarkMode,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

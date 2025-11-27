@@ -170,8 +170,40 @@ abstract class BaseTransactionViewModel(
 
             val newFormData = currentState.formData.toMutableMap()
 
+            // ✅ If person type is changing, clear loaded ships, commercial reg data, AND refresh steps
+            var shouldRefreshStepsForPersonType = false
+            if (fieldId == "selectionPersonType") {
+                val oldPersonType = currentState.formData["selectionPersonType"]
+                if (oldPersonType != null && oldPersonType != value) {
+                    println("🔄 Person type changed from $oldPersonType to $value - clearing ships and refreshing steps")
+                    strategy.clearLoadedShips()
+
+                    // ✅ Clear commercial registration data if changing from "شركة" to "فرد"
+                    if (oldPersonType == "شركة" && value == "فرد") {
+                        println("🧹 Changing from شركة to فرد - clearing commercial registration data")
+                        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+                        newFormData.remove("selectionData")
+                        newFormData.remove("companyName")
+                        newFormData.remove("companyType")
+
+                        // ✅ Also update strategy's accumulated data
+                        val clearedData = mapOf(
+                            "selectionData" to "",
+                            "companyName" to "",
+                            "companyType" to ""
+                        )
+                        strategy.updateAccumulatedData(clearedData)
+                    }
+
+                    shouldRefreshStepsForPersonType = true
+                }
+            }
+
             // Update form data
             newFormData[fieldId] = checked?.toString() ?: value
+
+            // ✅ Update accumulated data in strategy immediately
+            strategy.updateAccumulatedData(newFormData)
 
             // Clear field error
             val newFieldErrors = currentState.fieldErrors.toMutableMap()
@@ -180,8 +212,9 @@ abstract class BaseTransactionViewModel(
             // Handle dynamic field changes via strategy
             val updatedFormData = strategy.handleFieldChange(fieldId, value, newFormData)
 
-            // ✅ Check if we need to refresh steps (for fishing boat type selection OR ship category selection)
-            val shouldRefreshSteps = updatedFormData.containsKey("_triggerRefresh")
+            // ✅ Check if we need to refresh steps
+            val shouldRefreshStepsForUnitType = fieldId == "unitType" && updatedFormData.containsKey("_triggerRefresh")
+            val shouldRefreshSteps = shouldRefreshStepsForPersonType || shouldRefreshStepsForUnitType
 
             // Remove the trigger flag from form data if present
             val cleanedFormData = updatedFormData.toMutableMap().apply {
@@ -190,6 +223,7 @@ abstract class BaseTransactionViewModel(
 
             // ✅ Refresh steps if needed
             val updatedSteps = if (shouldRefreshSteps) {
+                println("🔄 Refreshing steps because ${if (shouldRefreshStepsForPersonType) "person type" else "unit type"} changed")
                 println("🔄 Refreshing steps because field '$fieldId' changed and triggered refresh")
                 strategy.getSteps()
             } else {
@@ -224,12 +258,71 @@ abstract class BaseTransactionViewModel(
                 // 🔹 فلترة الداتا اللي تخص الـ step الحالي فقط
                 val currentStepData = currentState.formData.filterKeys { it in currentStepFields }
 
+                // ✅ NEW: Check if we just completed person type or commercial registration step
+                // If so, load ships before moving to next step
+                val personType = currentState.formData["selectionPersonType"]
+                val isPersonTypeStep = currentStepFields.contains("selectionPersonType")
+                // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+                val isCommercialRegStep = currentStepFields.contains("selectionData")
+
+                // ✅ IMPORTANT: Merge current step data with existing form data to get complete picture
+                // This ensures we have access to newly entered commercial registration value
+                val mergedFormData = currentState.formData.toMutableMap().apply {
+                    putAll(currentStepData)
+                }
+
+                // ✅ Check if commercial registration has actual data (from merged data)
+                // The field is stored as "selectionData"
+                val commercialRegValue = mergedFormData["selectionData"]
+                val hasCommercialRegData = !commercialRegValue.isNullOrEmpty()
+
+                println("🔍 DEBUG - personType from formData: $personType")
+                println("🔍 DEBUG - isPersonTypeStep: $isPersonTypeStep")
+                println("🔍 DEBUG - isCommercialRegStep: $isCommercialRegStep")
+                println("🔍 DEBUG - commercialRegValue (from selectionData): $commercialRegValue")
+                println("🔍 DEBUG - hasCommercialRegData: $hasCommercialRegData")
+                println("🔍 DEBUG - currentStepData: $currentStepData")
+                println("🔍 DEBUG - mergedFormData: $mergedFormData")
+
+                val shouldLoadShips = when {
+                    isPersonTypeStep && personType == "فرد" -> {
+                        println("✅ User selected فرد - will load ships after Next")
+                        true
+                    }
+                    isPersonTypeStep && personType == "شركة" -> {
+                        println("⏭️ User selected شركة - will NOT load ships yet (waiting for commercial reg)")
+                        false
+                    }
+                    // ✅ Check if we're on commercial reg step AND have data entered
+                    isCommercialRegStep && hasCommercialRegData -> {
+                        println("✅ Commercial registration step with data - will load ships after Next")
+                        true
+                    }
+                    else -> {
+                        println("❌ No ship loading needed for this step")
+                        false
+                    }
+                }
+
                 // ✅✅✅ الحل الأساسي: نادي processStepData و refresh الـ steps
                 val strategy = currentStrategy
                 if (strategy != null) {
                     // Process the data
                     val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
                     if (requiredNextStep == -1) { return@launch }
+
+                    // ✅ Load ships if needed
+                    if (shouldLoadShips) {
+                        println("🚢 Loading ships for selected type...")
+                        try {
+                            // ✅ IMPORTANT: Pass merged form data so strategy has access to newly entered commercial reg
+                            val loadedShips = strategy.loadShipsForSelectedType(mergedFormData)
+                            println("✅ Loaded ${loadedShips.size} ships successfully")
+                        } catch (e: Exception) {
+                            println("❌ Failed to load ships: ${e.message}")
+                            e.printStackTrace()
+                        }
+                    }
 
                     // Refresh steps (critical for dynamic step logic!)
                     val updatedSteps = strategy.getSteps()
@@ -287,23 +380,45 @@ abstract class BaseTransactionViewModel(
                 }
             }
 
+        viewModelScope.launch {
             navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
-                _uiState.value = currentState.copy(
-                    currentStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1)
-                        (0) else prevStep,
-                    canProceedToNext = navigationUseCase.canProceedToNext(
-                        prevStep,
-                        currentState.steps,
-                        currentState.formData
-                    )
-                )
+                // ✅ Check if we're going back FROM marine unit selection step
+                // If so, we need to check if we should clear ships and refresh steps
+                val currentStepFields = currentState.steps.getOrNull(currentState.currentStep)?.fields?.map { it.id } ?: emptyList()
+                val isLeavingMarineUnitStep = currentStepFields.contains("selectedMarineUnits")
 
-                // ✅ NEW: Load lookups for the previous step
-                val targetStep = if (currentState.formData.filterValues { it == "فرد" }.isNotEmpty() && prevStep == 1) 0 else prevStep
-                currentStrategy?.let { strategy ->
-                    viewModelScope.launch {
-                        strategy.onStepOpened(targetStep)
-                    }
+                val prevStepFields = currentState.steps.getOrNull(prevStep)?.fields?.map { it.id } ?: emptyList()
+                val isGoingToPersonTypeStep = prevStepFields.contains("selectionPersonType")
+                val isGoingToCommercialRegStep = prevStepFields.contains("commercialRegistration")
+
+                // ✅ Clear ships if going back to person type or commercial reg step
+                if (isLeavingMarineUnitStep && (isGoingToPersonTypeStep || isGoingToCommercialRegStep)) {
+                    println("🧹 Going back from marine unit selection to person type/commercial reg - clearing ships")
+                    val strategy = currentStrategy
+                    strategy?.clearLoadedShips()
+
+                    // ✅ Refresh steps to reflect cleared ships
+                    val updatedSteps = strategy?.getSteps() ?: currentState.steps
+
+                    _uiState.value = currentState.copy(
+                        currentStep = prevStep, // ✅ Simply go to previous step
+                        steps = updatedSteps,
+                        canProceedToNext = navigationUseCase.canProceedToNext(
+                            prevStep,
+                            updatedSteps,
+                            currentState.formData
+                        )
+                    )
+                } else {
+                    // ✅ Normal back navigation - keep ships cached
+                    _uiState.value = currentState.copy(
+                        currentStep = prevStep, // ✅ Simply go to previous step
+                        canProceedToNext = navigationUseCase.canProceedToNext(
+                            prevStep,
+                            currentState.steps,
+                            currentState.formData
+                        )
+                    )
                 }
             }
         }

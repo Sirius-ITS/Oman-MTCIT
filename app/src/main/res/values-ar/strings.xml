@@ -252,7 +252,6 @@
     <string name="owner_type">نوع المالك</string>
     <string name="select_owner_type">اختر نوع المالك</string>
     <string name="individual">فرد</string>
-    <string name="company">شركة</string>
     <string name="partnership">شراكة</string>
     <string name="ownership_percentage">نسبة الملكية (%)</string>
     <string name="ownership_documents">مستندات الملكية</string>
@@ -747,11 +746,11 @@
     <!-- Login Benefits -->
     <string name="login_benefits_title">ماذا تستفيد من تسجيل الدخول إلى البوابة؟</string>
     <string name="login_benefits_description">اكتشف المزايا المتاحة لك عند تسجيل الدخول</string>
-    <string name="benefit_unified_access">✓ دخول موحد لكافة الخدمات الحكومية</string>
-    <string name="benefit_personal_page">✓ صفحة شخصية لمتابعة مستجدات الطلب الإلكترونيا</string>
-    <string name="benefit_easy_transfer">✓ سهولة التنقل بين حساباتك الشخصي والتجاري</string>
-    <string name="benefit_edit_profile">✓ إمكانية تعديل بيانات ملفك الشخصي</string>
-    <string name="benefit_custom_notifications">✓ إشعارات مخصصة بكل ما يهمك</string>
+    <string name="benefit_unified_access"> دخول موحد لكافة الخدمات الحكومية</string>
+    <string name="benefit_personal_page"> صفحة شخصية لمتابعة مستجدات الطلب الإلكترونيا</string>
+    <string name="benefit_easy_transfer"> سهولة التنقل بين حساباتك الشخصي والتجاري</string>
+    <string name="benefit_edit_profile"> إمكانية تعديل بيانات ملفك الشخصي</string>
+    <string name="benefit_custom_notifications"> إشعارات مخصصة بكل ما يهمك</string>
 
 
     <string name="mobile_phone_verification_title">أضف رقم هاتفك المفعل عبر التصديق الإلكتروني</string>
@@ -763,6 +762,95 @@
     <string name="otp_verification_title">تحقق من رقم هاتفك المحمول</string>
     <string name="otp_verification_description">لقد أرسلنا رمزاً مكوّن من 6 أرقام إلى رقم هاتفك المحمول.</string>
     <string name="otp_verification_label">رمز التحقق</string>
+
+    <string name="add_ship">اضافة سفينة او وحدة بحرية</string>
+    <string name="country_code">كود</string>
+    <string name="select_country_code">اختر كود الدولة</string>
+    <string name="enter_phone_number">أدخل رقم الهاتف</string>
+    <string name="phone_number">رقم هاتفك المحمول</string>
+    <string name="didnt_receive_OTP">لم تتلق رسالة؟ أعد إرسال OTP</string>
+
+    <string name="person">فرد</string>
+    <string name="company">شركه</string>
+
+    <string name="amount_due">المبلغ الواجب دفعه</string>
+    <string name="amount_value">50 ريال عماني</string>
+
+    <string name="ship_year_validation">لا يمكن إدخال سنة تصنيع بعد عام 2025، ويجب ألا يقل عمر السفينة عن 25 سنة.</string>
+
+
+    <string name="profile_screen_title">الملف الشخصي</string>
+
+    <!-- Request Statistics Section -->
+    <string name="request_statistics_title">إحصائيات سير الطلبات</string>
+    <string name="total_requests_label">طلب</string>
+    <string name="completed_requests">الطلبات المكتملة</string>
+    <string name="processing_requests">الطلبات قيد المعالجة</string>
+    <string name="action_needed_requests">الطلبات تحتاج إجراء</string>
+    <string name="rejected_requests">الطلبات المرفوضة</string>
+
+    <!-- Forms Section -->
+    <string name="forms_section_title">الاستمارات</string>
+    <string name="no_forms_available">لا توجد استمارات</string>
+    <string name="forms_will_appear_here">ستظهر طلباتك هنا</string>
+    <string name="loading_forms">جاري تحميل الاستمارات…</string>
+
+    <!-- Request Status -->
+    <string name="status_pending">قيد المراجعة</string>
+    <string name="status_in_progress">قيد المعالجة</string>
+    <string name="status_verified">تم التحقق</string>
+    <string name="status_rejected">مرفوض</string>
+    <string name="status_completed">مكتمل</string>
+
+    <!-- Status Icons (Emoji as text) -->
+    <string name="status_icon_pending">⏳</string>
+    <string name="status_icon_in_progress">⟳</string>
+    <string name="status_icon_verified">✓</string>
+    <string name="status_icon_rejected">✗</string>
+    <string name="status_icon_completed">✓</string>
+
+    <!-- Action Hints -->
+    <string name="action_hint_verified">✓ اضغط للمتابعة</string>
+    <string name="action_hint_pending">⏳ اضغط للتحقق من الحالة</string>
+    <string name="action_hint_rejected">✗ اضغط لعرض السبب</string>
+    <string name="action_hint_completed">✓ الطلب مكتمل</string>
+
+    <!-- Request Card -->
+    <string name="last_update_label">آخر تحديث: %s</string>
+    <string name="marine_unit_prefix">🚢 %s</string>
+
+    <!-- Compliance Details -->
+    <string name="marine_unit_data_title">📋 بيانات الوحدة البحرية</string>
+    <string name="divider_line">━━━━━━━━━━━━━━━━━━━━━━━━━━</string>
+    <string name="marine_unit_namee">🚢 الاسم: %s</string>
+    <string name="marine_unit_id">🔢 رقم الهوية البحرية: %s</string>
+    <string name="marine_unit_type">📍 نوع الوحدة: %s</string>
+    <string name="marine_unit_port">⚓ ميناء التسجيل: %s</string>
+    <string name="marine_unit_activity">🎯 النشاط البحري: %s</string>
+    <string name="dimensions_title">📏 الأبعاد:</string>
+    <string name="dimension_total_length">   • الطول الكلي: %s</string>
+    <string name="dimension_total_width">   • العرض الكلي: %s</string>
+    <string name="dimension_draft">   • الغاطس: %s</string>
+    <string name="compliance_issues_title">⚠️ سجل الالتزام - المشاكل المكتشفة</string>
+    <string name="no_issues_found">✅ لا توجد مشاكل</string>
+    <string name="issue_blocking_icon">🚫</string>
+    <string name="issue_warning_icon">⚠️</string>
+    <string name="issue_info_icon">ℹ️</string>
+    <string name="issue_title_label">   العنوان: %s</string>
+    <string name="issue_description_label">   التفاصيل: %s</string>
+    <string name="issue_detail_item">   • %s: %s</string>
+    <string name="rejection_reason_title">📌 سبب الرفض:</string>
+
+    <!-- Empty State -->
+    <string name="empty_state_icon">📋</string>
+
+    <!-- Percentage Format -->
+    <string name="percentage_format">(%s%%)</string>
+    <string name="last_update_prefix">آخر تحديث:</string>
+
+    <string name="declaration_title">إقرار ذاتي</string>
+    <string name="declaration_description">أُقِرُّ بأن جميع المعلومات المذكورة صحيحة ودقيقة، وأتعهد بإبلاغ الإدارة بأي تغيير يطرأ عليها، وأدرك أن تقديم بيانات أو مستندات غير صحيحة قد يؤدي إلى بطلان الطلب وتحميلي المسؤولية القانونية.</string>
+
 
 
 </resources>

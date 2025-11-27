@@ -106,8 +106,8 @@ fun EngineFormBottomSheet(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = if (engine != null) stringResource(R.string.engine_edit_title)
-                else stringResource(R.string.engine_add_title),
+                text = if (engine != null) localizedApp(R.string.engine_edit_title)
+                else localizedApp(R.string.engine_add_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = extraColors.whiteInDarkMode,
@@ -118,9 +118,9 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = number,
                 onValueChange = { number = it },
-                label = stringResource(R.string.engine_no_title),
+                label = localizedApp(R.string.engine_no_title),
                 mandatory = true,
-                placeholder = stringResource(R.string.engine_no_title),
+                placeholder = localizedApp(R.string.engine_no_title),
                 enabled = true
             )
 
@@ -130,9 +130,9 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = type,
                 onValueChange = { type = it },
-                label = stringResource(R.string.engine_type_title),
+                label = localizedApp(R.string.engine_type_title),
                 mandatory = true,
-                placeholder = stringResource(R.string.engine_type_title),
+                placeholder = localizedApp(R.string.engine_type_title),
                 enabled = true
             )
 
@@ -142,10 +142,10 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = power,
                 onValueChange = { power = it },
-                label = stringResource(R.string.engine_power_title),
+                label = localizedApp(R.string.engine_power_title),
                 isNumeric = true,
                 mandatory = true,
-                placeholder =stringResource(R.string.engine_power_title),
+                placeholder =localizedApp(R.string.engine_power_title),
                 enabled = true
             )
 
@@ -155,10 +155,10 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = cylinder,
                 onValueChange = { cylinder = it },
-                label = stringResource(R.string.engine_cylinders_title),
+                label = localizedApp(R.string.engine_cylinders_title),
                 isNumeric = true,
                 mandatory = true,
-                placeholder = stringResource(R.string.engine_cylinders_title),
+                placeholder = localizedApp(R.string.engine_cylinders_title),
                 enabled = true
             )
 
@@ -166,12 +166,12 @@ fun EngineFormBottomSheet(
 
             // Manufacturer
             CustomDropdown(
-                label = stringResource(R.string.engine_manufacturer_title),
+                label = localizedApp(R.string.engine_manufacturer_title),
                 options = manufacturers,
                 selectedOption = manufacturer,
                 onOptionSelected = { manufacturer = it },
                 mandatory = true,
-                placeholder = manufacturer.ifEmpty { stringResource(R.string.engine_manufacturer_title) }
+                placeholder = manufacturer.ifEmpty { localizedApp(R.string.engine_manufacturer_title) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -180,9 +180,9 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = model,
                 onValueChange = { model = it },
-                label = stringResource(R.string.engine_model_title),
+                label = localizedApp(R.string.engine_model_title),
                 mandatory = true,
-                placeholder =stringResource(R.string.engine_model_title),
+                placeholder =localizedApp(R.string.engine_model_title),
                 enabled = true
             )
 
@@ -192,10 +192,10 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = manufactureYear,
                 onValueChange = { manufactureYear = it },
-                label = stringResource(R.string.engine_manufacture_year_title),
+                label = localizedApp(R.string.engine_manufacture_year_title),
                 isNumeric = true,
                 mandatory = true,
-                placeholder =stringResource(R.string.engine_manufacture_year_title),
+                placeholder =localizedApp(R.string.engine_manufacture_year_title),
                 enabled = true
             )
 
@@ -203,36 +203,36 @@ fun EngineFormBottomSheet(
 
             // Production Country
             CustomDropdown(
-                label = stringResource(R.string.engine_producing_country_title),
+                label = localizedApp(R.string.engine_producing_country_title),
                 options = countries,
                 selectedOption = productionCountry,
                 onOptionSelected = { productionCountry = it },
                 mandatory = true,
-                placeholder = productionCountry.ifEmpty { stringResource(R.string.engine_producing_country_title) }
+                placeholder = productionCountry.ifEmpty { localizedApp(R.string.engine_producing_country_title) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Fuel Type
             CustomDropdown(
-                label = stringResource(R.string.engine_fuel_type_title),
+                label = localizedApp(R.string.engine_fuel_type_title),
                 options = fuelTypes,
                 selectedOption = fuelType,
                 onOptionSelected = { fuelType = it },
                 mandatory = true,
-                placeholder = fuelType.ifEmpty { stringResource(R.string.engine_fuel_type_title) }
+                placeholder = fuelType.ifEmpty { localizedApp(R.string.engine_fuel_type_title) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             // Engine Condition
             CustomDropdown(
-                label = stringResource(R.string.engine_condition_title),
+                label = localizedApp(R.string.engine_condition_title),
                 options = engineConditions,
                 selectedOption = condition,
                 onOptionSelected = { condition = it },
                 mandatory = true,
-                placeholder = condition.ifEmpty { stringResource(R.string.engine_condition_title) }
+                placeholder = condition.ifEmpty { localizedApp(R.string.engine_condition_title) }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -244,7 +244,7 @@ fun EngineFormBottomSheet(
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.attaching_the_engine_documents),
+                        text = localizedApp(R.string.attaching_the_engine_documents),
                         style = MaterialTheme.typography.bodyMedium,
                         color = extraColors.whiteInDarkMode
                     )
@@ -294,7 +294,7 @@ fun EngineFormBottomSheet(
 
                             Text(
                                 text = if (documentName.isNotEmpty()) documentName
-                                else stringResource(R.string.attaching_the_engine_documents),
+                                else localizedApp(R.string.attaching_the_engine_documents),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = if (documentUri != null) extraColors.whiteInDarkMode
                                 else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
@@ -332,7 +332,7 @@ fun EngineFormBottomSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(stringResource(R.string.cancel_button) , color = extraColors.whiteInDarkMode)
+                    Text(localizedApp(R.string.cancel_button) , color = extraColors.whiteInDarkMode)
                 }
 
                 Button(
@@ -361,7 +361,7 @@ fun EngineFormBottomSheet(
                     ),
                     enabled = documentUri != null // تفعيل الزر فقط لما يتم اختيار ملف
                 ) {
-                    Text(stringResource(R.string.save_button) , color = Color.White)
+                    Text(localizedApp(R.string.save_button) , color = Color.White)
                 }
             }
 

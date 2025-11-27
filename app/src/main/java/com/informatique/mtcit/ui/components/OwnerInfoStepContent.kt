@@ -128,7 +128,7 @@ fun OwnerFormBottomSheet(
             // Owner Type Selector (Company or Individual)
             if (includeCompanyFields) {
                 Text(
-                    text = "نوع المالك",
+                    text = localizedApp(R.string.owner_type),
                     style = MaterialTheme.typography.bodyMedium,
                     color = extraColors.whiteInDarkMode,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -171,7 +171,7 @@ fun OwnerFormBottomSheet(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "فرد",
+                                text = localizedApp(R.string.person),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (!isCompany) FontWeight.Bold else FontWeight.Normal,
                                 color = if (!isCompany) extraColors.startServiceButton
@@ -213,7 +213,7 @@ fun OwnerFormBottomSheet(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "شركة",
+                                text = localizedApp(R.string.company),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (isCompany) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isCompany) extraColors.startServiceButton
