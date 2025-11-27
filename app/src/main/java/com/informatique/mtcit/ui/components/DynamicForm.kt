@@ -276,8 +276,8 @@ fun DynamicStepForm(
                                         uiItem = { item ->
                                             PersonTypeCard(
                                                 item = item as PersonType,
-                                                defaultValue = selectedPersonId == item.title,
-                                                isSelected = selectedPersonId == item.title,
+                                                defaultValue = selectedPersonId == item.title.toString(),
+                                                isSelected = selectedPersonId == item.title.toString(),
                                                 onClick = {
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
                                                     println("🎯 PersonType clicked")
@@ -286,10 +286,10 @@ fun DynamicStepForm(
                                                     println("📊 Item Title: ${item.title}")
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-                                                    selectedPersonId = item.title
+                                                    selectedPersonId = item.title.toString()
 
                                                     // ✅ الحل: ابعت الـ title مش الـ JSON
-                                                    onFieldChange(field.id, item.title, null)
+                                                    onFieldChange(field.id, item.title.toString(), null)
                                                 }
                                             )
                                         }

@@ -8,6 +8,7 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.navigation.NavigationManager
 import com.informatique.mtcit.ui.components.PersonType
@@ -30,108 +31,103 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
+    private val marineUnitRepository: MarineUnitRepository,
+
     private val navigationManager: NavigationManager
 ) : TransactionStrategy {
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
-
     private var commercialOptions: List<SelectableItem> = emptyList()
-
     private var typeOptions: List<PersonType> = emptyList()
+    private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
+        println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
+
         countryOptions = countries
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false
-            ),
-
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true // ⚠️ مملوكة - هتظهر مع التحذير
-            ),
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true // ⚠️ مملوكة
-            ),
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false
-            ),
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false
-            )
-        )
-
         return mapOf(
-            "marineUnits" to marineUnits.map { it.maritimeId },
+            "marineUnits" to emptyList<MarineUnit>(),
             "registrationCountry" to countries,
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes
         )
     }
 
+    override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
+        val personType = formData["selectionPersonType"]
+        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+        val commercialReg = formData["selectionData"]
+
+        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+
+        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        val (ownerCivilId, commercialRegNumber) = when (personType) {
+            "فرد" -> {
+                println("✅ Individual: Using ownerCivilId")
+                Pair("12345678", null)
+            }
+            "شركة" -> {
+                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
+                Pair("12345678", null)
+            }
+            else -> Pair(null, null)
+        }
+
+        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
+
+        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        println("✅ Loaded ${marineUnits.size} ships")
+        return marineUnits
+    }
+
+    override suspend fun clearLoadedShips() {
+        println("🧹 Clearing loaded ships cache")
+        marineUnits = emptyList()
+    }
+
+    override fun updateAccumulatedData(data: Map<String, String>) {
+        accumulatedFormData.putAll(data)
+        println("📦 RenewNavigationPermit - Updated accumulated data: $accumulatedFormData")
+    }
+
     override fun getSteps(): List<StepData> {
-        return listOf(
-            // User type
-            SharedSteps.personTypeStep(options = typeOptions),
+        val steps = mutableListOf<StepData>()
 
-            SharedSteps.commercialRegistrationStep(commercialOptions),
+        // Step 1: Person Type
+        steps.add(SharedSteps.personTypeStep(options = typeOptions))
 
+        // Step 2: Commercial Registration (only for companies)
+        val selectedPersonType = accumulatedFormData["selectionPersonType"]
+        if (selectedPersonType == "شركة") {
+            steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
+        }
+
+        // Step 3: Marine Unit Selection
+        steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false, // اختيار وحدة واحدة فقط
+                allowMultipleSelection = false,
                 showOwnedUnitsWarning = true
-            ),
+            )
+        )
 
+        // Step 4: Sailor Info
+        steps.add(
             SharedSteps.sailorInfoStep(
                 jobs = listOf("Captain", "Chief Engineer", "Boatswain", "Electro-Technical Officer", "Navigator", "Chief Medical Officer")
-            ),
+            )
+        )
 
+        // Step 5: Documents
+        steps.add(
             SharedSteps.documentsStep(
                 requiredDocuments = listOf(
                     DocumentConfig(
@@ -145,10 +141,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
                         mandatory = true
                     )
                 )
-            ),
-
-            SharedSteps.reviewStep()
+            )
         )
+
+        // Step 6: Review
+        steps.add(SharedSteps.reviewStep())
+
+        return steps
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
@@ -158,6 +157,10 @@ class RenewNavigationPermitStrategy @Inject constructor(
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Int {
+        // ✅ Accumulate form data for dynamic step logic
+        accumulatedFormData.putAll(data)
+        println("📦 RenewNavigationPermit - Accumulated data: $accumulatedFormData")
+
         if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
             return 2
         } else if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){

@@ -56,7 +56,7 @@
     <string name="college">College:</string>
     <string name="major">Major:</string>
     <string name="change_password">Change Password</string>
-    <string name="notification">Manage your notification</string>
+    <string name="notification">Notification</string>
     <string name="manage_notification">Manage if you categorise to create over your expenses and categorise</string>
     <string name="rate_this_app">Rate this app</string>
     <string name="log_out">Log out</string>
@@ -97,12 +97,6 @@
     <string name="unit_data_description">Please provide complete information about the ship or marine unit\nto facilitate request processing and necessary procedures</string>
     <string name="select_unit_type">Select Unit Type</string>
     <string name="select_unit_type_placeholder">Choose unit type</string>
-    <string name="select_unit_classification">تصنيف الوحدة</string>
-    <string name="select_unit_classification_placeholder">اختيار تصنيف الوحدة</string>
-    <string name="construction_pool">حوض البناء</string>
-    <string name="enter_construction_pool">أدخل اسم الترسانة</string>
-    <string name="building_material">مادة البناء</string>
-    <string name="select_building_material">اختيار مادة البناء</string>
     <string name="ship">Ship</string>
     <string name="marine_unit">Marine Unit</string>
     <string name="yacht">Yacht</string>
@@ -161,73 +155,19 @@
 
 
 
-    <!-- Marine Unit Dimensions -->
-    <string name="marine_unit_dimensions_title">الأبعاد الخاصة بالوحدة البحرية</string>
-    <string name="marine_unit_dimensions_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
-
-    <string name="overall_length">الطول الكلي</string>
-    <string name="overall_length_placeholder">أدخل الطول الأقصى للوحدة    متر</string>
-
-    <string name="overall_width">العرض الكلي</string>
-    <string name="overall_width_placeholder">أدخل العرض الأقصى للوحدة    متر</string>
-
-    <string name="depth">الغاطس</string>
-    <string name="depth_placeholder">أدخل الغاطس بالمتر    متر</string>
-
-    <string name="height_optional">الارتفاع (اختياري)</string>
-    <string name="height_placeholder">من قاعدة العارضة لأعلى نقطة    متر</string>
-
-    <string name="decks_count_optional">عدد الطوابق (اختياري)</string>
-    <string name="decks_count_placeholder">أدخل إجمالي الطوابق</string>
 
 
 
-    <!-- Marine Unit Weights and Loads -->
-    <string name="marine_unit_weights_title">الأوزان والحمولات الخاصة بالوحدة البحرية</string>
-    <string name="marine_unit_weights_description">يُرجى توفير معلومات كاملة عن السفينة أو الوحدة البحرية لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة</string>
-
-    <string name="gross_tonnage_placeholder">أدخل الحمولة الكلية</string>
-
-    <string name="net_tonnage_placeholder">أدخل الحمولة الصافية</string>
-
-    <string name="static_load">الحمولة الساكنة (اختياري)</string>
-    <string name="static_load_placeholder">أدخل الحمولة الساكنة (DWT)</string>
-
-    <string name="max_permitted_load_optional">أقصى حمولة مسموح بها (اختياري)</string>
-    <string name="max_permitted_load_placeholder">أدخل أقصى حمولة مسموحة</string>
 
 
-
-    <!-- Marine Unit Registration Certificate -->
-    <string name="marine_unit_registration_certificate_title">هل لدى الوحدة البحرية شهادة تسجيل مؤقتة؟</string>
-    <string name="marine_unit_registration_certificate_description">حدد ما إذا كانت وحدتك البحرية مسجلة مسبقاً بشهادة مؤقتة أم لا لتقديم الخدمات بشكل مخصص.</string>
-    <string name="marine_unit_registration_certificate_description_simple">يُرجى تحديد حالة التسجيل المؤقت للوحدة البحرية</string>
-
-    <string name="has_temporary_registration_certificate_question">حالة شهادة التسجيل المؤقتة</string>
-    <string name="yes_has_temporary_certificate">نعم، لدى الوحدة البحرية شهادة تسجيل مؤقتة</string>
-    <string name="no_temporary_certificate">لا، لا توجد شهادة تسجيل مؤقتة للوحدة البحرية</string>
-
-
-    <!-- Marine Unit Name Selection -->
-    <string name="marine_unit_name_selection_title">اختيار الاسم المطلوب للوحدة البحرية</string>
-    <string name="marine_unit_name_selection_description">يُرجى اختيار الاسم المطلوب للوحدة البحرية. سيتم حجز الاسم لفترة زمنية محددة بالدقائق، ويتعين عليكم سداد الرسوم خلال هذه المدة لضمان تثبيت الحجز.</string>
-    <string name="marine_unit_name_selection_description_simple">يُرجى إدخال الاسم المطلوب للوحدة البحرية</string>
-
-    <string name="marine_unit_name">اسم الوحدة البحرية</string>
-    <string name="marine_unit_name_placeholder">أدخل اسم الوحدة البحرية المطلوب تسجيله</string>
 
     <!-- Owner Information -->
     <string name="owner_info_description">Please provide complete owner information for the marine unit</string>
     <string name="is_company">Is this a company?</string>
     <string name="owner_full_name_ar">Owner Full Name with arabic</string>
-    <string name="owner_full_name_en">الاسم الكامل للمالك بالانجليزية</string>
     <string name="owner_nationality">Owner Nationality</string>
     <string name="owner_id_number">Owner ID Number</string>
     <string name="owner_passport_number">Owner Passport Number</string>
-    <string name="ownershippercentage">نسبة الملكية %</string>
-    <string name="enter_ownershippercentage">أدخل نسبة الملكية %</string>
-    <string name="ownership_proof_attachments">مرفقات إثبات الملكية</string>
-    <string name="ownership_proof_document">مرفقات إثبات الملكية</string>
     <string name="owner_mobile">Owner Mobile Number</string>
     <string name="owner_address">Owner Address</string>
     <string name="owner_city">Owner City</string>
@@ -317,7 +257,6 @@
     <string name="owner_type">Owner Type</string>
     <string name="select_owner_type">Select owner type</string>
     <string name="individual">Individual</string>
-    <string name="company">Company</string>
     <string name="partnership">Partnership</string>
     <string name="enter_ownership_percentage">Enter ownership percentage</string>
     <string name="partnership_name">Partnership Name</string>
@@ -641,44 +580,7 @@
     <string name="engine_fuel_type">fuel type</string>
     <string name="engine_condition_title">Select engine condition</string>
     <string name="engine_save_btn">Save</string>
-    <string name="subcategory_marine_unit_request_for_inspection">المعاينات</string>
 
-
-
-    <string name="attaching_the_engine_documents">ارفاق المستندات الخاصة بالمحرك</string>
-    <string name="request_for_inspection_title">طلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية</string>
-    <string name="request_for_inspection_des">تتيح هذه الخدمة إجراء معاينة للسمينة أو الوحدة البحرية للتحقق من مطابقتها للمعايير واللوائح البحرية الوطنية والدولية، وضمان سلامتها وكفاءتها التشغيلية قبل إصدار أو تجديد شهادات السلامة، ترخيص التشغيل، أو تسجيل الملكية.</string>
-
-
-
-    <!-- Step Title and Description -->
-    <string name="insurance_document_title">بيانات وثيقة التأمين</string>
-    <string name="insurance_document_description">أدخل رقم وثيقة التأمين وحدد الشركة المصدرة والدولة. هذه المعلومات مطلوبة لإثبات التغطية التأمينية.</string>
-
-    <!-- Insurance Document Number -->
-    <string name="insurance_document_number">رقم وثيقة التأمين</string>
-    <string name="insurance_document_number_placeholder">أدخل رقم وثيقة التأمين</string>
-
-    <!-- Country -->
-    <string name="insurance_country">الدولة</string>
-    <string name="insurance_country_placeholder">اختر الدولة</string>
-
-    <!-- Insurance Company -->
-    <string name="insurance_company">الشركة المصدرة</string>
-    <string name="insurance_company_placeholder">أدخل الشركة التأمين المصدرة</string>
-
-    <!-- Insurance Document Attachment -->
-    <string name="insurance_document_attachment">أرفاق وثيقة التأمين (إذا كانت شركة التأمين خارج السلطنة)</string>
-    <string name="insurance_document_hint">فقط ملفات بحجم 5 ميجابايت أو أقل.\nيجب png أو jpeg أو jpg أو pdf.</string>
-    <string name="insurance_document_button">اختر الملف</string>
-
-    <!-- Validation Messages -->
-    <string name="insurance_document_number_required">رقم وثيقة التأمين مطلوب</string>
-    <string name="insurance_country_required">يجب اختيار الدولة</string>
-    <string name="insurance_company_required">يجب اختيار الشركة المصدرة</string>
-    <string name="insurance_document_required">يجب إرفاق وثيقة التأمين</string>
-    <string name="insurance_document_invalid_format">صيغة الملف غير مدعومة. يرجى رفع PDF أو صورة</string>
-    <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
 
     <string name="request_detail_back_title">Services screen</string>
 
@@ -697,68 +599,233 @@
 
 
 
+    <!-- Marine Unit Dimensions -->
+    <string name="marine_unit_dimensions_title">Marine Unit Dimensions</string>
+    <string name="marine_unit_dimensions_description">Please provide complete information about the ship or marine unit to facilitate request processing and necessary procedures</string>
+
+    <string name="overall_length">Overall Length</string>
+    <string name="overall_length_placeholder">Enter maximum unit length    meters</string>
+
+    <string name="overall_width">Overall Width</string>
+    <string name="overall_width_placeholder">Enter maximum unit width    meters</string>
+
+    <string name="depth">Draft/Depth</string>
+    <string name="depth_placeholder">Enter draft in meters    meters</string>
+
+    <string name="height_optional">Height (Optional)</string>
+    <string name="height_placeholder">From keel base to highest point    meters</string>
+
+    <string name="decks_count_optional">Number of Decks (Optional)</string>
+    <string name="decks_count_placeholder">Enter total decks</string>
+
+    <!-- Marine Unit Weights and Loads -->
+    <string name="marine_unit_weights_title">Marine Unit Weights and Loads</string>
+    <string name="marine_unit_weights_description">Please provide complete information about the ship or marine unit to facilitate request processing and necessary procedures</string>
+
+    <string name="gross_tonnage_placeholder">Enter gross tonnage</string>
+
+    <string name="net_tonnage_placeholder">Enter net tonnage</string>
+
+    <string name="static_load">Static Load (Optional)</string>
+    <string name="static_load_placeholder">Enter static load (DWT)</string>
+
+    <string name="max_permitted_load_optional">Maximum Permitted Load (Optional)</string>
+    <string name="max_permitted_load_placeholder">Enter maximum permitted load</string>
+
+    <!-- Marine Unit Registration Certificate -->
+    <string name="marine_unit_registration_certificate_title">Does the marine unit have a temporary registration certificate?</string>
+    <string name="marine_unit_registration_certificate_description">Specify whether your marine unit is previously registered with a temporary certificate or not to provide customized services.</string>
+    <string name="marine_unit_registration_certificate_description_simple">Please specify the temporary registration status of the marine unit</string>
+
+    <string name="has_temporary_registration_certificate_question">Temporary Registration Certificate Status</string>
+    <string name="yes_has_temporary_certificate">Yes, the marine unit has a temporary registration certificate</string>
+    <string name="no_temporary_certificate">No, there is no temporary registration certificate for the marine unit</string>
+
+    <!-- Marine Unit Name Selection -->
+    <string name="marine_unit_name_selection_title">Select the desired name for the marine unit</string>
+    <string name="marine_unit_name_selection_description">Please select the desired name for the marine unit. The name will be reserved for a specific period in minutes, and you must pay the fees during this period to ensure the reservation is confirmed.</string>
+    <string name="marine_unit_name_selection_description_simple">Please enter the desired name for the marine unit</string>
+
+    <string name="marine_unit_name">Marine Unit Name</string>
+    <string name="marine_unit_name_placeholder">Enter the marine unit name to be registered</string>
+
+    <string name="select_unit_classification">Unit Classification</string>
+    <string name="select_unit_classification_placeholder">Select unit classification</string>
+    <string name="construction_pool">Construction Dock</string>
+    <string name="enter_construction_pool">Enter shipyard name</string>
+    <string name="building_material">Building Material</string>
+    <string name="select_building_material">Select building material</string>
+
+    <string name="ownership_proof_attachments">Ownership Proof Attachments</string>
+    <string name="ownership_proof_document">Ownership Proof Attachments</string>
+
+    <string name="owner_full_name_en">Owner Full Name in English</string>
+    <string name="ownershippercentage">Ownership Percentage %</string>
+    <string name="enter_ownershippercentage">Enter ownership percentage %</string>
+
+    <string name="subcategory_marine_unit_request_for_inspection">Inspections</string>
+
+    <string name="attaching_the_engine_documents">Attach engine documents</string>
+    <string name="request_for_inspection_title">Request for inspection / exceptional inspection of a ship or marine unit</string>
+    <string name="request_for_inspection_des">This service allows inspection of the ship or marine unit to verify its compliance with national and international maritime standards and regulations, and to ensure its safety and operational efficiency before issuing or renewing safety certificates, operating licenses, or ownership registration.</string>
+
+    <!-- Insurance Document -->
+    <string name="insurance_document_title">Insurance Document Data</string>
+    <string name="insurance_document_description">Enter the insurance document number and select the issuing company and country. This information is required to prove insurance coverage.</string>
+
+    <string name="insurance_document_number">Insurance Document Number</string>
+    <string name="insurance_document_number_placeholder">Enter insurance document number</string>
+
+    <string name="insurance_country">Country</string>
+    <string name="insurance_country_placeholder">Select country</string>
+
+    <string name="insurance_company">Issuing Company</string>
+    <string name="insurance_company_placeholder">Enter issuing insurance company</string>
+
+    <string name="insurance_document_attachment">Attach insurance document (if insurance company is outside the Sultanate)</string>
+    <string name="insurance_document_hint">Only files of 5MB or less.\nMust be png, jpeg, jpg, or pdf.</string>
+    <string name="insurance_document_button">Choose file</string>
+
+    <!-- Validation Messages -->
+    <string name="insurance_document_number_required">Insurance document number is required</string>
+    <string name="insurance_country_required">Country must be selected</string>
+    <string name="insurance_company_required">Issuing company must be selected</string>
+    <string name="insurance_document_required">Insurance document must be attached</string>
+    <string name="insurance_document_invalid_format">File format not supported. Please upload PDF or image</string>
+    <string name="insurance_document_size_exceeded">File size exceeds 5MB</string>
+
+    <!-- Inspection Purpose -->
+    <string name="inspection_purpose_title">Purpose of Inspection Request</string>
+    <string name="inspection_purpose_description">Please select the purpose of the inspection from the available list, to direct the request to the correct procedure and match it with legal and administrative requirements.</string>
+    <string name="inspection_purpose_selection">Inspection Purpose</string>
+    <string name="select_inspection_purpose_placeholder">Select inspection purpose</string>
+
+    <!-- Inspection Authority -->
+    <string name="inspection_authority_title">Inspection Authority</string>
+    <string name="inspection_authority_description">Choose the authority you want to inspect your marine unit from among the approved authorities.</string>
+    <string name="inspection_authority_selection">Approved Authority for Inspection</string>
+    <string name="select_inspection_authority_placeholder">Select from the list office or classification society</string>
+
+    <string name="transfer_inspection_title">Transfer Inspection to Classification Society</string>
+    <string name="transfer_inspection_description">The inspection has been transferred to one of the approved classification societies. Please select the appropriate classification office or society to complete the request procedures.</string>
+    <string name="classification_society_selection">Approved Authority for Inspection</string>
+    <string name="select_classification_society_placeholder">Select from the list office or classification society</string>
+
+    <!-- Login Registration -->
+    <string name="login_registration_title">Login</string>
+    <string name="login_registration_description">Log in using your personal information to customize your experience in benefiting from the electronic portal services of the Ministry of Transport, Communications and Information Technology.</string>
+
+    <string name="registration_method_selection">You can log in to the portal using your personal card or phone number.</string>
+    <string name="mobile_phone_option">Mobile Phone</string>
+    <string name="mobile_phone_description">You need an active phone SIM card</string>
+    <string name="civil_id_option">Civil ID Number</string>
+    <string name="civil_id_description">You need a card reader</string>
+
+    <string name="login_benefits_title">What do you benefit from logging into the portal?</string>
+    <string name="login_benefits_description">Discover the benefits available to you when you log in</string>
+    <string name="benefit_unified_access"> Unified access to all government services</string>
+    <string name="benefit_personal_page"> Personal page to follow up on electronic request updates</string>
+    <string name="benefit_easy_transfer"> Easy transfer between your personal and commercial accounts</string>
+    <string name="benefit_edit_profile"> Ability to edit your personal profile data</string>
+    <string name="benefit_custom_notifications"> Customized notifications for everything that matters to you</string>
+
+    <string name="mobile_phone_verification_title">Add your activated phone number via electronic authentication</string>
+    <string name="mobile_phone_verification_description">Please add your mobile phone number activated with electronic authentication for verification.</string>
+    <string name="mobile_phone_verification_label">Mobile phone number activated with electronic authentication</string>
+    <string name="mobile_phone_verification_placeholder">Enter mobile phone number</string>
+
+    <string name="otp_verification_title">Verify your mobile phone number</string>
+    <string name="otp_verification_description">We have sent a 6-digit code to your mobile phone number.</string>
+    <string name="otp_verification_label">Verification Code</string>
+
+    <string name="add_ship">Add a ship or marine unit</string>
+
+    <string name="country_code">Code</string>
+    <string name="select_country_code">>Select country code</string>
+    <string name="enter_phone_number">Enter phone number</string>
+    <string name="phone_number">Phone number</string>
+    <string name="didnt_receive_OTP">Didn’t receive the message? Resend OTP</string>
+    <string name="person">Person</string>
+    <string name="company">Company</string>
+
+    <string name="amount_due">Amount due</string>
+    <string name="amount_value">50 OMR</string>
+    <string name="ship_year_validation">The manufacturing year cannot be later than 2025, and the vessel must be at least 25 years old.</string>
+
+    <!-- Profile Screen -->
+    <string name="profile_screen_title">Profile</string>
+
+    <!-- Request Statistics Section -->
+    <string name="request_statistics_title">Request Progress Statistics</string>
+    <string name="total_requests_label">Request</string>
+    <string name="completed_requests">Completed Requests</string>
+    <string name="processing_requests">Processing Requests</string>
+    <string name="action_needed_requests">Action Needed</string>
+    <string name="rejected_requests">Rejected Requests</string>
+
+    <!-- Forms Section -->
+    <string name="forms_section_title">Forms</string>
+    <string name="no_forms_available">No Forms Available</string>
+    <string name="forms_will_appear_here">Your requests will appear here</string>
+    <string name="loading_forms">Loading forms…</string>
+
+    <!-- Request Status -->
+    <string name="status_pending">Under Review</string>
+    <string name="status_in_progress">In Progress</string>
+    <string name="status_verified">Verified</string>
+    <string name="status_rejected">Rejected</string>
+    <string name="status_completed">Completed</string>
+
+    <!-- Status Icons (Emoji as text) -->
+    <string name="status_icon_pending">⏳</string>
+    <string name="status_icon_in_progress">⟳</string>
+    <string name="status_icon_verified">✓</string>
+    <string name="status_icon_rejected">✗</string>
+    <string name="status_icon_completed">✓</string>
+
+    <!-- Action Hints -->
+    <string name="action_hint_verified">✓ Tap to continue</string>
+    <string name="action_hint_pending">⏳ Tap to check status</string>
+    <string name="action_hint_rejected">✗ Tap to view reason</string>
+    <string name="action_hint_completed">✓ Request completed</string>
+
+    <!-- Request Card -->
+    <string name="last_update_label">Last update: %s</string>
+    <string name="marine_unit_prefix">🚢 %s</string>
+
+    <!-- Compliance Details -->
+    <string name="marine_unit_data_title">📋 Marine Unit Data</string>
+    <string name="divider_line">━━━━━━━━━━━━━━━━━━━━━━━━━━</string>
+    <string name="marine_unit_namee">🚢 Name: %s</string>
+    <string name="marine_unit_id">🔢 Maritime ID: %s</string>
+    <string name="marine_unit_type">📍 Unit Type: %s</string>
+    <string name="marine_unit_port">⚓ Registration Port: %s</string>
+    <string name="marine_unit_activity">🎯 Maritime Activity: %s</string>
+    <string name="dimensions_title">📏 Dimensions:</string>
+    <string name="dimension_total_length">   • Total Length: %s</string>
+    <string name="dimension_total_width">   • Total Width: %s</string>
+    <string name="dimension_draft">   • Draft: %s</string>
+    <string name="compliance_issues_title">⚠️ Compliance Record - Issues Found</string>
+    <string name="no_issues_found">✅ No issues found</string>
+    <string name="issue_blocking_icon">🚫</string>
+    <string name="issue_warning_icon">⚠️</string>
+    <string name="issue_info_icon">ℹ️</string>
+    <string name="issue_title_label">   Title: %s</string>
+    <string name="issue_description_label">   Details: %s</string>
+    <string name="issue_detail_item">   • %s: %s</string>
+    <string name="rejection_reason_title">📌 Rejection Reason:</string>
+
+    <!-- Empty State -->
+    <string name="empty_state_icon">📋</string>
+
+    <!-- Percentage Format -->
+    <string name="percentage_format">(%s%%)</string>
+
+    <string name="last_update_prefix">Last update:</string>
 
 
-    <string name="inspection_purpose_title">الغرض من طلب المعاينة</string>
-
-    <string name="inspection_purpose_description">يرجى تحديد الغرض من المعاينة من القائمة المتاحة، بهدف توجيه الطلب إلى الإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية.</string>
-
-    <string name="inspection_purpose_selection">الغرض المعاينة</string>
-
-    <string name="select_inspection_purpose_placeholder">تحديد الغرض من المعاينة</string>
-
-
-    <!-- ======================================== -->
-    <!-- Inspection Authority Step (جهة المعاينة) -->
-    <!-- ======================================== -->
-
-    <string name="inspection_authority_title">جهة المعاينة</string>
-
-    <string name="inspection_authority_description">اختر الجهة التي ترغب في أن تتولى معاينة وحدتك البحرية من بين الجهات المعتمدة.</string>
-
-    <string name="inspection_authority_selection">الهيئة المعتمدة للمعاينة</string>
-
-    <string name="select_inspection_authority_placeholder">حدد من القائمة مكتب أو هيئة التصنيف</string>
-
-    <string name="transfer_inspection_title">تحويل المعاينة إلى هيئة تصنيف</string>
-
-    <string name="transfer_inspection_description">تم تحويل المعاينة إلى إحدى هيئات التصنيف المعتمدة. يرجى منكم اختيار مكتب أو هيئة التصنيف المناسبة لاستكمال إجراءات الطلب.</string>
-
-    <string name="classification_society_selection">الهيئة المعتمدة للمعاينة</string>
-
-    <string name="select_classification_society_placeholder">حدد من القائمة مكتب أو هيئة التصنيف</string>
-
-
-    <!-- Login Registration Step -->
-    <string name="login_registration_title">تسجيل الدخول</string>
-    <string name="login_registration_description">سجل دخولك بواسطة بياناتك الشخصية لتتمكن من تخصيص تجربتك في الاستفادة من خدمات البوابة الالكترونية بوزارة النقل والاتصالات وتقنية المعلومات.</string>
-
-    <!-- Registration Method Selection -->
-    <string name="registration_method_selection">يمكنك تسجيل الدخول للبوابة باستخدام بطاقتك الشخصية، أو رقم الهاتف.</string>
-    <string name="mobile_phone_option">هاتف نقال</string>
-    <string name="mobile_phone_description">تحتاج إلى شريحة هاتف مفعلة</string>
-    <string name="civil_id_option">الرقم المدني</string>
-    <string name="civil_id_description">تحتاج إلى قارئ البطاقة</string>
-
-    <!-- Login Benefits -->
-    <string name="login_benefits_title">ماذا تستفيد من تسجيل الدخول إلى البوابة؟</string>
-    <string name="login_benefits_description">اكتشف المزايا المتاحة لك عند تسجيل الدخول</string>
-    <string name="benefit_unified_access">✓ دخول موحد لكافة الخدمات الحكومية</string>
-    <string name="benefit_personal_page">✓ صفحة شخصية لمتابعة مستجدات الطلب الإلكترونيا</string>
-    <string name="benefit_easy_transfer">✓ سهولة التنقل بين حساباتك الشخصي والتجاري</string>
-    <string name="benefit_edit_profile">✓ إمكانية تعديل بيانات ملفك الشخصي</string>
-    <string name="benefit_custom_notifications">✓ إشعارات مخصصة بكل ما يهمك</string>
-
-
-    <string name="mobile_phone_verification_title">أضف رقم هاتفك المفعل عبر التصديق الإلكتروني</string>
-    <string name="mobile_phone_verification_description">يرجى إضافة رقم هاتفك المحمول المفعل بـ التصديق الالكتروني للتحقق.</string>
-    <string name="mobile_phone_verification_label">رقم الهاتف المحمول المفعل بالتصديق الإلكتروني</string>
-    <string name="mobile_phone_verification_placeholder">أدخل رقم الهاتف المحمول</string>
-
-    <!-- OTP Verification -->
-    <string name="otp_verification_title">تحقق من رقم هاتفك المحمول</string>
-    <string name="otp_verification_description">لقد أرسلنا رمزاً مكوّن من 6 أرقام إلى رقم هاتفك المحمول.</string>
-    <string name="otp_verification_label">رمز التحقق</string>
+    <string name="declaration_title">Self Declaration</string>
+    <string name="declaration_description">I acknowledge that all the information provided is correct and accurate, and I undertake to inform the management of any changes. I understand that providing incorrect data or documents may result in cancellation of the application and legal liability.</string>
 
 
 </resources>

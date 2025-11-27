@@ -39,7 +39,7 @@ class MortgageCertificateRules @Inject constructor(
 
         // Check 4: Must NOT be mortgaged already (Backend API call)
         // API: /api/mortgage/check-status/{unitId}
-        val mortgageStatus = mortgageRepository.getMortgageStatus(unit.id)
+        val mortgageStatus = mortgageRepository.getMortgageStatus(unit.id.toString())
         if (mortgageStatus.isMortgaged) {
             return MarineUnitValidationResult.Ineligible.AlreadyMortgaged(
                 unit = unit,
@@ -49,7 +49,7 @@ class MortgageCertificateRules @Inject constructor(
         }
 
         // Check 5: Must NOT have active violations
-        val violationsCount = unit.violationsCount.toIntOrNull() ?: 0
+        val violationsCount = unit.violationsCount?.toIntOrNull() ?: 0
         if (violationsCount > 0) {
             return MarineUnitValidationResult.Ineligible.HasViolations(
                 unit = unit,
@@ -58,7 +58,7 @@ class MortgageCertificateRules @Inject constructor(
         }
 
         // Check 6: Must NOT have active detentions
-        val detentionsCount = unit.detentionsCount.toIntOrNull() ?: 0
+        val detentionsCount = unit.detentionsCount?.toIntOrNull() ?: 0
         if (detentionsCount > 0) {
             return MarineUnitValidationResult.Ineligible.HasDetentions(
                 unit = unit,

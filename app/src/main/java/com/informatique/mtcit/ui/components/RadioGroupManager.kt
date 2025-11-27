@@ -1,4 +1,4 @@
-package com.informatique.mtcit.ui.components
+ package com.informatique.mtcit.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -103,7 +103,7 @@ private fun RadioGroupLabel(
         modifier = Modifier.padding(bottom = 4.dp)
     ) {
         Text(
-            text = stringResource(id = labelRes),
+            text = localizedApp(labelRes),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             color = extraColors.whiteInDarkMode
@@ -111,7 +111,7 @@ private fun RadioGroupLabel(
 
         if (isMandatory) {
             Text(
-                text = " *",
+                text = "*",
                 color = Color(0xFFEF4444),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
@@ -146,7 +146,7 @@ private fun RadioGroupDescription(descriptionRes: Int) {
             modifier = Modifier.size(18.dp)
         )
         Text(
-            text = stringResource(id = descriptionRes),
+            text = localizedApp(descriptionRes),
             fontSize = 14.sp,
             color = extraColors.textSubTitle,
             lineHeight = 20.sp
@@ -215,14 +215,6 @@ private fun RadioOptionCard(
     modifier: Modifier = Modifier
 ) {
     val extraColors = LocalExtraColors.current
-    var showDescription by remember { mutableStateOf(false) }
-
-    // ✅ FIX: Update description visibility when selection changes
-    LaunchedEffect(isSelected) {
-        if (option.descriptionRes != null) {
-            showDescription = isSelected
-        }
-    }
 
     val backgroundColor = if (isSelected) {
         Color(0xFF1E3A5F).copy(alpha = 0.1f)
@@ -245,70 +237,51 @@ private fun RadioOptionCard(
             defaultElevation = if (isSelected) 2.dp else 0.dp
         )
     ) {
-        Column {
-            // Main Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(
-                        width = if (isSelected) 2.dp else 1.dp,
-                        color = borderColor,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .clickable(enabled = option.isEnabled) {
-                        onSelect() // ✅ Simply call the callback
-                    }
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Custom Radio Button
-                CustomRadioButton(
-                    isSelected = isSelected,
-                    onClick = onSelect
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = if (isSelected) 2.dp else 1.dp,
+                    color = borderColor,
+                    shape = RoundedCornerShape(16.dp)
                 )
+                .clickable(enabled = option.isEnabled) {
+                    onSelect()
+                }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Custom Radio Button
+            CustomRadioButton(
+                isSelected = isSelected,
+                onClick = onSelect
+            )
 
+            // Text Column (Label + Description)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 // Option Label
                 Text(
-                    text = stringResource(id = option.labelRes),
+                    text = localizedApp(option.labelRes),
                     fontSize = 15.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (option.isEnabled) {
                         extraColors.whiteInDarkMode
                     } else {
                         extraColors.textSubTitle
-                    },
-                    modifier = Modifier.weight(1f)
+                    }
                 )
 
-                // Description Indicator (if available)
-                if (option.descriptionRes != null) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = if (isSelected) Color(0xFF1E3A5F) else extraColors.textSubTitle,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            // Expandable Description
-            option.descriptionRes?.let { descRes ->
-                AnimatedVisibility(
-                    visible = showDescription && isSelected,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
-                ) {
+                // Description (if available)
+                option.descriptionRes?.let { descRes ->
                     Text(
-                        text = stringResource(id = descRes),
+                        text = localizedApp(descRes),
                         fontSize = 13.sp,
                         color = extraColors.textSubTitle,
-                        lineHeight = 18.sp,
-                        modifier = Modifier.padding(
-                            start = 60.dp,
-                            end = 16.dp,
-                            bottom = 16.dp
-                        )
+                        lineHeight = 18.sp
                     )
                 }
             }

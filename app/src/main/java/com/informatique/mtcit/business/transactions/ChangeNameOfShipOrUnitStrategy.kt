@@ -1,14 +1,10 @@
 package com.informatique.mtcit.business.transactions
 
-import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
-import com.informatique.mtcit.business.transactions.shared.DocumentConfig
+import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
-import com.informatique.mtcit.business.validation.rules.DateValidationRules
-import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
-import com.informatique.mtcit.business.validation.rules.MarineUnitValidationRules
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
@@ -21,14 +17,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import javax.inject.Inject
-import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
-import com.informatique.mtcit.business.validation.rules.DocumentValidationRules
 import kotlinx.serialization.json.Json
+import javax.inject.Inject
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
 import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
 
-class TemporaryRegistrationStrategy @Inject constructor(
+class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
@@ -149,116 +143,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
             )
         )
 
-        // ✅ التحقق الصحيح من اختيار المستخدم
-        val isAddingNewUnitFlag = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
-        val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
-
-        // ✅ المستخدم اختار سفينة موجودة إذا كان فيه JSON مش فاضي ومش "[]"
-        val hasSelectedExistingUnit = !selectedUnitsJson.isNullOrEmpty() &&
-                selectedUnitsJson != "[]"
-
-        // ✅ WORKAROUND: لو selectedMarineUnits موجود وفاضي "[]" ومفيش isAddingNewUnit flag
-        // معناها المستخدم ضغط على الزرار بس الفلاج مبعتش صح
-        val isAddingNewUnit = isAddingNewUnitFlag ||
-                (selectedUnitsJson == "[]" && accumulatedFormData.containsKey("selectedMarineUnits"))
-
-        // ✅ طباعة للتتبع (Debug)
-        println("🔍 DEBUG - isAddingNewUnitFlag: $isAddingNewUnitFlag")
-        println("🔍 DEBUG - selectedUnitsJson: $selectedUnitsJson")
-        println("🔍 DEBUG - accumulatedFormData: $accumulatedFormData")
-        println("🔍 DEBUG - hasSelectedExistingUnit: $hasSelectedExistingUnit")
-        println("🔍 DEBUG - isAddingNewUnit (final): $isAddingNewUnit")
-        println("🔍 DEBUG - Will show new unit steps: ${isAddingNewUnit && !hasSelectedExistingUnit}")
-
-        // ✅ نضيف steps الإضافة فقط لو المستخدم ضغط "إضافة جديدة" ومش مختار سفينة موجودة
-        if (isAddingNewUnit && !hasSelectedExistingUnit) {
-            println("✅ Adding new unit steps")
-
-            steps.add(
-                SharedSteps.unitSelectionStep(
-                    shipTypes = shipTypeOptions,
-                    ports = portOptions,
-                    countries = countryOptions,
-                    includeIMO = true,
-                    includeMMSI = true,
-                    includeManufacturer = true,
-                    maritimeactivity = shipTypeOptions,
-                    includeProofDocument = false,
-                    includeConstructionDates = true,
-                    includeRegistrationCountry = true,
-                    isFishingBoat = isFishingBoat, // ✅ Pass fishing boat flag
-                    fishingBoatDataLoaded = fishingBoatDataLoaded // ✅ Pass data loaded flag
-                )
-            )
-
-            steps.add(
-                SharedSteps.marineUnitDimensionsStep(
-                    includeHeight = true,
-                    includeDecksCount = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.marineUnitWeightsStep(
-                    includeMaxPermittedLoad = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.engineInfoStep(
-                    manufacturers = listOf(
-                        "Manufacturer 1",
-                        "Manufacturer 2",
-                        "Manufacturer 3"
-                    ),
-                    countries = countryOptions,
-                    fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
-                    engineConditions = listOf(
-                        "New",
-                        "Used - Like New",
-                        "Used - Good",
-                        "Used - Fair",
-                        "Used - Poor"
-                    ),
-                )
-            )
-
-            steps.add(
-                SharedSteps.ownerInfoStep(
-                    nationalities = countryOptions,
-                    countries = countryOptions,
-                    includeCompanyFields = true,
-                )
-            )
-
-            // ✅ Check overallLength to determine if inspection documents are mandatory
-            val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
-            val isInspectionDocMandatory = overallLength <= 24.0
-
-            println("🔍 DEBUG - overallLength: $overallLength")
-            println("🔍 DEBUG - isInspectionDocMandatory: $isInspectionDocMandatory")
-
-            steps.add(
-                SharedSteps.documentsStep(
-                    requiredDocuments = listOf(
-                        DocumentConfig(
-                            id = "shipbuildingCertificate",
-                            labelRes = R.string.shipbuilding_certificate_or_sale_contract,
-                            mandatory = true
-                        ),
-                        DocumentConfig(
-                            id = "inspectionDocuments",
-                            labelRes = R.string.inspection_documents,
-                            mandatory = isInspectionDocMandatory // ✅ Dynamic based on length
-                        )
-                    )
-                )
-            )
-        }
-
-        // Review Step (shows all collected data)
-        steps.add(SharedSteps.reviewStep())
-
         // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
         steps.add(
             SharedSteps.marineUnitNameSelectionStep(
@@ -292,72 +176,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
         val fieldIds = stepData.fields.map { it.id }
         val rules = mutableListOf<ValidationRule>()
-
-        if (fieldIds.contains("grossTonnage")) {
-            println("🔍 Step contains grossTonnage field")
-
-
-            // ✅ Marine Unit Weights Step - Always add cross-step rules
-            if (fieldIds.contains("grossTonnage")) {
-                println("🔍 Step contains grossTonnage field")
-                // ✅ Pass accumulated data to validation rules
-                rules.addAll(MarineUnitValidationRules.getAllWeightRules(accumulatedFormData))
-                println("🔍 Added ${rules.size} marine unit validation rules")
-            }
-
-            // Check if MMSI field exists
-            if (accumulatedFormData.containsKey("mmsi")) {
-                println("🔍 ✅ Adding MMSI validation rule")
-                rules.add(MarineUnitValidationRules.mmsiRequiredForMediumVessels(accumulatedFormData ))
-            }
-        }
-
-        // ✅ Document Rules - Inspection document based on overallLength
-        if (fieldIds.contains("inspectionDocuments")) {
-            println("🔍 Step contains inspectionDocuments field")
-
-            // Check if we have overallLength in accumulated data
-            if (accumulatedFormData.containsKey("overallLength")) {
-                println("🔍 ✅ Adding inspection document validation rule based on overallLength")
-                rules.addAll(DocumentValidationRules.getAllDocumentRules(accumulatedFormData))
-                println("🔍 Added document validation rules")
-            }
-        }
-
-        // Same-step validations
-        if (fieldIds.containsAll(listOf("grossTonnage", "netTonnage"))) {
-            rules.add(MarineUnitValidationRules.netTonnageLessThanOrEqualGross())
-        }
-
-        if (fieldIds.containsAll(listOf("grossTonnage", "staticLoad"))) {
-            rules.add(MarineUnitValidationRules.staticLoadValidation())
-        }
-
-        if (fieldIds.containsAll(listOf("staticLoad", "maxPermittedLoad"))) {
-            rules.add(MarineUnitValidationRules.maxPermittedLoadValidation())
-        }
-
-        // Dimension Rules
-        if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
-            rules.add(DimensionValidationRules.lengthGreaterThanWidth())
-        }
-
-        if (fieldIds.containsAll(listOf("height", "grossTonnage"))) {
-            rules.add(DimensionValidationRules.heightValidation())
-        }
-
-        if (fieldIds.containsAll(listOf("decksCount", "grossTonnage"))) {
-            rules.add(DimensionValidationRules.deckCountValidation())
-        }
-
-        // Date Rules
-        if (fieldIds.contains("manufacturerYear")) {
-            rules.add(DateValidationRules.manufacturerYearValidation())
-        }
-
-        if (fieldIds.containsAll(listOf("constructionEndDate", "firstRegistrationDate"))) {
-            rules.add(DateValidationRules.registrationAfterConstruction())
-        }
 
         return rules
     }

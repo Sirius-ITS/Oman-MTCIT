@@ -17,11 +17,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
+import com.informatique.mtcit.ui.theme.LocalExtraColors
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -61,16 +68,20 @@ fun CustomFileUpload(
         // Label
         if (label.isNotEmpty()) {
             Text(
-                text = when {
-                    mandatory -> "$label *"
-                    else -> "$label (${localizedApp(R.string.optional)})"
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = LocalExtraColors.current.whiteInDarkMode)) {
+                        append(label)
+                    }
+                    if (mandatory) {
+                        append(" ")
+                        withStyle(style = SpanStyle(color = Color.Red)) {
+                            append("*")
+                        }
+                    }
                 },
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (error != null)
-                    MaterialTheme.colorScheme.error
-                else
-                    MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 8.dp)
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
             )
         }
 

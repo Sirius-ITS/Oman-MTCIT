@@ -956,7 +956,7 @@ object SharedSteps {
                     "+973"  // Bahrain
                 ),
                 selectedCountryCode = "+968",
-                placeholder = "أدخل رقم الهاتف",
+                placeholder = R.string.enter_phone_number,
                 mandatory = true
             )
         )
@@ -1002,6 +1002,144 @@ object SharedSteps {
 
 }
 
+data class MarineUnit(
+    // Core Ship Information
+    val id: String = "",                                    // معرف فريد (string to match API ids)
+    val shipName: String = "",                           // اسم السفينة
+    val imoNumber: String? = null,                     // رقم IMO
+    val callSign: String = "",                           // رمز النداء
+    val mmsiNumber: String = "",                            // رقم MMSI
+    val officialNumber: String = "",                     // الرقم الرسمي
+
+    // Registration Information
+    val portOfRegistry: PortOfRegistry = PortOfRegistry("") ,             // ميناء التسجيل
+    val firstRegistrationDate: String = "",              // تاريخ التسجيل الأول
+    val requestSubmissionDate: String = "",              // تاريخ تقديم الطلب
+    val isTemp: String = "0",                                // هل مؤقت؟ ("1" = مؤقت، "0" = دائم)
+
+    // Classification
+    val marineActivity: MarineActivity = MarineActivity(0),             // النشاط البحري
+    val shipCategory: ShipCategory = ShipCategory(0),                 // فئة السفينة
+    val shipType: ShipType = ShipType(0),                         // نوع السفينة
+    val proofType: ProofType = ProofType(0),                       // نوع الإثبات
+
+    // Build Information
+    val buildCountry: BuildCountry = BuildCountry(""),                 // بلد البناء
+    val buildMaterial: BuildMaterial = BuildMaterial(0),               // مادة البناء
+    val shipBuildYear: String = "",                         // سنة البناء (string for API compatibility)
+    val buildEndDate: String = "",                       // تاريخ انتهاء البناء
+    val shipYardName: String = "",                       // اسم حوض البناء
+
+    // Tonnage & Capacity
+    val grossTonnage: String = "",                       // الحمولة الإجمالية
+    val netTonnage: String = "",                         // الحمولة الصافية
+    val deadweightTonnage: String = "",                  // حمولة الوزن الثقيل
+    val maxLoadCapacity: String = "",                    // الحد الأقصى للحمولة
+
+    // Additional fields (optional - يمكن إضافتها لاحقاً)
+    val totalLength: String = "",                // الطول الكلي
+    val lengthBetweenPerpendiculars: String = "",// الطول بين العموديين
+    val totalWidth: String = "",                 // العرض الكلي
+    val draft: String = "",                      // الغاطس
+    val height: String = "",                     // الإرتفاع
+    val numberOfDecks: String = "",              // عدد الطوابق
+    val containerCapacity: String = "",          // سعة الحاويات
+    val violationsCount: String = "",            // عدد المخالفات
+    val detentionsCount: String = "",            // عدد الاحتجازات
+    val amountDue: String = "",                  // المبلغ المستحق
+    val paymentStatus: String = "",              // حالة السداد
+    val isMortgaged: Boolean = false,               // هل مرهونة؟
+    val isInspected: Boolean = false,               // هل تم الفحص؟
+    val inspectionStatus: String? = null,           // حالة الفحص
+    val inspectionRemarks: String? = null           // ملاحظات الفحص
+) {
+     // Computed properties for UI compatibility
+     val maritimeId: String get() = mmsiNumber  // Use MMSI as maritimeId
+     val name: String get() = shipName                     // Alias for shipName
+     val type: String get() = "نوع ${shipType.id}"         // TODO: Map shipType.id to Arabic name
+     val registrationPort: String get() = portOfRegistry.id // TODO: Map port ID to name
+     val activity: String get() = "نشاط ${marineActivity.id}" // TODO: Map activity ID to Arabic name
+     val isOwned: Boolean get() = true // TODO: Determine ownership from API or user context
+     val registrationStatus: String get() = if (isTemp == "1" || isTemp == "true") "TEMPORARY" else "PERMANENT"
+     val registrationType: String get() = if (isTemp == "1" || isTemp == "true") "TEMPORARY" else "PERMANENT"
+     val totalCapacity: String get() = if (grossTonnage.isNotEmpty()) "${grossTonnage} طن" else ""
+}
+
+// Nested data classes
+data class PortOfRegistry(
+    val id: String                                  // معرف الميناء
+)
+
+data class MarineActivity(
+    val id: Int                                     // معرف النشاط البحري
+)
+
+data class ShipCategory(
+    val id: Int                                     // معرف فئة السفينة
+)
+
+data class ShipType(
+    val id: Int                                     // معرف نوع السفينة
+)
+
+data class ProofType(
+    val id: Int                                     // معرف نوع الإثبات
+)
+
+data class BuildCountry(
+    val id: String                                  // كود الدولة (ISO)
+)
+
+data class BuildMaterial(
+    val id: Int                                     // معرف مادة البناء
+)
+
+// Response wrapper
+data class ShipsResponse(
+    val message: String,
+    val statusCode: Int,
+    val success: Boolean,
+    val timestamp: String,
+    val data: ShipsData
+)
+
+data class ShipsData(
+    val content: List<ShipItem>,
+    val pageable: Pageable,
+    val last: Boolean,
+    val totalPages: Int,
+    val totalElements: Int,
+    val size: Int,
+    val number: Int,
+    val sort: List<Sort>,
+    val first: Boolean,
+    val numberOfElements: Int,
+    val empty: Boolean
+)
+
+data class ShipItem(
+    val coreShipsResDto: MarineUnit
+)
+
+data class Pageable(
+    val pageNumber: Int,
+    val pageSize: Int,
+    val sort: List<Sort>,
+    val offset: Int,
+    val paged: Boolean,
+    val unpaged: Boolean
+)
+
+data class Sort(
+    val direction: String,
+    val property: String,
+    val ignoreCase: Boolean,
+    val nullHandling: String,
+    val ascending: Boolean,
+    val descending: Boolean
+)
+
+
 /**
  * Document Configuration for customizable documents step
  */
@@ -1023,48 +1161,6 @@ data class DocumentConfig(
     val mandatory: Boolean = true
 )
 
-data class MarineUnit(
-    val id: String,                    // معرف فريد
-    val name: String,                  // اسم الوحدة
-    val type: String,                  // نوع الوحدة البحرية
-    val imoNumber: String,             // رقم IMO
-    val callSign: String,              // رمز النداء
-    val maritimeId: String,            // رقم الهوية البحرية
-    val registrationPort: String,      // ميناء التسجيل
-    val activity: String,              // النشاط البحري
-    val isOwned: Boolean = false,      // هل مملوكة/موظفة؟
-
-    // الأبعاد
-    val totalLength: String = "",                   // الطول الكلي
-    val lengthBetweenPerpendiculars: String = "",   // الطول بين العموديين
-    val totalWidth: String = "",                    // العرض الكلي
-    val draft: String = "",                         // الغاطس
-    val height: String = "",                        // الإرتفاع
-    val numberOfDecks: String = "",                 // عدد الطوابق
-
-    // السعة والحمولة
-    val totalCapacity: String = "",                 // الحمولة الإجمالية
-    val containerCapacity: String = "",             // سعة الحاويات
-
-    // المخالفات والاحتجازات
-    val violationsCount: String = "",               // عدد المخالفات
-    val detentionsCount: String = "",               // عدد الاحتجازات
-
-    // الديون والمستحقات
-    val amountDue: String = "",                     // المبلغ المستحق
-    val paymentStatus: String = "",                 // حالة السداد
-
-    // NEW: Extended fields for business validation (fetched from backend)
-    val registrationStatus: String = "ACTIVE",      // حالة التسجيل: ACTIVE, SUSPENDED, CANCELLED
-    val registrationType: String = "PERMANENT",     // نوع التسجيل: PERMANENT, TEMPORARY
-    val isMortgaged: Boolean = false,               // هل مرهونة؟
-    val mortgageDetails: MortgageDetails? = null,   // تفاصيل الرهن إن وجدت
-
-    // NEW: Inspection fields for Temporary Registration
-    val isInspected: Boolean = false,               // هل تم الفحص؟
-    val inspectionStatus: String = "NOT_VERIFIED",  // حالة الفحص: VALID, PENDING, NOT_VERIFIED, REJECTED, EXPIRED
-    val inspectionRemarks: String = ""              // ملاحظات الفحص
-)
 
 /**
  * Mortgage details for a marine unit

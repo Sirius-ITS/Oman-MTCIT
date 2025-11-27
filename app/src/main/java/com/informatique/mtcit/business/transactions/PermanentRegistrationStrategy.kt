@@ -7,6 +7,7 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.data.repository.LookupRepository
+import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
@@ -26,6 +27,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
+    private val marineUnitRepository: MarineUnitRepository,
     private val lookupRepository: LookupRepository
 ) : TransactionStrategy {
 
@@ -42,7 +44,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
 
-    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
+    override suspend fun loadDynamicOptions(): Map<String, List<*>>  {
         // Load all dropdown options from API
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
@@ -50,163 +52,67 @@ class PermanentRegistrationStrategy @Inject constructor(
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
 
+        // ✅ Don't load ships here - they will be loaded when user presses Next
+        println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
+
         portOptions = ports
         countryOptions = countries
         shipTypeOptions = shipTypes
         typeOptions = personTypes
         commercialOptions = commercialRegistrations
 
-        marineUnits = listOf(
-            MarineUnit(
-                id = "1",
-                name = "الريادة البحرية",
-                type = "سفينة صيد",
-                imoNumber = "9990001",
-                callSign = "A9BC2",
-                maritimeId = "470123456",
-                registrationPort = "صحار",
-                activity = "صيد",
-                isOwned = false,
-                // الأبعاد
-                totalLength = "45 متر",
-                lengthBetweenPerpendiculars = "40 متر",
-                totalWidth = "12 متر",
-                draft = "4 أمتار",
-                height = "15 متر",
-                numberOfDecks = "2",
-                // السعة والحمولة
-                totalCapacity = "500 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "0",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-
-            MarineUnit(
-                id = "3",
-                name = "النجم الساطع",
-                type = "سفينة شحن",
-                imoNumber = "9990002",
-                callSign = "B8CD3",
-                maritimeId = "470123457",
-                registrationPort = "مسقط",
-                activity = "شحن دولي",
-                isOwned = true, // ⚠️ مملوكة - هتظهر مع التحذير
-                // الأبعاد
-                totalLength = "240 متر",
-                lengthBetweenPerpendiculars = "210 متر",
-                totalWidth = "33 متر",
-                draft = "10 أمتار",
-                height = "45 متر",
-                numberOfDecks = "9",
-                // السعة والحمولة
-                totalCapacity = "50000 طن",
-                containerCapacity = "4500 حاوية",
-                // المخالفات والاحتجازات
-                violationsCount = "2",
-                detentionsCount = "1",
-                // الديون والمستحقات
-                amountDue = "15000 ريال",
-                paymentStatus = "مستحق"
-            ),
-
-            MarineUnit(
-                id = "8",
-                name = "البحر الهادئ",
-                type = "سفينة صهريج",
-                imoNumber = "9990008",
-                callSign = "H8IJ9",
-                maritimeId = "470123463",
-                registrationPort = "صلالة",
-                activity = "نقل وقود",
-                isOwned = true, // ⚠️ مملوكة
-                // الأبعاد
-                totalLength = "180 متر",
-                lengthBetweenPerpendiculars = "165 متر",
-                totalWidth = "28 متر",
-                draft = "12 أمتار",
-                height = "38 متر",
-                numberOfDecks = "7",
-                // السعة والحمولة
-                totalCapacity = "75000 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "3",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "8500 ريال",
-                paymentStatus = "تحت المراجعة"
-            ),
-
-            MarineUnit(
-                id = "9",
-                name = "اللؤلؤة البيضاء",
-                type = "سفينة سياحية",
-                imoNumber = "9990009",
-                callSign = "I9JK0",
-                maritimeId = "470123464",
-                registrationPort = "مسقط",
-                activity = "رحلات سياحية",
-                isOwned = false,
-                // الأبعاد
-                totalLength = "120 متر",
-                lengthBetweenPerpendiculars = "105 متر",
-                totalWidth = "22 متر",
-                draft = "6 أمتار",
-                height = "30 متر",
-                numberOfDecks = "8",
-                // السعة والحمولة
-                totalCapacity = "3000 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "0",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            ),
-
-            MarineUnit(
-                id = "10",
-                name = "الشراع الذهبي",
-                type = "سفينة شراعية",
-                imoNumber = "9990010",
-                callSign = "J0KL1",
-                maritimeId = "470123465",
-                registrationPort = "صحار",
-                activity = "تدريب بحري",
-                isOwned = false,
-                // الأبعاد
-                totalLength = "35 متر",
-                lengthBetweenPerpendiculars = "30 متر",
-                totalWidth = "8 متر",
-                draft = "3 أمتار",
-                height = "25 متر",
-                numberOfDecks = "1",
-                // السعة والحمولة
-                totalCapacity = "150 طن",
-                containerCapacity = "-",
-                // المخالفات والاحتجازات
-                violationsCount = "0",
-                detentionsCount = "0",
-                // الديون والمستحقات
-                amountDue = "0 ريال",
-                paymentStatus = "مسدد"
-            )
-        )
-
         return mapOf(
-            "marineUnits" to marineUnits.map { it.maritimeId },
-
+            "marineUnits" to emptyList<MarineUnit>(), // ✅ Empty initially
             "registrationPort" to ports,
             "ownerNationality" to countries,
             "ownerCountry" to countries,
             "registrationCountry" to countries,
             "unitType" to shipTypes
         )
+    }
+
+    /**
+     * ✅ NEW: Load ships when user selects type and presses Next
+     */
+    override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
+        val personType = formData["selectionPersonType"]
+        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+        val commercialReg = formData["selectionData"]
+
+        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+
+        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        // Because current API only returns data when using ownerCivilId filter
+        // In production, company should use commercialRegNumber
+        val (ownerCivilId, commercialRegNumber) = when (personType) {
+            "فرد" -> {
+                println("✅ Individual: Using ownerCivilId")
+                Pair("12345678", null)
+            }
+            "شركة" -> {
+                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
+                Pair("12345678", null) // ✅ Use ownerCivilId instead of commercialRegNumber for testing
+            }
+            else -> Pair(null, null)
+        }
+
+        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
+
+        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        println("✅ Loaded ${marineUnits.size} ships")
+
+        return marineUnits
+    }
+
+    override suspend fun clearLoadedShips() {
+        println("🧹 Clearing loaded ships cache")
+        marineUnits = emptyList()
+    }
+
+    override fun updateAccumulatedData(data: Map<String, String>) {
+        accumulatedFormData.putAll(data)
+        println("📦 PermanentRegistration - Updated accumulated data: $accumulatedFormData")
     }
 
     override fun getSteps(): List<StepData> {

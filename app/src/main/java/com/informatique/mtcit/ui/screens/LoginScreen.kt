@@ -1,14 +1,17 @@
 package com.informatique.mtcit.ui.screens
 
+import android.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
 
 /**
@@ -52,7 +55,7 @@ fun LoginScreen(
                     "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
                     "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
                     "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
-                    "SHIP_NAME_CHANGE" -> NavRoutes.ShipNameChangeRoute.route
+                    "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
                     "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
                     "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
                     "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
@@ -79,13 +82,12 @@ fun LoginScreen(
         }
         return
     }
-
     // Reuse TransactionFormContent component (same as MarineRegistrationScreen)
     TransactionFormContent(
         navController = navController,
         uiState = uiState,
         submissionState = submissionState,
-        transactionTitle = "تسجيل الدخول",
+        transactionTitle = "Login",
         onFieldValueChange = viewModel::onFieldValueChange,
         onFieldFocusLost = viewModel::onFieldFocusLost,
         isFieldLoading = viewModel::isFieldLoading,

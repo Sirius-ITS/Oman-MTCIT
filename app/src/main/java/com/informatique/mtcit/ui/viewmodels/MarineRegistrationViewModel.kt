@@ -15,11 +15,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import com.informatique.mtcit.business.transactions.MortgageCertificateStrategy
 import com.informatique.mtcit.business.transactions.ReleaseMortgageStrategy
 import com.informatique.mtcit.business.transactions.RequestInspectionStrategy
-import com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy
 import com.informatique.mtcit.business.transactions.ValidationResult
 import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction
+import com.informatique.mtcit.business.transactions.shared.MarineActivity
 import com.informatique.mtcit.data.repository.RequestRepository  // ✅ FIXED: Changed from data.model to data.repository
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
+import com.informatique.mtcit.business.transactions.shared.ShipType
 import kotlinx.coroutines.delay
 
 /**
@@ -761,19 +763,17 @@ class MarineRegistrationViewModel @Inject constructor(
                     // Create a temporary MarineUnit object for validation
                     val newUnit = MarineUnit(
                         id = "new_${System.currentTimeMillis()}", // Temporary ID
-                        name = unitName,
-                        type = unitType,
+                        shipName = unitName,
                         imoNumber = imo,
                         callSign = callSign,
-                        maritimeId = "", // Will be assigned after successful registration
-                        registrationPort = registrationPort,
-                        activity = activity,
-                        isOwned = true, // User is adding their own unit
+                        mmsiNumber = "", // Will be assigned after successful registration
+                        portOfRegistry = PortOfRegistry(registrationPort),
+                        marineActivity = MarineActivity(0), // Default or parse from activity
+                        shipType = ShipType(0), // Default or parse from unitType
+                        isTemp = "1", // Temporary registration
                         totalLength = length,
                         totalWidth = width,
-                        height = height,
-                        registrationStatus = "ACTIVE",
-                        registrationType = "TEMPORARY"
+                        height = height
                     )
 
                     // ✅ Use the NEW method for validating new units
@@ -809,7 +809,7 @@ class MarineRegistrationViewModel @Inject constructor(
 
                     // Get marine units and find the selected one
                     val dynamicOptions = strategy.loadDynamicOptions()
-                    val marineUnits = dynamicOptions["marineUnits"] as? List<*>
+                    val marineUnits = dynamicOptions["marineUnits"]
 
                     val selectedUnit = marineUnits?.firstOrNull {
                         (it as? MarineUnit)?.maritimeId == selectedMaritimeId
@@ -847,7 +847,7 @@ class MarineRegistrationViewModel @Inject constructor(
                                 println("⏳ Inspection validation failed, showing RequestDetailScreen")
 
                                 // ✅ NEW: Save request progress if status is PENDING
-                                val isPending = action.rejectionTitle?.contains("قيد المعالجة") == true
+                                val isPending = action.rejectionTitle.contains("قيد المعالجة")
                                 if (isPending) {
                                     println("💾 Saving request progress (status: PENDING)")
                                     saveRequestProgress(
@@ -914,14 +914,10 @@ class MarineRegistrationViewModel @Inject constructor(
     private fun createPlaceholderUnit(): MarineUnit {
         return com.informatique.mtcit.business.transactions.shared.MarineUnit(
             id = "placeholder",
-            name = "وحدة بحرية",
-            type = "",
-            imoNumber = "",
+            shipName = "وحدة بحرية",
             callSign = "",
-            maritimeId = "",
-            registrationPort = "",
-            activity = "",
-            isOwned = true
+            mmsiNumber = "",
+            portOfRegistry = com.informatique.mtcit.business.transactions.shared.PortOfRegistry("")
         )
     }
 

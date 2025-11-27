@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 
 @Composable
@@ -27,7 +27,7 @@ fun PhoneNumberComponent(
     countryCodes: List<String> = listOf("+968", "+966", "+971", "+974", "+965", "+973"),
     selectedCountryCode: String = "+968",
     onCountryCodeChange: (String) -> Unit = {},
-    placeholder: String? = null,
+    placeholder: Int? = null,
     error: String? = null,
     mandatory: Boolean = false,
     modifier: Modifier = Modifier
@@ -75,7 +75,7 @@ fun PhoneNumberComponent(
                     ),
                     placeholder = {
                         Text(
-                            text = "كود",
+                            text = localizedApp(R.string.country_code),
                             color = extraColors.textSubTitle,
                             fontSize = 16.sp,
                             textAlign = TextAlign.Center,
@@ -85,7 +85,7 @@ fun PhoneNumberComponent(
                     trailingIcon = {
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "اختر كود الدولة",
+                            contentDescription = localizedApp(R.string.select_country_code),
                             tint = extraColors.whiteInDarkMode
                         )
                     },
@@ -144,7 +144,7 @@ fun PhoneNumberComponent(
                 ),
                 placeholder = {
                     Text(
-                        text = placeholder ?: "أدخل رقم الهاتف",
+                        text = localizedApp(R.string.enter_phone_number),
                         color = extraColors.textSubTitle,
                         fontSize = 16.sp
                     )

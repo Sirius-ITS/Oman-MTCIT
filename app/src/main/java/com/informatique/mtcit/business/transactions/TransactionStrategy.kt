@@ -65,6 +65,30 @@ interface TransactionStrategy {
     suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
         return FieldFocusResult.NoAction
     }
+
+    /**
+     * ✅ NEW: Load ships when user selects type and presses Next
+     * Called from ViewModel when navigating from person type / commercial reg step
+     */
+    suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<com.informatique.mtcit.business.transactions.shared.MarineUnit> {
+        return emptyList() // Default: no ships
+    }
+
+    /**
+     * ✅ NEW: Clear loaded ships when user goes back
+     * This ensures fresh data is loaded when user changes person type
+     */
+    suspend fun clearLoadedShips() {
+        // Default: do nothing
+    }
+
+    /**
+     * ✅ NEW: Update accumulated form data immediately when field changes
+     * This allows getSteps() to have latest data for dynamic step logic
+     */
+    fun updateAccumulatedData(data: Map<String, String>) {
+        // Default: do nothing
+    }
 }
 
 /**

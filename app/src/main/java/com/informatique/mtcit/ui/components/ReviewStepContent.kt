@@ -95,7 +95,7 @@ fun ReviewStepContent(
                 ) {
                     Text(
                         modifier = Modifier.weight(1f),
-                        text = "المبلغ الواجب دفعه",
+                        text = localizedApp(R.string.amount_due),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium ,
                         color = extraColors.whiteInDarkMode
@@ -103,7 +103,7 @@ fun ReviewStepContent(
 
                     Text(
                         modifier = Modifier.weight(1f),
-                        text = "50 ريال عماني",
+                        text = localizedApp(R.string.amount_value),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = extraColors.whiteInDarkMode,
@@ -117,6 +117,9 @@ fun ReviewStepContent(
             steps.forEachIndexed { index, step ->
                 // Get fields for this step that have values
                 if (index == 0) return@forEachIndexed
+
+                // Skip the Commercial Registration step from review
+                if (step.titleRes == R.string.commercial_registration_title) return@forEachIndexed
 
                 val stepFieldsWithData = step.fields.filter { field ->
                     val value = formData[field.id]
@@ -176,31 +179,24 @@ private fun ExpandableStepCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = localizedApp(step.titleRes),
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = extraColors.whiteInDarkMode
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = localizedApp(step.descriptionRes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
-                    )
-                }
+                Text(
+                    text = localizedApp(step.titleRes),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = extraColors.whiteInDarkMode,
+                    modifier = Modifier.weight(1f)
+                )
 
                 Spacer(modifier = Modifier.width(12.dp))
 
                 // Expand/Collapse Icon
-                    Icon(
-                        imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = extraColors.whiteInDarkMode,
-                        modifier = Modifier.padding(6.dp)
-                    )
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = extraColors.whiteInDarkMode,
+                    modifier = Modifier.padding(6.dp)
+                )
             }
 
             // Expandable Content
@@ -475,7 +471,7 @@ private fun ExpandableMarineUnitReviewCard(
                         )
 
                         MarineUnitDetailRow(label = "نوع الوحدة البحرية", value = unit.type)
-                        MarineUnitDetailRow(label = "رقم IMO", value = unit.imoNumber)
+                        MarineUnitDetailRow(label = "رقم IMO", value = unit.imoNumber.toString())
                         MarineUnitDetailRow(label = "رمز النداء", value = unit.callSign)
                         MarineUnitDetailRow(label = "رقم الهوية البحرية", value = unit.maritimeId)
                         MarineUnitDetailRow(label = "ميناء التسجيل", value = unit.registrationPort)
@@ -1101,30 +1097,45 @@ private fun DeclarationSection(
         elevation = CardDefaults.cardElevation(0.dp),
         shape = RoundedCornerShape(14.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onAcceptanceChange(!isAccepted) }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            androidx.compose.material3.Checkbox(
-                checked = isAccepted,
-                onCheckedChange = onAcceptanceChange,
-                colors = androidx.compose.material3.CheckboxDefaults.colors(
-                    checkedColor = extraColors.startServiceButton,
-                    uncheckedColor = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
-                    checkmarkColor = Color.White
+            // Title with Checkbox
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.Checkbox(
+                    checked = isAccepted,
+                    onCheckedChange = onAcceptanceChange,
+                    colors = androidx.compose.material3.CheckboxDefaults.colors(
+                        checkedColor = extraColors.startServiceButton,
+                        uncheckedColor = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
+                        checkmarkColor = Color.White
+                    )
                 )
-            )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = localizedApp(R.string.declaration_title),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = extraColors.whiteInDarkMode
+                )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Description Text
             Text(
-                text = localizedApp(R.string.declaration_acceptance_text),
+                text = localizedApp(R.string.declaration_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = extraColors.whiteInDarkMode,
-                modifier = Modifier.weight(1f)
+                color = extraColors.whiteInDarkMode.copy(alpha = 0.8f),
+                lineHeight = 22.sp
             )
         }
     }

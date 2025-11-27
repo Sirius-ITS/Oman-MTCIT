@@ -159,6 +159,17 @@ class FormValidationUseCase @Inject constructor(
                     return false
                 }
 
+                // ✅ Special validation for marine unit selection
+                // User must select at least one ship (array should not be empty)
+                if (field.id == "selectedMarineUnits") {
+                    // Check if it's an empty JSON array or contains actual selections
+                    if (value == "[]" || value.isBlank()) {
+                        println("❌ selectedMarineUnits is empty - Next button should be disabled")
+                        return false
+                    }
+                    println("✅ selectedMarineUnits has selection: $value")
+                }
+
                 // For checkboxes, check if they're checked
                 if (field is FormField.CheckBox && value != "true") {
                     return false

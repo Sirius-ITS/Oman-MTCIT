@@ -187,14 +187,14 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                         7 -> "TEMPORARY_REGISTRATION_CERTIFICATE"
                         8 -> "PERMANENT_REGISTRATION_CERTIFICATE"
                         9 -> "REQUEST_INSPECTION"
-                        10 -> "SUSPEND_REGISTRATION"
-                        11 -> "CANCEL_REGISTRATION"
+//                        10 -> "SUSPEND_REGISTRATION"
+                        10 -> "CANCEL_REGISTRATION"
                         12 -> "MORTGAGE_CERTIFICATE"
                         13 -> "RELEASE_MORTGAGE"
-                        14 -> "ISSUE_NAVIGATION_PERMIT"
-                        15 -> "RENEW_NAVIGATION_PERMIT"
+                        4 -> "ISSUE_NAVIGATION_PERMIT"
+                        5 -> "RENEW_NAVIGATION_PERMIT"
                         16 -> "SUSPEND_NAVIGATION_PERMIT"
-                        17 -> "SHIP_NAME_CHANGE"
+                        14 -> "SHIP_NAME_CHANGE"
                         18 -> "CAPTAIN_NAME_CHANGE"
                         19 -> "SHIP_ACTIVITY_CHANGE"
                         20 -> "SHIP_PORT_CHANGE"
@@ -351,7 +351,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         }
 
         // Ship Data Modification Forms
-        composable(NavRoutes.ShipNameChangeRoute.route) {
+        composable(NavRoutes.ChangeNameOfShipOrUnitRoute.route) {
             ShipDataModificationScreen(
                 navController = navController,
                 transactionType = TransactionType.SHIP_NAME_CHANGE

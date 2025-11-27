@@ -103,7 +103,7 @@ class LookupApiService @Inject constructor(
      * TODO: Replace with real endpoint when API is ready
      */
     suspend fun getPersonTypes(): Result<LookupResponse<PersonType>> {
-        delay(500)
+        delay(0)
 
         // TODO: Replace with actual API call
         // val result = onGetData("${BASE_URL}/api/lookups/person-type")

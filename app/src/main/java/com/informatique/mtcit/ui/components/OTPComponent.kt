@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.informatique.mtcit.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,6 +22,7 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OTPComponent(
     value: String,
@@ -76,7 +78,7 @@ fun OTPComponent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "رقم هاتفك المحمول",
+                        text = localizedApp(R.string.phone_number),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
@@ -183,7 +185,7 @@ fun OTPComponent(
             modifier = Modifier.padding(top = 8.dp)
         ) {
             Text(
-                text = "لم تتلق رسالة؟ أعد إرسال OTP",
+                text = localizedApp(R.string.didnt_receive_OTP),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (timer == 0) Color(0xFF2196F3) else extraColors.whiteInDarkMode.copy(alpha = 0.5f),

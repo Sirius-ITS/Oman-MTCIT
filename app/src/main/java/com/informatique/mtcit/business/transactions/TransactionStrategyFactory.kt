@@ -25,6 +25,9 @@ class TransactionStrategyFactory @Inject constructor(
     private val captainNameChangeStrategy: Provider<CaptainNameChangeStrategy>,
     private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>,
 
+    // change unit data
+    private val changeNameOfShipOrUnitStrategy: Provider<ChangeNameOfShipOrUnitStrategy>,
+
     // Navigation permits
     private val issueNavigationPermitStrategy: Provider<IssueNavigationPermitStrategy>,
     private val renewNavigationPermitStrategy: Provider<RenewNavigationPermitStrategy>,
@@ -48,7 +51,6 @@ class TransactionStrategyFactory @Inject constructor(
             TransactionType.REQUEST_FOR_INSPECTION -> requestInspectionStrategy.get()
 
             // Ship Data Modifications transactions
-            TransactionType.SHIP_NAME_CHANGE -> shipNameChangeStrategy.get()
             TransactionType.CAPTAIN_NAME_CHANGE -> captainNameChangeStrategy.get()
             TransactionType.SHIP_ACTIVITY_CHANGE -> captainNameChangeStrategy.get()
             TransactionType.SHIP_DIMENSIONS_CHANGE -> shipDimensionsChangeStrategy.get()
@@ -59,6 +61,11 @@ class TransactionStrategyFactory @Inject constructor(
             // Navigation permits
             TransactionType.ISSUE_NAVIGATION_PERMIT -> issueNavigationPermitStrategy.get()
             TransactionType.RENEW_NAVIGATION_PERMIT -> renewNavigationPermitStrategy.get()
+
+            // change unit data
+            TransactionType.SHIP_NAME_CHANGE -> changeNameOfShipOrUnitStrategy.get()
+
+
 
         }
     }
