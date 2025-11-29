@@ -424,7 +424,10 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 }
                 is StepProcessResult.Error -> {
                     println("❌ Error: ${result.message}")
-                    return -1 // Indicate error
+                    // ✅ TODO: Uncomment after backend integration is complete
+                    // This would forward to RequestDetailScreen when errors occur
+                    // return -1
+                    // ✅ For now, continue normal flow despite errors
                 }
                 is StepProcessResult.NoAction -> {
                     println("ℹ️ No API call needed for this step")

@@ -193,11 +193,10 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                         13 -> "RELEASE_MORTGAGE"
                         4 -> "ISSUE_NAVIGATION_PERMIT"
                         5 -> "RENEW_NAVIGATION_PERMIT"
-                        16 -> "SUSPEND_NAVIGATION_PERMIT"
                         14 -> "SHIP_NAME_CHANGE"
                         18 -> "CAPTAIN_NAME_CHANGE"
-                        19 -> "SHIP_ACTIVITY_CHANGE"
-                        20 -> "SHIP_PORT_CHANGE"
+                        16 -> "SHIP_ACTIVITY_CHANGE"
+                        19 -> "SHIP_PORT_CHANGE"
                         21 -> "REQUEST_INSPECTION"
                         else -> "TEMPORARY_REGISTRATION_CERTIFICATE"
                     }
@@ -373,9 +372,9 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         }
 
         composable(NavRoutes.ShipPortChangeRoute.route) {
-            ComingSoonScreen(
+            ShipDataModificationScreen(
                 navController = navController,
-                transactionName = "Ship Port Change"
+                transactionType = TransactionType.SHIP_PORT_CHANGE
             )
         }
 

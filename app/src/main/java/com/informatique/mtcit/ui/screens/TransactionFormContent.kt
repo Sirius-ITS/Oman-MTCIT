@@ -152,20 +152,20 @@ fun TransactionFormContent(
                 onNextClick = {
                     if (uiState.currentStep < uiState.steps.size - 1) {
                         // Not on last step - check if we're on review step
-                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
-                            // On review step for Marine Registration - validate before proceeding
-                            (viewModel as MarineRegistrationViewModel).validateOnReviewStep()
-                        } else {
+//                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
+//                            // On review step for Marine Registration - validate before proceeding
+//                            viewModel.validateOnReviewStep()
+//                        } else {
                             // Regular next step
                             nextStep()
-                        }
+//                        }
                     } else {
                         // On last step (final submission)
-                        if (viewModel is MarineRegistrationViewModel) {
-                            (viewModel as MarineRegistrationViewModel).validateAndSubmit()
-                        } else {
+//                        if (viewModel is MarineRegistrationViewModel) {
+//                            viewModel.validateAndSubmit()
+//                        } else {
                             submitForm()
-                        }
+//                        }
                     }
                 },
                 canProceed = if (isReviewStep) {

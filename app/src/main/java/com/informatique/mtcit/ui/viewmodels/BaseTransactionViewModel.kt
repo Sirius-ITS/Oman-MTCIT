@@ -1,9 +1,5 @@
 package com.informatique.mtcit.ui.viewmodels
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.informatique.mtcit.business.transactions.FieldFocusResult
@@ -309,7 +305,14 @@ abstract class BaseTransactionViewModel(
                 if (strategy != null) {
                     // Process the data
                     val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
-                    if (requiredNextStep == -1) { return@launch }
+
+                    // ✅ TODO: Uncomment after backend integration is complete
+                    // This would stop flow and forward to RequestDetailScreen when requiredNextStep == -1
+                    // if (requiredNextStep == -1) {
+                    //     println("🔄 Strategy returned -1, stopping flow and forwarding to RequestDetailScreen")
+                    //     return@launch
+                    // }
+                    // ✅ For now, continue normal flow
 
                     // ✅ Load ships if needed
                     if (shouldLoadShips) {

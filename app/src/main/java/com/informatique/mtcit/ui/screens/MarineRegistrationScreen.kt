@@ -14,14 +14,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionType
+import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 import com.informatique.mtcit.ui.viewmodels.FileNavigationEvent
 import com.informatique.mtcit.ui.base.UIState
 import com.informatique.mtcit.ui.components.localizedApp
 import androidx.core.net.toUri
-import com.informatique.mtcit.navigation.NavRoutes
-import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
-import com.informatique.mtcit.ui.viewmodels.StepData
+import com.informatique.mtcit.ui.screens.RequestDetail
 import com.informatique.mtcit.util.UriPermissionManager
 
 
@@ -73,7 +72,9 @@ fun MarineRegistrationScreen(
         }
     }
 
-    // NEW: Handle navigation to RequestDetailScreen for compliance issues
+    // TODO: Uncomment after backend integration is complete
+    // This forwards to RequestDetailScreen when compliance issues are detected
+    /*
     LaunchedEffect(navigationToComplianceDetail) {
         navigationToComplianceDetail?.let { action ->
             // Build marine unit data string with all details and compliance issues
@@ -90,6 +91,7 @@ fun MarineRegistrationScreen(
             viewModel.clearComplianceDetailNavigation()
         }
     }
+    */
 
     // State for file operations
     var currentFilePickerField by remember { mutableStateOf("") }
@@ -183,8 +185,9 @@ fun MarineRegistrationScreen(
     LaunchedEffect(submissionState) {
         when (submissionState) {
             is UIState.Success -> {
-//                navController.navigate(NavRoutes.PaymentDetailsRoute.route)
-//                viewModel.resetSubmissionState()
+                // ✅ TODO: Uncomment after backend integration is complete
+                // This forwards to RequestDetailScreen (AcceptedAndPayment) after successful submission
+                /*
                 val shipData = mapOf(
                     "نوع الوحدة البحرية" to "سفينة صيد",
                     "رقم IMO" to "9990001",
@@ -208,6 +211,9 @@ fun MarineRegistrationScreen(
                         dataSubmitted = shipData
                     )
                 ))
+                */
+                // ✅ For now, just reset submission state
+                viewModel.resetSubmissionState()
             }
 
             is UIState.Failure -> {

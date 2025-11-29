@@ -87,7 +87,7 @@ fun LoginScreen(
         navController = navController,
         uiState = uiState,
         submissionState = submissionState,
-        transactionTitle = "Login",
+        transactionTitle = localizedApp(com.informatique.mtcit.R.string.login),
         onFieldValueChange = viewModel::onFieldValueChange,
         onFieldFocusLost = viewModel::onFieldFocusLost,
         isFieldLoading = viewModel::isFieldLoading,

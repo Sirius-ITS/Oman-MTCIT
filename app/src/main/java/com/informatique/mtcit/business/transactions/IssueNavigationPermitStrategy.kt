@@ -88,33 +88,15 @@ class IssueNavigationPermitStrategy @Inject constructor(
         if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
             return 2
         } else if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){
-            /*val shipData = mapOf(
-                "نوع الوحدة البحرية" to "سفينة صيد",
-                "رقم IMO" to "9990001",
-                "رمز النداء" to "A9BC2",
-                "رقم الهوية البحرية" to "470123456",
-                "ميناء التسجيل" to "صحار",
-                "النشاط البحري" to "صيد",
-                "سنة صنع السفينة" to "2018",
-                "نوع الإثبات" to "شهادة بناء",
-                "حوض البناء" to "Hyundai Shipyard",
-                "تاريخ بدء البناء" to "2014-03-01",
-                "تاريخ انتهاء البناء" to "2015-01-15",
-                "تاريخ أول تسجيل" to "2015-02-01",
-                "بلد البناء" to "سلطنة عمان"
-            )*/
+            // ✅ TODO: Uncomment after backend integration is complete
+            // This forwards to RequestDetailScreen when compliance issues are detected
+            /*
             navigationManager.navigate(NavRoutes.RequestDetailRoute.createRoute(
-                CheckShipCondition(
-//                    transactionTitle = "إصدار تصريح ملاحة للسفن و الوحدات البحرية",
-//                    title = "تم رفض الطلب",
-//                    referenceNumber = "007 24 7865498",
-//                    description = "تم رفض طلبكم، ولمزيد من التفاصيل يرجى الاطّلاع على القسم أدناه",
-//                    refuseReason = "تم رفض طلبكم بسبب وجود في  شطب على السفن مما تمنع استكمال المعاملة وفق الإجراءات القانونية المعتمدة",
-//                    shipData = shipData
-                    shipData = ""
-                )
+                CheckShipCondition(shipData = "")
             ))
             return -1
+            */
+            // ✅ For now, continue normal flow
         }
         return step
     }
@@ -181,4 +163,3 @@ class IssueNavigationPermitStrategy @Inject constructor(
         }
     }
 }
-

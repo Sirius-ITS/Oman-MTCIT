@@ -259,79 +259,79 @@ class MarineRegistrationViewModel @Inject constructor(
 
         println("🔘 Is marine unit selection step: $isMarineUnitSelectionStep")
 
-        if (!isMarineUnitSelectionStep) {
+//        if (!isMarineUnitSelectionStep) {
             println("✅ Not on marine unit selection step, calling super.nextStep()")
             super.nextStep()
             return
-        }
+//        }
 
         // Check validation state
         val state = _validationState.value
         println("🔘 Validation state: ${state::class.simpleName}")
 
-        when (state) {
-            is ValidationState.Valid -> {
-                println("✅ Validation is Valid, proceeding...")
-                // Check if we need conditional routing (e.g., based on inspection status)
-                _storedValidationResult?.let { result ->
-                    println("🔘 Stored validation result: ${result::class.simpleName}")
-                    if (result is ValidationResult.Success) {
-                        when (val action = result.navigationAction) {
-                            is MarineUnitNavigationAction.RouteToConditionalStep -> {
-                                println("🔀 Conditional routing to step: ${action.targetStepIndex}")
-                                // Route to specific step based on condition (e.g., inspection status)
-                                goToStep(action.targetStepIndex)
-                                return
-                            }
-                            else -> {
-                                println("➡️ Regular next step, calling super.nextStep()")
-                                // Regular next step
-                                super.nextStep()
-                            }
-                        }
-                    } else {
-                        println("➡️ Result not Success, calling super.nextStep()")
-                        super.nextStep()
-                    }
-                } ?: run {
-                    println("➡️ No stored result, calling super.nextStep()")
-                    super.nextStep()
-                }
-            }
-            is ValidationState.Invalid -> {
-                println("❌ Validation is Invalid, showing RequestDetailScreen")
-                // Unit is ineligible - navigate to RequestDetailScreen
-                _storedValidationResult?.let { result ->
-                    if (result is ValidationResult.Success) {
-                        val action = result.navigationAction
-                        if (action is MarineUnitNavigationAction.ShowComplianceDetailScreen) {
-                            _navigationToComplianceDetail.value = action
-                        }
-                    }
-                }
-            }
-            is ValidationState.Error -> {
-                println("❌ Validation error: ${state.message}")
-                // Show error message
-                _error.value = com.informatique.mtcit.common.AppError.Unknown(state.message)
-            }
-            is ValidationState.Idle -> {
-                println("⚠️ Validation is Idle, calling super.nextStep()")
-                // No unit selected yet OR validation not triggered
-                // Let base validation handle this (it will check if selectedMarineUnits field is filled)
-                super.nextStep()
-            }
-            is ValidationState.Validating -> {
-                println("⏳ Still validating...")
-                // Still validating - wait
-                _error.value = com.informatique.mtcit.common.AppError.Unknown("جاري التحقق من الوحدة البحرية...")
-            }
-            is ValidationState.RequiresConfirmation -> {
-                println("⚠️ Requires confirmation, calling super.nextStep()")
-                // Handle confirmation if needed
-                super.nextStep()
-            }
-        }
+//        when (state) {
+//            is ValidationState.Valid -> {
+//                println("✅ Validation is Valid, proceeding...")
+//                // Check if we need conditional routing (e.g., based on inspection status)
+//                _storedValidationResult?.let { result ->
+//                    println("🔘 Stored validation result: ${result::class.simpleName}")
+//                    if (result is ValidationResult.Success) {
+//                        when (val action = result.navigationAction) {
+//                            is MarineUnitNavigationAction.RouteToConditionalStep -> {
+//                                println("🔀 Conditional routing to step: ${action.targetStepIndex}")
+//                                // Route to specific step based on condition (e.g., inspection status)
+//                                goToStep(action.targetStepIndex)
+//                                return
+//                            }
+//                            else -> {
+//                                println("➡️ Regular next step, calling super.nextStep()")
+//                                // Regular next step
+//                                super.nextStep()
+//                            }
+//                        }
+//                    } else {
+//                        println("➡️ Result not Success, calling super.nextStep()")
+//                        super.nextStep()
+//                    }
+//                } ?: run {
+//                    println("➡️ No stored result, calling super.nextStep()")
+//                    super.nextStep()
+//                }
+//            }
+//            is ValidationState.Invalid -> {
+//                println("❌ Validation is Invalid, showing RequestDetailScreen")
+//                // Unit is ineligible - navigate to RequestDetailScreen
+//                _storedValidationResult?.let { result ->
+//                    if (result is ValidationResult.Success) {
+//                        val action = result.navigationAction
+//                        if (action is MarineUnitNavigationAction.ShowComplianceDetailScreen) {
+//                            _navigationToComplianceDetail.value = action
+//                        }
+//                    }
+//                }
+//            }
+//            is ValidationState.Error -> {
+//                println("❌ Validation error: ${state.message}")
+//                // Show error message
+//                _error.value = com.informatique.mtcit.common.AppError.Unknown(state.message)
+//            }
+//            is ValidationState.Idle -> {
+//                println("⚠️ Validation is Idle, calling super.nextStep()")
+//                // No unit selected yet OR validation not triggered
+//                // Let base validation handle this (it will check if selectedMarineUnits field is filled)
+//                super.nextStep()
+//            }
+//            is ValidationState.Validating -> {
+//                println("⏳ Still validating...")
+//                // Still validating - wait
+//                _error.value = com.informatique.mtcit.common.AppError.Unknown("جاري التحقق من الوحدة البحرية...")
+//            }
+//            is ValidationState.RequiresConfirmation -> {
+//                println("⚠️ Requires confirmation, calling super.nextStep()")
+//                // Handle confirmation if needed
+//                super.nextStep()
+//            }
+//        }
     }
 
     /**
@@ -688,207 +688,208 @@ class MarineRegistrationViewModel @Inject constructor(
      */
     fun validateAndSubmit() {
         val currentState = uiState.value
+        submitForm()
 
-        viewModelScope.launch {
-            try {
-                // Get selected marine unit ID from form data
-                val selectedUnitsJson = currentState.formData["selectedMarineUnits"]
-                val isAddingNewUnit = currentState.formData["isAddingNewUnit"]?.toBoolean() ?: false
-
-                println("🔍 Selected units JSON: $selectedUnitsJson")
-                println("🔍 Is adding new unit: $isAddingNewUnit")
-                println("🔍 All form data keys: ${currentState.formData.keys}")
-
-                // Check if user is adding a NEW marine unit by looking for multiple possible field indicators
-                val hasNewUnitData = currentState.formData.containsKey("marineUnitName") ||
-                                    currentState.formData.containsKey("unitName") ||
-                                    currentState.formData.containsKey("callSign") ||
-                                    currentState.formData.containsKey("imoNumber") ||
-                                    currentState.formData.containsKey("registrationPort") ||
-                                    (selectedUnitsJson == "[]" && currentState.formData.size > 2) // Has form data but no selection
-
-                println("🔍 hasNewUnitData: $hasNewUnitData")
-                println("🔍 Form data size: ${currentState.formData.size}")
-
-                if ((selectedUnitsJson.isNullOrEmpty() || selectedUnitsJson == "[]") && !hasNewUnitData) {
-                    println("❌ No marine unit selected and no new unit data")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية أو إضافة وحدة جديدة")
-                    return@launch
-                }
-
-                // ✅ DYNAMIC: Check if the current strategy supports marine unit validation
-                val validatableStrategy = currentStrategy as? MarineUnitValidatable
-                if (validatableStrategy == null) {
-                    println("⚠️ Current strategy (${currentStrategy!!::class.simpleName}) does not support marine unit validation - proceeding with normal flow")
-                    submitForm()
-                    return@launch
-                }
-
-                println("✅ Strategy ${validatableStrategy::class.simpleName} supports marine unit validation")
-
-                val userId = getCurrentUserId()
-                val validationResult: ValidationResult?
-
-                // Case 1: User is adding a NEW marine unit
-                if (hasNewUnitData) {
-                    println("✅ User is adding a NEW marine unit")
-
-                    // Extract new unit data from form - try multiple possible field names
-                    val unitName = currentState.formData["marineUnitName"]
-                        ?: currentState.formData["unitName"]
-                        ?: currentState.formData["callSign"]  // Fallback to callSign if name not found
-                        ?: "وحدة بحرية جديدة"
-
-                    val unitType = currentState.formData["unitType"]
-                        ?: currentState.formData["unitClassification"]
-                        ?: ""
-
-                    val registrationPort = currentState.formData["registrationPort"] ?: ""
-                    val imo = currentState.formData["imoNumber"] ?: currentState.formData["imo"] ?: ""
-                    val callSign = currentState.formData["callSign"] ?: ""
-                    val activity = currentState.formData["maritimeactivity"] ?: ""
-                    val length = currentState.formData["length"] ?: currentState.formData["totalLength"] ?: ""
-                    val width = currentState.formData["width"] ?: currentState.formData["totalWidth"] ?: ""
-                    val height = currentState.formData["height"] ?: ""
-
-                    println("📋 New unit data: name=$unitName, type=$unitType, port=$registrationPort, callSign=$callSign")
-
-                    // Create a temporary MarineUnit object for validation
-                    val newUnit = MarineUnit(
-                        id = "new_${System.currentTimeMillis()}", // Temporary ID
-                        shipName = unitName,
-                        imoNumber = imo,
-                        callSign = callSign,
-                        mmsiNumber = "", // Will be assigned after successful registration
-                        portOfRegistry = PortOfRegistry(registrationPort),
-                        marineActivity = MarineActivity(0), // Default or parse from activity
-                        shipType = ShipType(0), // Default or parse from unitType
-                        isTemp = "1", // Temporary registration
-                        totalLength = length,
-                        totalWidth = width,
-                        height = height
-                    )
-
-                    // ✅ DYNAMIC: Use the interface method for validating new units
-                    validationResult = try {
-                        validatableStrategy.validateNewMarineUnit(newUnit, userId)
-                    } catch (e: Exception) {
-                        println("❌ Validation error: ${e.message}")
-                        e.printStackTrace()
-                        ValidationResult.Error(e.message ?: "Validation failed")
-                    }
-
-                } else {
-                    // Case 2: User selected an EXISTING marine unit
-                    println("✅ User selected an EXISTING marine unit")
-
-                    // Parse selected unit ID (maritimeId from JSON)
-                    val selectedMaritimeIds = try {
-                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(selectedUnitsJson!!)
-                    } catch (e: Exception) {
-                        println("❌ Failed to parse selected units: ${e.message}")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في قراءة الوحدة المختارة")
-                        return@launch
-                    }
-
-                    if (selectedMaritimeIds.isEmpty()) {
-                        println("❌ No units in selection")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
-                        return@launch
-                    }
-
-                    val selectedMaritimeId = selectedMaritimeIds.first()
-                    println("🔍 Selected maritime ID: $selectedMaritimeId")
-
-                    // Get marine units from the strategy (cast to TransactionStrategy to access loadDynamicOptions)
-                    val strategyAsTransaction = validatableStrategy as? TransactionStrategy
-                    if (strategyAsTransaction == null) {
-                        println("❌ Strategy doesn't implement TransactionStrategy")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في النظام")
-                        return@launch
-                    }
-
-                    val dynamicOptions = strategyAsTransaction.loadDynamicOptions()
-                    val marineUnitsAny = dynamicOptions["marineUnits"]
-
-                    // Marine units are returned as List<MarineUnit> from the strategy
-                    val marineUnits = when (marineUnitsAny) {
-                        is List<*> -> {
-                            // Filter and safely cast to MarineUnit
-                            marineUnitsAny.mapNotNull { it as? MarineUnit }
-                        }
-                        else -> emptyList()
-                    }
-
-                    if (marineUnits.isEmpty()) {
-                        println("⚠️ No marine units found in dynamic options")
-                    }
-
-                    val selectedUnit = marineUnits.firstOrNull { unit ->
-                        unit.maritimeId == selectedMaritimeId
-                    }
-
-                    if (selectedUnit == null) {
-                        println("❌ Selected unit not found")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الوحدة البحرية المختارة غير موجودة")
-                        return@launch
-                    }
-
-                    println("✅ Found selected unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
-
-                    // Validate the selected unit's inspection status
-                    validationResult = validateTemporaryRegistrationUnit(validatableStrategy, selectedUnit.id, userId)
-                }
-
-                // Handle validation result (same for both cases)
-                if (validationResult == null) {
-                    println("❌ Validation returned null")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل التحقق من حالة الفحص")
-                    return@launch
-                }
-
-                when (validationResult) {
-                    is ValidationResult.Success -> {
-                        when (val action = validationResult.navigationAction) {
-                            is MarineUnitNavigationAction.ProceedToNextStep -> {
-                                // Inspection is valid - proceed with actual submission
-                                println("✅ Inspection validated, proceeding with submission")
-                                submitForm()
-                            }
-                            is MarineUnitNavigationAction.ShowComplianceDetailScreen -> {
-                                // Inspection failed (pending/not verified) - show RequestDetailScreen
-                                println("⏳ Inspection validation failed, showing RequestDetailScreen")
-
-                                // ✅ NEW: Save request progress if status is PENDING
-                                val isPending = action.rejectionTitle.contains("قيد المعالجة")
-                                if (isPending) {
-                                    println("💾 Saving request progress (status: PENDING)")
-                                    saveRequestProgress(
-                                        marineUnit = action.marineUnit,
-                                        currentStep = currentState.currentStep
-                                    )
-                                }
-
-                                _navigationToComplianceDetail.value = action
-                            }
-                            else -> {
-                                println("❌ Unexpected navigation action: ${action::class.simpleName}")
-                                _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في التحقق من حالة الفحص")
-                            }
-                        }
-                    }
-                    is ValidationResult.Error -> {
-                        println("❌ Validation error: ${validationResult.message}")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown(validationResult.message)
-                    }
-                }
-
-            } catch (e: Exception) {
-                println("❌ Exception during validation: ${e.message}")
-                e.printStackTrace()
-                _error.value = com.informatique.mtcit.common.AppError.Unknown(e.message ?: "حدث خطأ أثناء التحقق")
-            }
-        }
+//        viewModelScope.launch {
+//            try {
+//                // Get selected marine unit ID from form data
+//                val selectedUnitsJson = currentState.formData["selectedMarineUnits"]
+//                val isAddingNewUnit = currentState.formData["isAddingNewUnit"]?.toBoolean() ?: false
+//
+//                println("🔍 Selected units JSON: $selectedUnitsJson")
+//                println("🔍 Is adding new unit: $isAddingNewUnit")
+//                println("🔍 All form data keys: ${currentState.formData.keys}")
+//
+//                // Check if user is adding a NEW marine unit by looking for multiple possible field indicators
+//                val hasNewUnitData = currentState.formData.containsKey("marineUnitName") ||
+//                                    currentState.formData.containsKey("unitName") ||
+//                                    currentState.formData.containsKey("callSign") ||
+//                                    currentState.formData.containsKey("imoNumber") ||
+//                                    currentState.formData.containsKey("registrationPort") ||
+//                                    (selectedUnitsJson == "[]" && currentState.formData.size > 2) // Has form data but no selection
+//
+//                println("🔍 hasNewUnitData: $hasNewUnitData")
+//                println("🔍 Form data size: ${currentState.formData.size}")
+//
+//                if ((selectedUnitsJson.isNullOrEmpty() || selectedUnitsJson == "[]") && !hasNewUnitData) {
+//                    println("❌ No marine unit selected and no new unit data")
+//                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية أو إضافة وحدة جديدة")
+//                    return@launch
+//                }
+//
+//                // ✅ DYNAMIC: Check if the current strategy supports marine unit validation
+//                val validatableStrategy = currentStrategy as? MarineUnitValidatable
+//                if (validatableStrategy == null) {
+//                    println("⚠️ Current strategy (${currentStrategy!!::class.simpleName}) does not support marine unit validation - proceeding with normal flow")
+//                    submitForm()
+//                    return@launch
+//                }
+//
+//                println("✅ Strategy ${validatableStrategy::class.simpleName} supports marine unit validation")
+//
+//                val userId = getCurrentUserId()
+//                val validationResult: ValidationResult?
+//
+//                // Case 1: User is adding a NEW marine unit
+//                if (hasNewUnitData) {
+//                    println("✅ User is adding a NEW marine unit")
+//
+//                    // Extract new unit data from form - try multiple possible field names
+//                    val unitName = currentState.formData["marineUnitName"]
+//                        ?: currentState.formData["unitName"]
+//                        ?: currentState.formData["callSign"]  // Fallback to callSign if name not found
+//                        ?: "وحدة بحرية جديدة"
+//
+//                    val unitType = currentState.formData["unitType"]
+//                        ?: currentState.formData["unitClassification"]
+//                        ?: ""
+//
+//                    val registrationPort = currentState.formData["registrationPort"] ?: ""
+//                    val imo = currentState.formData["imoNumber"] ?: currentState.formData["imo"] ?: ""
+//                    val callSign = currentState.formData["callSign"] ?: ""
+//                    val activity = currentState.formData["maritimeactivity"] ?: ""
+//                    val length = currentState.formData["length"] ?: currentState.formData["totalLength"] ?: ""
+//                    val width = currentState.formData["width"] ?: currentState.formData["totalWidth"] ?: ""
+//                    val height = currentState.formData["height"] ?: ""
+//
+//                    println("📋 New unit data: name=$unitName, type=$unitType, port=$registrationPort, callSign=$callSign")
+//
+//                    // Create a temporary MarineUnit object for validation
+//                    val newUnit = MarineUnit(
+//                        id = "new_${System.currentTimeMillis()}", // Temporary ID
+//                        shipName = unitName,
+//                        imoNumber = imo,
+//                        callSign = callSign,
+//                        mmsiNumber = "", // Will be assigned after successful registration
+//                        portOfRegistry = PortOfRegistry(registrationPort),
+//                        marineActivity = MarineActivity(0), // Default or parse from activity
+//                        shipType = ShipType(0), // Default or parse from unitType
+//                        isTemp = "1", // Temporary registration
+//                        totalLength = length,
+//                        totalWidth = width,
+//                        height = height
+//                    )
+//
+//                    // ✅ DYNAMIC: Use the interface method for validating new units
+//                    validationResult = try {
+//                        validatableStrategy.validateNewMarineUnit(newUnit, userId)
+//                    } catch (e: Exception) {
+//                        println("❌ Validation error: ${e.message}")
+//                        e.printStackTrace()
+//                        ValidationResult.Error(e.message ?: "Validation failed")
+//                    }
+//
+//                } else {
+//                    // Case 2: User selected an EXISTING marine unit
+//                    println("✅ User selected an EXISTING marine unit")
+//
+//                    // Parse selected unit ID (maritimeId from JSON)
+//                    val selectedMaritimeIds = try {
+//                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(selectedUnitsJson!!)
+//                    } catch (e: Exception) {
+//                        println("❌ Failed to parse selected units: ${e.message}")
+//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في قراءة الوحدة المختارة")
+//                        return@launch
+//                    }
+//
+//                    if (selectedMaritimeIds.isEmpty()) {
+//                        println("❌ No units in selection")
+//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
+//                        return@launch
+//                    }
+//
+//                    val selectedMaritimeId = selectedMaritimeIds.first()
+//                    println("🔍 Selected maritime ID: $selectedMaritimeId")
+//
+//                    // Get marine units from the strategy (cast to TransactionStrategy to access loadDynamicOptions)
+//                    val strategyAsTransaction = validatableStrategy as? TransactionStrategy
+//                    if (strategyAsTransaction == null) {
+//                        println("❌ Strategy doesn't implement TransactionStrategy")
+//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في النظام")
+//                        return@launch
+//                    }
+//
+//                    val dynamicOptions = strategyAsTransaction.loadDynamicOptions()
+//                    val marineUnitsAny = dynamicOptions["marineUnits"]
+//
+//                    // Marine units are returned as List<MarineUnit> from the strategy
+//                    val marineUnits = when (marineUnitsAny) {
+//                        is List<*> -> {
+//                            // Filter and safely cast to MarineUnit
+//                            marineUnitsAny.mapNotNull { it as? MarineUnit }
+//                        }
+//                        else -> emptyList()
+//                    }
+//
+//                    if (marineUnits.isEmpty()) {
+//                        println("⚠️ No marine units found in dynamic options")
+//                    }
+//
+//                    val selectedUnit = marineUnits.firstOrNull { unit ->
+//                        unit.maritimeId == selectedMaritimeId
+//                    }
+//
+//                    if (selectedUnit == null) {
+//                        println("❌ Selected unit not found")
+//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الوحدة البحرية المختارة غير موجودة")
+//                        return@launch
+//                    }
+//
+//                    println("✅ Found selected unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
+//
+//                    // Validate the selected unit's inspection status
+//                    validationResult = validateTemporaryRegistrationUnit(validatableStrategy, selectedUnit.id, userId)
+//                }
+//
+//                // Handle validation result (same for both cases)
+//                if (validationResult == null) {
+//                    println("❌ Validation returned null")
+//                    _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل التحقق من حالة الفحص")
+//                    return@launch
+//                }
+//
+//                when (validationResult) {
+//                    is ValidationResult.Success -> {
+//                        when (val action = validationResult.navigationAction) {
+//                            is MarineUnitNavigationAction.ProceedToNextStep -> {
+//                                // Inspection is valid - proceed with actual submission
+//                                println("✅ Inspection validated, proceeding with submission")
+//                                submitForm()
+//                            }
+//                            is MarineUnitNavigationAction.ShowComplianceDetailScreen -> {
+//                                // Inspection failed (pending/not verified) - show RequestDetailScreen
+//                                println("⏳ Inspection validation failed, showing RequestDetailScreen")
+//
+//                                // ✅ NEW: Save request progress if status is PENDING
+//                                val isPending = action.rejectionTitle.contains("قيد المعالجة")
+//                                if (isPending) {
+//                                    println("💾 Saving request progress (status: PENDING)")
+//                                    saveRequestProgress(
+//                                        marineUnit = action.marineUnit,
+//                                        currentStep = currentState.currentStep
+//                                    )
+//                                }
+//
+//                                _navigationToComplianceDetail.value = action
+//                            }
+//                            else -> {
+//                                println("❌ Unexpected navigation action: ${action::class.simpleName}")
+//                                _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في التحقق من حالة الفحص")
+//                            }
+//                        }
+//                    }
+//                    is ValidationResult.Error -> {
+//                        println("❌ Validation error: ${validationResult.message}")
+//                        _error.value = com.informatique.mtcit.common.AppError.Unknown(validationResult.message)
+//                    }
+//                }
+//
+//            } catch (e: Exception) {
+//                println("❌ Exception during validation: ${e.message}")
+//                e.printStackTrace()
+//                _error.value = com.informatique.mtcit.common.AppError.Unknown(e.message ?: "حدث خطأ أثناء التحقق")
+//            }
+//        }
     }
 
     /**
