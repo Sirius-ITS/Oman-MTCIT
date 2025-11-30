@@ -94,7 +94,9 @@ fun DynamicStepForm(
                                     isDecimal = field.isDecimal, // ✅ Pass isDecimal
                                     error = field.error,
                                     mandatory = field.mandatory,
-                                    isLoading = isFieldLoading(field.id)
+                                    isLoading = isFieldLoading(field.id),
+                                    maxLength = field.maxLength, // ✅ Pass maxLength
+                                    minLength = field.minLength // ✅ Pass minLength
                                 )
                             }
                             // ✅ Special handling for agriculture request number field (fishing boats)
@@ -109,7 +111,9 @@ fun DynamicStepForm(
                                     isDecimal = field.isDecimal, // ✅ Pass isDecimal
                                     error = field.error,
                                     mandatory = field.mandatory,
-                                    isLoading = isFieldLoading(field.id)
+                                    isLoading = isFieldLoading(field.id),
+                                    maxLength = field.maxLength, // ✅ Pass maxLength
+                                    minLength = field.minLength // ✅ Pass minLength
                                 )
                             }
                             // Make company name and type fields read-only
@@ -121,7 +125,9 @@ fun DynamicStepForm(
                                     isDecimal = field.isDecimal, // ✅ Pass isDecimal
                                     error = field.error,
                                     mandatory = field.mandatory,
-                                    readOnly = true
+                                    readOnly = true,
+                                    maxLength = field.maxLength, // ✅ Pass maxLength
+                                    minLength = field.minLength // ✅ Pass minLength
                                 )
                             }
                             // Regular text fields
@@ -136,7 +142,9 @@ fun DynamicStepForm(
                                     error = field.error,
                                     mandatory = field.mandatory,
                                     placeholder = field.label,
-                                    enabled = field.enabled // ✅ Use the enabled property
+                                    enabled = field.enabled, // ✅ Use the enabled property
+                                    maxLength = field.maxLength, // ✅ Pass maxLength
+                                    minLength = field.minLength // ✅ Pass minLength
                                 )
                             }
                         }
@@ -156,7 +164,9 @@ fun DynamicStepForm(
                                 error = field.error,
                                 mandatory = field.mandatory,
                                 placeholder = field.label,
-                                isLoading = isShimmerLoading // Pass loading state to dropdown
+                                isLoading = isShimmerLoading, // Pass loading state to dropdown
+                                maxLength = field.maxLength, // ✅ Pass maxLength
+                                minLength = field.minLength // ✅ Pass minLength
                             )
                         }
 

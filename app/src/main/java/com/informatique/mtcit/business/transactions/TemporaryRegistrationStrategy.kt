@@ -211,38 +211,38 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             println("🔧 getSteps - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}")
 
-            steps.add(
-                SharedSteps.unitSelectionStep(
-                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
-                    shipCategories = shipCategoryOptions,
-                    ports = portOptions,
-                    countries = countryOptions,
-                    marineActivities = marineActivityOptions,
-                    proofTypes = proofTypeOptions,
-                    buildingMaterials = buildMaterialOptions, // ✅ Now uses loaded options
-                    includeIMO = true,
-                    includeMMSI = true,
-                    includeManufacturer = true,
-                    includeProofDocument = false,
-                    includeConstructionDates = true,
-                    includeRegistrationCountry = true,
-                    isFishingBoat = isFishingBoat,
-                    fishingBoatDataLoaded = fishingBoatDataLoaded
-                )
-            )
-
+//            steps.add(
+//                SharedSteps.unitSelectionStep(
+//                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
+//                    shipCategories = shipCategoryOptions,
+//                    ports = portOptions,
+//                    countries = countryOptions,
+//                    marineActivities = marineActivityOptions,
+//                    proofTypes = proofTypeOptions,
+//                    buildingMaterials = buildMaterialOptions, // ✅ Now uses loaded options
+//                    includeIMO = true,
+//                    includeMMSI = true,
+//                    includeManufacturer = true,
+//                    includeProofDocument = false,
+//                    includeConstructionDates = true,
+//                    includeRegistrationCountry = true,
+//                    isFishingBoat = isFishingBoat,
+//                    fishingBoatDataLoaded = fishingBoatDataLoaded
+//                )
+//            )
+//
             steps.add(
                 SharedSteps.marineUnitDimensionsStep(
                     includeHeight = true,
                     includeDecksCount = true
                 )
             )
-
-            steps.add(
-                SharedSteps.marineUnitWeightsStep(
-                    includeMaxPermittedLoad = true
-                )
-            )
+//
+//            steps.add(
+//                SharedSteps.marineUnitWeightsStep(
+//                    includeMaxPermittedLoad = true
+//                )
+//            )
 
             steps.add(
                 SharedSteps.engineInfoStep(
@@ -372,6 +372,11 @@ class TemporaryRegistrationStrategy @Inject constructor(
         }
 
         // Dimension Rules
+        // ✅ Check dimension fields don't exceed 99.99 meters
+        if (fieldIds.any { it in listOf("overallLength", "overallWidth", "depth", "height") }) {
+            rules.add(DimensionValidationRules.dimensionMaxValueValidation())
+        }
+
         if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
             rules.add(DimensionValidationRules.lengthGreaterThanWidth())
         }

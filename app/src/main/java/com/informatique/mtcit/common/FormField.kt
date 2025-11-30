@@ -28,7 +28,9 @@ sealed class FormField(
         override val error: String? = null,
         val initialValue: String = "",
         val enabled: Boolean = true, // ✅ إضافة الخاصية دي
-        override val mandatory: Boolean = false
+        override val mandatory: Boolean = false,
+        val maxLength: Int? = null, // ✅ NEW: Maximum character length for validation
+        val minLength: Int? = null // ✅ NEW: Minimum character length for validation
 
     ) : FormField(id, label, labelRes, value, error, mandatory){
 
@@ -49,7 +51,9 @@ sealed class FormField(
         val placeholder: String? = null,
         override val value: String = "",
         override val error: String? = null ,
-        override val mandatory: Boolean = false
+        override val mandatory: Boolean = false,
+        val maxLength: Int? = null, // ✅ NEW: Maximum character length for selected option
+        val minLength: Int? = null // ✅ NEW: Minimum character length for selected option
 
     ) : FormField(id, label, labelRes, value, error, mandatory){
 
