@@ -226,7 +226,8 @@ fun OwnerFormBottomSheet(
                     label = localizedApp(R.string.company_name),
                     mandatory = false,
                     placeholder = localizedApp(R.string.company_name),
-                    enabled = true
+                    enabled = true,
+                    maxLength = 50
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 CustomTextField(
@@ -236,7 +237,8 @@ fun OwnerFormBottomSheet(
                     isNumeric = true,
                     mandatory = true,
                     placeholder = localizedApp(R.string.company_registration_number),
-                    enabled = true
+                    enabled = true,
+                    maxLength = 20
                 )
             } else {
                 // Full Name
@@ -246,7 +248,8 @@ fun OwnerFormBottomSheet(
                     label = localizedApp(R.string.owner_full_name_ar),
                     mandatory = true,
                     placeholder = localizedApp(R.string.owner_full_name_ar),
-                    enabled = true
+                    enabled = true,
+                    maxLength = 100
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -259,7 +262,8 @@ fun OwnerFormBottomSheet(
                     isNumeric = true,
                     mandatory = true,
                     placeholder = localizedApp(R.string.owner_id_number),
-                    enabled = true
+                    enabled = true,
+                    maxLength = 20
                 )
             }
 
@@ -272,7 +276,9 @@ fun OwnerFormBottomSheet(
                 label = localizedApp(R.string.enter_ownershippercentage),
                 mandatory = true,
                 placeholder = localizedApp(R.string.enter_ownershippercentage),
-                enabled = true
+                enabled = true,
+                maxLength = 5 ,
+                minLength = 2
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -284,7 +290,8 @@ fun OwnerFormBottomSheet(
                 label = localizedApp(R.string.email),
                 mandatory = true,
                 placeholder = localizedApp(R.string.email),
-                enabled = true
+                enabled = true,
+                maxLength = 100
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -297,7 +304,8 @@ fun OwnerFormBottomSheet(
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.owner_mobile),
-                enabled = true
+                enabled = true,
+                maxLength = 30
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -309,7 +317,8 @@ fun OwnerFormBottomSheet(
                 label = localizedApp(R.string.owner_address),
                 mandatory = true,
                 placeholder = localizedApp(R.string.owner_address),
-                enabled = true
+                enabled = true,
+                maxLength = 300
             )
 
             Spacer(modifier = Modifier.height(16.dp))

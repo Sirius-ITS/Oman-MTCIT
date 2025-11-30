@@ -32,7 +32,9 @@ fun FocusAwareTextField(
     mandatory: Boolean = false,
     isLoading: Boolean = false,
     readOnly: Boolean = false,
-    placeholder: String? = null
+    placeholder: String? = null,
+    maxLength: Int? = null, // ✅ NEW: Maximum character length
+    minLength: Int? = null // ✅ NEW: Minimum character length (for validation only)
 ) {
     val extraColors = LocalExtraColors.current
     var wasFocused by remember { mutableStateOf(false) }
@@ -53,7 +55,14 @@ fun FocusAwareTextField(
 
         OutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { newValue ->
+                // ✅ Apply maxLength constraint if specified
+                if (maxLength != null && newValue.length <= maxLength) {
+                    onValueChange(newValue)
+                } else if (maxLength == null) {
+                    onValueChange(newValue)
+                }
+            },
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = extraColors.cardBackground,

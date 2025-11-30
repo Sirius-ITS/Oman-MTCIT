@@ -8,6 +8,8 @@ import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
+import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -266,7 +268,50 @@ class PermanentRegistrationStrategy @Inject constructor(
     ): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+
+        // ✅ Get validation rules for this step
+        val rules = getValidationRulesForStep(step, stepData)
+
+        // ✅ Use validation with rules if available
+        return if (rules.isNotEmpty()) {
+            validationUseCase.validateStepWithAccumulatedData(
+                stepData = stepData,
+                currentStepData = formData,
+                allAccumulatedData = accumulatedFormData,
+                crossFieldRules = rules
+            )
+        } else {
+            // Fallback to basic validation
+            validationUseCase.validateStep(stepData, formData)
+        }
+    }
+
+    /**
+     * Get validation rules based on step content
+     */
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        val fieldIds = stepData.fields.map { it.id }
+        val rules = mutableListOf<ValidationRule>()
+
+        // Dimension Rules
+        // ✅ Check dimension fields don't exceed 99.99 meters
+        if (fieldIds.any { it in listOf("overallLength", "overallWidth", "depth", "height") }) {
+            rules.add(DimensionValidationRules.dimensionMaxValueValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
+            rules.add(DimensionValidationRules.lengthGreaterThanWidth())
+        }
+
+        if (fieldIds.containsAll(listOf("height", "grossTonnage"))) {
+            rules.add(DimensionValidationRules.heightValidation())
+        }
+
+        if (fieldIds.containsAll(listOf("decksCount", "grossTonnage"))) {
+            rules.add(DimensionValidationRules.deckCountValidation())
+        }
+
+        return rules
     }
 
     override fun processStepData(step: Int, data: Map<String, String>): Int {
@@ -383,6 +428,7 @@ class PermanentRegistrationStrategy @Inject constructor(
         if (registrationNumber.isBlank()) {
             return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
         }
+
 
         if (registrationNumber.length < 3) {
             return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")

@@ -154,7 +154,8 @@ object SharedSteps {
                 labelRes = R.string.select_unit_classification_placeholder,
                 options = shipCategories,
                 mandatory = true,
-                placeholder = R.string.select_unit_classification_placeholder.toString()
+                placeholder = R.string.select_unit_classification_placeholder.toString(),
+                maxLength = 50
             )
         )
 
@@ -167,7 +168,8 @@ object SharedSteps {
                 labelRes = R.string.select_unit_type_placeholder,
                 options = shipTypes, // Use provided ship types (empty initially, populated after category selection)
                 mandatory = true,
-                placeholder = R.string.select_unit_type_placeholder.toString()
+                placeholder = R.string.select_unit_type_placeholder.toString(),
+                maxLength = 50
             )
         )
 
@@ -191,7 +193,8 @@ object SharedSteps {
                 labelRes = R.string.enter_call_sign,
                 mandatory = true,
                 enabled = !fishingBoatDataLoaded,
-                placeholder = R.string.enter_call_sign.toString()
+                placeholder = R.string.enter_call_sign.toString(),
+                maxLength = 10
             )
         )
 
@@ -203,7 +206,8 @@ object SharedSteps {
                     labelRes = R.string.enter_imo_number,
                     isNumeric = true,
                     mandatory = false,
-                    enabled = !fishingBoatDataLoaded
+                    enabled = !fishingBoatDataLoaded,
+                    maxLength = 7
                 )
             )
         }
@@ -214,7 +218,8 @@ object SharedSteps {
                 id = "registrationPort",
                 labelRes = R.string.select_registration_port,
                 options = ports,
-                mandatory = true
+                mandatory = true,
+                maxLength = 50
             )
         )
 
@@ -226,7 +231,8 @@ object SharedSteps {
                     labelRes = R.string.mmsi_number,
                     isNumeric = true,
                     mandatory = false,
-                    enabled = !fishingBoatDataLoaded
+                    enabled = !fishingBoatDataLoaded,
+                    maxLength = 9
                 )
             )
         }
@@ -240,7 +246,8 @@ object SharedSteps {
                         labelRes = R.string.ship_manufacture_year,
                         isNumeric = true,
                         mandatory = true,
-                        enabled = !fishingBoatDataLoaded
+                        enabled = !fishingBoatDataLoaded,
+                        maxLength = 4
                     )
                 )
             )
@@ -253,7 +260,8 @@ object SharedSteps {
                 labelRes = R.string.select_maritime_activity,
                 options = marineActivities,
                 mandatory = true,
-                placeholder = R.string.select_maritime_activity.toString()
+                placeholder = R.string.select_maritime_activity.toString(),
+                maxLength = 50
             )
         )
 
@@ -263,7 +271,8 @@ object SharedSteps {
                 id = "constructionpool",
                 labelRes = R.string.enter_construction_pool,
                 mandatory = false,
-                placeholder = R.string.enter_construction_pool.toString()
+                placeholder = R.string.enter_construction_pool.toString(),
+                maxLength = 200
             )
         )
 
@@ -274,7 +283,8 @@ object SharedSteps {
                 labelRes = R.string.select_proof_type,
                 options = proofTypes,
                 mandatory = true,
-                placeholder = R.string.select_proof_type.toString()
+                placeholder = R.string.select_proof_type.toString(),
+                maxLength = 50
             )
         )
 
@@ -327,7 +337,8 @@ object SharedSteps {
                     id = "registrationCountry",
                     labelRes = R.string.building_country_optional,
                     options = countries,
-                    mandatory = false
+                    mandatory = false,
+                    maxLength = 50,
                 )
             )
         }
@@ -340,7 +351,8 @@ object SharedSteps {
                     labelRes = R.string.select_building_material,
                     options = buildingMaterials,
                     mandatory = true,
-                    placeholder = R.string.select_building_material.toString()
+                    placeholder = R.string.select_building_material.toString(),
+                    maxLength = 50
                 )
             )
         }
@@ -373,7 +385,7 @@ object SharedSteps {
     ): StepData {
         val fields = mutableListOf<FormField>()
 
-        // Overall Length (mandatory)
+        // Overall Length (mandatory) - Max: 99.99 meters
         fields.add(
             FormField.TextField(
                 id = "overallLength",
@@ -381,11 +393,12 @@ object SharedSteps {
                 placeholder = R.string.overall_length_placeholder.toString(),
                 isNumeric = true,
                 isDecimal = true,
-                mandatory = true
+                mandatory = true,
+                maxLength = 5 // ✅ Format: 99.99 (5 chars: 9+9+.+9+9)
             )
         )
 
-        // Overall Width (mandatory)
+        // Overall Width (mandatory) - Max: 99.99 meters
         fields.add(
             FormField.TextField(
                 id = "overallWidth",
@@ -393,11 +406,12 @@ object SharedSteps {
                 placeholder = R.string.overall_width_placeholder.toString(),
                 isNumeric = true,
                 isDecimal = true,
-                mandatory = true
+                mandatory = true,
+                maxLength = 5 // ✅ Format: 99.99 (5 chars: 9+9+.+9+9)
             )
         )
 
-        // Depth/Draft (mandatory)
+        // Depth/Draft (mandatory) - Max: 99.99 meters
         fields.add(
             FormField.TextField(
                 id = "depth",
@@ -405,11 +419,12 @@ object SharedSteps {
                 placeholder = R.string.depth_placeholder.toString(),
                 isNumeric = true,
                 isDecimal = true,
-                mandatory = true
+                mandatory = true,
+                maxLength = 5 // ✅ Format: 99.99 (5 chars)
             )
         )
 
-        // Optional: Height from base to highest point
+        // Optional: Height from base to highest point - Max: 99.99 meters
         if (includeHeight) {
             fields.add(
                 FormField.TextField(
@@ -418,12 +433,13 @@ object SharedSteps {
                     placeholder = R.string.height_placeholder.toString(),
                     isNumeric = true,
                     isDecimal = true,
-                    mandatory = false
+                    mandatory = false,
+                    maxLength = 5 // ✅ Format: 99.99 (5 chars)
                 )
             )
         }
 
-        // Optional: Number of Decks
+        // Optional: Number of Decks - Max: 99 (integer only)
         if (includeDecksCount) {
             fields.add(
                 FormField.TextField(
@@ -431,7 +447,8 @@ object SharedSteps {
                     labelRes = R.string.decks_count_placeholder,
                     placeholder = R.string.decks_count_placeholder.toString(),
                     isNumeric = true,
-                    mandatory = false
+                    mandatory = false,
+                    maxLength = 2 // ✅ Max: 99 decks (integer)
                 )
             )
         }
@@ -475,7 +492,9 @@ object SharedSteps {
                 placeholder = R.string.marine_unit_name_placeholder.toString(),
                 mandatory = true,
                 initialValue = prefilledName, // ✅ املأ الاسم لو موجود
-                enabled = isAddingNewUnit || selectedMarineUnits.isEmpty()
+                enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
+                minLength = 3, // ✅ الحد الأدنى 3 أحرف
+                maxLength = 50 // ✅ الحد الأقصى 50 حرف
             )
         )
 
@@ -630,7 +649,9 @@ object SharedSteps {
                 placeholder = R.string.gross_tonnage_placeholder.toString(),
                 isNumeric = true,
                 isDecimal = true,
-                mandatory = true
+                mandatory = true,
+                maxLength = 9,
+                minLength = 3
             )
         )
 
@@ -642,7 +663,9 @@ object SharedSteps {
                 placeholder = R.string.net_tonnage_placeholder.toString(),
                 isNumeric = true,
                 isDecimal = true,
-                mandatory = true
+                mandatory = true,
+                maxLength = 9,
+                minLength = 3
             )
         )
 
@@ -654,7 +677,9 @@ object SharedSteps {
                 placeholder = R.string.static_load_placeholder.toString(),
                 isNumeric = true,
                 isDecimal = true,
-                mandatory = true
+                mandatory = true,
+                maxLength = 9,
+                minLength = 3
             )
         )
 
@@ -667,7 +692,9 @@ object SharedSteps {
                     placeholder = R.string.max_permitted_load_placeholder.toString(),
                     isNumeric = true,
                     isDecimal = true,
-                    mandatory = false
+                    mandatory = false,
+                    maxLength = 9,
+                    minLength = 3
                 )
             )
         }

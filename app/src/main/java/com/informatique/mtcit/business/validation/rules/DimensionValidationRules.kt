@@ -20,6 +20,53 @@ object DimensionValidationRules {
     )
 
     /**
+     * ✅ NEW: Validate dimension fields don't exceed 99.99 meters
+     * Format: Maximum 2 digits before decimal point, 2 digits after (XX.XX)
+     */
+    fun dimensionMaxValueValidation() = ValidationRule.CustomValidation(
+        fieldIds = listOf("overallLength", "overallWidth", "depth", "height"),
+        errorFieldId = "overallLength", // Default, will be overridden in loop
+        errorMessage = "القيمة يجب ألا تتجاوز 99.99 متر" // Value must not exceed 99.99 meters
+    ) { fields ->
+        for (fieldId in listOf("overallLength", "overallWidth", "depth", "height")) {
+            val field = fields.find { it.id == fieldId } as? FormField.TextField
+            val valueStr = field?.value
+
+            // Skip empty optional fields
+            if (valueStr.isNullOrBlank()) continue
+
+            println("🔍 Validating dimension field: $fieldId with value: $valueStr")
+
+            // Parse value
+            val value = valueStr.toDoubleOrNull()
+
+            // Check if value is invalid
+            if (value == null) {
+                println("❌ Invalid value for $fieldId: $valueStr")
+                return@CustomValidation false
+            }
+
+            // Check if value exceeds 99.99
+            if (value > 99.99) {
+                println("❌ Value $value exceeds 99.99 for field $fieldId")
+                return@CustomValidation false
+            }
+
+            // ✅ Check integer part doesn't exceed 2 digits (prevents 100, 9999, etc.)
+            val integerPart = value.toInt()
+            if (integerPart > 99) {
+                println("❌ Integer part $integerPart exceeds 99 for field $fieldId (value: $value)")
+                return@CustomValidation false
+            }
+
+            println("✅ Field $fieldId passed validation with value: $value")
+        }
+
+        println("✅ All dimension fields passed validation")
+        true
+    }
+
+    /**
      * Validate height based on vessel size
      */
     fun heightValidation() = ValidationRule.CustomValidation(
@@ -75,6 +122,7 @@ object DimensionValidationRules {
      * Get all dimension-related validation rules
      */
     fun getAllDimensionRules(): List<ValidationRule> = listOf(
+        dimensionMaxValueValidation(), // ✅ NEW: Check max value 99.99
         lengthGreaterThanWidth(),
         heightValidation(),
         deckCountValidation()

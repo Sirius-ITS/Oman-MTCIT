@@ -38,7 +38,9 @@ fun CustomTextField(
     mandatory: Boolean = false,
     leadingIcon: ImageVector? = null,
     placeholder: String? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    maxLength: Int? = null, // ✅ NEW: Maximum character length
+    minLength: Int? = null // ✅ NEW: Minimum character length (for validation only)
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -65,7 +67,14 @@ fun CustomTextField(
         )
         OutlinedTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { newValue ->
+                // ✅ Apply maxLength constraint if specified
+                if (maxLength != null && newValue.length <= maxLength) {
+                    onValueChange(newValue)
+                } else if (maxLength == null) {
+                    onValueChange(newValue)
+                }
+            },
             shape = RoundedCornerShape(16.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = extraColors.cardBackground,

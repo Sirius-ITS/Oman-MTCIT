@@ -119,7 +119,8 @@ fun EngineFormBottomSheet(
                 label = localizedApp(R.string.engine_no_title),
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_no_title),
-                enabled = true
+                enabled = true,
+                maxLength = 10
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -131,7 +132,8 @@ fun EngineFormBottomSheet(
                 label = localizedApp(R.string.engine_type_title),
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_type_title),
-                enabled = true
+                enabled = true,
+                maxLength = 50
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -144,7 +146,9 @@ fun EngineFormBottomSheet(
                 isNumeric = true,
                 mandatory = true,
                 placeholder =localizedApp(R.string.engine_power_title),
-                enabled = true
+                enabled = true,
+                maxLength = 6,
+                minLength = 2
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -157,7 +161,9 @@ fun EngineFormBottomSheet(
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_cylinders_title),
-                enabled = true
+                enabled = true,
+                maxLength = 3,
+                minLength = 0
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -169,7 +175,8 @@ fun EngineFormBottomSheet(
                 selectedOption = manufacturer,
                 onOptionSelected = { manufacturer = it },
                 mandatory = true,
-                placeholder = manufacturer.ifEmpty { localizedApp(R.string.engine_manufacturer_title) }
+                placeholder = manufacturer.ifEmpty { localizedApp(R.string.engine_manufacturer_title) },
+                maxLength = 50
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -181,7 +188,8 @@ fun EngineFormBottomSheet(
                 label = localizedApp(R.string.engine_model_title),
                 mandatory = true,
                 placeholder =localizedApp(R.string.engine_model_title),
-                enabled = true
+                enabled = true,
+                maxLength = 10
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -194,7 +202,8 @@ fun EngineFormBottomSheet(
                 isNumeric = true,
                 mandatory = true,
                 placeholder =localizedApp(R.string.engine_manufacture_year_title),
-                enabled = true
+                enabled = true,
+                maxLength = 4
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -206,7 +215,8 @@ fun EngineFormBottomSheet(
                 selectedOption = productionCountry,
                 onOptionSelected = { productionCountry = it },
                 mandatory = true,
-                placeholder = productionCountry.ifEmpty { localizedApp(R.string.engine_producing_country_title) }
+                placeholder = productionCountry.ifEmpty { localizedApp(R.string.engine_producing_country_title) },
+                maxLength = 50
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -218,7 +228,8 @@ fun EngineFormBottomSheet(
                 selectedOption = fuelType,
                 onOptionSelected = { fuelType = it },
                 mandatory = true,
-                placeholder = fuelType.ifEmpty { localizedApp(R.string.engine_fuel_type_title) }
+                placeholder = fuelType.ifEmpty { localizedApp(R.string.engine_fuel_type_title) },
+                maxLength = 50
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -230,7 +241,8 @@ fun EngineFormBottomSheet(
                 selectedOption = condition,
                 onOptionSelected = { condition = it },
                 mandatory = true,
-                placeholder = condition.ifEmpty { localizedApp(R.string.engine_condition_title) }
+                placeholder = condition.ifEmpty { localizedApp(R.string.engine_condition_title) },
+                maxLength = 50
             )
 
             Spacer(modifier = Modifier.height(24.dp))

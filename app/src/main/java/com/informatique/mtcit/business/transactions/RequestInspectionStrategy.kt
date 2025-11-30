@@ -344,6 +344,11 @@ class RequestInspectionStrategy @Inject constructor(
         }
 
         // Dimension Rules
+        // ✅ Check dimension fields don't exceed 99.99 meters
+        if (fieldIds.any { it in listOf("overallLength", "overallWidth", "depth", "height") }) {
+            rules.add(DimensionValidationRules.dimensionMaxValueValidation())
+        }
+
         if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
             rules.add(DimensionValidationRules.lengthGreaterThanWidth())
         }

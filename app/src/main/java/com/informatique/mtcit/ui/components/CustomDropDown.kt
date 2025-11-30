@@ -72,7 +72,9 @@ fun CustomDropdown(
     placeholder: String? = null,
     // ✅ NEW: Shimmer loading parameters
     isLoading: Boolean = false,
-    loadingMessage: String? = "جاري التحميل..."
+    loadingMessage: String? = "جاري التحميل...",
+    maxLength: Int? = null, // ✅ NEW: Maximum character length (for validation)
+    minLength: Int? = null // ✅ NEW: Minimum character length (for validation)
 ) {
     var showSheet by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
