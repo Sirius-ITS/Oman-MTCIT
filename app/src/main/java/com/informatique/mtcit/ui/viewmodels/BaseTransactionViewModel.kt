@@ -209,8 +209,8 @@ abstract class BaseTransactionViewModel(
             val updatedFormData = strategy.handleFieldChange(fieldId, value, newFormData)
 
             // ✅ Check if we need to refresh steps
-            val shouldRefreshStepsForUnitType = fieldId == "unitType" && updatedFormData.containsKey("_triggerRefresh")
-            val shouldRefreshSteps = shouldRefreshStepsForPersonType || shouldRefreshStepsForUnitType
+            val shouldRefreshStepsForTriggerFlag = updatedFormData.containsKey("_triggerRefresh")
+            val shouldRefreshSteps = shouldRefreshStepsForPersonType || shouldRefreshStepsForTriggerFlag
 
             // Remove the trigger flag from form data if present
             val cleanedFormData = updatedFormData.toMutableMap().apply {
@@ -219,7 +219,6 @@ abstract class BaseTransactionViewModel(
 
             // ✅ Refresh steps if needed
             val updatedSteps = if (shouldRefreshSteps) {
-                println("🔄 Refreshing steps because ${if (shouldRefreshStepsForPersonType) "person type" else "unit type"} changed")
                 println("🔄 Refreshing steps because field '$fieldId' changed and triggered refresh")
                 strategy.getSteps()
             } else {

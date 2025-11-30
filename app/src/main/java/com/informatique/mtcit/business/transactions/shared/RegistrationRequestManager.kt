@@ -17,68 +17,122 @@ class RegistrationRequestManager @Inject constructor(
 ) {
 
     /**
-     * Create initial registration request (POST)
-     * Called after unit selection step
+     * Create OR update registration request based on whether requestId exists
+     *
+     * First time (no requestId): POST to create
+     * Going back and changing (has requestId): PUT to update
      *
      * @param formData Accumulated form data
      * @param requestTypeId Type of registration (1=Temporary, 2=Permanent, etc.)
      * @return Result with extracted IDs or error
      */
-    suspend fun createRegistrationRequest(
+    suspend fun createOrUpdateRegistrationRequest(
         formData: Map<String, String>,
         requestTypeId: Int
     ): RegistrationRequestResult {
         return try {
-            println("🚀 RegistrationRequestManager: Creating registration request (type=$requestTypeId)...")
+            val existingRequestId = formData["requestId"]?.toIntOrNull()
 
-            // Map form data to API request
-            val request = com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
-                .mapToCreateRegistrationRequest(
-                    formData = formData,
-                    requestTypeId = requestTypeId
-                )
+            if (existingRequestId == null) {
+                // ✅ First time - POST to create new request
+                println("🚀 RegistrationRequestManager: Creating NEW registration request (type=$requestTypeId)...")
 
-            println("📤 Sending registration request to API...")
+                // Map form data to API request (without id)
+                val request = com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
+                    .mapToCreateRegistrationRequest(
+                        formData = formData,
+                        requestTypeId = requestTypeId
+                    )
 
-            // Call API
-            val result = repository.createRegistrationRequest(request)
+                println("📤 Sending POST to /api/v1/registration-requests...")
 
-            result.fold(
-                onSuccess = { response ->
-                    if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
-                        // Extract all important IDs
-                        val requestId = response.data.id.toString()
-                        val shipInfoId = response.data.shipInfo?.id?.toString()
-                        val shipId = response.data.shipInfo?.ship?.id?.toString()
-                        val requestSerial = response.data.requestSerial
-                        val requestYear = response.data.requestYear
+                // Call POST API
+                val result = repository.createRegistrationRequest(request)
 
-                        println("✅ Registration request created successfully!")
-                        println("   Request ID: $requestId (data.id)")
-                        println("   Ship Info ID: $shipInfoId")
-                        println("   Ship ID: $shipId")
-                        println("   Request Serial: $requestSerial/$requestYear")
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                            // Extract all important IDs
+                            val requestId = response.data.id.toString()
+                            val shipInfoId = response.data.shipInfo?.id?.toString()
+                            val shipId = response.data.shipInfo?.ship?.id?.toString()
+                            val requestSerial = response.data.requestSerial
+                            val requestYear = response.data.requestYear
 
-                        RegistrationRequestResult.Success(
-                            requestId = requestId,
-                            shipInfoId = shipInfoId,
-                            shipId = shipId,
-                            requestNumber = if (requestSerial != null && requestYear != null)
-                                "$requestSerial/$requestYear" else null
-                        )
-                    } else {
-                        println("❌ API returned error: ${response.message}")
-                        RegistrationRequestResult.Error(response.message)
+                            println("✅ Registration request created successfully!")
+                            println("   Request ID: $requestId")
+                            println("   Ship Info ID: $shipInfoId")
+                            println("   Ship ID: $shipId")
+                            println("   Request Serial: $requestSerial/$requestYear")
+
+                            RegistrationRequestResult.Success(
+                                requestId = requestId,
+                                shipInfoId = shipInfoId,
+                                shipId = shipId,
+                                requestNumber = if (requestSerial != null && requestYear != null)
+                                    "$requestSerial/$requestYear" else null
+                            )
+                        } else {
+                            println("❌ API returned error: ${response.message}")
+                            RegistrationRequestResult.Error(response.message)
+                        }
+                    },
+                    onFailure = { exception ->
+                        println("❌ Failed to create registration request: ${exception.message}")
+                        exception.printStackTrace()
+                        RegistrationRequestResult.Error(exception.message ?: "Unknown error")
                     }
-                },
-                onFailure = { exception ->
-                    println("❌ Failed to create registration request: ${exception.message}")
-                    exception.printStackTrace()
-                    RegistrationRequestResult.Error(exception.message ?: "Unknown error")
-                }
-            )
+                )
+            } else {
+                // ✅ User went back - PUT to update existing request
+                println("🔄 RegistrationRequestManager: UPDATING existing registration request (id=$existingRequestId, type=$requestTypeId)...")
+
+                // Map form data to API request (WITH id this time)
+                val request = com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
+                    .mapToCreateRegistrationRequest(
+                        formData = formData,
+                        requestTypeId = requestTypeId,
+                        requestId = existingRequestId // ✅ Include the existing request ID
+                    )
+
+                println("📤 Sending PUT to /api/v1/registration-requests/update with requestId=$existingRequestId...")
+
+                // Call PUT API
+                val result = repository.updateRegistrationRequest(request)
+
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                            val requestId = response.data.id.toString()
+                            val shipInfoId = response.data.shipInfo?.id?.toString()
+                            val shipId = response.data.shipInfo?.ship?.id?.toString()
+                            val requestSerial = response.data.requestSerial
+                            val requestYear = response.data.requestYear
+
+                            println("✅ Registration request updated successfully!")
+                            println("   Request ID: $requestId (unchanged)")
+
+                            RegistrationRequestResult.Success(
+                                requestId = requestId,
+                                shipInfoId = shipInfoId,
+                                shipId = shipId,
+                                requestNumber = if (requestSerial != null && requestYear != null)
+                                    "$requestSerial/$requestYear" else null
+                            )
+                        } else {
+                            println("❌ API returned error: ${response.message}")
+                            RegistrationRequestResult.Error(response.message)
+                        }
+                    },
+                    onFailure = { exception ->
+                        println("❌ Failed to update registration request: ${exception.message}")
+                        exception.printStackTrace()
+                        RegistrationRequestResult.Error(exception.message ?: "Unknown error")
+                    }
+                )
+            }
         } catch (e: Exception) {
-            println("❌ Exception in createRegistrationRequest: ${e.message}")
+            println("❌ Exception in createOrUpdateRegistrationRequest: ${e.message}")
             e.printStackTrace()
             RegistrationRequestResult.Error(e.message ?: "Unknown error")
         }
@@ -268,12 +322,15 @@ class RegistrationRequestManager @Inject constructor(
         requestTypeId: Int
     ): StepProcessResult {
 
-        // Check if this is the Unit Selection Step (ship info)
+        // ✅ Check if this is the Unit Selection Step (ship info)
         val hasUnitSelectionFields = stepFields.any { it == "unitType" || it == "callSign" }
-        if (hasUnitSelectionFields && formData.containsKey("unitType") && !formData.containsKey("requestId")) {
-            println("🔍 Detected Unit Selection Step - Creating registration request...")
+        if (hasUnitSelectionFields && formData.containsKey("unitType")) {
+            // ✅ CHANGED: Always call API when completing unit selection step
+            // First time (no requestId) → POST to create
+            // Going back (has requestId) → PUT to update
+            println("🔍 Detected Unit Selection Step - Creating or updating registration request...")
 
-            val result = createRegistrationRequest(formData, requestTypeId)
+            val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
             return when (result) {
                 is RegistrationRequestResult.Success -> {
                     // Store IDs in form data
@@ -282,7 +339,7 @@ class RegistrationRequestManager @Inject constructor(
                     result.shipId?.let { formData["shipId"] = it }
                     result.requestNumber?.let { formData["requestNumber"] = it }
 
-                    StepProcessResult.Success("Registration request created")
+                    StepProcessResult.Success("Registration request created/updated")
                 }
                 is RegistrationRequestResult.Error -> {
                     StepProcessResult.Error(result.message)
@@ -298,10 +355,11 @@ class RegistrationRequestManager @Inject constructor(
             return StepProcessResult.NoAction
         }
 
-        // Check if this is the Dimensions Step
+        // ✅ Check if this is the Dimensions Step
+        // Always send PUT request (whether first time or user went back and changed)
         val hasDimensionsFields = stepFields.containsAll(listOf("overallLength", "overallWidth", "depth"))
         if (hasDimensionsFields) {
-            println("🔍 Detected Dimensions Step - Updating dimensions...")
+            println("🔍 Detected Dimensions Step - Updating dimensions (always sends PUT)...")
 
             val result = updateDimensions(requestId, formData)
             return when (result) {
@@ -310,10 +368,11 @@ class RegistrationRequestManager @Inject constructor(
             }
         }
 
-        // Check if this is the Weights Step
+        // ✅ Check if this is the Weights Step
+        // Always send PUT request (whether first time or user went back and changed)
         val hasWeightsFields = stepFields.containsAll(listOf("grossTonnage", "netTonnage"))
         if (hasWeightsFields) {
-            println("🔍 Detected Weights Step - Updating weights...")
+            println("🔍 Detected Weights Step - Updating weights (always sends PUT)...")
 
             val result = updateWeights(requestId, formData)
             return when (result) {
@@ -322,10 +381,11 @@ class RegistrationRequestManager @Inject constructor(
             }
         }
 
-        // Check if this is the Engine Info Step
+        // ✅ Check if this is the Engine Info Step
+        // Always send PUT request (whether first time or user went back and changed)
         val hasEngineFields = stepFields.any { it == "engines" }
         if (hasEngineFields) {
-            println("🔍 Detected Engine Info Step - Updating engines...")
+            println("🔍 Detected Engine Info Step - Updating engines (always sends PUT)...")
 
             val result = updateEngines(requestId, formData)
             return when (result) {
@@ -334,10 +394,11 @@ class RegistrationRequestManager @Inject constructor(
             }
         }
 
-        // Check if this is the Owner Info Step
+        // ✅ Check if this is the Owner Info Step
+        // Always send PUT request (whether first time or user went back and changed)
         val hasOwnerFields = stepFields.any { it == "owners" }
         if (hasOwnerFields) {
-            println("🔍 Detected Owner Info Step - Updating owners...")
+            println("🔍 Detected Owner Info Step - Updating owners (always sends PUT)...")
 
             val result = updateOwners(requestId, formData)
             return when (result) {

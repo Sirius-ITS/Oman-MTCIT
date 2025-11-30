@@ -54,6 +54,7 @@ fun DynamicStepForm(
             "maritimeActivity" -> "marineActivities"
             "proofType" -> "proofTypes"
             "engineCondition" -> "engineStatuses"
+            "fuelTypes" -> "engineFuelTypes"
             "buildingMaterial" -> "buildMaterials"
             else -> null
         }

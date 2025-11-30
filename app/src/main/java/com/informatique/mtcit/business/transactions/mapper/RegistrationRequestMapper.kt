@@ -18,11 +18,13 @@ object RegistrationRequestMapper {
      *
      * @param formData All accumulated form data from previous steps
      * @param requestTypeId The type of registration request (1 = Temporary, 2 = Permanent, etc.)
+     * @param requestId Optional request ID for PUT updates (null for initial POST)
      * @return CreateRegistrationRequest ready to send to API
      */
     fun mapToCreateRegistrationRequest(
         formData: Map<String, String>,
-        requestTypeId: Int
+        requestTypeId: Int,
+        requestId: Int? = null // ✅ NEW: Optional for PUT updates
     ): CreateRegistrationRequest {
 
         // Extract isCompany from person type selection
@@ -71,6 +73,7 @@ object RegistrationRequestMapper {
 
         return CreateRegistrationRequest(
             regShipRegRequestReqDto = RegShipRegRequestReqDto(
+                id = requestId, // ✅ NEW: Include request ID for PUT updates
                 shipInfo = ShipInfo(
                     ship = ship,
                     isCurrent = 0 // Always 0 for now

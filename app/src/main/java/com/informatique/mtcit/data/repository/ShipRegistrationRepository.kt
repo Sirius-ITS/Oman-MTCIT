@@ -24,6 +24,12 @@ interface ShipRegistrationRepository {
     suspend fun createRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse>
 
     /**
+     * Update an existing registration request
+     * Used when user goes back and changes unit selection data
+     */
+    suspend fun updateRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse>
+
+    /**
      * Update ship dimensions
      */
     suspend fun updateDimensions(requestId: String, dimensionsData: UpdateDimensionsRequest): Result<Unit>
@@ -86,6 +92,11 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
     override suspend fun createRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse> {
         println("📞 ShipRegistrationRepository: Calling API service...")
         return registrationApiService.createRegistrationRequest(request)
+    }
+
+    override suspend fun updateRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse> {
+        println("📞 ShipRegistrationRepository: Calling updateRegistrationRequest API...")
+        return registrationApiService.updateRegistrationRequest(request)
     }
 
     override suspend fun updateDimensions(requestId: String, dimensionsData: UpdateDimensionsRequest): Result<Unit> {

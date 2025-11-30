@@ -170,6 +170,42 @@ class LookupApiService @Inject constructor(
     }
 
     /**
+     * Get list of engine fuel type
+     * API: api/v1/coremdshipenginefueltype
+     */
+    suspend fun getEngineFuelTypes(): Result<LookupResponse<FuelType>> {
+        return try {
+            when (val response = repo.onGet("api/v1//api/v1/coremdshipenginefueltype")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val fuelTypes: List<FuelType> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, fuelTypes))
+                        } else {
+                            Result.failure(Exception("Failed to fetch fuel types"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty fuel types response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get fuel types: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get fuel types: ${e.message}"))
+        }
+    }
+
+    /**
      * Get list of proof types
      * API: api/v1/coremdprooftype
      */

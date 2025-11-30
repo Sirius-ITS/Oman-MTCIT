@@ -184,18 +184,18 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     // ✅ Navigate to LoginScreen first
                     // Map transaction ID to transaction type name
                     val transactionTypeName = when (transaction.id) {
+                        4 -> "ISSUE_NAVIGATION_PERMIT"
+                        5 -> "RENEW_NAVIGATION_PERMIT"
+                        6 -> "SUSPEND_REGISTRATION"
                         7 -> "TEMPORARY_REGISTRATION_CERTIFICATE"
                         8 -> "PERMANENT_REGISTRATION_CERTIFICATE"
                         9 -> "REQUEST_INSPECTION"
-//                        10 -> "SUSPEND_REGISTRATION"
                         10 -> "CANCEL_REGISTRATION"
                         12 -> "MORTGAGE_CERTIFICATE"
                         13 -> "RELEASE_MORTGAGE"
-                        4 -> "ISSUE_NAVIGATION_PERMIT"
-                        5 -> "RENEW_NAVIGATION_PERMIT"
                         14 -> "SHIP_NAME_CHANGE"
-                        18 -> "CAPTAIN_NAME_CHANGE"
                         16 -> "SHIP_ACTIVITY_CHANGE"
+                        18 -> "CAPTAIN_NAME_CHANGE"
                         19 -> "SHIP_PORT_CHANGE"
                         21 -> "REQUEST_INSPECTION"
                         else -> "TEMPORARY_REGISTRATION_CERTIFICATE"

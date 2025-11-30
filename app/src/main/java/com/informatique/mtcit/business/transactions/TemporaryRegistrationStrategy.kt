@@ -951,6 +951,17 @@ class TemporaryRegistrationStrategy @Inject constructor(
                         onLookupCompleted?.invoke("engineStatuses", engineStatusOptions, true)
                     }
                 }
+                "engineFuelTypes" -> {
+                    if (engineStatusOptions.isEmpty()) {
+                        println("📥 Loading engine fuel types...")
+                        val data = lookupRepository.getEngineFuelTypes().getOrNull() ?: emptyList()
+                        engineStatusOptions = data
+                        println("✅ Loaded ${engineStatusOptions.size} fuel types")
+                        onLookupCompleted?.invoke("engineFuelTypes", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("engineFuelTypes", engineStatusOptions, true)
+                    }
+                }
                 "buildMaterials" -> {
                     if (buildMaterialOptions.isEmpty()) {
                         println("📥 Loading build materials...")

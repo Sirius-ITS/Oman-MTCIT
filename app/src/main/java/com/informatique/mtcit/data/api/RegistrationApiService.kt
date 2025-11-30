@@ -82,6 +82,61 @@ class RegistrationApiService @Inject constructor(
     }
 
     /**
+     * Update an existing registration request
+     * PUT api/v1/registration-requests/update
+     *
+     * Used when user goes back and changes unit selection data
+     */
+    suspend fun updateRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Updating registration request...")
+            println("📤 Request Body: ${json.encodeToString(request)}")
+
+            // Convert request to JSON string
+            val requestBody = json.encodeToString(request)
+
+            when (val response = repo.onPutAuth("api/v1/registration-requests/update", requestBody)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            // Parse the full response
+                            val registrationResponse: CreateRegistrationResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Registration request updated successfully!")
+                            println("   Request ID: ${registrationResponse.data.id}")
+
+                            Result.success(registrationResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Unknown error"
+                            println("❌ API Error: $message")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(Exception("Empty response"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    Result.failure(Exception(response.error.toString()))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in updateRegistrationRequest: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Update ship dimensions
      * PUT api/v1/registration-requests/{requestId}/dimensions
      */

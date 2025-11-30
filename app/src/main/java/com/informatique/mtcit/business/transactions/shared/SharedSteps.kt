@@ -85,7 +85,7 @@ object SharedSteps {
             titleRes = R.string.engine_title,
             descriptionRes = R.string.engine_description,
             fields = fields,
-            requiredLookups = listOf("countries", "engineStatuses")
+            requiredLookups = listOf("countries", "engineStatuses",  "engineFuelTypes")
         )
     }
 

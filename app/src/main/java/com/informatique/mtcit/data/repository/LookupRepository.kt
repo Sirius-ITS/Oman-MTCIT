@@ -20,6 +20,7 @@ interface LookupRepository {
     suspend fun getShipTypesByCategory(categoryId: Int): Result<List<String>>
     suspend fun getShipCategories(): Result<List<String>>
     suspend fun getEngineStatuses(): Result<List<String>>
+    suspend fun getEngineFuelTypes(): Result<List<String>>
     suspend fun getProofTypes(): Result<List<String>>
     suspend fun getMarineActivities(): Result<List<String>>
     suspend fun getBuildMaterials(): Result<List<String>>
@@ -46,6 +47,7 @@ class LookupRepositoryImpl @Inject constructor(
     private var cachedShipTypes: List<ShipType>? = null
     private var cachedShipCategories: List<ShipCategory>? = null
     private var cachedEngineStatuses: List<EngineStatus>? = null
+    private var cachedEngineFuelTypes: List<FuelType>? = null
     private var cachedProofTypes: List<ProofType>? = null
     private var cachedMarineActivities: List<MarineActivity>? = null
     private var cachedBuildMaterials: List<BuildMaterial>? = null
@@ -195,6 +197,31 @@ class LookupRepositoryImpl @Inject constructor(
                         Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
                     } else {
                         Result.failure(Exception(response.message ?: "Failed to fetch engine statuses"))
+                    }
+                },
+                onFailure = { exception ->
+                    Result.failure(exception)
+                }
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getEngineFuelTypes(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            if (cachedEngineFuelTypes != null) {
+                return@withContext Result.success(cachedEngineFuelTypes!!.map { getLocalizedName(it.nameAr, it.nameEn) })
+            }
+
+            val result = apiService.getEngineFuelTypes()
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success) {
+                        cachedEngineFuelTypes = response.data
+                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                    } else {
+                        Result.failure(Exception(response.message ?: "Failed to fetch fuel types"))
                     }
                 },
                 onFailure = { exception ->
