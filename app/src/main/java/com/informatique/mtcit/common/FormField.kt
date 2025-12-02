@@ -190,6 +190,7 @@ sealed class FormField(
         override val label: String = "",
         override val labelRes: Int = 0,
         override val value: String = "[]",
+        val engineTypes: List<String> = emptyList(),
         val manufacturers: List<String> = emptyList(),
         val countries: List<String> = emptyList(),
         val fuelTypes: List<String> = emptyList(),

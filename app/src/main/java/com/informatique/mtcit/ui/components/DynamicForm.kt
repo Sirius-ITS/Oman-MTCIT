@@ -254,6 +254,7 @@ fun DynamicStepForm(
 
                             EngineListManager(
                                 engines = engines,
+                                engineTypes = field.engineTypes, // ✅ Pass engineTypes
                                 manufacturers = field.manufacturers,
                                 countries = field.countries,
                                 fuelTypes = field.fuelTypes,

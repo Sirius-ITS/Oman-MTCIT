@@ -133,7 +133,7 @@ class ShipRegistrationStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         // No additional processing needed for ship registration
         return step
     }

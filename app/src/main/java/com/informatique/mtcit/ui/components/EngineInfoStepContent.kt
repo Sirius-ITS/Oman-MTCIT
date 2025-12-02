@@ -53,6 +53,7 @@ fun EngineFormBottomSheet(
     countries: List<String>,
     fuelTypes: List<String>,
     engineConditions: List<String>,
+    engineTypes: List<String>, // Added engineTypes parameter
     onDismiss: () -> Unit,
     onSave: (EngineData) -> Unit
 ) {
@@ -125,14 +126,14 @@ fun EngineFormBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Type
-            CustomTextField(
-                value = type,
-                onValueChange = { type = it },
+            // Type - Changed to Dropdown
+            CustomDropdown(
                 label = localizedApp(R.string.engine_type_title),
+                options = engineTypes,
+                selectedOption = type,
+                onOptionSelected = { type = it },
                 mandatory = true,
-                placeholder = localizedApp(R.string.engine_type_title),
-                enabled = true,
+                placeholder = type.ifEmpty { localizedApp(R.string.engine_type_title) },
                 maxLength = 50
             )
 
@@ -169,13 +170,12 @@ fun EngineFormBottomSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Manufacturer
-            CustomDropdown(
+            CustomTextField(
+                value = manufacturer,
+                onValueChange = { manufacturer = it },
                 label = localizedApp(R.string.engine_manufacturer_title),
-                options = manufacturers,
-                selectedOption = manufacturer,
-                onOptionSelected = { manufacturer = it },
+                placeholder = localizedApp(R.string.engine_manufacturer_title),
                 mandatory = true,
-                placeholder = manufacturer.ifEmpty { localizedApp(R.string.engine_manufacturer_title) },
                 maxLength = 50
             )
 

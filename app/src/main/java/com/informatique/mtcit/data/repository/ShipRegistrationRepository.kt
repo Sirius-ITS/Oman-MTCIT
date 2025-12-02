@@ -1,8 +1,15 @@
 package com.informatique.mtcit.data.repository
 
+import android.content.Context
 import com.informatique.mtcit.data.api.RegistrationApiService
 import com.informatique.mtcit.data.model.CreateRegistrationRequest
 import com.informatique.mtcit.data.model.CreateRegistrationResponse
+import com.informatique.mtcit.data.model.EngineFileUpload
+import com.informatique.mtcit.data.model.EngineSubmissionRequest
+import com.informatique.mtcit.data.model.EngineSubmissionResponse
+import com.informatique.mtcit.data.model.OwnerFileUpload
+import com.informatique.mtcit.data.model.OwnerSubmissionRequest
+import com.informatique.mtcit.data.model.OwnerSubmissionResponse
 import com.informatique.mtcit.data.model.UpdateDimensionsRequest
 import com.informatique.mtcit.data.model.UpdateWeightsRequest
 import javax.inject.Inject
@@ -40,14 +47,46 @@ interface ShipRegistrationRepository {
     suspend fun updateWeights(requestId: String, weightsData: UpdateWeightsRequest): Result<Unit>
 
     /**
-     * Update ship engines
+     * Update ship engines (OLD - JSON only)
      */
     suspend fun updateEngines(requestId: String, enginesJson: String): Result<Unit>
+
+    /**
+     * Submit engines with documents (NEW - multipart with files)
+     */
+    suspend fun submitEngines(
+        context: Context,
+        requestId: Int,
+        engines: List<EngineSubmissionRequest>,
+        files: List<EngineFileUpload>
+    ): Result<EngineSubmissionResponse>
 
     /**
      * Update ship owners
      */
     suspend fun updateOwners(requestId: String, ownersJson: String): Result<Unit>
+
+    /**
+     * Submit owners with documents (NEW - multipart with files)
+     */
+    suspend fun submitOwners(
+        context: Context,
+        requestId: Int,
+        owners: List<OwnerSubmissionRequest>,
+        files: List<OwnerFileUpload>
+    ): Result<OwnerSubmissionResponse>
+
+    /**
+     * Validate build status documents (NEW - multipart with files)
+     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     */
+    suspend fun validateBuildStatus(
+        requestId: Int,
+        shipbuildingCertificateFile: ByteArray?,
+        shipbuildingCertificateName: String?,
+        inspectionDocumentsFile: ByteArray?,
+        inspectionDocumentsName: String?
+    ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
 }
 
 @Singleton
@@ -114,8 +153,45 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         return registrationApiService.updateEngines(requestId, enginesJson)
     }
 
+    override suspend fun submitEngines(
+        context: Context,
+        requestId: Int,
+        engines: List<EngineSubmissionRequest>,
+        files: List<EngineFileUpload>
+    ): Result<EngineSubmissionResponse> {
+        println("📞 ShipRegistrationRepository: Calling submitEngines API...")
+        return registrationApiService.submitEngines(context, requestId, engines, files)
+    }
+
     override suspend fun updateOwners(requestId: String, ownersJson: String): Result<Unit> {
         println("📞 ShipRegistrationRepository: Calling updateOwners API...")
         return registrationApiService.updateOwners(requestId, ownersJson)
+    }
+
+    override suspend fun submitOwners(
+        context: Context,
+        requestId: Int,
+        owners: List<OwnerSubmissionRequest>,
+        files: List<OwnerFileUpload>
+    ): Result<OwnerSubmissionResponse> {
+        println("📞 ShipRegistrationRepository: Calling submitOwners API...")
+        return registrationApiService.submitOwners(context, requestId, owners, files)
+    }
+
+    override suspend fun validateBuildStatus(
+        requestId: Int,
+        shipbuildingCertificateFile: ByteArray?,
+        shipbuildingCertificateName: String?,
+        inspectionDocumentsFile: ByteArray?,
+        inspectionDocumentsName: String?
+    ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse> {
+        println("📞 ShipRegistrationRepository: Calling validateBuildStatus API...")
+        return registrationApiService.validateBuildStatus(
+            requestId,
+            shipbuildingCertificateFile,
+            shipbuildingCertificateName,
+            inspectionDocumentsFile,
+            inspectionDocumentsName
+        )
     }
 }

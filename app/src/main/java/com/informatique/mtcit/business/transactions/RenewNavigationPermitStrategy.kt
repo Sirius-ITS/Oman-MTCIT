@@ -156,7 +156,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         // ✅ Accumulate form data for dynamic step logic
         accumulatedFormData.putAll(data)
         println("📦 RenewNavigationPermit - Accumulated data: $accumulatedFormData")
@@ -173,8 +173,8 @@ class RenewNavigationPermitStrategy @Inject constructor(
             return -1
             */
             // ✅ For now, continue normal flow
+            return step
         }
-
         return step
     }
 

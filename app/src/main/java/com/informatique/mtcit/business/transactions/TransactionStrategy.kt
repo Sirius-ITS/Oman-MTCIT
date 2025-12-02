@@ -35,9 +35,9 @@ interface TransactionStrategy {
      * Process and transform step data before moving to next step
      * @param step Current step index
      * @param data Form data
+     * @return Required next step index (normally returns same step, or -1 to stop flow)
      */
-    // fun processStepData(step: Int, data: Map<String, String>): Map<String, String>
-    fun processStepData(step: Int, data: Map<String, String>): Int
+    suspend fun processStepData(step: Int, data: Map<String, String>): Int
 
     /**
      * Submit the transaction

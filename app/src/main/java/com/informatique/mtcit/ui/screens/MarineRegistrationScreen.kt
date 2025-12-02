@@ -54,6 +54,8 @@ fun MarineRegistrationScreen(
     LaunchedEffect(requestId) {
         if (requestId != null) {
             println("🎬 MarineRegistrationScreen mounted with requestId: $requestId - will complete resume")
+            // ✅ Set context BEFORE resuming
+            viewModel.setContext(context)
             viewModel.setRequestIdAndCompleteResume(requestId)
         } else {
             println("🎬 MarineRegistrationScreen mounted - no requestId provided")
@@ -61,11 +63,13 @@ fun MarineRegistrationScreen(
     }
 
     // Initialize transaction type on first composition
-    // ✅ IMPORTANT: Only initialize if NOT resuming a transaction
+    // ✅ IMPORTANT: Set context BEFORE initializing, and only initialize if NOT resuming a transaction
     LaunchedEffect(transactionType, isResuming, requestId) {
         // Check if we're currently resuming - if yes, skip normal initialization
         if (!isResuming && requestId == null) {
             println("🆕 Normal initialization for transaction type: $transactionType")
+            // ✅ CRITICAL: Set context BEFORE initializing transaction
+            viewModel.setContext(context)
             viewModel.initializeTransaction(transactionType)
         } else {
             println("⏭️ Skipping normal initialization - resume in progress (isResuming=$isResuming, requestId=$requestId)")

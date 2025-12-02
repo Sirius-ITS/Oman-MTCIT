@@ -180,7 +180,7 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
         return rules
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         println("🔄 processStepData called with: $data")
 
         // ✅ Update accumulated data

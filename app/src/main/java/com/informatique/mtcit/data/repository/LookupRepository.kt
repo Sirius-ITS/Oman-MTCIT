@@ -19,6 +19,7 @@ interface LookupRepository {
     suspend fun getShipTypes(): Result<List<String>>
     suspend fun getShipTypesByCategory(categoryId: Int): Result<List<String>>
     suspend fun getShipCategories(): Result<List<String>>
+    suspend fun getEngineTypes(): Result<List<String>>
     suspend fun getEngineStatuses(): Result<List<String>>
     suspend fun getEngineFuelTypes(): Result<List<String>>
     suspend fun getProofTypes(): Result<List<String>>
@@ -33,6 +34,12 @@ interface LookupRepository {
     // NEW: Get category ID from category name for cascading dropdowns
     fun getShipCategoryId(categoryName: String): Int?
 
+    // ✅ NEW: Get raw lookup objects (with id, nameEn, nameAr) for engine submission
+    suspend fun getEngineTypesRaw(): List<EngineType>
+    suspend fun getCountriesRaw(): List<Country>
+    suspend fun getFuelTypesRaw(): List<FuelType>
+    suspend fun getEngineStatusesRaw(): List<EngineStatus>
+
     fun clearCache()
 }
 
@@ -46,6 +53,7 @@ class LookupRepositoryImpl @Inject constructor(
     private var cachedCountries: List<Country>? = null
     private var cachedShipTypes: List<ShipType>? = null
     private var cachedShipCategories: List<ShipCategory>? = null
+    private var cachedEngineTypes: List<EngineType>? = null
     private var cachedEngineStatuses: List<EngineStatus>? = null
     private var cachedEngineFuelTypes: List<FuelType>? = null
     private var cachedProofTypes: List<ProofType>? = null
@@ -172,6 +180,31 @@ class LookupRepositoryImpl @Inject constructor(
                         Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
                     } else {
                         Result.failure(Exception(response.message ?: "Failed to fetch ship categories"))
+                    }
+                },
+                onFailure = { exception ->
+                    Result.failure(exception)
+                }
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getEngineTypes(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            if (cachedEngineTypes != null) {
+                return@withContext Result.success(cachedEngineTypes!!.map { getLocalizedName(it.nameAr, it.nameEn) })
+            }
+
+            val result = apiService.getEngineTypes()
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success) {
+                        cachedEngineTypes = response.data
+                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                    } else {
+                        Result.failure(Exception(response.message ?: "Failed to fetch engine types"))
                     }
                 },
                 onFailure = { exception ->
@@ -414,5 +447,124 @@ class LookupRepositoryImpl @Inject constructor(
      */
     override fun getShipCategoryId(categoryName: String): Int? {
         return cachedShipCategories?.find { getLocalizedName(it.nameAr, it.nameEn) == categoryName }?.id
+    }
+
+    /**
+     * Get raw lookup objects (with id, nameEn, nameAr) for engine submission
+     */
+    override suspend fun getEngineTypesRaw(): List<EngineType> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Use cached data if available
+                if (cachedEngineTypes != null) {
+                    return@withContext cachedEngineTypes!!
+                }
+
+                // Otherwise, fetch from API
+                val result = apiService.getEngineTypes()
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            cachedEngineTypes = response.data
+                            response.data
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    onFailure = {
+                        emptyList()
+                    }
+                )
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    override suspend fun getCountriesRaw(): List<Country> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Use cached data if available
+                if (cachedCountries != null) {
+                    return@withContext cachedCountries!!
+                }
+
+                // Otherwise, fetch from API
+                val result = apiService.getCountries()
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            cachedCountries = response.data
+                            response.data
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    onFailure = {
+                        emptyList()
+                    }
+                )
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    override suspend fun getFuelTypesRaw(): List<FuelType> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Use cached data if available
+                if (cachedEngineFuelTypes != null) {
+                    return@withContext cachedEngineFuelTypes!!
+                }
+
+                // Otherwise, fetch from API
+                val result = apiService.getEngineFuelTypes()
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            cachedEngineFuelTypes = response.data
+                            response.data
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    onFailure = {
+                        emptyList()
+                    }
+                )
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    override suspend fun getEngineStatusesRaw(): List<EngineStatus> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Use cached data if available
+                if (cachedEngineStatuses != null) {
+                    return@withContext cachedEngineStatuses!!
+                }
+
+                // Otherwise, fetch from API
+                val result = apiService.getEngineStatuses()
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            cachedEngineStatuses = response.data
+                            response.data
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    onFailure = {
+                        emptyList()
+                    }
+                )
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
     }
 }

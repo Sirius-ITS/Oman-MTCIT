@@ -100,7 +100,7 @@ class LoginStrategy @Inject constructor(
         return emptyList()
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         println("📝 LoginStrategy.processStepData() - Step: $step")
         println("📝 LoginStrategy.processStepData() - Input data: $data")
         println("📝 LoginStrategy.processStepData() - Before: $accumulatedFormData")
@@ -109,8 +109,6 @@ class LoginStrategy @Inject constructor(
         accumulatedFormData.putAll(data)
 
         println("📝 LoginStrategy.processStepData() - After: $accumulatedFormData")
-        println("📝 LoginStrategy.processStepData() - registrationMethod: ${accumulatedFormData["registrationMethod"]}")
-        println("📝 LoginStrategy.processStepData() - mobilePhoneNumber: ${accumulatedFormData["mobilePhoneNumber"]}")
 
         return step
     }
@@ -127,4 +125,3 @@ class LoginStrategy @Inject constructor(
         return Result.success(true)
     }
 }
-

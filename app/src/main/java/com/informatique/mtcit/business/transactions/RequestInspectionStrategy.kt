@@ -39,6 +39,8 @@ class RequestInspectionStrategy @Inject constructor(
     private var shipCategoryOptions: List<String> = emptyList()
     private var marineActivityOptions: List<String> = emptyList()
     private var proofTypeOptions: List<String> = emptyList()
+    private var engineTypeOptions: List<String> = emptyList()
+    private var engineFuelTypeOptions: List<String> = emptyList()
     private var engineStatusOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
@@ -208,15 +210,10 @@ class RequestInspectionStrategy @Inject constructor(
                         "Manufacturer 2",
                         "Manufacturer 3"
                     ),
+                    enginesTypes = engineTypeOptions,
                     countries = countryOptions,
-                    fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
-                    engineConditions = listOf(
-                        "New",
-                        "Used - Like New",
-                        "Used - Good",
-                        "Used - Fair",
-                        "Used - Poor"
-                    ),
+                    fuelTypes = engineFuelTypeOptions,
+                    engineConditions = engineStatusOptions,
                 )
             )
 
@@ -373,7 +370,7 @@ class RequestInspectionStrategy @Inject constructor(
         return rules
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         println("🔄 processStepData called with: $data")
 
         // ✅ Update accumulated data

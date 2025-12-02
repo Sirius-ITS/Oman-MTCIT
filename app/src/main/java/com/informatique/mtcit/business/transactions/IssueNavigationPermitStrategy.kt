@@ -84,7 +84,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
             return 2
         } else if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){
@@ -97,6 +97,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
             return -1
             */
             // ✅ For now, continue normal flow
+            return step
         }
         return step
     }

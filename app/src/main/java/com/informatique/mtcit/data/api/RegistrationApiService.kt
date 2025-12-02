@@ -1,11 +1,24 @@
 package com.informatique.mtcit.data.api
 
+import android.content.Context
 import com.informatique.mtcit.data.model.CreateRegistrationRequest
 import com.informatique.mtcit.data.model.CreateRegistrationResponse
+import com.informatique.mtcit.data.model.DocumentValidationResponse
+import com.informatique.mtcit.data.model.EngineFileUpload
+import com.informatique.mtcit.data.model.EngineSubmissionRequest
+import com.informatique.mtcit.data.model.EngineSubmissionResponse
+import com.informatique.mtcit.data.model.OwnerFileUpload
+import com.informatique.mtcit.data.model.OwnerSubmissionRequest
+import com.informatique.mtcit.data.model.OwnerSubmissionResponse
 import com.informatique.mtcit.data.model.UpdateDimensionsRequest
 import com.informatique.mtcit.data.model.UpdateWeightsRequest
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
+import io.ktor.http.content.PartData
+import io.ktor.utils.io.core.Input
+import io.ktor.utils.io.streams.asInput
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
@@ -230,10 +243,11 @@ class RegistrationApiService @Inject constructor(
      */
     suspend fun updateEngines(requestId: String, enginesJson: String): Result<Unit> {
         return try {
-            println("🚀 RegistrationApiService: Updating engines for requestId=$requestId...")
+            println("🚀 RegistrationApiService: Submitting engines for requestId=$requestId...")
             println("📤 Request Body: $enginesJson")
 
-            when (val response = repo.onPutAuth("api/v1/registration-requests/$requestId/engines", enginesJson)) {
+            // ✅ FIXED: Changed from onPutAuth to onPostAuth because backend only supports POST
+            when (val response = repo.onPostAuth("api/v1/registration-requests/$requestId/engines", enginesJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Engines API Response: $responseJson")
@@ -242,11 +256,11 @@ class RegistrationApiService @Inject constructor(
                         val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
 
                         if (statusCode == 200 || statusCode == 201) {
-                            println("✅ Engines updated successfully!")
+                            println("✅ Engines submitted successfully!")
                             Result.success(Unit)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "Failed to update engines"
+                                ?: "Failed to submit engines"
                             println("❌ API returned error: $message")
                             Result.failure(Exception(message))
                         }
@@ -305,6 +319,301 @@ class RegistrationApiService @Inject constructor(
             println("❌ Exception in updateOwners: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Submit engines with documents (multipart/form-data)
+     * POST api/v1/registration-requests/{requestId}/engines
+     *
+     * This API consumes form-data with:
+     * - dto: JSON array of engines
+     * - files: Multipart files (mapped by docOwnerId)
+     */
+    suspend fun submitEngines(
+        context: Context,
+        requestId: Int,
+        engines: List<EngineSubmissionRequest>,
+        files: List<EngineFileUpload>
+    ): Result<EngineSubmissionResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Submitting engines for requestId=$requestId...")
+            println("📊 Engines count: ${engines.size}")
+            println("📎 Files count: ${files.size}")
+
+            // Build multipart form data
+            val formData = mutableListOf<PartData>()
+
+            // 1. Add DTO part (JSON array of engines)
+            val enginesJson = json.encodeToString(engines)
+            println("📤 Engines DTO: $enginesJson")
+
+            formData.add(
+                PartData.FormItem(
+                    value = enginesJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            // 2. Add file parts
+            files.forEach { fileUpload ->
+                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes)")
+
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { fileUpload.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${fileUpload.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, fileUpload.mimeType)
+                        }
+                    )
+                )
+            }
+
+            // 3. Send the multipart request
+            val url = "api/v1/registration-requests/$requestId/engines"
+            when (val response = repo.onPostMultipart(url, formData)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Engines submission response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            val engineResponse: EngineSubmissionResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Engines submitted successfully!")
+                            println("   Engines created: ${engineResponse.data?.size ?: 0}")
+
+                            Result.success(engineResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to submit engines"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    Result.failure(Exception("API Error: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in submitEngines: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to submit engines: ${e.message}"))
+        }
+    }
+
+    /**
+     * Submit owners with documents (multipart/form-data)
+     * POST api/v1/registration-requests/{requestId}/owners
+     *
+     * This API consumes form-data with:
+     * - dto: JSON array of owners
+     * - files: Multipart files (mapped by docOwnerId)
+     */
+    suspend fun submitOwners(
+        context: Context,
+        requestId: Int,
+        owners: List<OwnerSubmissionRequest>,
+        files: List<OwnerFileUpload>
+    ): Result<OwnerSubmissionResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Submitting owners for requestId=$requestId...")
+            println("📊 Owners count: ${owners.size}")
+            println("📎 Files count: ${files.size}")
+
+            // Build multipart form data
+            val formData = mutableListOf<PartData>()
+
+            // 1. Add DTO part (JSON array of owners)
+            val ownersJson = json.encodeToString(owners)
+            println("📤 Owners DTO: $ownersJson")
+
+            formData.add(
+                PartData.FormItem(
+                    value = ownersJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            // 2. Add file parts
+            files.forEach { fileUpload ->
+                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes)")
+
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { fileUpload.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${fileUpload.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, fileUpload.mimeType)
+                        }
+                    )
+                )
+            }
+
+            // 3. Send the multipart request
+            val url = "api/v1/registration-requests/$requestId/owners"
+            when (val response = repo.onPostMultipart(url, formData)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Owners submission response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            val ownerResponse: OwnerSubmissionResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Owners submitted successfully!")
+                            println("   Owners created: ${ownerResponse.data?.size ?: 0}")
+
+                            Result.success(ownerResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to submit owners"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    Result.failure(Exception("API Error: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in submitOwners: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to submit owners: ${e.message}"))
+        }
+    }
+
+    /**
+     * Validate build status documents
+     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     *
+     * Multipart request with:
+     * - shipbuildingCertificate: File (optional)
+     * - inspectionDocuments: File (optional)
+     */
+    suspend fun validateBuildStatus(
+        requestId: Int,
+        shipbuildingCertificateFile: ByteArray?,
+        shipbuildingCertificateName: String?,
+        inspectionDocumentsFile: ByteArray?,
+        inspectionDocumentsName: String?
+    ): Result<DocumentValidationResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Validating build status for requestId=$requestId...")
+            println("📎 Shipbuilding Certificate: ${shipbuildingCertificateName ?: "Not provided"}")
+            println("📎 Inspection Documents: ${inspectionDocumentsName ?: "Not provided"}")
+
+            // Build multipart form data
+            val formData = mutableListOf<PartData>()
+
+            // Add shipbuilding certificate if provided (as 'files' array element)
+            if (shipbuildingCertificateFile != null && shipbuildingCertificateName != null) {
+                println("📎 Adding shipbuilding certificate: $shipbuildingCertificateName (${shipbuildingCertificateFile.size} bytes)")
+
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { shipbuildingCertificateFile.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"$shipbuildingCertificateName\""
+                            )
+                            append(HttpHeaders.ContentType, "application/pdf")
+                        }
+                    )
+                )
+            }
+
+            // Add inspection documents if provided (as 'files' array element)
+            if (inspectionDocumentsFile != null && inspectionDocumentsName != null) {
+                println("📎 Adding inspection documents: $inspectionDocumentsName (${inspectionDocumentsFile.size} bytes)")
+
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { inspectionDocumentsFile.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"$inspectionDocumentsName\""
+                            )
+                            append(HttpHeaders.ContentType, "application/pdf")
+                        }
+                    )
+                )
+            }
+
+            // Send the multipart request
+            val url = "api/v1/registration-requests/$requestId/validate-build-status"
+            when (val response = repo.onPostMultipart(url, formData)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Build status validation response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            val validationResponse: DocumentValidationResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Build status validated successfully!")
+
+                            Result.success(validationResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to validate build status"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    Result.failure(Exception("API Error: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in validateBuildStatus: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to validate build status: ${e.message}"))
         }
     }
 }

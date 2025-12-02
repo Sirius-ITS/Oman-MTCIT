@@ -80,6 +80,9 @@ abstract class BaseTransactionViewModel(
     // Current transaction strategy
     protected var currentStrategy: TransactionStrategy? = null
 
+    // ✅ NEW: Store Android context for strategies that need it
+    private var androidContext: android.content.Context? = null
+
     private val _showToastEvent = MutableStateFlow<String?>(null)
     val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
 
@@ -98,6 +101,37 @@ abstract class BaseTransactionViewModel(
     protected abstract suspend fun createStrategy(transactionType: TransactionType): TransactionStrategy
 
     /**
+     * ✅ NEW: Set Android context for strategies that need it (e.g., for file uploads)
+     * Must be called from the UI layer before initializing transaction
+     */
+    fun setContext(context: android.content.Context) {
+        androidContext = context
+        println("✅ Android context stored in ViewModel")
+
+        // If strategy already exists, set its context immediately
+        applyContextToStrategy()
+    }
+
+    /**
+     * Apply stored Android context to current strategy if applicable
+     */
+    private fun applyContextToStrategy() {
+        val context = androidContext ?: return
+        val strategy = currentStrategy ?: return
+
+        when (strategy) {
+            is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy -> {
+                strategy.context = context
+                println("✅ Context set for TemporaryRegistrationStrategy")
+            }
+            is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy -> {
+                strategy.context = context
+                println("✅ Context set for PermanentRegistrationStrategy")
+            }
+        }
+    }
+
+    /**
      * Initialize transaction with specific type
      * This must be called before using the ViewModel
      */
@@ -108,6 +142,9 @@ abstract class BaseTransactionViewModel(
             try {
                 // Create category-specific strategy
                 currentStrategy = createStrategy(transactionType)
+
+                // ✅ CRITICAL: Apply Android context to strategy immediately after creation
+                applyContextToStrategy()
 
                 // ✅ Set up callback to rebuild steps when lookups are loaded (generic for all strategies)
                 currentStrategy?.onStepsNeedRebuild = {

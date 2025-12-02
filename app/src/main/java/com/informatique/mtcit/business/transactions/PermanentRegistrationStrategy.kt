@@ -36,6 +36,9 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val registrationRequestManager: RegistrationRequestManager
 ) : TransactionStrategy {
 
+    // ✅ Context for file operations (set from UI layer)
+    var context: android.content.Context? = null
+
     // Cache for loaded dropdown options
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -43,6 +46,8 @@ class PermanentRegistrationStrategy @Inject constructor(
     private var shipCategoryOptions: List<String> = emptyList()
     private var marineActivityOptions: List<String> = emptyList()
     private var proofTypeOptions: List<String> = emptyList()
+    private var engineTypeOptions: List<String> = emptyList()
+    private var engineFuelTypeOptions: List<String> = emptyList()
     private var engineStatusOptions: List<String> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
@@ -209,15 +214,10 @@ class PermanentRegistrationStrategy @Inject constructor(
                         "Manufacturer 2",
                         "Manufacturer 3"
                     ),
+                    enginesTypes = engineTypeOptions,
                     countries = countryOptions,
-                    fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
-                    engineConditions = listOf(
-                        "New",
-                        "Used - Like New",
-                        "Used - Good",
-                        "Used - Fair",
-                        "Used - Poor"
-                    ),
+                    fuelTypes = engineFuelTypeOptions,
+                    engineConditions = engineStatusOptions,
                 )
             )
 //            }
@@ -314,29 +314,27 @@ class PermanentRegistrationStrategy @Inject constructor(
         return rules
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
-        println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        println("💾 Processing Step $step Data: $data")
-        println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
+        println("🔄 processStepData called with: $data")
 
-        // ✅ احفظ الـ data في الـ cache
+        // ✅ Update accumulated data
         accumulatedFormData.putAll(data)
 
-        println("📦 Accumulated Data After Update: $accumulatedFormData")
+        println("📦 accumulatedFormData after update: $accumulatedFormData")
 
         // ✅ Use RegistrationRequestManager to process step data
         val currentStepData = getSteps().getOrNull(step)
         if (currentStepData != null) {
             val stepFieldIds = currentStepData.fields.map { it.id }
 
-            // Call the manager in a blocking manner (we're already in the right context)
-            val result = kotlinx.coroutines.runBlocking {
-                registrationRequestManager.processStepIfNeeded(
-                    stepFields = stepFieldIds,
-                    formData = accumulatedFormData,
-                    requestTypeId = 2 // 2 = Permanent Registration
-                )
-            }
+            // ✅ FIXED: Now this is a suspend function, so we can call processStepIfNeeded directly
+            // No more runBlocking - this will run asynchronously without freezing the UI!
+            val result = registrationRequestManager.processStepIfNeeded(
+                stepFields = stepFieldIds,
+                formData = accumulatedFormData,
+                requestTypeId = 2, // 2 = Permanent Registration
+                context = context // Pass the context here
+            )
 
             when (result) {
                 is StepProcessResult.Success -> {

@@ -41,12 +41,17 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val registrationRequestManager: RegistrationRequestManager
 ) : TransactionStrategy, MarineUnitValidatable {
 
+    // ✅ Context for file operations (set from UI layer)
+    var context: android.content.Context? = null
+
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
     private var shipCategoryOptions: List<String> = emptyList()
     private var marineActivityOptions: List<String> = emptyList()
     private var proofTypeOptions: List<String> = emptyList()
+    private var engineTypeOptions: List<String> = emptyList()
+    private var engineFuelTypeOptions: List<String> = emptyList()
     private var engineStatusOptions: List<String> = emptyList()
     private var buildMaterialOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
@@ -211,26 +216,26 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             println("🔧 getSteps - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}")
 
-//            steps.add(
-//                SharedSteps.unitSelectionStep(
-//                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
-//                    shipCategories = shipCategoryOptions,
-//                    ports = portOptions,
-//                    countries = countryOptions,
-//                    marineActivities = marineActivityOptions,
-//                    proofTypes = proofTypeOptions,
-//                    buildingMaterials = buildMaterialOptions, // ✅ Now uses loaded options
-//                    includeIMO = true,
-//                    includeMMSI = true,
-//                    includeManufacturer = true,
-//                    includeProofDocument = false,
-//                    includeConstructionDates = true,
-//                    includeRegistrationCountry = true,
-//                    isFishingBoat = isFishingBoat,
-//                    fishingBoatDataLoaded = fishingBoatDataLoaded
-//                )
-//            )
-//
+            steps.add(
+                SharedSteps.unitSelectionStep(
+                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
+                    shipCategories = shipCategoryOptions,
+                    ports = portOptions,
+                    countries = countryOptions,
+                    marineActivities = marineActivityOptions,
+                    proofTypes = proofTypeOptions,
+                    buildingMaterials = buildMaterialOptions, // ✅ Now uses loaded options
+                    includeIMO = true,
+                    includeMMSI = true,
+                    includeManufacturer = true,
+                    includeProofDocument = false,
+                    includeConstructionDates = true,
+                    includeRegistrationCountry = true,
+                    isFishingBoat = isFishingBoat,
+                    fishingBoatDataLoaded = fishingBoatDataLoaded
+                )
+            )
+
             steps.add(
                 SharedSteps.marineUnitDimensionsStep(
                     includeHeight = true,
@@ -243,27 +248,28 @@ class TemporaryRegistrationStrategy @Inject constructor(
 //                    includeMaxPermittedLoad = true
 //                )
 //            )
-
-            steps.add(
-                SharedSteps.engineInfoStep(
-                    manufacturers = listOf(
-                        "Manufacturer 1",
-                        "Manufacturer 2",
-                        "Manufacturer 3"
-                    ),
-                    countries = countryOptions,
-                    fuelTypes = listOf("Gas 80", "Gas 90", "Gas 95", "Diesel", "Electric"),
-                    engineConditions = engineStatusOptions,
-                )
-            )
-
-            steps.add(
-                SharedSteps.ownerInfoStep(
-                    nationalities = countryOptions,
-                    countries = countryOptions,
-                    includeCompanyFields = true,
-                )
-            )
+//
+//            steps.add(
+//                SharedSteps.engineInfoStep(
+//                    manufacturers = listOf(
+//                        "Manufacturer 1",
+//                        "Manufacturer 2",
+//                        "Manufacturer 3"
+//                    ),
+//                    enginesTypes = engineTypeOptions,
+//                    countries = countryOptions,
+//                    fuelTypes = engineFuelTypeOptions,
+//                    engineConditions = engineStatusOptions,
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.ownerInfoStep(
+//                    nationalities = countryOptions,
+//                    countries = countryOptions,
+//                    includeCompanyFields = true,
+//                )
+//            )
 
             // ✅ Check overallLength to determine if inspection documents are mandatory
             val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
@@ -401,7 +407,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
         return rules
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         println("🔄 processStepData called with: $data")
 
         // ✅ Update accumulated data
@@ -414,14 +420,14 @@ class TemporaryRegistrationStrategy @Inject constructor(
         if (currentStepData != null) {
             val stepFieldIds = currentStepData.fields.map { it.id }
 
-            // Call the manager in a blocking manner (we're already in the right context)
-            val result = kotlinx.coroutines.runBlocking {
-                registrationRequestManager.processStepIfNeeded(
-                    stepFields = stepFieldIds,
-                    formData = accumulatedFormData,
-                    requestTypeId = 1 // 1 = Temporary Registration
-                )
-            }
+            // ✅ FIXED: Now this is a suspend function, so we can call processStepIfNeeded directly
+            // No more runBlocking - this will run asynchronously without freezing the UI!
+            val result = registrationRequestManager.processStepIfNeeded(
+                stepFields = stepFieldIds,
+                formData = accumulatedFormData,
+                requestTypeId = 1, // 1 = Temporary Registration
+                context = context // Pass the context here
+            )
 
             when (result) {
                 is StepProcessResult.Success -> {
@@ -945,6 +951,17 @@ class TemporaryRegistrationStrategy @Inject constructor(
                         onLookupCompleted?.invoke("proofTypes", proofTypeOptions, true)
                     }
                 }
+                "engineTypes" -> {
+                    if (engineTypeOptions.isEmpty()) {
+                        println("📥 Loading engine types...")
+                        val data = lookupRepository.getEngineTypes().getOrNull() ?: emptyList()
+                        engineTypeOptions = data
+                        println("✅ Loaded ${engineTypeOptions.size} engine types")
+                        onLookupCompleted?.invoke("engineTypes", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("engineTypes", engineTypeOptions, true)
+                    }
+                }
                 "engineStatuses" -> {
                     if (engineStatusOptions.isEmpty()) {
                         println("📥 Loading engine statuses...")
@@ -957,14 +974,14 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     }
                 }
                 "engineFuelTypes" -> {
-                    if (engineStatusOptions.isEmpty()) {
+                    if (engineFuelTypeOptions.isEmpty()) {
                         println("📥 Loading engine fuel types...")
                         val data = lookupRepository.getEngineFuelTypes().getOrNull() ?: emptyList()
-                        engineStatusOptions = data
-                        println("✅ Loaded ${engineStatusOptions.size} fuel types")
+                        engineFuelTypeOptions = data
+                        println("✅ Loaded ${engineFuelTypeOptions.size} fuel types")
                         onLookupCompleted?.invoke("engineFuelTypes", data, true)
                     } else {
-                        onLookupCompleted?.invoke("engineFuelTypes", engineStatusOptions, true)
+                        onLookupCompleted?.invoke("engineFuelTypes", engineFuelTypeOptions, true)
                     }
                 }
                 "buildMaterials" -> {

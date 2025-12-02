@@ -37,6 +37,7 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 fun EngineListManager(
     modifier: Modifier = Modifier,
     engines: List<EngineData>,
+    engineTypes: List<String>, // ✅ NEW: Engine types parameter
     manufacturers: List<String>,
     countries: List<String>,
     fuelTypes: List<String>,
@@ -122,6 +123,7 @@ fun EngineListManager(
             countries = countries,
             fuelTypes = fuelTypes,
             engineConditions = conditions,
+            engineTypes = engineTypes, // Pass the new engineTypes parameter
             onDismiss = { showBottomSheet = false },
             onSave = { engineData ->
                 if (editingEngine != null) {

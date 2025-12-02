@@ -166,7 +166,9 @@ class CancelRegistrationStrategy @Inject constructor(
         return validationUseCase.validateStep(stepData, formData)
     }
 
-    override fun processStepData(step: Int, data: Map<String, String>): Int {
+    override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
+        println("🔄 processStepData called with: $data")
+
         // ✅ Accumulate form data for dynamic step logic
         accumulatedFormData.putAll(data)
         println("📦 CancelRegistration - Accumulated data: $accumulatedFormData")

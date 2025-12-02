@@ -52,6 +52,13 @@ data class EngineStatus(
 )
 
 @Serializable
+data class EngineType(
+    val id: String,
+    val nameAr: String,
+    val nameEn: String
+)
+
+@Serializable
 data class FuelType(
     val id: String,
     val nameAr: String,

@@ -63,6 +63,7 @@ object SharedSteps {
     fun engineInfoStep(
         manufacturers: List<String>,
         countries: List<String>,
+        enginesTypes: List<String>,
         fuelTypes: List<String>,
         engineConditions: List<String>
     ): StepData {
@@ -73,6 +74,7 @@ object SharedSteps {
                 id = "engines",
                 labelRes = R.string.engine_info,
                 value = "[]",
+                engineTypes = enginesTypes,
                 manufacturers = manufacturers,
                 countries = countries,
                 fuelTypes = fuelTypes,
@@ -85,7 +87,7 @@ object SharedSteps {
             titleRes = R.string.engine_title,
             descriptionRes = R.string.engine_description,
             fields = fields,
-            requiredLookups = listOf("countries", "engineStatuses",  "engineFuelTypes")
+            requiredLookups = listOf("countries", "engineTypes", "engineStatuses",  "engineFuelTypes")
         )
     }
 

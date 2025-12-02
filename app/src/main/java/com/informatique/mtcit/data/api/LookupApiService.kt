@@ -134,6 +134,42 @@ class LookupApiService @Inject constructor(
     }
 
     /**
+     * Get list of engine types
+     * API: api/v1/coremdshipenginetypes
+     */
+    suspend fun getEngineTypes(): Result<LookupResponse<EngineType>> {
+        return try {
+            when (val response = repo.onGet("api/v1/coremdshipenginetype")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+
+                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+                            val content = paginatedData.getValue("content").jsonArray
+
+                            val types: List<EngineType> = json.decodeFromJsonElement(content)
+
+                            Result.success(LookupResponse(true, types))
+                        } else {
+                            Result.failure(Exception("Failed to fetch engine types"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty engine types response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get engine types: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get engine types: ${e.message}"))
+        }
+    }
+
+    /**
      * Get list of engine statuses
      * API: api/v1/coremdshipenginestatus
      */
@@ -175,7 +211,7 @@ class LookupApiService @Inject constructor(
      */
     suspend fun getEngineFuelTypes(): Result<LookupResponse<FuelType>> {
         return try {
-            when (val response = repo.onGet("api/v1//api/v1/coremdshipenginefueltype")) {
+            when (val response = repo.onGet("api/v1/coremdshipenginefueltype")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
