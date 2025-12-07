@@ -35,18 +35,18 @@ object DimensionValidationRules {
             // Skip empty optional fields
             if (valueStr.isNullOrBlank()) continue
 
-            println("🔍 Validating dimension field: $fieldId with value: $valueStr")
+            println("🔍 Validating dimension field: $fieldId with mortgageValue: $valueStr")
 
-            // Parse value
+            // Parse mortgageValue
             val value = valueStr.toDoubleOrNull()
 
-            // Check if value is invalid
+            // Check if mortgageValue is invalid
             if (value == null) {
-                println("❌ Invalid value for $fieldId: $valueStr")
+                println("❌ Invalid mortgageValue for $fieldId: $valueStr")
                 return@CustomValidation false
             }
 
-            // Check if value exceeds 99.99
+            // Check if mortgageValue exceeds 99.99
             if (value > 99.99) {
                 println("❌ Value $value exceeds 99.99 for field $fieldId")
                 return@CustomValidation false
@@ -55,11 +55,11 @@ object DimensionValidationRules {
             // ✅ Check integer part doesn't exceed 2 digits (prevents 100, 9999, etc.)
             val integerPart = value.toInt()
             if (integerPart > 99) {
-                println("❌ Integer part $integerPart exceeds 99 for field $fieldId (value: $value)")
+                println("❌ Integer part $integerPart exceeds 99 for field $fieldId (mortgageValue: $value)")
                 return@CustomValidation false
             }
 
-            println("✅ Field $fieldId passed validation with value: $value")
+            println("✅ Field $fieldId passed validation with mortgageValue: $value")
         }
 
         println("✅ All dimension fields passed validation")
@@ -122,7 +122,7 @@ object DimensionValidationRules {
      * Get all dimension-related validation rules
      */
     fun getAllDimensionRules(): List<ValidationRule> = listOf(
-        dimensionMaxValueValidation(), // ✅ NEW: Check max value 99.99
+        dimensionMaxValueValidation(), // ✅ NEW: Check max mortgageValue 99.99
         lengthGreaterThanWidth(),
         heightValidation(),
         deckCountValidation()

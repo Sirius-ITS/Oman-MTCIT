@@ -51,7 +51,7 @@ fun CustomFileUpload(
     var fileName by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
 
-    // Update selectedUri when value changes (for persistence)
+    // Update selectedUri when mortgageValue changes (for persistence)
     LaunchedEffect(value) {
         if (value.isNotEmpty() && value.startsWith("content://")) {
             selectedUri = Uri.parse(value)

@@ -46,7 +46,7 @@
 //        // Total Owners Count (read-only, auto-updated)
 //        if (onTotalCountChange != null) {
 //            CustomTextField(
-//                value = owners.size.toString(), // Always show actual count
+//                mortgageValue = owners.size.toString(), // Always show actual count
 //                onValueChange = { /* Read-only - no changes allowed */ },
 //                label = localizedApp(R.string.total_owners_count),
 //                isNumeric = true,

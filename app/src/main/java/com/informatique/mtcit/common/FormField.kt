@@ -304,6 +304,33 @@ sealed class FormField(
             copy(error = newError)
     }
 
+    data class MultiSelectDropDown(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        val options: List<String> = emptyList(),
+        val selectedOptions: List<String> = emptyList(),
+        val placeholder: String? = null,
+        override val value: String = "[]", // JSON array of selected options
+        override val error: String? = null,
+        override val mandatory: Boolean = false,
+        val maxSelection: Int? = null, // Maximum number of selections allowed
+        val showSelectionCount: Boolean = true, // Show count of selected items
+        val maxLength: Int? = null, // Maximum character length for validation
+        val minLength: Int? = null // Minimum character length for validation
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+
+        // Helper to update selected options
+        fun copyWithSelectedOptions(newOptions: List<String>) =
+            copy(selectedOptions = newOptions, value = newOptions.toString(), error = null)
+    }
+
     data class RadioOption(
         val value: String,
         val labelRes: Int,

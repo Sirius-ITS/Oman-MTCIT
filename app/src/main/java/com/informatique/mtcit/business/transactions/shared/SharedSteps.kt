@@ -95,7 +95,15 @@ object SharedSteps {
         jobs: List<String>,
     ): StepData {
         val fields = mutableListOf<FormField>()
-
+        fields.add(
+            FormField.FileUpload(
+                id = "sailorDocuments",
+                labelRes = R.string.sailor_documents, // add this string resource if missing
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                maxSizeMB = 5,
+                mandatory =true
+            )
+        )
         fields.add(
             FormField.SailorList(
                 id = "sailors",
@@ -105,6 +113,8 @@ object SharedSteps {
                 mandatory = true
             )
         )
+
+
 
         return StepData(
             titleRes = R.string.sailor_info,
@@ -369,6 +379,159 @@ object SharedSteps {
             requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildMaterials")
         )
     }
+
+    /**
+     * Mortgage Data Step (بيانات الرهن)
+     * Used for: Mortgage Registration transactions
+     *
+     * Collects mortgage information including:
+     * - Bank Name
+     * - Mortgage Contract Number
+     * - Mortgage Purpose
+     * - Mortgage Value
+     * - Start and End Dates
+     * - Mortgage Application Document
+     *
+     * @param banks List of bank names
+     * @param mortgagePurposes List of mortgage purposes
+     */
+    fun mortgageDataStep(
+        banks: List<String>,
+        mortgagePurposes: List<String>
+    ): StepData {
+        println("🔍 SharedSteps.mortgageDataStep called")
+        println("🔍 Received banks: size=${banks.size}, data=$banks")
+        println("🔍 Received mortgagePurposes: size=${mortgagePurposes.size}, data=$mortgagePurposes")
+
+        val fields = mutableListOf<FormField>()
+
+        // Bank Name (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "bankName",
+                labelRes = R.string.bank_name,
+                options = banks,
+                mandatory = true,
+                placeholder =  R.string.bank_name.toString()
+            )
+        )
+
+        // Mortgage Contract Number (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "mortgageContractNumber",
+                labelRes = R.string.mortgage_contract_number,
+                placeholder = "Enter mortgage contract number",
+                isNumeric = true,
+                mandatory = true
+            )
+        )
+
+        // Mortgage Purpose (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "mortgagePurpose",
+                labelRes = R.string.mortgage_purpose,
+                options = mortgagePurposes,
+                mandatory = true,
+                placeholder = R.string.select_mortgage_purpose.toString()
+            )
+        )
+
+        // Mortgage Value (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "mortgageValue",
+                labelRes = R.string.mortgage_value,
+                placeholder = "Enter mortgage mortgageValue in OMR",
+                isNumeric = true,
+                isDecimal = true,
+                mandatory = true
+            )
+        )
+
+        // Mortgage Start Date (mandatory)
+        fields.add(
+            FormField.DatePicker(
+                id = "mortgageStartDate",
+                labelRes = R.string.mortgage_start_date,
+                allowPastDates = true,
+                mandatory = true
+            )
+        )
+
+//        // Mortgage End Date (mandatory)
+//        fields.add(
+//            FormField.DatePicker(
+//                id = "mortgageEndDate",
+//                labelRes = R.string.mortgage_end_date,
+//                allowPastDates = false,
+//                mandatory = true
+//            )
+//        )
+
+        // Mortgage Application Document (mandatory)
+        fields.add(
+            FormField.FileUpload(
+                id = "mortgageApplication",
+                labelRes = R.string.mortgage_application,
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                maxSizeMB = 5,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.mortgage_data,
+            descriptionRes = R.string.mortgage_data_desc,
+            fields = fields
+        )
+    }
+
+
+    /**
+     * Upload Documents Step (رفع المستندات)
+     * Used for: Uploading required documents for marine unit mortgage/pledge transactions
+     *
+     * Collects mortgage-related documents including:
+     * - Mortgage certificate attachment (شهادة الرهن)
+     *
+     * The description explains that documents will be formatted officially
+     * and used during application review and necessary procedures.
+     *
+     * @param documentLabel Custom label for the document (default: mortgage certificate)
+     * @param documentId Field ID for the document upload
+     * @param allowedTypes List of allowed file types
+     * @param maxSizeMB Maximum file size in MB
+     * @param mandatory Whether the document is required
+     */
+    fun uploadDocumentsStep(
+        documentLabel: Int = R.string.mortgage_certificate_attachment,
+        documentId: String = "mortgageCertificate",
+        allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+        maxSizeMB: Int = 5,
+        mandatory: Boolean = true
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Document Upload Field
+        fields.add(
+            FormField.FileUpload(
+                id = documentId,
+                labelRes = documentLabel,
+                allowedTypes = allowedTypes,
+                maxSizeMB = maxSizeMB,
+                mandatory = mandatory
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.upload_documents_title, // "رفع المستندات"
+            descriptionRes = R.string.upload_documents_description, // "تحميل المستندات المطلوبة بصيغ (رسمية ومعتمدة) ، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة."
+            fields = fields
+        )
+    }
+
 
     /**
      * Marine Unit Dimensions Step
@@ -899,6 +1062,46 @@ object SharedSteps {
             titleRes = R.string.transfer_inspection_title,
             descriptionRes = R.string.transfer_inspection_description,
             fields = fields
+        )
+    }
+    // أضف الـ function دي في SharedSteps object
+
+    /**
+     * Sailing Regions Selection Step (مناطق الإبحار)
+     * Used for: Issuing sailing permits for marine units
+     *
+     * Allows user to select multiple sailing regions where the marine unit is authorized to operate.
+     * Displays selected regions as removable chips.
+     *
+     * @param sailingRegions List of available sailing regions from API
+     * @param maxSelection Maximum number of regions that can be selected (null = unlimited)
+     * @param showSelectionCount Show "X selected" text in the field
+     */
+    fun sailingRegionsStep(
+        sailingRegions: List<String>,
+        maxSelection: Int? = null,
+        showSelectionCount: Boolean = true
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Multi-Select Sailing Regions Field
+        fields.add(
+            FormField.MultiSelectDropDown(
+                id = "sailingRegions",
+                labelRes = R.string.sailing_regions_selection, // "مناطق الإبحار"
+                options = sailingRegions,
+                mandatory = true,
+                placeholder = R.string.select_sailing_regions_placeholder.toString(), // "اختر مناطق الإبحار"
+                maxSelection = maxSelection,
+                showSelectionCount = showSelectionCount
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.sailing_regions_title, // "بيانات البخارة"
+            descriptionRes = R.string.sailing_regions_description, // "يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة."
+            fields = fields,
+            requiredLookups = listOf("sailingRegions")
         )
     }
 

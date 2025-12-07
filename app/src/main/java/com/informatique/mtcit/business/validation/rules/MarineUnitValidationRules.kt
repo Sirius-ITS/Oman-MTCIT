@@ -13,8 +13,8 @@
 //     */
 //    fun imoRequiredForLargeVessels() = ValidationRule.ConditionalRequired(
 //        triggerFieldId = "grossTonnage",
-//        triggerCondition = { value ->
-//            value.toString().toDoubleOrNull()?.let { it > 500 } ?: false
+//        triggerCondition = { mortgageValue ->
+//            mortgageValue.toString().toDoubleOrNull()?.let { it > 500 } ?: false
 //        },
 //        requiredFieldId = "imoNumber",
 //        errorMessage = "IMO number is required for vessels over 500 gross tonnage",
@@ -29,7 +29,7 @@
 //        triggerFieldId = "grossTonnage",
 //        triggerCondition = { field ->
 //            if (field is FormField.TextField) {
-//                field.value.toDoubleOrNull()?.let { it > 300 } ?: false
+//                field.mortgageValue.toDoubleOrNull()?.let { it > 300 } ?: false
 //            } else false
 //        },
 //        requiredFieldId = "mmsi",
@@ -67,9 +67,9 @@
 //        errorMessage = "Maximum permitted load must be greater than or equal to static load"
 //    ) { fields ->
 //        val maxLoad = (fields.find { it.id == "maxPermittedLoad" } as? FormField.TextField)
-//            ?.value?.toDoubleOrNull()
+//            ?.mortgageValue?.toDoubleOrNull()
 //        val staticLoad = (fields.find { it.id == "staticLoad" } as? FormField.TextField)
-//            ?.value?.toDoubleOrNull()
+//            ?.mortgageValue?.toDoubleOrNull()
 //
 //        // If maxPermittedLoad is empty (optional), it's valid
 //        if (maxLoad == null) return@CustomValidation true

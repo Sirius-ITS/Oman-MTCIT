@@ -534,7 +534,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 isFishingBoat = true
                 fishingBoatDataLoaded = false // Reset loaded flag when type changes
                 accumulatedFormData["isFishingBoat"] = "true"
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             } else {
                 println("❌ Not a fishing boat. Hiding agriculture field")
@@ -542,7 +542,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 fishingBoatDataLoaded = false
                 accumulatedFormData.remove("isFishingBoat")
                 accumulatedFormData.remove("agricultureRequestNumber")
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             }
 

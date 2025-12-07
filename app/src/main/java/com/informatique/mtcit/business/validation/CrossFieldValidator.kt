@@ -119,8 +119,8 @@ class CrossFieldValidator @Inject constructor() {
                     println("🔍 CrossStepValidation - triggerField: ${rule.triggerFieldId}, requiredField: ${rule.requiredFieldId}")
                     println("🔍 Accumulated data has triggerField? ${allFormData.containsKey(rule.triggerFieldId)}")
                     println("🔍 Accumulated data has requiredField? ${allFormData.containsKey(rule.requiredFieldId)}")
-                    println("🔍 Trigger value: ${allFormData[rule.triggerFieldId]}")
-                    println("🔍 Required value: ${allFormData[rule.requiredFieldId]}")
+                    println("🔍 Trigger mortgageValue: ${allFormData[rule.triggerFieldId]}")
+                    println("🔍 Required mortgageValue: ${allFormData[rule.requiredFieldId]}")
 
                     val result = rule.validateWithAccumulatedData(allFormData)
                     println("🔍 Validation result: $result")
@@ -175,6 +175,8 @@ class CrossFieldValidator @Inject constructor() {
             is FormField.PhoneNumberField -> field.copy(error = error)
             is FormField.OTPField -> field.copy(error = error)
             is FormField.SailorList -> field.copy(error = error)
+            is FormField.MultiSelectDropDown -> field.copy(error = error)
+
         }
     }
 }

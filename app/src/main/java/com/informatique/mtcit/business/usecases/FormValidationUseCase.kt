@@ -73,7 +73,7 @@ class FormValidationUseCase @Inject constructor(
     }
 
     /**
-     * Helper method to update field value based on field type
+     * Helper method to update field mortgageValue based on field type
      */
     private fun updateFieldValue(field: FormField, value: String): FormField {
         return when (field) {
@@ -91,6 +91,7 @@ class FormValidationUseCase @Inject constructor(
             is FormField.PhoneNumberField -> field.copy(value = value)
             is FormField.OTPField -> field.copy(value = value)
             is FormField.SailorList -> field.copy(value = value)
+            is FormField.MultiSelectDropDown -> field.copy(value = value)
         }
     }
 

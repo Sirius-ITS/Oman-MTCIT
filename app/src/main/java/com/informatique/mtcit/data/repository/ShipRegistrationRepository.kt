@@ -99,6 +99,9 @@ interface ShipRegistrationRepository {
      * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
      */
     suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit>
+
+    // Create navigation license request for a selected ship (returns API response wrapper)
+    suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse>
 }
 
 @Singleton
@@ -215,5 +218,10 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
     override suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit> {
         println("📞 ShipRegistrationRepository: Calling shipNameReservation API...")
         return registrationApiService.shipNameReservation(requestId, marineName)
+    }
+
+    override suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse> {
+        println("📞 ShipRegistrationRepository: Creating navigation license for shipInfoId=$shipInfoId")
+        return registrationApiService.createNavigationLicense(shipInfoId)
     }
 }

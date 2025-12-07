@@ -53,7 +53,8 @@ class MarineRegistrationViewModel @Inject constructor(
     resourceProvider: ResourceProvider,
     navigationUseCase: StepNavigationUseCase,
     private val strategyFactory: TransactionStrategyFactory,
-    private val requestRepository: RequestRepository  // ✅ NEW: Inject request repository
+    private val requestRepository: RequestRepository,  // ✅ Inject request repository
+    private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService  // ✅ NEW: Inject mortgage API service
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
     // NEW: Validation state for marine unit selection
@@ -305,7 +306,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //                    if (result is ValidationResult.Success) {
 //                        val action = result.navigationAction
 //                        if (action is MarineUnitNavigationAction.ShowComplianceDetailScreen) {
-//                            _navigationToComplianceDetail.value = action
+//                            _navigationToComplianceDetail.mortgageValue = action
 //                        }
 //                    }
 //                }
@@ -313,7 +314,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //            is ValidationState.Error -> {
 //                println("❌ Validation error: ${state.message}")
 //                // Show error message
-//                _error.value = com.informatique.mtcit.common.AppError.Unknown(state.message)
+//                _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown(state.message)
 //            }
 //            is ValidationState.Idle -> {
 //                println("⚠️ Validation is Idle, calling super.nextStep()")
@@ -324,7 +325,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //            is ValidationState.Validating -> {
 //                println("⏳ Still validating...")
 //                // Still validating - wait
-//                _error.value = com.informatique.mtcit.common.AppError.Unknown("جاري التحقق من الوحدة البحرية...")
+//                _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("جاري التحقق من الوحدة البحرية...")
 //            }
 //            is ValidationState.RequiresConfirmation -> {
 //                println("⚠️ Requires confirmation, calling super.nextStep()")
@@ -713,7 +714,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //
 //                if ((selectedUnitsJson.isNullOrEmpty() || selectedUnitsJson == "[]") && !hasNewUnitData) {
 //                    println("❌ No marine unit selected and no new unit data")
-//                    _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية أو إضافة وحدة جديدة")
+//                    _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية أو إضافة وحدة جديدة")
 //                    return@launch
 //                }
 //
@@ -788,13 +789,13 @@ class MarineRegistrationViewModel @Inject constructor(
 //                        kotlinx.serialization.json.Json.decodeFromString<List<String>>(selectedUnitsJson!!)
 //                    } catch (e: Exception) {
 //                        println("❌ Failed to parse selected units: ${e.message}")
-//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في قراءة الوحدة المختارة")
+//                        _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("خطأ في قراءة الوحدة المختارة")
 //                        return@launch
 //                    }
 //
 //                    if (selectedMaritimeIds.isEmpty()) {
 //                        println("❌ No units in selection")
-//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
+//                        _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("الرجاء اختيار وحدة بحرية")
 //                        return@launch
 //                    }
 //
@@ -805,7 +806,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //                    val strategyAsTransaction = validatableStrategy as? TransactionStrategy
 //                    if (strategyAsTransaction == null) {
 //                        println("❌ Strategy doesn't implement TransactionStrategy")
-//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في النظام")
+//                        _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("خطأ في النظام")
 //                        return@launch
 //                    }
 //
@@ -831,7 +832,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //
 //                    if (selectedUnit == null) {
 //                        println("❌ Selected unit not found")
-//                        _error.value = com.informatique.mtcit.common.AppError.Unknown("الوحدة البحرية المختارة غير موجودة")
+//                        _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("الوحدة البحرية المختارة غير موجودة")
 //                        return@launch
 //                    }
 //
@@ -844,7 +845,7 @@ class MarineRegistrationViewModel @Inject constructor(
 //                // Handle validation result (same for both cases)
 //                if (validationResult == null) {
 //                    println("❌ Validation returned null")
-//                    _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل التحقق من حالة الفحص")
+//                    _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("فشل التحقق من حالة الفحص")
 //                    return@launch
 //                }
 //
@@ -870,24 +871,24 @@ class MarineRegistrationViewModel @Inject constructor(
 //                                    )
 //                                }
 //
-//                                _navigationToComplianceDetail.value = action
+//                                _navigationToComplianceDetail.mortgageValue = action
 //                            }
 //                            else -> {
 //                                println("❌ Unexpected navigation action: ${action::class.simpleName}")
-//                                _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في التحقق من حالة الفحص")
+//                                _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown("خطأ في التحقق من حالة الفحص")
 //                            }
 //                        }
 //                    }
 //                    is ValidationResult.Error -> {
 //                        println("❌ Validation error: ${validationResult.message}")
-//                        _error.value = com.informatique.mtcit.common.AppError.Unknown(validationResult.message)
+//                        _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown(validationResult.message)
 //                    }
 //                }
 //
 //            } catch (e: Exception) {
 //                println("❌ Exception during validation: ${e.message}")
 //                e.printStackTrace()
-//                _error.value = com.informatique.mtcit.common.AppError.Unknown(e.message ?: "حدث خطأ أثناء التحقق")
+//                _error.mortgageValue = com.informatique.mtcit.common.AppError.Unknown(e.message ?: "حدث خطأ أثناء التحقق")
 //            }
 //        }
     }
@@ -971,6 +972,157 @@ class MarineRegistrationViewModel @Inject constructor(
             TransactionType.ISSUE_NAVIGATION_PERMIT,
             TransactionType.RENEW_NAVIGATION_PERMIT -> true
             else -> false
+        }
+    }
+
+    // ✅ NEW: Success state for mortgage status update
+    private val _mortgageStatusUpdateSuccess = MutableStateFlow(false)
+    val mortgageStatusUpdateSuccess: StateFlow<Boolean> = _mortgageStatusUpdateSuccess.asStateFlow()
+
+    // ✅ NEW: Navigate to main category after success
+    private val _navigateToMainCategory = MutableStateFlow(false)
+    val navigateToMainCategory: StateFlow<Boolean> = _navigateToMainCategory.asStateFlow()
+
+    /**
+     * ✅ Submit mortgage status update
+     * Called when user checks the review checkbox and proceeds
+     *
+     * @param requestId The mortgage request ID returned from createMortgageRequest
+     * @param statusId The status ID to update to
+     */
+    fun submitMortgageStatus(requestId: Int, statusId: Int) {
+        viewModelScope.launch {
+            println("🔄 submitMortgageStatus called - requestId: $requestId, statusId: $statusId")
+
+            // Reset states
+            _mortgageStatusUpdateSuccess.value = false
+            _navigateToMainCategory.value = false
+
+            val result = updateTransactionStatus(requestId, statusId) { reqId, statId ->
+                mortgageApiService.updateMortgageStatus(reqId, statId)
+            }
+
+            result.onSuccess {
+                println("✅ Mortgage status updated successfully!")
+                _mortgageStatusUpdateSuccess.value = true
+                _showToastEvent.value = "✅ تم تقديم طلب الرهن بنجاح!"
+
+                // Trigger navigation to main category after short delay
+                kotlinx.coroutines.delay(1500)
+                _navigateToMainCategory.value = true
+            }
+
+            result.onFailure { error ->
+                println("❌ Failed to update mortgage status: ${error.message}")
+                _showToastEvent.value = "❌ فشل تحديث حالة الرهن: ${error.message}"
+                _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                    "فشل تحديث حالة الرهن: ${error.message}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Clear navigation flags after navigation is complete
+     */
+    fun clearNavigationFlags() {
+        _navigateToMainCategory.value = false
+        _mortgageStatusUpdateSuccess.value = false
+    }
+
+    /**
+     * ✅ Handle review step submission for mortgage transactions
+     * Automatically detects if current strategy is MortgageCertificateStrategy
+     * and calls submitMortgageStatus with the stored request ID
+     */
+    fun submitMortgageOnReview() {
+        viewModelScope.launch {
+            println("📝 submitMortgageOnReview called")
+
+            // ✅ Use the new generic interface methods
+            val strategy = currentStrategy
+
+            if (strategy != null) {
+                // Get the request ID from strategy
+                val requestId = strategy.getCreatedRequestId()
+
+                if (requestId != null) {
+                    // Get the endpoint from strategy
+                    val endpoint = strategy.getStatusUpdateEndpoint(requestId)
+
+                    if (endpoint != null) {
+                        println("✅ Request ID found: $requestId")
+                        println("✅ Endpoint: $endpoint")
+                        println("🚀 Calling generic status update with statusId = 2 (Under Review)")
+
+                        // Call the generic API to update status
+                        submitTransactionStatus(
+                            endpoint = endpoint,
+                            requestId = requestId,
+                            statusId = 2,  // Under Review
+                            transactionTypeName = strategy.getTransactionTypeName()
+                        )
+                    } else {
+                        println("⚠️ Strategy does not support status update")
+                        _showToastEvent.value = "❌ هذه المعاملة لا تدعم تحديث الحالة"
+                    }
+                } else {
+                    println("❌ Request ID is null")
+                    _showToastEvent.value = "❌ خطأ: لم يتم العثور على رقم الطلب"
+                }
+            } else {
+                println("⚠️ Current strategy is null")
+            }
+        }
+    }
+
+    /**
+     * ✅ Generic function to submit transaction status update
+     * Can be used by any transaction type
+     */
+    private fun submitTransactionStatus(
+        endpoint: String,
+        requestId: Int,
+        statusId: Int,
+        transactionTypeName: String
+    ) {
+        viewModelScope.launch {
+            println("🔄 submitTransactionStatus called")
+            println("   Transaction: $transactionTypeName")
+            println("   Request ID: $requestId")
+            println("   Status ID: $statusId")
+            println("   Endpoint: $endpoint")
+
+            // Reset states
+            _mortgageStatusUpdateSuccess.value = false
+            _navigateToMainCategory.value = false
+
+            val result = updateTransactionStatus(requestId, statusId) { _, _ ->
+                // Use the generic API with custom endpoint
+                mortgageApiService.updateTransactionStatus(
+                    endpoint = endpoint,
+                    statusId = statusId,
+                    transactionType = transactionTypeName
+                )
+            }
+
+            result.onSuccess {
+                println("✅ $transactionTypeName status updated successfully!")
+                _mortgageStatusUpdateSuccess.value = true
+                _showToastEvent.value = "✅ تم تقديم طلب $transactionTypeName بنجاح!"
+
+                // Trigger navigation to main category after short delay
+                kotlinx.coroutines.delay(1500)
+                _navigateToMainCategory.value = true
+            }
+
+            result.onFailure { error ->
+                println("❌ Failed to update $transactionTypeName status: ${error.message}")
+                _showToastEvent.value = "❌ فشل تحديث حالة $transactionTypeName: ${error.message}"
+                _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                    "فشل تحديث حالة $transactionTypeName: ${error.message}"
+                )
+            }
         }
     }
 }

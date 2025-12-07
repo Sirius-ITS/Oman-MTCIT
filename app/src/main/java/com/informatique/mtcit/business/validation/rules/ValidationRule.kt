@@ -38,7 +38,7 @@ sealed class ValidationRule {
                     println("🔍 ❌ Required field is blank! Returning error.")
                     return ValidationResult.Invalid(errorFieldId, errorMessage)
                 } else {
-                    println("🔍 ✅ Required field has value: $requiredValue")
+                    println("🔍 ✅ Required field has mortgageValue: $requiredValue")
                 }
             } else {
                 println("🔍 ✅ Condition not met, validation passes")

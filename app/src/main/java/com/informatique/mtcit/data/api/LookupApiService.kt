@@ -7,6 +7,7 @@ import com.informatique.mtcit.ui.components.DefaultBusinessIcon
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
@@ -36,7 +37,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -51,6 +53,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty ship types response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get ship types: ${response.error}"))
                 }
@@ -72,7 +75,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -87,6 +91,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty ship types response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get ship types by category: ${response.error}"))
                 }
@@ -108,7 +113,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -123,6 +129,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty ship categories response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get ship categories: ${response.error}"))
                 }
@@ -144,7 +151,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -159,6 +167,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty engine types response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get engine types: ${response.error}"))
                 }
@@ -180,7 +189,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -195,6 +205,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty engine statuses response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get engine statuses: ${response.error}"))
                 }
@@ -216,7 +227,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -231,6 +243,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty fuel types response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get fuel types: ${response.error}"))
                 }
@@ -252,7 +265,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -267,6 +281,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty proof types response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get proof types: ${response.error}"))
                 }
@@ -288,7 +303,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -303,6 +319,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty ports response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get ports: ${response.error}"))
                 }
@@ -324,12 +341,14 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
 
-                            val activities: List<MarineActivity> = json.decodeFromJsonElement(content)
+                            val activities: List<MarineActivity> =
+                                json.decodeFromJsonElement(content)
 
                             Result.success(LookupResponse(true, activities))
                         } else {
@@ -339,6 +358,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty marine activities response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get marine activities: ${response.error}"))
                 }
@@ -360,7 +380,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -375,6 +396,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty building materials response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get building materials: ${response.error}"))
                 }
@@ -396,7 +418,8 @@ class LookupApiService @Inject constructor(
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
-                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean) {
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
 
                             val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
                             val content = paginatedData.getValue("content").jsonArray
@@ -411,6 +434,7 @@ class LookupApiService @Inject constructor(
                         Result.failure(Exception("Empty countries response"))
                     }
                 }
+
                 is RepoServiceState.Error -> {
                     Result.failure(Exception("Failed to get countries: ${response.error}"))
                 }
@@ -470,5 +494,294 @@ class LookupApiService @Inject constructor(
             )
         )
         return Result.success(LookupResponse(true, data))
+    }
+
+    /**
+     * Get list of mortgage reasons
+     * API: api/v1/mortgage-reason
+     */
+    suspend fun getMortgageReasons(): Result<LookupResponse<MortgageReason>> {
+        return try {
+            println("🔍 Calling API: api/v1/mortgage-reason")
+            when (val response = repo.onGet("api/v1/mortgage-reason")) {
+                is RepoServiceState.Success -> {
+                    val raw = response.response
+                    println("📥 mortgage-reason raw element type: ${raw::class.simpleName}")
+                    println("📥 mortgage-reason raw: $raw")
+
+                    // If it's a JsonArray, parse manually to avoid serialization mismatch
+                    if (raw is kotlinx.serialization.json.JsonArray) {
+                        val parsed = mutableListOf<MortgageReason>()
+                        raw.forEach { el ->
+                            try {
+                                val obj = el.jsonObject
+                                val id = obj.getValue("id").jsonPrimitive.int
+                                val nameAr = obj.getValue("nameAr").jsonPrimitive.content
+                                val nameEn = obj.getValue("nameEn").jsonPrimitive.content
+                                parsed.add(
+                                    MortgageReason(
+                                        id = id,
+                                        nameAr = nameAr,
+                                        nameEn = nameEn
+                                    )
+                                )
+                            } catch (pe: Exception) {
+                                println("⚠️ Skipping invalid mortgage reason element: ${pe.message}")
+                            }
+                        }
+                        println("✅ Manually parsed mortgage reasons from JsonArray: ${parsed.size}")
+                        return Result.success(LookupResponse(true, parsed))
+                    }
+
+                    // Otherwise fall back to existing string-based decoding
+                    val rawStr = raw.toString()
+                    try {
+                        val list: List<MortgageReason> =
+                            json.decodeFromString<List<MortgageReason>>(rawStr)
+                        println("✅ Parsed mortgage reasons as List (fallback): ${list.size}")
+                        return Result.success(LookupResponse(true, list))
+                    } catch (e: Exception) {
+                        println("⚠️ Fallback decode list failed: ${e.message}")
+                    }
+
+                    try {
+                        val paginated: PaginatedLookupResponse<MortgageReason> =
+                            json.decodeFromString(rawStr)
+                        val list = paginated.data.content
+                        println("✅ Parsed mortgage reasons from PaginatedLookupResponse (fallback): ${list.size}")
+                        return Result.success(LookupResponse(true, list))
+                    } catch (e: Exception) {
+                        println("⚠️ Fallback paginated failed: ${e.message}")
+                    }
+
+                    try {
+                        val wrapped: LookupResponse<MortgageReason> = json.decodeFromString(rawStr)
+                        println("✅ Parsed mortgage reasons from LookupResponse (fallback): ${wrapped.data.size}")
+                        return Result.success(LookupResponse(true, wrapped.data))
+                    } catch (e: Exception) {
+                        println("⚠️ Fallback wrapped failed: ${e.message}")
+                    }
+
+                    println("❌ Unable to parse mortgage reasons response (after fallbacks)")
+                    return Result.failure(Exception("Failed to parse mortgage reasons response"))
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API error: ${response.error}")
+                    return Result.failure(Exception("Failed to get mortgage reasons: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getMortgageReasons: ${e.message}")
+            e.printStackTrace()
+            return Result.failure(Exception("Failed to get mortgage reasons: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of banks
+     * API: api/v1/banks
+     */
+    suspend fun getBanks(): Result<LookupResponse<Bank>> {
+        return try {
+            println("🔍 Calling API: api/v1/banks")
+            when (val response = repo.onGet("api/v1/banks")) {
+                is RepoServiceState.Success -> {
+                    val raw = response.response
+                    println("📥 banks raw type: ${raw::class.qualifiedName}")
+                    println("📥 banks raw mortgageValue: $raw")
+
+                    try {
+                        // If the API returns a wrapper object like { message, statusCode, success, timestamp, data: [...] }
+                        if (raw is kotlinx.serialization.json.JsonObject) {
+                            val dataElem = raw["data"]
+                            if (dataElem != null) {
+                                when (dataElem) {
+                                    is kotlinx.serialization.json.JsonArray -> {
+                                        val parsed =
+                                            json.decodeFromJsonElement<List<Bank>>(dataElem)
+                                        println("✅ Parsed banks from wrapper.data JsonArray: ${parsed.size}")
+                                        return Result.success(LookupResponse(true, parsed))
+                                    }
+
+                                    is kotlinx.serialization.json.JsonObject -> {
+                                        // sometimes data may be an object containing content array (paginated)
+                                        val content = dataElem["content"]
+                                        if (content is kotlinx.serialization.json.JsonArray) {
+                                            val parsed =
+                                                json.decodeFromJsonElement<List<Bank>>(content)
+                                            println("✅ Parsed banks from wrapper.data.content JsonArray: ${parsed.size}")
+                                            return Result.success(LookupResponse(true, parsed))
+                                        }
+
+                                        // fallback: try to decode dataElem as a single Bank or map entries
+                                        val maybeList = try {
+                                            json.decodeFromString<List<Bank>>(dataElem.toString())
+                                        } catch (_: Exception) {
+                                            null
+                                        }
+                                        if (maybeList != null) {
+                                            println("✅ Parsed banks from wrapper.data as List: ${maybeList.size}")
+                                            return Result.success(LookupResponse(true, maybeList))
+                                        }
+
+                                        // manual mapping if dataElem is an object mapping
+                                        val manual = mutableListOf<Bank>()
+                                        dataElem.forEach { (_, v) ->
+                                            try {
+                                                val obj = v.jsonObject
+                                                val id = obj.getValue("id").jsonPrimitive.content
+                                                val nameAr =
+                                                    obj.getValue("nameAr").jsonPrimitive.content
+                                                val nameEn =
+                                                    obj.getValue("nameEn").jsonPrimitive.content
+                                                manual.add(
+                                                    Bank(
+                                                        id = id,
+                                                        nameAr = nameAr,
+                                                        nameEn = nameEn
+                                                    )
+                                                )
+                                            } catch (_: Exception) {
+                                                // skip
+                                            }
+                                        }
+                                        if (manual.isNotEmpty()) {
+                                            println("✅ Manually parsed banks from wrapper.data: ${manual.size}")
+                                            return Result.success(LookupResponse(true, manual))
+                                        }
+                                    }
+
+                                    is kotlinx.serialization.json.JsonPrimitive -> {
+                                        // data is primitive (string), try parsing its JSON
+                                        val text = dataElem.toString()
+                                        try {
+                                            val parsedElem = json.parseToJsonElement(text)
+                                            if (parsedElem is kotlinx.serialization.json.JsonArray) {
+                                                val parsed = json.decodeFromJsonElement<List<Bank>>(
+                                                    parsedElem
+                                                )
+                                                println("✅ Parsed banks from wrapper.data primitive -> JsonArray: ${parsed.size}")
+                                                return Result.success(LookupResponse(true, parsed))
+                                            }
+                                        } catch (_: Exception) {
+                                            // ignore
+                                        }
+                                    }
+
+                                    else -> {
+                                        // unknown dataElem type
+                                    }
+                                }
+                            }
+
+                            // Try fallback: decode the whole object as LookupResponse<Bank>
+                            try {
+                                val wrapped: LookupResponse<Bank> =
+                                    json.decodeFromString(raw.toString())
+                                println("✅ Parsed banks from wrapper as LookupResponse: ${wrapped.data.size}")
+                                return Result.success(LookupResponse(true, wrapped.data))
+                            } catch (_: Exception) {
+                                // continue to other fallbacks
+                            }
+                        }
+
+                        // If the response is a JsonArray directly
+                        if (raw is kotlinx.serialization.json.JsonArray) {
+                            val parsed = json.decodeFromJsonElement<List<Bank>>(raw)
+                            println("✅ Parsed banks from JsonArray: ${parsed.size}")
+                            return Result.success(LookupResponse(true, parsed))
+                        }
+
+                        // If raw is a primitive/string containing JSON
+                        try {
+                            val rawStr = raw.toString()
+
+                            // Try several fallbacks: List<Bank>, PaginatedLookupResponse, LookupResponse
+                            try {
+                                val list: List<Bank> = json.decodeFromString(rawStr)
+                                println("✅ Parsed banks as List (fallback): ${list.size}")
+                                return Result.success(LookupResponse(true, list))
+                            } catch (_: Exception) {
+                            }
+
+                            try {
+                                val paginated: PaginatedLookupResponse<Bank> =
+                                    json.decodeFromString(rawStr)
+                                val list = paginated.data.content
+                                println("✅ Parsed banks from PaginatedLookupResponse (fallback): ${list.size}")
+                                return Result.success(LookupResponse(true, list))
+                            } catch (_: Exception) {
+                            }
+
+                            try {
+                                val wrapped: LookupResponse<Bank> = json.decodeFromString(rawStr)
+                                println("✅ Parsed banks from LookupResponse (fallback): ${wrapped.data.size}")
+                                return Result.success(LookupResponse(true, wrapped.data))
+                            } catch (_: Exception) {
+                            }
+
+                        } catch (_: Exception) {
+                            // ignore
+                        }
+
+                        println("❌ Unable to parse banks response (after fallbacks)")
+                        return Result.failure(Exception("Failed to parse banks response - unexpected format"))
+
+                    } catch (e: Exception) {
+                        println("❌ Exception while parsing banks response: ${e.message}")
+                        e.printStackTrace()
+                        return Result.failure(Exception("Failed to parse banks response: ${e.message}"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API error: ${response.error}")
+                    return Result.failure(Exception("Failed to get banks: ${response.error}"))
+                }
+
+                else -> return Result.failure(Exception("Failed to get banks: unknown repo state"))
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getBanks: ${e.message}")
+            e.printStackTrace()
+            return Result.failure(Exception("Failed to get banks: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of navigation areas (sailing regions)
+     * API: api/v1/ship-navigation-license-request/navigation-areas
+     */
+    suspend fun getNavigationAreas(): Result<LookupResponse<NavigationArea>> {
+        return try {
+            when (val response = repo.onGet("api/v1/ship-navigation-license-request/navigation-areas")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val areas: List<NavigationArea> = json.decodeFromJsonElement(dataArray)
+
+                            Result.success(LookupResponse(true, areas))
+                        } else {
+                            Result.failure(Exception("Failed to fetch navigation areas"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty navigation areas response"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get navigation areas: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get navigation areas: ${e.message}"))
+        }
     }
 }

@@ -479,7 +479,7 @@ private fun calculateInSampleSize(
         val halfHeight = imageHeight / 2
         val halfWidth = imageWidth / 2
 
-        // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+        // Calculate the largest inSampleSize mortgageValue that is a power of 2 and keeps both
         // height and width larger than the requested height and width.
         while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
             inSampleSize *= 2
@@ -1112,7 +1112,7 @@ private fun extractTextFromExcelDocument(inputStream: InputStream): String {
                                     rowNum++
                                     if (rowNum > 1) textBuilder.append("\n")
                                 }
-                                "v" -> inValue = true  // Cell value
+                                "v" -> inValue = true  // Cell mortgageValue
                             }
                         }
                         XmlPullParser.TEXT -> {

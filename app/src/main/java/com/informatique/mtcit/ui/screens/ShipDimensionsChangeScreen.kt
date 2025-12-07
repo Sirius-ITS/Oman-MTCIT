@@ -160,7 +160,7 @@
 //
 //                // Search TextField
 //                OutlinedTextField(
-//                    value = searchQuery,
+//                    mortgageValue = searchQuery,
 //                    onValueChange = { searchQuery = it },
 //                    modifier = Modifier.fillMaxWidth(),
 //                    placeholder = {
@@ -297,15 +297,15 @@
 //            Spacer(modifier = Modifier.height(16.dp))
 //
 //            // Ship Details
-//            ShipDetailRow(label = "رقم IMO", value = ship.imoNumber)
+//            ShipDetailRow(label = "رقم IMO", mortgageValue = ship.imoNumber)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رمز النداء", value = ship.callSign)
+//            ShipDetailRow(label = "رمز النداء", mortgageValue = ship.callSign)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رقم الهوية البحرية", value = ship.maritimeId)
+//            ShipDetailRow(label = "رقم الهوية البحرية", mortgageValue = ship.maritimeId)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "ميناء التسجيل", value = ship.registrationPort)
+//            ShipDetailRow(label = "ميناء التسجيل", mortgageValue = ship.registrationPort)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "النشاط البحري", value = ship.maritimeActivity)
+//            ShipDetailRow(label = "النشاط البحري", mortgageValue = ship.maritimeActivity)
 //
 //            Spacer(modifier = Modifier.height(16.dp))
 //
@@ -332,14 +332,14 @@
 //}
 //
 //@Composable
-//fun ShipDetailRow(label: String, value: String) {
+//fun ShipDetailRow(label: String, mortgageValue: String) {
 //    Row(
 //        modifier = Modifier.fillMaxWidth(),
 //        horizontalArrangement = Arrangement.SpaceBetween,
 //        verticalAlignment = Alignment.CenterVertically
 //    ) {
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = 14.sp,
 //            color = Color.Black,
 //            fontWeight = FontWeight.Medium
@@ -524,7 +524,7 @@
 //
 //                // Search TextField
 //                OutlinedTextField(
-//                    value = searchQuery,
+//                    mortgageValue = searchQuery,
 //                    onValueChange = { searchQuery = it },
 //                    modifier = Modifier.fillMaxWidth(),
 //                    placeholder = {
@@ -718,15 +718,15 @@
 //            Spacer(modifier = Modifier.height(16.dp))
 //
 //            // Ship Details
-//            ShipDetailRow(label = "رقم IMO", value = ship.imoNumber)
+//            ShipDetailRow(label = "رقم IMO", mortgageValue = ship.imoNumber)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رمز النداء", value = ship.callSign)
+//            ShipDetailRow(label = "رمز النداء", mortgageValue = ship.callSign)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رقم الهوية البحرية", value = ship.maritimeId)
+//            ShipDetailRow(label = "رقم الهوية البحرية", mortgageValue = ship.maritimeId)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "ميناء التسجيل", value = ship.registrationPort)
+//            ShipDetailRow(label = "ميناء التسجيل", mortgageValue = ship.registrationPort)
 //            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "النشاط البحري", value = ship.maritimeActivity)
+//            ShipDetailRow(label = "النشاط البحري", mortgageValue = ship.maritimeActivity)
 //
 //            Spacer(modifier = Modifier.height(16.dp))
 //
@@ -911,7 +911,7 @@
 //
 //        Spacer(modifier = Modifier.height(12.dp))
 //
-//        details.forEach { (label, value) ->
+//        details.forEach { (label, mortgageValue) ->
 //            Row(
 //                modifier = Modifier
 //                    .fillMaxWidth()
@@ -920,7 +920,7 @@
 //                verticalAlignment = Alignment.CenterVertically
 //            ) {
 //                Text(
-//                    text = value,
+//                    text = mortgageValue,
 //                    fontSize = 15.sp,
 //                    color = Color.Black,
 //                    fontWeight = FontWeight.Medium
@@ -933,7 +933,7 @@
 //                )
 //            }
 //
-//            if (details.last() != (label to value)) {
+//            if (details.last() != (label to mortgageValue)) {
 //                Divider(
 //                    color = Color.LightGray.copy(alpha = 0.3f),
 //                    modifier = Modifier.padding(vertical = 4.dp)
@@ -944,14 +944,14 @@
 //}
 //
 //@Composable
-//fun ShipDetailRow(label: String, value: String) {
+//fun ShipDetailRow(label: String, mortgageValue: String) {
 //    Row(
 //        modifier = Modifier.fillMaxWidth(),
 //        horizontalArrangement = Arrangement.SpaceBetween,
 //        verticalAlignment = Alignment.CenterVertically
 //    ) {
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = 14.sp,
 //            color = Color.Black,
 //            fontWeight = FontWeight.Medium
@@ -1866,7 +1866,7 @@ fun DetailGroup(
 //                    }
 //
 //                    TextField(
-//                        value = searchQuery,
+//                        mortgageValue = searchQuery,
 //                        onValueChange = { searchQuery = it },
 //                        modifier = Modifier.weight(1f),
 //                        placeholder = {
@@ -2456,7 +2456,7 @@ fun DetailGroup(
 //            Spacer(modifier = Modifier.height(20.dp))
 //
 //            // Items
-//            items.forEachIndexed { index, (label, value) ->
+//            items.forEachIndexed { index, (label, mortgageValue) ->
 //                Row(
 //                    modifier = Modifier
 //                        .fillMaxWidth()
@@ -2464,7 +2464,7 @@ fun DetailGroup(
 //                    horizontalArrangement = Arrangement.SpaceBetween
 //                ) {
 //                    Text(
-//                        text = value,
+//                        text = mortgageValue,
 //                        fontSize = 15.sp,
 //                        color = Color.Black,
 //                        fontWeight = FontWeight.SemiBold
@@ -2686,7 +2686,7 @@ fun DetailGroup(
 //                    )
 //
 //                    TextField(
-//                        value = searchQuery,
+//                        mortgageValue = searchQuery,
 //                        onValueChange = { searchQuery = it },
 //                        modifier = Modifier.weight(1f),
 //                        placeholder = {
@@ -3257,7 +3257,7 @@ fun DetailGroup(
 //
 //            Spacer(modifier = Modifier.height(16.dp))
 //
-//            items.forEachIndexed { index, (label, value) ->
+//            items.forEachIndexed { index, (label, mortgageValue) ->
 //                Row(
 //                    modifier = Modifier
 //                        .fillMaxWidth()
@@ -3266,7 +3266,7 @@ fun DetailGroup(
 //                    verticalAlignment = Alignment.CenterVertically
 //                ) {
 //                    Text(
-//                        text = value,
+//                        text = mortgageValue,
 //                        fontSize = 15.sp,
 //                        color = Color(0xFF111827),
 //                        fontWeight = FontWeight.SemiBold

@@ -83,6 +83,7 @@
     <string name="study">Study</string>
     <string name="otherfees">Other Fees</string>
     <string name="news_not_available">News not available</string>
+    <string name="not_provided">-</string>
     <string name="issuance_of_a_temporary_registration_certificate_for_a_marine_unit_vessel">Issuance of a temporary registration certificate for a vessel or marine unit</string>
     <string name="ship_info">Ship Information</string>
     <string name="owner_info">Owner Information</string>
@@ -837,6 +838,33 @@
 
     <string name="declaration_title">Self Declaration</string>
     <string name="declaration_description">I acknowledge that all the information provided is correct and accurate, and I undertake to inform the management of any changes. I understand that providing incorrect data or documents may result in cancellation of the application and legal liability.</string>
+
+
+    <!-- ================================ -->
+    <!-- English Strings (values/strings.xml) -->
+    <!-- ================================ -->
+
+    <!-- Upload Documents Step -->
+    <string name="upload_documents_title">Upload Documents</string>
+    <string name="upload_documents_description">Upload the required documents in (official and certified) formats, as they will be used in reviewing the application and taking the necessary procedures.</string>
+    <string name="mortgage_certificate_attachment">Please attach the mortgage certificate</string>
+
+    <!-- File Upload Helper Text -->
+    <string name="allowed_file_types">Only pdf, jpg, png, doc files up to 5MB</string>
+
+
+    <!-- Sailing Regions Step -->
+    <string name="sailing_regions_title">بيانات البخارة</string>
+    <string name="sailing_regions_description">يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة.</string>
+    <string name="sailing_regions_selection">مناطق الإبحار</string>
+    <string name="select_sailing_regions_placeholder">اختر مناطق الإبحار</string>
+
+    <!-- Multi-Select Dropdown -->
+    <string name="clear_all">مسح الكل</string>
+    <string name="no_results">لا توجد نتائج</string>
+    <string name="search_placeholder">بحث...</string>
+
+    <string name="sailor_documents">مستندات البحارة</string>
 
 
 </resources>

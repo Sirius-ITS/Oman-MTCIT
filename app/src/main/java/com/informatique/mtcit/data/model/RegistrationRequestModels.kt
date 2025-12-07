@@ -202,3 +202,25 @@ data class SendRequestData(
     val message: String,
     val needInspection: Boolean
 )
+
+/**
+ * Models for Navigation License creation response
+ */
+@Serializable
+data class CreateNavigationResponse(
+    val message: String,
+    val statusCode: Int,
+    val success: Boolean,
+    val timestamp: String? = null,
+    val data: NavigationRequestData? = null
+)
+
+@Serializable
+data class NavigationRequestData(
+    val id: Int,
+    val shipInfo: ShipInfoResponse? = null,
+    val requestSerial: Int? = null,
+    val requestYear: Int? = null,
+    val requestType: RequestTypeResponse? = null,
+    val status: StatusResponse? = null
+)

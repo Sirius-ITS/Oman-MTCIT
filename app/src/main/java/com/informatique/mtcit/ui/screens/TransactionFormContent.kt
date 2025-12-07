@@ -70,6 +70,9 @@ fun TransactionFormContent(
     // Check if current step is the review step (last step with no fields)
     val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.fields?.isEmpty() == true
 
+    // Collect processing state from viewModel (to disable Next button and show loader)
+    val isProcessingNext by viewModel.isProcessingNext.collectAsState()
+
     // ✅ NEW: Check if inspection dialog should be shown
     val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
     val inspectionMessage = uiState.formData["inspectionMessage"] ?: ""
@@ -205,7 +208,6 @@ fun TransactionFormContent(
                         // On last step - check if it needs special API handling (like marine name)
                         val currentStepFields = uiState.steps.getOrNull(uiState.currentStep)?.fields?.map { it.id } ?: emptyList()
                         val isMarineNameStep = currentStepFields.contains("marineUnitName")
-
                         if (isMarineNameStep) {
                             // Marine name step - call nextStep() to trigger API via processStepData()
                             nextStep()
@@ -224,7 +226,8 @@ fun TransactionFormContent(
                 } else {
                     uiState.canProceedToNext
                 },
-                isSubmitting = submissionState is UIState.Loading,
+                // Use viewModel processing flag to disable next button when heavy processing is running
+                isSubmitting = submissionState is UIState.Loading || isProcessingNext,
                 isReviewStep = isReviewStep, // Pass the review step flag
                 isProcessingStep = uiState.isProcessingStep // ✅ FIXED: Pass the actual processing state from uiState
             )
@@ -440,15 +443,16 @@ fun GenericNavigationBottomBar(
                 ),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                // ✅ NEW: Show loading indicator when processing
-                if (isProcessingStep) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(localizedApp(R.string.processing))
+                if (isSubmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(localizedApp(R.string.loading))
+                    }
                 } else {
                     // Show "Accept & Send" on review step OR last step
                     if (isReviewStep || currentStep >= totalSteps - 1) {
@@ -559,5 +563,19 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" },
             error = error
         )
+
+        is FormField.MultiSelectDropDown -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            selectedOptions = try {
+                kotlinx.serialization.json.Json.decodeFromString(value.ifEmpty { "[]" })
+            } catch (e: Exception) {
+                emptyList()
+            },
+            error = error
+        )
     }
 }
+
+
+
