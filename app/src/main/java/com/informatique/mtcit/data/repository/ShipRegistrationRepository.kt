@@ -87,6 +87,18 @@ interface ShipRegistrationRepository {
         inspectionDocumentsFile: ByteArray?,
         inspectionDocumentsName: String?
     ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
+
+    /**
+     * Send registration request and check if inspection is needed
+     * POST api/v1/registration-requests/{request-id}/send-request
+     */
+    suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse>
+
+    /**
+     * Reserve ship/marine name
+     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     */
+    suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit>
 }
 
 @Singleton
@@ -193,5 +205,15 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
             inspectionDocumentsFile,
             inspectionDocumentsName
         )
+    }
+
+    override suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {
+        println("📞 ShipRegistrationRepository: Calling sendRequest API...")
+        return registrationApiService.sendRequest(requestId)
+    }
+
+    override suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit> {
+        println("📞 ShipRegistrationRepository: Calling shipNameReservation API...")
+        return registrationApiService.shipNameReservation(requestId, marineName)
     }
 }

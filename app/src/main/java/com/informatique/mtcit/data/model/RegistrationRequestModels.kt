@@ -183,3 +183,22 @@ data class StatusResponse(
     val nameAr: String? = null,
     val nameEn: String? = null
 )
+
+/**
+ * Response model for send-request API
+ * POST api/v1/registration-requests/{request-id}/send-request
+ */
+@Serializable
+data class SendRequestResponse(
+    val message: String,
+    val statusCode: Int,
+    val success: Boolean,
+    val timestamp: String,
+    val data: SendRequestData
+)
+
+@Serializable
+data class SendRequestData(
+    val message: String,
+    val needInspection: Boolean
+)

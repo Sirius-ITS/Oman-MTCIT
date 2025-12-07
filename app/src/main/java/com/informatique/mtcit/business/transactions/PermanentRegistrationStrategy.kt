@@ -125,6 +125,13 @@ class PermanentRegistrationStrategy @Inject constructor(
         println("📦 PermanentRegistration - Updated accumulated data: $accumulatedFormData")
     }
 
+    /**
+     * ✅ NEW: Return current form data including inspection dialog flags
+     */
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
+    }
+
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 
@@ -339,6 +346,19 @@ class PermanentRegistrationStrategy @Inject constructor(
             when (result) {
                 is StepProcessResult.Success -> {
                     println("✅ ${result.message}")
+
+                    // ✅ NEW: Check if we just completed Review Step and need inspection
+                    val needInspection = accumulatedFormData["needInspection"]?.toBoolean() ?: false
+                    val sendRequestMessage = accumulatedFormData["sendRequestMessage"]
+
+                    if (needInspection) {
+                        println("🔍 Inspection required for this request")
+                        // Store flag to show dialog in UI
+                        accumulatedFormData["showInspectionDialog"] = "true"
+                        accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: "في إنتظار نتيجه الفحص الفني"
+                        // Stay on current step to show dialog
+                        return step
+                    }
                 }
                 is StepProcessResult.Error -> {
                     println("❌ Error: ${result.message}")

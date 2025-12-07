@@ -19,7 +19,16 @@ data class DocumentValidationResponse(
 
 @Serializable
 data class DocumentValidationData(
-    val validated: Boolean,
+    val statusMessage: String? = null,
+    val uploadedFiles: List<UploadedFile>? = null,
+    val validated: Boolean? = null,
     val missingDocuments: List<String>? = null
 )
 
+@Serializable
+data class UploadedFile(
+    val fileName: String,
+    val refNo: String,
+    val contentType: String,
+    val size: Int
+)

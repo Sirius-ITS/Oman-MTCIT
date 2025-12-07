@@ -219,6 +219,11 @@
     <string name="owner_information_description">يرجى تقديم تفاصيل المالك للوحدة البحرية</string>
     <string name="owner_full_name_ar">الاسم الكامل للمالك بالعربية</string>
     <string name="owner_full_name_en">الاسم الكامل للمالك بالانجليزية</string>
+    <string name="owner_name_arabic">اسم المالك (بالعربية)</string>
+    <string name="owner_name_english">اسم المالك (بالانجليزية)</string>
+    <string name="company_name_arabic">اسم الشركة (بالعربية)</string>
+    <string name="company_name_english">اسم الشركة (بالانجليزية)</string>
+    <string name="is_representative">هل هو ممثل قانوني</string>
     <string name="enter_owner_full_name">أدخل الاسم الكامل للمالك</string>
     <string name="owner_nationality">جنسية المالك</string>
     <string name="select_nationality">اختر الجنسية</string>
@@ -512,6 +517,12 @@
     <string name="no_file_attached">لا يوجد ملف مرفق</string>
     <string name="yes">نعم</string>
     <string name="no">لا</string>
+
+    <!-- Inspection Dialog -->
+    <string name="inspection_required">الفحص الفني مطلوب</string>
+    <string name="ok">حسناً</string>
+    <string name="processing">جاري المعالجة...</string>
+    <string name="error">خطأ</string>
 
     <!-- Rejection Step -->
     <string name="request_rejected_title">لا يمكن معالجة الطلب</string>

@@ -12,6 +12,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -67,6 +69,54 @@ fun TransactionFormContent(
 
     // Check if current step is the review step (last step with no fields)
     val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.fields?.isEmpty() == true
+
+    // ✅ NEW: Check if inspection dialog should be shown
+    val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
+    val inspectionMessage = uiState.formData["inspectionMessage"] ?: ""
+
+    // ✅ NEW: Show inspection dialog when needed
+    if (showInspectionDialog) {
+        InspectionRequiredDialog(
+            message = inspectionMessage,
+            text = localizedApp(R.string.done),
+            icon = Icons.Default.Done,
+            onDismiss = {
+                // Clear the dialog flag
+                onFieldValueChange("showInspectionDialog", "false")
+                // Navigate back to home or request detail screen
+                navController.popBackStack()
+            }
+        )
+    }
+
+    // ✅ NEW: Show API error dialog when errors occur
+    uiState.apiError?.let { errorMessage ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearApiError() },
+            title = {
+                Text(
+                    text = localizedApp(R.string.error),
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(text = errorMessage)
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.clearApiError() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = extraColors.startServiceButton
+                    )
+                ) {
+                    Text(localizedApp(R.string.ok))
+                }
+            },
+            containerColor = extraColors.cardBackground,
+            titleContentColor = extraColors.whiteInDarkMode,
+            textContentColor = extraColors.textSubTitle
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -150,22 +200,22 @@ fun TransactionFormContent(
                 totalSteps = uiState.steps.size,
                 onPreviousClick = previousStep,
                 onNextClick = {
-                    if (uiState.currentStep < uiState.steps.size - 1) {
-                        // Not on last step - check if we're on review step
-//                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
-//                            // On review step for Marine Registration - validate before proceeding
-//                            viewModel.validateOnReviewStep()
-//                        } else {
-                            // Regular next step
+                    // ✅ Check if we're on the last step
+                    if (uiState.currentStep >= uiState.steps.size - 1) {
+                        // On last step - check if it needs special API handling (like marine name)
+                        val currentStepFields = uiState.steps.getOrNull(uiState.currentStep)?.fields?.map { it.id } ?: emptyList()
+                        val isMarineNameStep = currentStepFields.contains("marineUnitName")
+
+                        if (isMarineNameStep) {
+                            // Marine name step - call nextStep() to trigger API via processStepData()
                             nextStep()
-//                        }
-                    } else {
-                        // On last step (final submission)
-//                        if (viewModel is MarineRegistrationViewModel) {
-//                            viewModel.validateAndSubmit()
-//                        } else {
+                        } else {
+                            // Regular last step (like OTP) - submit the form
                             submitForm()
-//                        }
+                        }
+                    } else {
+                        // Not on last step - always call nextStep()
+                        nextStep()
                     }
                 },
                 canProceed = if (isReviewStep) {
@@ -175,7 +225,8 @@ fun TransactionFormContent(
                     uiState.canProceedToNext
                 },
                 isSubmitting = submissionState is UIState.Loading,
-                isReviewStep = isReviewStep // Pass the review step flag
+                isReviewStep = isReviewStep, // Pass the review step flag
+                isProcessingStep = uiState.isProcessingStep // ✅ FIXED: Pass the actual processing state from uiState
             )
         }
     ) { paddingValues ->
@@ -334,11 +385,16 @@ fun GenericNavigationBottomBar(
     onNextClick: () -> Unit,
     canProceed: Boolean,
     isSubmitting: Boolean = false,
-    isReviewStep: Boolean = false // Add parameter to detect review step
+    isReviewStep: Boolean = false, // Add parameter to detect review step
+    isProcessingStep: Boolean = false // ✅ NEW: Loading state for Next button
 ) {
     val extraColors = LocalExtraColors.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .padding(  bottom = WindowInsets.navigationBars
+                .asPaddingValues()
+                .calculateBottomPadding() + 4.dp
+            ),
         shape = RoundedCornerShape(
             topStart = 16.dp,
             topEnd = 16.dp
@@ -360,6 +416,7 @@ fun GenericNavigationBottomBar(
                 OutlinedButton(
                     onClick = onPreviousClick,
                     modifier = Modifier.weight(1f),
+                    enabled = !isProcessingStep, // ✅ Disable back button during processing
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = extraColors.startServiceButton,
                         contentColor = Color.White
@@ -372,31 +429,42 @@ fun GenericNavigationBottomBar(
             Spacer(modifier = Modifier.width(12.dp))
             Button(
                 onClick = onNextClick,
-                enabled = canProceed && !isSubmitting,
+                enabled = canProceed && !isSubmitting && !isProcessingStep, // ✅ Disable during processing
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = extraColors.startServiceButton,
                     contentColor = Color.White
                 ),
                 border = ButtonDefaults.outlinedButtonBorder(
-                    enabled = canProceed && !isSubmitting
+                    enabled = canProceed && !isSubmitting && !isProcessingStep
                 ),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                // Show "Accept & Send" on review step OR last step
-                if (isReviewStep || currentStep >= totalSteps - 1) {
-                    Text(localizedApp(R.string.accept_and_send))
+                // ✅ NEW: Show loading indicator when processing
+                if (isProcessingStep) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(localizedApp(R.string.processing))
                 } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(localizedApp(R.string.next_button))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Default.NavigateNext,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                    // Show "Accept & Send" on review step OR last step
+                    if (isReviewStep || currentStep >= totalSteps - 1) {
+                        Text(localizedApp(R.string.accept_and_send))
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(localizedApp(R.string.next_button))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Default.NavigateNext,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }

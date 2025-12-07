@@ -1,4 +1,4 @@
- package com.informatique.mtcit.ui.components
+package com.informatique.mtcit.ui.components
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,7 +32,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class OwnerData(
     val id: String = java.util.UUID.randomUUID().toString(),
-    val fullName: String = "",
+    val fullName: String = "", // Deprecated - keeping for backward compatibility
+    val ownerName: String = "", // Arabic name (for individuals) or Arabic company name
+    val ownerNameEn: String = "", // English name (for individuals) or English company name
     val nationality: String = "",
     val idNumber: String = "",
     val ownerShipPercentage: String = "",
@@ -46,6 +48,7 @@ data class OwnerData(
     val companyRegistrationNumber: String = "",
     val companyName: String = "",
     val companyType: String = "",
+    val isRepresentative: Boolean = false, // New field for representative checkbox
     val ownershipProofDocument: String = "",
     val documentName: String = ""
 )
@@ -65,6 +68,8 @@ fun OwnerFormBottomSheet(
     val context = LocalContext.current
 
     var fullName by remember { mutableStateOf(owner?.fullName ?: "") }
+    var ownerName by remember { mutableStateOf(owner?.ownerName ?: "") }
+    var ownerNameEn by remember { mutableStateOf(owner?.ownerNameEn ?: "") }
     var nationality by remember { mutableStateOf(owner?.nationality ?: "") }
     var idNumber by remember { mutableStateOf(owner?.idNumber ?: "") }
     var ownerShipPercentage by remember { mutableStateOf(owner?.ownerShipPercentage ?: "") }
@@ -79,6 +84,7 @@ fun OwnerFormBottomSheet(
     var companyName by remember { mutableStateOf(owner?.companyName ?: "") }
     var companyType by remember { mutableStateOf(owner?.companyType ?: "") }
     var documentUri by remember { mutableStateOf(owner?.ownershipProofDocument ?: "") }
+    var isRepresentative by remember { mutableStateOf(owner?.isRepresentative ?: false) }
 
     // File upload callbacks
     var filePickerFieldId by remember { mutableStateOf<String?>(null) }
@@ -219,17 +225,34 @@ fun OwnerFormBottomSheet(
             }
 
             if (includeCompanyFields && isCompany) {
+                // Company Name in Arabic
                 Spacer(modifier = Modifier.height(8.dp))
                 CustomTextField(
-                    value = companyName,
-                    onValueChange = { companyName = it },
-                    label = localizedApp(R.string.company_name),
-                    mandatory = false,
-                    placeholder = localizedApp(R.string.company_name),
+                    value = ownerName,
+                    onValueChange = { ownerName = it },
+                    label = localizedApp(R.string.company_name_arabic),
+                    mandatory = true,
+                    placeholder = localizedApp(R.string.company_name_arabic),
                     enabled = true,
-                    maxLength = 50
+                    maxLength = 100
                 )
+
                 Spacer(modifier = Modifier.height(8.dp))
+
+                // Company Name in English
+                CustomTextField(
+                    value = ownerNameEn,
+                    onValueChange = { ownerNameEn = it },
+                    label = localizedApp(R.string.company_name_english),
+                    mandatory = true,
+                    placeholder = localizedApp(R.string.company_name_english),
+                    enabled = true,
+                    maxLength = 100
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Commercial Registration Number
                 CustomTextField(
                     value = companyRegistrationNumber,
                     onValueChange = { companyRegistrationNumber = it },
@@ -241,13 +264,26 @@ fun OwnerFormBottomSheet(
                     maxLength = 20
                 )
             } else {
-                // Full Name
+                // Owner Name in Arabic
                 CustomTextField(
-                    value = fullName,
-                    onValueChange = { fullName = it },
-                    label = localizedApp(R.string.owner_full_name_ar),
+                    value = ownerName,
+                    onValueChange = { ownerName = it },
+                    label = localizedApp(R.string.owner_name_arabic),
                     mandatory = true,
-                    placeholder = localizedApp(R.string.owner_full_name_ar),
+                    placeholder = localizedApp(R.string.owner_name_arabic),
+                    enabled = true,
+                    maxLength = 100
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Owner Name in English
+                CustomTextField(
+                    value = ownerNameEn,
+                    onValueChange = { ownerNameEn = it },
+                    label = localizedApp(R.string.owner_name_english),
+                    mandatory = true,
+                    placeholder = localizedApp(R.string.owner_name_english),
                     enabled = true,
                     maxLength = 100
                 )
@@ -279,6 +315,15 @@ fun OwnerFormBottomSheet(
                 enabled = true,
                 maxLength = 5 ,
                 minLength = 2
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Is Representative Checkbox
+            CustomCheckBox(
+                checked = isRepresentative,
+                onCheckedChange = { isRepresentative = it },
+                label = localizedApp(R.string.is_representative),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -356,6 +401,8 @@ fun OwnerFormBottomSheet(
                         val ownerData = OwnerData(
                             id = owner?.id ?: java.util.UUID.randomUUID().toString(),
                             fullName = fullName,
+                            ownerName = ownerName,
+                            ownerNameEn = ownerNameEn,
                             nationality = nationality,
                             idNumber = idNumber,
                             ownerShipPercentage = ownerShipPercentage,
@@ -369,6 +416,7 @@ fun OwnerFormBottomSheet(
                         companyRegistrationNumber = companyRegistrationNumber,
                         companyName = companyName,
                         companyType = companyType,
+                        isRepresentative = isRepresentative,
                         ownershipProofDocument = documentUri,
                         documentName = ""
                         )

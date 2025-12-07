@@ -100,6 +100,15 @@ interface TransactionStrategy {
     }
 
     /**
+     * ✅ NEW: Get current form data including any flags set by strategy (e.g., showInspectionDialog)
+     * @return Current accumulated form data
+     */
+    fun getFormData(): Map<String, String> {
+        // Default implementation - return empty map
+        return emptyMap()
+    }
+
+    /**
      * ✅ NEW: Callback to notify ViewModel when steps need to be rebuilt
      * This is used after lazy-loading lookups to refresh the UI with updated dropdown options
      * Strategies can set this callback and invoke it when their step data changes

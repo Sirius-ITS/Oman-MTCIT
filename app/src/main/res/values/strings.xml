@@ -444,6 +444,12 @@
     <string name="yes">Yes</string>
     <string name="no">No</string>
 
+    <!-- Inspection Dialog -->
+    <string name="inspection_required">Inspection Required</string>
+    <string name="ok">OK</string>
+    <string name="processing">Processing...</string>
+    <string name="error">Error</string>
+
     <!-- Rejection Step -->
     <string name="request_rejected_title">Request Cannot Be Processed</string>
     <string name="request_rejected_desc">Unfortunately, your request cannot be completed due to the following reasons</string>
@@ -660,6 +666,11 @@
     <string name="ownership_proof_document">Ownership Proof Attachments</string>
 
     <string name="owner_full_name_en">Owner Full Name in English</string>
+    <string name="owner_name_arabic">Owner Name (Arabic)</string>
+    <string name="owner_name_english">Owner Name (English)</string>
+    <string name="company_name_arabic">Company Name (Arabic)</string>
+    <string name="company_name_english">Company Name (English)</string>
+    <string name="is_representative">Is Representative</string>
     <string name="ownershippercentage">Ownership Percentage %</string>
     <string name="enter_ownershippercentage">Enter ownership percentage %</string>
 

@@ -1,13 +1,20 @@
 package com.informatique.mtcit.business.transactions.mapper
 
 import com.informatique.mtcit.data.model.*
+import com.informatique.mtcit.data.repository.LookupRepository
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Mapper to convert form data to API request models
+ * ✅ REFACTORED: Now uses LookupRepository for dynamic ID lookups instead of static mappings
  */
-object RegistrationRequestMapper {
+@Singleton
+class RegistrationRequestMapper @Inject constructor(
+    private val lookupRepository: LookupRepository
+) {
 
     // Date formatters
     private val inputDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
@@ -24,7 +31,7 @@ object RegistrationRequestMapper {
     fun mapToCreateRegistrationRequest(
         formData: Map<String, String>,
         requestTypeId: Int,
-        requestId: Int? = null // ✅ NEW: Optional for PUT updates
+        requestId: Int? = null
     ): CreateRegistrationRequest {
 
         // Extract isCompany from person type selection
@@ -39,7 +46,7 @@ object RegistrationRequestMapper {
             imoNumber = formData["imoNumber"]?.toIntOrNull(),
             callSign = formData["callSign"] ?: "",
             mmsiNumber = formData["mmsi"]?.toIntOrNull(),
-            officialNumber = formData["imoNumber"] ?: formData["officialNumber"], // Use IMO number for now
+            officialNumber = formData["imoNumber"] ?: formData["officialNumber"],
             portOfRegistry = PortOfRegistryRef(
                 id = extractPortId(formData["registrationPort"])
             ),
@@ -73,10 +80,10 @@ object RegistrationRequestMapper {
 
         return CreateRegistrationRequest(
             regShipRegRequestReqDto = RegShipRegRequestReqDto(
-                id = requestId, // ✅ NEW: Include request ID for PUT updates
+                id = requestId,
                 shipInfo = ShipInfo(
                     ship = ship,
-                    isCurrent = 0 // Always 0 for now
+                    isCurrent = 0
                 ),
                 requestType = RequestType(id = requestTypeId)
             ),
@@ -92,125 +99,144 @@ object RegistrationRequestMapper {
         if (dateString.isNullOrBlank()) return null
 
         return try {
-            // Parse the date from dd/MM/yyyy format
             val date = LocalDate.parse(dateString, inputDateFormatter)
-            // Format it to yyyy-MM-dd
             date.format(outputDateFormatter)
         } catch (e: Exception) {
             println("⚠️ Failed to parse date: $dateString - ${e.message}")
-            // If parsing fails, return the original string (might already be in correct format)
             dateString
         }
     }
 
     /**
-     * Extract port ID from selected port name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract port ID from selected port name using LookupRepository
      */
     private fun extractPortId(portName: String?): String {
-        // For now, return a mock ID based on port name
-        // In production, you should have a Map<String, String> from lookups
-        return when {
-            portName?.contains("صحار") == true || portName?.contains("Sohar") == true -> "OMSOH"
-            portName?.contains("صلالة") == true || portName?.contains("Salalah") == true -> "OMSAL"
-            portName?.contains("مسقط") == true || portName?.contains("Muscat") == true -> "OMMUS"
-            portName?.contains("الدقم") == true || portName?.contains("Duqm") == true -> "OMDQM"
-            else -> "OMSOH" // Default
+        if (portName.isNullOrBlank()) {
+            println("⚠️ Port name is null or blank, using default")
+            return "OMSOH" // Default fallback
         }
+
+        val portId = lookupRepository.getPortId(portName)
+        if (portId == null) {
+            println("⚠️ Could not find port ID for: $portName, using default")
+            return "OMSOH" // Default fallback
+        }
+
+        println("✅ Mapped port '$portName' to ID: $portId")
+        return portId
     }
 
     /**
-     * Extract marine activity ID from selected activity name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract marine activity ID from selected activity name using LookupRepository
      */
     private fun extractMarineActivityId(activityName: String?): Int {
-        // For now, return a mock ID
-        // In production, you should have a Map<String, Int> from lookups
-        return when {
-            activityName?.contains("صيد") == true || activityName?.contains("Fishing") == true -> 1
-            activityName?.contains("شحن") == true || activityName?.contains("Cargo") == true -> 2
-            activityName?.contains("ركاب") == true || activityName?.contains("Passenger") == true -> 3
-            activityName?.contains("نقل") == true || activityName?.contains("Transport") == true -> 4
-            activityName?.contains("سياحة") == true || activityName?.contains("Tourism") == true -> 5
-            activityName?.contains("نفط") == true || activityName?.contains("Oil") == true -> 6
-            else -> 1 // Default
+        if (activityName.isNullOrBlank()) {
+            println("⚠️ Marine activity name is null or blank, using default")
+            return 1 // Default fallback
         }
+
+        val activityId = lookupRepository.getMarineActivityId(activityName)
+        if (activityId == null) {
+            println("⚠️ Could not find marine activity ID for: $activityName, using default")
+            return 1 // Default fallback
+        }
+
+        println("✅ Mapped marine activity '$activityName' to ID: $activityId")
+        return activityId
     }
 
     /**
-     * Extract ship category ID from selected category name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract ship category ID from selected category name using LookupRepository
      */
     private fun extractShipCategoryId(categoryName: String?): Int {
-        // For now, return a mock ID
-        return when {
-            categoryName?.contains("A") == true -> 1
-            categoryName?.contains("B") == true -> 2
-            categoryName?.contains("C") == true -> 3
-            categoryName?.contains("D") == true -> 4
-            else -> 3 // Default
+        if (categoryName.isNullOrBlank()) {
+            println("⚠️ Ship category name is null or blank, using default")
+            return 3 // Default fallback
         }
+
+        val categoryId = lookupRepository.getShipCategoryId(categoryName)
+        if (categoryId == null) {
+            println("⚠️ Could not find ship category ID for: $categoryName, using default")
+            return 3 // Default fallback
+        }
+
+        println("✅ Mapped ship category '$categoryName' to ID: $categoryId")
+        return categoryId
     }
 
     /**
-     * Extract ship type ID from selected type name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract ship type ID from selected type name using LookupRepository
      */
     private fun extractShipTypeId(typeName: String?): Int {
-        // For now, return a mock ID
-        return when {
-            typeName?.contains("صيد") == true || typeName?.contains("Fishing") == true -> 10
-            typeName?.contains("شحن") == true || typeName?.contains("Cargo") == true -> 11
-            typeName?.contains("ركاب") == true || typeName?.contains("Passenger") == true -> 12
-            typeName?.contains("يخت") == true || typeName?.contains("Yacht") == true -> 13
-            typeName?.contains("صهريج") == true || typeName?.contains("Tanker") == true -> 14
-            else -> 13 // Default
+        if (typeName.isNullOrBlank()) {
+            println("⚠️ Ship type name is null or blank, using default")
+            return 13 // Default fallback
         }
+
+        val typeId = lookupRepository.getShipTypeId(typeName)
+        if (typeId == null) {
+            println("⚠️ Could not find ship type ID for: $typeName, using default")
+            return 13 // Default fallback
+        }
+
+        println("✅ Mapped ship type '$typeName' to ID: $typeId")
+        return typeId
     }
 
     /**
-     * Extract proof type ID from selected proof type name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract proof type ID from selected proof type name using LookupRepository
      */
     private fun extractProofTypeId(proofTypeName: String?): Int {
-        // For now, return a mock ID
-        return when {
-            proofTypeName?.contains("ملكية") == true || proofTypeName?.contains("Ownership") == true -> 1
-            proofTypeName?.contains("بيع") == true || proofTypeName?.contains("Sale") == true -> 2
-            proofTypeName?.contains("تسجيل") == true || proofTypeName?.contains("Registration") == true -> 3
-            else -> 1 // Default
+        if (proofTypeName.isNullOrBlank()) {
+            println("⚠️ Proof type name is null or blank, using default")
+            return 1 // Default fallback
         }
+
+        val proofTypeId = lookupRepository.getProofTypeId(proofTypeName)
+        if (proofTypeId == null) {
+            println("⚠️ Could not find proof type ID for: $proofTypeName, using default")
+            return 1 // Default fallback
+        }
+
+        println("✅ Mapped proof type '$proofTypeName' to ID: $proofTypeId")
+        return proofTypeId
     }
 
     /**
-     * Extract country ID (ISO code) from country name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract country ID (ISO code) from country name using LookupRepository
      */
     private fun extractCountryId(countryName: String?): String {
-        // For now, return a mock ISO code
-        return when {
-            countryName?.contains("عُمان") == true || countryName?.contains("Oman") == true -> "OM"
-            countryName?.contains("الإمارات") == true || countryName?.contains("UAE") == true -> "AE"
-            countryName?.contains("السعودية") == true || countryName?.contains("Saudi") == true -> "SA"
-            countryName?.contains("الكويت") == true || countryName?.contains("Kuwait") == true -> "KW"
-            countryName?.contains("البحرين") == true || countryName?.contains("Bahrain") == true -> "BH"
-            countryName?.contains("قطر") == true || countryName?.contains("Qatar") == true -> "QA"
-            else -> "OM" // Default
+        if (countryName.isNullOrBlank()) {
+            println("⚠️ Country name is null or blank, using default")
+            return "OM" // Default fallback
         }
+
+        val countryId = lookupRepository.getCountryId(countryName)
+        if (countryId == null) {
+            println("⚠️ Could not find country ID for: $countryName, using default")
+            return "OM" // Default fallback
+        }
+
+        println("✅ Mapped country '$countryName' to ID: $countryId")
+        return countryId
     }
 
     /**
-     * Extract building material ID from material name
-     * TODO: Replace with actual lookup mapping when available
+     * ✅ REFACTORED: Extract building material ID from material name using LookupRepository
      */
     private fun extractBuildMaterialId(materialName: String?): Int {
-        // For now, return a mock ID
-        return when {
-            materialName?.contains("خشب") == true || materialName?.contains("Wood") == true -> 20
-            materialName?.contains("معدن") == true || materialName?.contains("Metal") == true -> 21
-            materialName?.contains("ألياف") == true || materialName?.contains("Fiber") == true -> 22
-            materialName?.contains("بلاستيك") == true || materialName?.contains("Plastic") == true -> 23
-            else -> 21 // Default (Metal)
+        if (materialName.isNullOrBlank()) {
+            println("⚠️ Build material name is null or blank, using default")
+            return 21 // Default fallback (Metal)
         }
+
+        val materialId = lookupRepository.getBuildMaterialId(materialName)
+        if (materialId == null) {
+            println("⚠️ Could not find build material ID for: $materialName, using default")
+            return 21 // Default fallback (Metal)
+        }
+
+        println("✅ Mapped build material '$materialName' to ID: $materialId")
+        return materialId
     }
 }

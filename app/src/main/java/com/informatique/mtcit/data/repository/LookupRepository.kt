@@ -34,6 +34,14 @@ interface LookupRepository {
     // NEW: Get category ID from category name for cascading dropdowns
     fun getShipCategoryId(categoryName: String): Int?
 
+    // ✅ NEW: Get IDs from names for all lookups (for mapper usage)
+    fun getPortId(portName: String): String?
+    fun getMarineActivityId(activityName: String): Int?
+    fun getShipTypeId(typeName: String): Int?
+    fun getProofTypeId(proofTypeName: String): Int?
+    fun getCountryId(countryName: String): String?
+    fun getBuildMaterialId(materialName: String): Int?
+
     // ✅ NEW: Get raw lookup objects (with id, nameEn, nameAr) for engine submission
     suspend fun getEngineTypesRaw(): List<EngineType>
     suspend fun getCountriesRaw(): List<Country>
@@ -447,6 +455,33 @@ class LookupRepositoryImpl @Inject constructor(
      */
     override fun getShipCategoryId(categoryName: String): Int? {
         return cachedShipCategories?.find { getLocalizedName(it.nameAr, it.nameEn) == categoryName }?.id
+    }
+
+    /**
+     * Get IDs from names for all lookups (for mapper usage)
+     */
+    override fun getPortId(portName: String): String? {
+        return cachedPorts?.find { getLocalizedName(it.nameAr, it.nameEn) == portName }?.id
+    }
+
+    override fun getMarineActivityId(activityName: String): Int? {
+        return cachedMarineActivities?.find { getLocalizedName(it.nameAr, it.nameEn) == activityName }?.id
+    }
+
+    override fun getShipTypeId(typeName: String): Int? {
+        return cachedShipTypes?.find { getLocalizedName(it.nameAr, it.nameEn) == typeName }?.id
+    }
+
+    override fun getProofTypeId(proofTypeName: String): Int? {
+        return cachedProofTypes?.find { getLocalizedName(it.nameAr, it.nameEn) == proofTypeName }?.id
+    }
+
+    override fun getCountryId(countryName: String): String? {
+        return cachedCountries?.find { getLocalizedName(it.nameAr, it.nameEn) == countryName }?.id
+    }
+
+    override fun getBuildMaterialId(materialName: String): Int? {
+        return cachedBuildMaterials?.find { getLocalizedName(it.nameAr, it.nameEn) == materialName }?.id
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.informatique.mtcit.business.transactions.shared
 
 import android.content.Context
+import com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
 import com.informatique.mtcit.data.model.EngineFileUpload
 import com.informatique.mtcit.data.model.EngineSubmissionRequest
 import com.informatique.mtcit.data.model.OwnerFileUpload
@@ -16,6 +17,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+import androidx.core.net.toUri
 
 /**
  * Shared manager for handling registration request API calls
@@ -24,7 +26,8 @@ import javax.inject.Singleton
 @Singleton
 class RegistrationRequestManager @Inject constructor(
     private val repository: ShipRegistrationRepository,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val mapper: RegistrationRequestMapper
 ) {
 
     /**
@@ -49,7 +52,7 @@ class RegistrationRequestManager @Inject constructor(
                 println("🚀 RegistrationRequestManager: Creating NEW registration request (type=$requestTypeId)...")
 
                 // Map form data to API request (without id)
-                val request = com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
+                val request = mapper
                     .mapToCreateRegistrationRequest(
                         formData = formData,
                         requestTypeId = requestTypeId
@@ -99,7 +102,7 @@ class RegistrationRequestManager @Inject constructor(
                 println("🔄 RegistrationRequestManager: UPDATING existing registration request (id=$existingRequestId, type=$requestTypeId)...")
 
                 // Map form data to API request (WITH id this time)
-                val request = com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
+                val request = mapper
                     .mapToCreateRegistrationRequest(
                         formData = formData,
                         requestTypeId = requestTypeId,
@@ -459,7 +462,7 @@ class RegistrationRequestManager @Inject constructor(
             var inspectionDocsName: String? = null
 
             if (!shipbuildingCertUri.isNullOrEmpty() && shipbuildingCertUri != "null") {
-                val uri = android.net.Uri.parse(shipbuildingCertUri)
+                val uri = shipbuildingCertUri.toUri()
                 val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
                 if (fileUpload != null) {
                     shipbuildingCertFile = fileUpload.fileBytes
@@ -469,7 +472,7 @@ class RegistrationRequestManager @Inject constructor(
             }
 
             if (!inspectionDocsUri.isNullOrEmpty() && inspectionDocsUri != "null") {
-                val uri = android.net.Uri.parse(inspectionDocsUri)
+                val uri = inspectionDocsUri.toUri()
                 val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
                 if (fileUpload != null) {
                     inspectionDocsFile = fileUpload.fileBytes
@@ -518,6 +521,92 @@ class RegistrationRequestManager @Inject constructor(
     }
 
     /**
+     * Send registration request and check if inspection is needed
+     * Called when user reaches Review Step
+     *
+     * POST api/v1/registration-requests/{request-id}/send-request
+     *
+     * @param requestId The registration request ID
+     * @return SendRequestResult with inspection status
+     */
+    suspend fun sendRequest(requestId: Int): SendRequestResult {
+        return try {
+            println("🚀 RegistrationRequestManager: Sending request for requestId=$requestId...")
+
+            val result = repository.sendRequest(requestId)
+
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                        println("✅ Request sent successfully!")
+                        println("   Message: ${response.data.message}")
+                        println("   Need Inspection: ${response.data.needInspection}")
+
+                        SendRequestResult.Success(
+                            message = response.data.message,
+                            needInspection = response.data.needInspection
+                        )
+                    } else {
+                        println("❌ API returned error: ${response.message}")
+                        SendRequestResult.Error(response.message)
+                    }
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to send request: ${exception.message}")
+                    exception.printStackTrace()
+                    SendRequestResult.Error(exception.message ?: "Unknown error")
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception in sendRequest: ${e.message}")
+            e.printStackTrace()
+            SendRequestResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Reserve marine/ship name
+     * Called when user enters marine name and clicks "Proceed to Payment"
+     *
+     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     *
+     * @param requestId The registration request ID
+     * @param marineName The marine/ship name entered by user
+     * @return Success or error result
+     */
+    suspend fun reserveMarineName(
+        requestId: String,
+        marineName: String
+    ): UpdateResult {
+        return try {
+            println("🚀 RegistrationRequestManager: Reserving marine name for requestId=$requestId...")
+            println("📤 Marine Name: $marineName")
+
+            // Validate marine name is not empty
+            if (marineName.isBlank()) {
+                println("❌ Marine name is empty")
+                return UpdateResult.Error("Marine name cannot be empty")
+            }
+
+            // Call API
+            val result = repository.shipNameReservation(requestId.toInt(), marineName)
+
+            if (result.isSuccess) {
+                println("✅ Marine name reserved successfully!")
+                UpdateResult.Success
+            } else {
+                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                println("❌ Failed to reserve marine name: $errorMessage")
+                UpdateResult.Error(errorMessage)
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in reserveMarineName: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
      * Detect which step was just completed and call appropriate API
      *
      * @param stepFields The field IDs in the current step
@@ -537,24 +626,24 @@ class RegistrationRequestManager @Inject constructor(
         if (hasUnitSelectionFields && formData.containsKey("unitType")) {
             // ✅ SIMULATION MODE: Use hardcoded test data instead of calling API
             // This prevents creating new ships during engine testing
-            println("🔍 Detected Unit Selection Step - SIMULATION MODE ENABLED")
+            /*println("🔍 Detected Unit Selection Step - SIMULATION MODE ENABLED")
             println("⚠️ Skipping API call - Using test data instead")
 
             // Store simulated IDs in form data
-            formData["requestId"] = "381"
-            formData["shipInfoId"] = "421"
-            formData["shipId"] = "503"
-            formData["requestNumber"] = "266/2025"
+            formData["requestId"] = "446"
+            formData["shipInfoId"] = "486"
+            formData["shipId"] = "566"
+            formData["requestNumber"] = "324/2025"
 
             println("✅ SIMULATED Request ID: 381")
             println("✅ SIMULATED Ship Info ID: 421")
             println("✅ SIMULATED Ship ID: 503")
             println("✅ SIMULATED Request Serial: 266/2025")
 
-            return StepProcessResult.Success("Registration request simulated (test mode)")
+            return StepProcessResult.Success("Registration request simulated (test mode)")*/
 
             // ✅ TODO: Uncomment below to use REAL API instead of simulation
-            /*
+
             println("🔍 Detected Unit Selection Step - Creating or updating registration request...")
 
             val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
@@ -572,7 +661,6 @@ class RegistrationRequestManager @Inject constructor(
                     StepProcessResult.Error(result.message)
                 }
             }
-            */
         }
 
         // Get requestId for subsequent calls
@@ -754,6 +842,77 @@ class RegistrationRequestManager @Inject constructor(
                 println("❌ Error validating documents: ${e.message}")
                 e.printStackTrace()
                 StepProcessResult.Error("Failed to validate documents: ${e.message}")
+            }
+        }
+
+        // ✅ NEW: Check if this is the Review Step (no fields = review step)
+        if (stepFields.isEmpty()) {
+            println("🔍 Detected Review Step - Sending request...")
+
+            return try {
+                val result = sendRequest(requestId.toInt())
+
+                when (result) {
+                    is SendRequestResult.Success -> {
+                        println("✅ Request sent successfully!")
+                        // Store the inspection flag in formData for the strategy to check
+                        formData["needInspection"] = result.needInspection.toString()
+                        formData["sendRequestMessage"] = result.message
+                        StepProcessResult.Success(result.message)
+                    }
+                    is SendRequestResult.Error -> {
+                        println("❌ Send request error: ${result.message}")
+                        StepProcessResult.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ Error sending request: ${e.message}")
+                e.printStackTrace()
+                StepProcessResult.Error("Failed to send request: ${e.message}")
+            }
+        }
+
+        // ✅ NEW: Check if this is the Marine Unit Name Step (final step before payment)
+        val hasMarineNameField = stepFields.contains("marineUnitName")
+        if (hasMarineNameField) {
+            println("🔍 Detected Marine Unit Name Step - Reserving ship name...")
+
+            val marineName = formData["marineUnitName"]
+
+            if (marineName.isNullOrBlank()) {
+                println("⚠️ Marine name is empty - skipping reservation")
+                return StepProcessResult.Error("Marine name is required")
+            }
+
+            return try {
+                val result = reserveMarineName(
+                    requestId = requestId,
+                    marineName = marineName.trim()
+                )
+
+                when (result) {
+                    is UpdateResult.Success -> {
+                        println("✅ Marine name reserved successfully!")
+                        // Show success dialog using InspectionRequiredDialog
+                        formData["showInspectionDialog"] = "true"
+                        formData["inspectionMessage"] = "تم حجز اسم الوحدة البحرية بنجاح!\n\nاسم الوحدة: ${marineName.trim()}\n\nجاهز للانتقال إلى الدفع"
+                        StepProcessResult.Success("Marine name reserved successfully")
+                    }
+                    is UpdateResult.Error -> {
+                        println("❌ Marine name reservation error: ${result.message}")
+                        // Show error dialog using InspectionRequiredDialog
+                        formData["showInspectionDialog"] = "true"
+                        formData["inspectionMessage"] = "فشل حجز اسم الوحدة البحرية\n\n${result.message}"
+                        StepProcessResult.Error(result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ Error reserving marine name: ${e.message}")
+                e.printStackTrace()
+                // Show error dialog for exception
+                formData["showInspectionDialog"] = "true"
+                formData["inspectionMessage"] = "فشل حجز اسم الوحدة البحرية\n\n${e.message ?: "خطأ غير معروف"}"
+                StepProcessResult.Error("Failed to reserve marine name: ${e.message}")
             }
         }
 
@@ -991,17 +1150,22 @@ class RegistrationRequestManager @Inject constructor(
                     val docOwnerId = "owner${index + 1}"
 
                     // Extract values from JSON - map form field names to API field names
-                    val fullName = ownerObj["fullName"]?.jsonPrimitive?.content ?: ""
+                    val ownerName = ownerObj["ownerName"]?.jsonPrimitive?.content ?: ""
+                    val ownerNameEn = ownerObj["ownerNameEn"]?.jsonPrimitive?.content
+                    val fullName = ownerObj["fullName"]?.jsonPrimitive?.content ?: "" // Backward compatibility
                     val idNumber = ownerObj["idNumber"]?.jsonPrimitive?.content
                     val ownerShipPercentage = ownerObj["ownerShipPercentage"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
                     val email = ownerObj["email"]?.jsonPrimitive?.content
                     val mobile = ownerObj["mobile"]?.jsonPrimitive?.content
                     val address = ownerObj["address"]?.jsonPrimitive?.content
 
-                    // Check if it's a company or individual (assume individual if not specified)
+                    // Check if it's a company or individual
                     val isCompany = ownerObj["isCompany"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-                    val commercialRegNumber = ownerObj["commercialRegNumber"]?.jsonPrimitive?.content
-                    val isRepresentative = ownerObj["isRepresentative"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                    val commercialRegNumber = ownerObj["companyRegistrationNumber"]?.jsonPrimitive?.content
+
+                    // Get isRepresentative value (boolean from form -> 0 or 1 for API)
+                    val isRepresentativeBool = ownerObj["isRepresentative"]?.jsonPrimitive?.content?.toBooleanStrictOrNull() ?: false
+                    val isRepresentative = if (isRepresentativeBool) 1 else 0
 
                     // Parse documents array - look for ownershipProofDocument field
                     val documents = mutableListOf<com.informatique.mtcit.data.model.OwnerDocumentMetadata>()
@@ -1016,7 +1180,7 @@ class RegistrationRequestManager @Inject constructor(
 
                             // Extract actual file name from document URI
                             if (documentUri.isNotEmpty()) {
-                                val uri = android.net.Uri.parse(documentUri)
+                                val uri = documentUri.toUri()
                                 val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
                                 val fileName = fileUpload?.fileName ?: ""
 
@@ -1035,7 +1199,7 @@ class RegistrationRequestManager @Inject constructor(
                         // Check for single ownershipProofDocument field (backward compatibility)
                         val ownershipProofDocument = ownerObj["ownershipProofDocument"]?.jsonPrimitive?.content
                         if (!ownershipProofDocument.isNullOrEmpty()) {
-                            val uri = android.net.Uri.parse(ownershipProofDocument)
+                            val uri = ownershipProofDocument.toUri()
                             val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
                             val fileName = fileUpload?.fileName ?: ""
 
@@ -1053,7 +1217,8 @@ class RegistrationRequestManager @Inject constructor(
 
                     OwnerSubmissionRequest(
                         isCompany = isCompany,
-                        ownerName = fullName,
+                        ownerName = if (ownerName.isNotEmpty()) ownerName else fullName, // Use new field or fallback to fullName
+                        ownerNameEn = ownerNameEn,
                         ownerCivilId = idNumber,
                         commercialRegNumber = commercialRegNumber,
                         ownershipPercentage = ownerShipPercentage,
@@ -1186,4 +1351,13 @@ sealed class DocumentValidationResult {
     object Success : DocumentValidationResult()
     data class Error(val message: String) : DocumentValidationResult()
     data class ValidationErrors(val fieldErrors: Map<String, String>) : DocumentValidationResult()
+}
+
+sealed class SendRequestResult {
+    data class Success(
+        val message: String,
+        val needInspection: Boolean
+    ) : SendRequestResult()
+
+    data class Error(val message: String) : SendRequestResult()
 }

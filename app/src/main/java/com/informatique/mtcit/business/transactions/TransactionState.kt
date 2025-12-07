@@ -16,5 +16,8 @@ data class TransactionState(
     val transactionType: TransactionType? = null,
     // ✅ NEW: For resumed transactions - locks previous steps (no back navigation)
     val isResumedTransaction: Boolean = false,
-    val lockedSteps: Set<Int> = emptySet() // Steps that cannot be navigated to
+    val lockedSteps: Set<Int> = emptySet(), // Steps that cannot be navigated to
+    // ✅ NEW: For Next button loading indicator when processing API calls
+    val isProcessingStep: Boolean = false,
+    val apiError: String? = null // Error message to show in dialog
 )

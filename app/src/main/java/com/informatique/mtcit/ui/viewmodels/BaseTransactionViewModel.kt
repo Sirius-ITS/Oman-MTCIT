@@ -339,54 +339,89 @@ abstract class BaseTransactionViewModel(
                 // ✅✅✅ الحل الأساسي: نادي processStepData و refresh الـ steps
                 val strategy = currentStrategy
                 if (strategy != null) {
-                    // Process the data
-                    val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
+                    // ✅ NEW: Set loading state BEFORE processing
+                    _uiState.value = currentState.copy(
+                        isProcessingStep = true,
+                        apiError = null // Clear previous errors
+                    )
 
-                    // ✅ TODO: Uncomment after backend integration is complete
-                    // This would stop flow and forward to RequestDetailScreen when requiredNextStep == -1
-                    // if (requiredNextStep == -1) {
-                    //     println("🔄 Strategy returned -1, stopping flow and forwarding to RequestDetailScreen")
-                    //     return@launch
-                    // }
-                    // ✅ For now, continue normal flow
+                    try {
+                        // Process the data
+                        val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
 
-                    // ✅ Load ships if needed
-                    if (shouldLoadShips) {
-                        println("🚢 Loading ships for selected type...")
-                        try {
-                            // ✅ IMPORTANT: Pass merged form data so strategy has access to newly entered commercial reg
-                            val loadedShips = strategy.loadShipsForSelectedType(mergedFormData)
-                            println("✅ Loaded ${loadedShips.size} ships successfully")
-                        } catch (e: Exception) {
-                            println("❌ Failed to load ships: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
+                        // ✅ NEW: Get updated form data from strategy (includes inspection dialog flags)
+                        val updatedFormData = strategy.getFormData()
 
-                    // Refresh steps (critical for dynamic step logic!)
-                    val updatedSteps = strategy.getSteps()
+                        // ✅ Check if inspection dialog should be shown (stay on current step)
+                        val showInspectionDialog = updatedFormData["showInspectionDialog"]?.toBoolean() ?: false
 
-                    // Update state with new steps
-                    val updatedState = currentState.copy(steps = updatedSteps)
-                    _uiState.value = updatedState
-
-                    // Use updated state for navigation
-                    navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
-                        val newCompletedSteps = updatedState.completedSteps + currentStepIndex
-
-                        _uiState.value = updatedState.copy(
-                            currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
-                            completedSteps = newCompletedSteps,
-                            canProceedToNext = navigationUseCase.canProceedToNext(
-                                nextStep,
-                                updatedSteps,
-                                updatedState.formData
+                        if (showInspectionDialog) {
+                            println("🔍 Inspection dialog triggered - staying on current step")
+                            // Update UI state with the inspection dialog flags and CLEAR loading
+                            _uiState.value = currentState.copy(
+                                formData = updatedFormData,
+                                isProcessingStep = false
                             )
-                        )
+                            return@launch // Don't proceed to next step
+                        }
 
-                        // ✅ NEW: Load lookups for the next step
-                        val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
-                        strategy.onStepOpened(targetStep)
+                        // ✅ Load ships if needed
+                        if (shouldLoadShips) {
+                            println("🚢 Loading ships for selected type...")
+                            try {
+                                // ✅ IMPORTANT: Pass merged form data so strategy has access to newly entered commercial reg
+                                val loadedShips = strategy.loadShipsForSelectedType(mergedFormData)
+                                println("✅ Loaded ${loadedShips.size} ships successfully")
+                            } catch (e: Exception) {
+                                println("❌ Failed to load ships: ${e.message}")
+                                e.printStackTrace()
+                                // Show error dialog and stop
+                                _uiState.value = currentState.copy(
+                                    isProcessingStep = false,
+                                    apiError = "فشل تحميل الوحدات البحرية: ${e.message}"
+                                )
+                                return@launch
+                            }
+                        }
+
+                        // Refresh steps (critical for dynamic step logic!)
+                        val updatedSteps = strategy.getSteps()
+
+                        // Update state with new steps AND updated form data
+                        val updatedState = currentState.copy(
+                            steps = updatedSteps,
+                            formData = updatedFormData
+                        )
+                        _uiState.value = updatedState
+
+                        // Use updated state for navigation
+                        navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
+                            val newCompletedSteps = updatedState.completedSteps + currentStepIndex
+
+                            _uiState.value = updatedState.copy(
+                                currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
+                                completedSteps = newCompletedSteps,
+                                canProceedToNext = navigationUseCase.canProceedToNext(
+                                    nextStep,
+                                    updatedSteps,
+                                    updatedState.formData
+                                ),
+                                isProcessingStep = false // ✅ Clear loading state on success
+                            )
+
+                            // ✅ NEW: Load lookups for the next step
+                            val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
+                            strategy.onStepOpened(targetStep)
+                        }
+                    } catch (e: Exception) {
+                        // ✅ NEW: Handle any errors during processing
+                        println("❌ Error in nextStep: ${e.message}")
+                        e.printStackTrace()
+                        _uiState.value = currentState.copy(
+                            isProcessingStep = false,
+                            apiError = "حدث خطأ أثناء معالجة البيانات: ${e.message}"
+                        )
+                        return@launch
                     }
                 }
 
@@ -653,6 +688,13 @@ abstract class BaseTransactionViewModel(
 
     fun clearFileNavigationEvent() {
         _fileNavigationEvent.value = null
+    }
+
+    /**
+     * ✅ NEW: Clear API error dialog
+     */
+    fun clearApiError() {
+        _uiState.value = _uiState.value.copy(apiError = null)
     }
 }
 // ****************************************************

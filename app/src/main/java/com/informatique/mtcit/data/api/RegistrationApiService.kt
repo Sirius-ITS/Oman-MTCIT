@@ -571,7 +571,7 @@ class RegistrationApiService @Inject constructor(
                                 HttpHeaders.ContentDisposition,
                                 "form-data; name=\"files\"; filename=\"$inspectionDocumentsName\""
                             )
-                            append(HttpHeaders.ContentType, "application/pdf")
+                            append(HttpHeaders.ContentType, "application/octet-stream")
                         }
                     )
                 )
@@ -614,6 +614,99 @@ class RegistrationApiService @Inject constructor(
             println("❌ Exception in validateBuildStatus: ${e.message}")
             e.printStackTrace()
             Result.failure(Exception("Failed to validate build status: ${e.message}"))
+        }
+    }
+
+    /**
+     * Send registration request and check if inspection is needed
+     * POST api/v1/registration-requests/{request-id}/send-request
+     */
+    suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Sending request for requestId=$requestId...")
+
+            when (val response = repo.onPostAuth("api/v1/registration-requests/$requestId/send-request", "")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Send Request API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            // Parse the full response
+                            val sendRequestResponse: com.informatique.mtcit.data.model.SendRequestResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Send request successful!")
+                            println("   Message: ${sendRequestResponse.data.message}")
+                            println("   Need Inspection: ${sendRequestResponse.data.needInspection}")
+
+                            Result.success(sendRequestResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to send request"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    Result.failure(Exception("API Error: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in sendRequest: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to send request: ${e.message}"))
+        }
+    }
+
+    /**
+     * Reserve ship/marine name
+     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     */
+    suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit> {
+        return try {
+            println("🚀 RegistrationApiService: Reserving marine name for requestId=$requestId...")
+            println("📤 Marine Name: $marineName")
+
+            val url = "api/v1/registration-requests/$requestId/$marineName/shipNameReservation"
+            when (val response = repo.onPostAuth(url, "")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Ship Name Reservation API Response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            println("✅ Marine name reserved successfully!")
+                            Result.success(Unit)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to reserve marine name"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    Result.failure(Exception("API Error: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in shipNameReservation: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to reserve marine name: ${e.message}"))
         }
     }
 }

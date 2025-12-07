@@ -251,7 +251,7 @@ fun CustomDatePicker(
     if (showDatePicker) {
         DatePickerModal(
             onDateSelected = { selectedDate ->
-                val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH)
                 onValueChange(formatter.format(Date(selectedDate)))
                 showDatePicker = false
             },
