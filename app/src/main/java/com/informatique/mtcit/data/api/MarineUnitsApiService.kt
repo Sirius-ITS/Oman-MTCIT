@@ -171,7 +171,12 @@ class MarineUnitsApiService @Inject constructor(
     }
 
     /**
-     * Parse ship JSON object to MarineUnit model
+     * ✅ Generic function to parse ship JSON object to MarineUnit model
+     * 🔄 Shared by: getMyShips (temporary certificate) & getMortgagedShips (mortgage release)
+     *
+     * This function handles ship data from different API responses:
+     * - Temporary Certificate: data.content[].coreShipsResDto
+     * - Mortgaged Ships: data[] (direct array)
      */
     private fun parseMarineUnit(shipJson: kotlinx.serialization.json.JsonObject): MarineUnit {
         return MarineUnit(
@@ -222,6 +227,82 @@ class MarineUnitsApiService @Inject constructor(
             deadweightTonnage = shipJson["deadweightTonnage"]?.jsonPrimitive?.content ?: "",
             maxLoadCapacity = shipJson["maxLoadCapacity"]?.jsonPrimitive?.content ?: "",
         )
+    }
+
+    /**
+     * 🔒 Get mortgaged ships for owner (Mortgage Release Transaction)
+     *
+     * API: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     *
+     * Response structure:
+     * {
+     *   "data": [ { ship1 }, { ship2 }, ... ]  ← Direct array of ships
+     * }
+     *
+     * ⚠️ Different from getMyShips:
+     * - getMyShips: Returns ALL ships in data.content[].coreShipsResDto (for temp certificate)
+     * - getMortgagedShips: Returns ONLY mortgaged ships in data[] (for mortgage release)
+     *
+     * @param ownerId The owner ID (civil ID or commercial registration number)
+     * @return Result with list of mortgaged ships ONLY
+     */
+    suspend fun getMortgagedShips(ownerId: String): Result<List<MarineUnit>> {
+        return try {
+            println("🔒 Fetching mortgaged ships for owner: $ownerId")
+
+            val endpoint = "api/v1/ship/$ownerId/owner-mortgaged-ships"
+            println("📡 API Endpoint: $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received")
+                    println("📄 Response JSON: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        println("📊 Status Code: $statusCode, Success: $success")
+
+                        if (statusCode == 200 && success) {
+                            // ✅ For mortgaged ships: data is a direct array (not nested in content)
+                            val data = responseJson.jsonObject.getValue("data").jsonArray
+                            println("📦 Mortgaged ships count: ${data.size}")
+
+                            // Parse each ship using the same generic parser
+                            val ships = data.mapNotNull { shipItem ->
+                                try {
+                                    parseMarineUnit(shipItem.jsonObject)
+                                } catch (e: Exception) {
+                                    println("⚠️ Failed to parse mortgaged ship: ${e.message}")
+                                    e.printStackTrace()
+                                    null
+                                }
+                            }
+
+                            println("✅ Successfully parsed ${ships.size} mortgaged ships")
+                            Result.success(ships)
+                        } else {
+                            println("❌ API failed with status: $statusCode")
+                            Result.failure(Exception("API failed with status: $statusCode"))
+                        }
+                    } else {
+                        println("❌ Empty response from server")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API Error - Code: ${response.code}")
+                    println("❌ Error: ${response.error}")
+                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getMortgagedShips: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get mortgaged ships: ${e.message}"))
+        }
     }
 
     /**

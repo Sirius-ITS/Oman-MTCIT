@@ -42,6 +42,7 @@ class NetworkModule {
         return Json {
             ignoreUnknownKeys = true
             isLenient = true
+            encodeDefaults = true  // ⚠️ مهم جداً
             prettyPrint = true
             coerceInputValues = true
         }
@@ -68,9 +69,9 @@ class NetworkModule {
                 header("X-Platform", "Android")
                 header(
                     key = "X-Auth-Token",
-                    // value = "ZWE3ODUxMTEtMDM5Zi00ODQ2LTgyYWItMDJlZTIzYTEwNzBh" // Qrcode data
+                    // mortgageValue = "ZWE3ODUxMTEtMDM5Zi00ODQ2LTgyYWItMDJlZTIzYTEwNzBh" // Qrcode data
                     value = "ZWMxNjZjMTEtZTQwZS00OGE5LWJmMzYtZDkwNDA1ZWU5ZDdh"
-                    // value = preferences.getAuthToken()
+                    // mortgageValue = preferences.getAuthToken()
                 )
                 contentType(ContentType.Application.Json)
             }

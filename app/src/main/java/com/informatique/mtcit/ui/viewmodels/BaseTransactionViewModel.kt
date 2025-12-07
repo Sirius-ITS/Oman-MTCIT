@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Shared data classes used by ViewModels
@@ -80,10 +82,14 @@ abstract class BaseTransactionViewModel(
     // Current transaction strategy
     protected var currentStrategy: TransactionStrategy? = null
 
+    // Flag indicating we're processing the Next action to prevent duplicate clicks / UI freezes
+    private val _isProcessingNext = MutableStateFlow(false)
+    val isProcessingNext: StateFlow<Boolean> = _isProcessingNext.asStateFlow()
+
     // ✅ NEW: Store Android context for strategies that need it
     private var androidContext: android.content.Context? = null
 
-    private val _showToastEvent = MutableStateFlow<String?>(null)
+    val _showToastEvent = MutableStateFlow<String?>(null)
     val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
 
     /**
@@ -278,129 +284,117 @@ abstract class BaseTransactionViewModel(
 
     open fun nextStep() {
         viewModelScope.launch {
-            val currentState = _uiState.value
+            // prevent re-entry
+            if (_isProcessingNext.value) return@launch
+            _isProcessingNext.value = true
+            try {
+                val currentState = _uiState.value
 
-            if (validateAndCompleteCurrentStep()) {
-                val currentStepIndex = currentState.currentStep
-                val currentStep = currentState.steps.getOrNull(currentStepIndex) ?: return@launch
+                if (validateAndCompleteCurrentStep()) {
+                    val currentStepIndex = currentState.currentStep
+                    val currentStep = currentState.steps.getOrNull(currentStepIndex) ?: return@launch
 
-                // 🔹 تحديد الـ fields الخاصة بالـ step الحالي
-                val currentStepFields = currentStep.fields.map { it.id }
+                    // 🔹 تحديد الـ fields الخاصة بالـ step الحالي
+                    val currentStepFields = currentStep.fields.map { it.id }
 
-                // 🔹 فلترة الداتا اللي تخص الـ step الحالي فقط
-                val currentStepData = currentState.formData.filterKeys { it in currentStepFields }
+                    // 🔹 فلترة الداتا اللي تخص الـ step الحالي فقط
+                    val currentStepData = currentState.formData.filterKeys { it in currentStepFields }
 
-                // ✅ NEW: Check if we just completed person type or commercial registration step
-                // If so, load ships before moving to next step
-                val personType = currentState.formData["selectionPersonType"]
-                val isPersonTypeStep = currentStepFields.contains("selectionPersonType")
-                // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
-                val isCommercialRegStep = currentStepFields.contains("selectionData")
+                    // ✅ NEW: Check if we just completed person type or commercial registration step
+                    // If so, load ships before moving to next step
+                    val personType = currentState.formData["selectionPersonType"]
+                    val isPersonTypeStep = currentStepFields.contains("selectionPersonType")
+                    val isCommercialRegStep = currentStepFields.contains("selectionData")
 
-                // ✅ IMPORTANT: Merge current step data with existing form data to get complete picture
-                // This ensures we have access to newly entered commercial registration value
-                val mergedFormData = currentState.formData.toMutableMap().apply {
-                    putAll(currentStepData)
-                }
-
-                // ✅ Check if commercial registration has actual data (from merged data)
-                // The field is stored as "selectionData"
-                val commercialRegValue = mergedFormData["selectionData"]
-                val hasCommercialRegData = !commercialRegValue.isNullOrEmpty()
-
-                println("🔍 DEBUG - personType from formData: $personType")
-                println("🔍 DEBUG - isPersonTypeStep: $isPersonTypeStep")
-                println("🔍 DEBUG - isCommercialRegStep: $isCommercialRegStep")
-                println("🔍 DEBUG - commercialRegValue (from selectionData): $commercialRegValue")
-                println("🔍 DEBUG - hasCommercialRegData: $hasCommercialRegData")
-                println("🔍 DEBUG - currentStepData: $currentStepData")
-                println("🔍 DEBUG - mergedFormData: $mergedFormData")
-
-                val shouldLoadShips = when {
-                    isPersonTypeStep && personType == "فرد" -> {
-                        println("✅ User selected فرد - will load ships after Next")
-                        true
+                    // ✅ IMPORTANT: Merge current step data with existing form data to get complete picture
+                    val mergedFormData = currentState.formData.toMutableMap().apply {
+                        putAll(currentStepData)
                     }
-                    isPersonTypeStep && personType == "شركة" -> {
-                        println("⏭️ User selected شركة - will NOT load ships yet (waiting for commercial reg)")
-                        false
-                    }
-                    // ✅ Check if we're on commercial reg step AND have data entered
-                    isCommercialRegStep && hasCommercialRegData -> {
-                        println("✅ Commercial registration step with data - will load ships after Next")
-                        true
-                    }
-                    else -> {
-                        println("❌ No ship loading needed for this step")
-                        false
-                    }
-                }
 
-                // ✅✅✅ الحل الأساسي: نادي processStepData و refresh الـ steps
-                val strategy = currentStrategy
-                if (strategy != null) {
-                    // Process the data
-                    val requiredNextStep = strategy.processStepData(currentStepIndex, currentStepData)
+                    val commercialRegValue = mergedFormData["selectionData"]
+                    val hasCommercialRegData = !commercialRegValue.isNullOrEmpty()
 
-                    // ✅ TODO: Uncomment after backend integration is complete
-                    // This would stop flow and forward to RequestDetailScreen when requiredNextStep == -1
-                    // if (requiredNextStep == -1) {
-                    //     println("🔄 Strategy returned -1, stopping flow and forwarding to RequestDetailScreen")
-                    //     return@launch
-                    // }
-                    // ✅ For now, continue normal flow
+                    val shouldLoadShips = when {
+                        isPersonTypeStep && personType == "فرد" -> true
+                        isPersonTypeStep && personType == "شركة" -> false
+                        isCommercialRegStep && hasCommercialRegData -> true
+                        else -> false
+                    }
 
-                    // ✅ Load ships if needed
-                    if (shouldLoadShips) {
-                        println("🚢 Loading ships for selected type...")
-                        try {
-                            // ✅ IMPORTANT: Pass merged form data so strategy has access to newly entered commercial reg
-                            val loadedShips = strategy.loadShipsForSelectedType(mergedFormData)
-                            println("✅ Loaded ${loadedShips.size} ships successfully")
+                    val strategy = currentStrategy
+                    if (strategy != null) {
+                        // Process the data (may be CPU/IO heavy) off the main dispatcher
+                        val requiredNextStep = try {
+                            withContext(Dispatchers.IO) {
+                                strategy.processStepData(currentStepIndex, currentStepData)
+                            }
                         } catch (e: Exception) {
-                            println("❌ Failed to load ships: ${e.message}")
+                            println("❌ Exception in processStepData: ${e.message}")
                             e.printStackTrace()
+
+                            // Show error to user
+                            _error.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء معالجة البيانات")
+                            _showToastEvent.value = "❌ ${e.message ?: "حدث خطأ أثناء معالجة البيانات"}"
+
+                            // Don't proceed to next step
+                            return@launch
+                        }
+
+                        if (requiredNextStep == -1) {
+                            if (strategy is com.informatique.mtcit.business.transactions.MortgageCertificateStrategy) {
+                                val apiError = strategy.getLastApiError()
+                                if (apiError != null) {
+                                    _showToastEvent.value = apiError
+                                    strategy.clearLastApiError()
+                                }
+                            }
+                            return@launch
+                        }
+
+                        if (shouldLoadShips) {
+                            try {
+                                // run loadShips on IO dispatcher to avoid blocking UI
+                                val loadedShips = withContext(Dispatchers.IO) {
+                                    strategy.loadShipsForSelectedType(mergedFormData)
+                                }
+                                println("✅ Loaded ${loadedShips.size} ships successfully")
+                            } catch (e: Exception) {
+                                println("❌ Failed to load ships: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
+
+                        // Refresh steps
+                        val updatedSteps = strategy.getSteps()
+
+                        val updatedState = currentState.copy(steps = updatedSteps)
+                        _uiState.value = updatedState
+
+                        navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
+                            val newCompletedSteps = updatedState.completedSteps + currentStepIndex
+
+                            _uiState.value = updatedState.copy(
+                                currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
+                                completedSteps = newCompletedSteps,
+                                canProceedToNext = navigationUseCase.canProceedToNext(
+                                    nextStep,
+                                    updatedSteps,
+                                    updatedState.formData
+                                )
+                            )
+
+                            val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
+                            strategy.onStepOpened(targetStep)
                         }
                     }
 
-                    // Refresh steps (critical for dynamic step logic!)
-                    val updatedSteps = strategy.getSteps()
-
-                    // Update state with new steps
-                    val updatedState = currentState.copy(steps = updatedSteps)
-                    _uiState.value = updatedState
-
-                    // Use updated state for navigation
-                    navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
-                        val newCompletedSteps = updatedState.completedSteps + currentStepIndex
-
-                        _uiState.value = updatedState.copy(
-                            currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
-                            completedSteps = newCompletedSteps,
-                            canProceedToNext = navigationUseCase.canProceedToNext(
-                                nextStep,
-                                updatedSteps,
-                                updatedState.formData
-                            )
-                        )
-
-                        // ✅ NEW: Load lookups for the next step
-                        val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
-                        strategy.onStepOpened(targetStep)
-                    }
+                    // ✅ REMOVED: Debug toast that showed step data after every step
+                    // SharedSteps.saveStepData("Step_${currentStepIndex + 1}", currentStepData)
+                    // val dataSummary = currentStepData.entries.joinToString("\n") { (key, value) -> "$key: $value" }
+                    // _showToastEvent.value = "Step ${currentStepIndex + 1} Data:\n$dataSummary"
                 }
-
-                // 🧠 حفظ الداتا في SharedSteps للـ review (اختياري)
-                SharedSteps.saveStepData(
-                    "Step_${currentStepIndex + 1}",
-                    currentStepData
-                )
-
-                // 🧾 عرض داتا الـ step الحالي في Toast (اختياري)
-                val dataSummary = currentStepData.entries.joinToString("\n") { (key, value) ->
-                    "$key: $value"
-                }
-                _showToastEvent.value = "Step ${currentStepIndex + 1} Data:\n$dataSummary"
+            } finally {
+                _isProcessingNext.value = false
             }
         }
     }
@@ -654,10 +648,54 @@ abstract class BaseTransactionViewModel(
     fun clearFileNavigationEvent() {
         _fileNavigationEvent.value = null
     }
+
+    /**
+     * Clear toast event after it's been shown
+     */
+    fun clearToastEvent() {
+        _showToastEvent.value = null
+    }
+
+    /**
+     * ✅ Generic function to update transaction status
+     * Can be used by any transaction type (mortgage, registration, etc.)
+     *
+     * @param apiService The API service instance (e.g., MortgageApiService)
+     * @param requestId The request ID
+     * @param statusId The new status ID
+     * @param updateStatusCall Lambda function that calls the specific API service method
+     */
+    protected suspend fun updateTransactionStatus(
+        requestId: Int,
+        statusId: Int,
+        updateStatusCall: suspend (Int, Int) -> Result<Boolean>
+    ): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            try {
+                println("🔄 BaseTransactionViewModel: Updating transaction status...")
+                println("   Request ID: $requestId")
+                println("   Status ID: $statusId")
+
+                val result = updateStatusCall(requestId, statusId)
+
+                result.onSuccess {
+                    println("✅ Transaction status updated successfully")
+                }
+                result.onFailure { error ->
+                    println("❌ Failed to update transaction status: ${error.message}")
+                }
+
+                result
+            } catch (e: Exception) {
+                println("❌ Exception in updateTransactionStatus: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
 }
 // ****************************************************
 object SharedSteps {
-    val stepDataMap = mutableMapOf<String, Map<String, String>>() // كل step فيها key/value
+    val stepDataMap = mutableMapOf<String, Map<String, String>>() // كل step فيها key/mortgageValue
 
     fun saveStepData(stepName: String, fields: Map<String, String>) {
         stepDataMap[stepName] = fields

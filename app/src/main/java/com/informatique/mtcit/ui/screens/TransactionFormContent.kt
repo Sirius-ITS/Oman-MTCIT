@@ -68,6 +68,9 @@ fun TransactionFormContent(
     // Check if current step is the review step (last step with no fields)
     val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.fields?.isEmpty() == true
 
+    // Collect processing state from viewModel (to disable Next button and show loader)
+    val isProcessingNext by viewModel.isProcessingNext.collectAsState()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = extraColors.background,
@@ -150,22 +153,16 @@ fun TransactionFormContent(
                 totalSteps = uiState.steps.size,
                 onPreviousClick = previousStep,
                 onNextClick = {
-                    if (uiState.currentStep < uiState.steps.size - 1) {
-                        // Not on last step - check if we're on review step
-//                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
-//                            // On review step for Marine Registration - validate before proceeding
-//                            viewModel.validateOnReviewStep()
-//                        } else {
-                            // Regular next step
-                            nextStep()
-//                        }
+                    // ✅ Check if we're on review step
+                    if (isReviewStep && viewModel is MarineRegistrationViewModel) {
+                        // ✅ On review step - handle mortgage submission
+                        viewModel.submitMortgageOnReview()
+                    } else if (uiState.currentStep < uiState.steps.size - 1) {
+                        // Not on last step - regular next step
+                        nextStep()
                     } else {
                         // On last step (final submission)
-//                        if (viewModel is MarineRegistrationViewModel) {
-//                            viewModel.validateAndSubmit()
-//                        } else {
-                            submitForm()
-//                        }
+                        submitForm()
                     }
                 },
                 canProceed = if (isReviewStep) {
@@ -174,7 +171,8 @@ fun TransactionFormContent(
                 } else {
                     uiState.canProceedToNext
                 },
-                isSubmitting = submissionState is UIState.Loading,
+                // Use viewModel processing flag to disable next button when heavy processing is running
+                isSubmitting = submissionState is UIState.Loading || isProcessingNext,
                 isReviewStep = isReviewStep // Pass the review step flag
             )
         }
@@ -338,7 +336,9 @@ fun GenericNavigationBottomBar(
 ) {
     val extraColors = LocalExtraColors.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(bottom = WindowInsets.navigationBars
+            .asPaddingValues()
+            .calculateBottomPadding() + 4.dp),
         shape = RoundedCornerShape(
             topStart = 16.dp,
             topEnd = 16.dp
@@ -383,20 +383,32 @@ fun GenericNavigationBottomBar(
                 ),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                // Show "Accept & Send" on review step OR last step
-                if (isReviewStep || currentStep >= totalSteps - 1) {
-                    Text(localizedApp(R.string.accept_and_send))
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(localizedApp(R.string.next_button))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Default.NavigateNext,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                if (isSubmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(localizedApp(R.string.loading))
+                    }
+                } else {
+                    // Show "Accept & Send" on review step OR last step
+                    if (isReviewStep || currentStep >= totalSteps - 1) {
+                        Text(localizedApp(R.string.accept_and_send))
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(localizedApp(R.string.next_button))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Default.NavigateNext,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -491,5 +503,19 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" },
             error = error
         )
+
+        is FormField.MultiSelectDropDown -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            selectedOptions = try {
+                kotlinx.serialization.json.Json.decodeFromString(value.ifEmpty { "[]" })
+            } catch (e: Exception) {
+                emptyList()
+            },
+            error = error
+        )
     }
 }
+
+
+

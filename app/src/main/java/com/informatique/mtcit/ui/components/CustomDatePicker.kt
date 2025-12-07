@@ -12,7 +12,7 @@
 //@OptIn(ExperimentalMaterial3Api::class)
 //@Composable
 //fun CustomDatePicker(
-//    value: String,
+//    mortgageValue: String,
 //    onValueChange: (String) -> Unit,
 //    label: String,
 //    error: String? = null,
@@ -22,7 +22,7 @@
 //    var showDatePicker by remember { mutableStateOf(false) }
 //
 //    OutlinedTextField(
-//        value = value,
+//        mortgageValue = mortgageValue,
 //        onValueChange = {},
 //        readOnly = true,
 //        label = {
@@ -70,7 +70,7 @@
 //            },
 //            onDismiss = { showDatePicker = false },
 //            allowPastDates = allowPastDates,
-//            initialDate = value
+//            initialDate = mortgageValue
 //        )
 //    }
 //}
@@ -251,7 +251,9 @@ fun CustomDatePicker(
     if (showDatePicker) {
         DatePickerModal(
             onDateSelected = { selectedDate ->
-                val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                // Emit ISO format (yyyy-MM-dd) to the form mortgageValue
+                // Force English locale so formatted date uses English digits/format even on Arabic locale
+                val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
                 onValueChange(formatter.format(Date(selectedDate)))
                 showDatePicker = false
             },
@@ -276,8 +278,19 @@ fun DatePickerModal(
     val initialDateMillis = remember(initialDate) {
         if (initialDate != null && initialDate.isNotEmpty()) {
             try {
-                val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                formatter.parse(initialDate)?.time
+                // Accept ISO (yyyy-MM-dd) or dd/MM/yyyy as initial formats
+                // Use English locale for parsing to keep behavior consistent and to ensure digits/format are parsed as expected
+                val isoFormatter = SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+                val localFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH)
+                try {
+                    isoFormatter.parse(initialDate)?.time
+                } catch (e: Exception) {
+                    try {
+                        localFormatter.parse(initialDate)?.time
+                    } catch (e2: Exception) {
+                        null
+                    }
+                }
             } catch (e: Exception) {
                 null
             }

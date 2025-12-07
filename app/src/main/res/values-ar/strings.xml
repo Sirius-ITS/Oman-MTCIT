@@ -21,7 +21,8 @@
     <string name="retry">إعادة المحاولة</string>
     <string name="unknown">غير معروف</string>
     <string name="no_data_available">لا توجد بيانات متاحة</string>
-    <string name="news_not_available">الأخبار غير متاحة</string>
+    <string name="news_not_available">الأخبار غير متوفرة</string>
+    <string name="not_provided">-</string>
     <string name="retry_on_pagination">فشل في تحميل المزيد</string>
     <string name="login">تسجيل الدخول</string>
     <string name="welcome">مرحبًا بعودتك</string>
@@ -851,6 +852,34 @@
     <string name="declaration_title">إقرار ذاتي</string>
     <string name="declaration_description">أُقِرُّ بأن جميع المعلومات المذكورة صحيحة ودقيقة، وأتعهد بإبلاغ الإدارة بأي تغيير يطرأ عليها، وأدرك أن تقديم بيانات أو مستندات غير صحيحة قد يؤدي إلى بطلان الطلب وتحميلي المسؤولية القانونية.</string>
 
+
+
+
+    <!-- ================================ -->
+    <!-- Arabic Strings (values-ar/strings.xml) -->
+    <!-- ================================ -->
+
+    <!-- Upload Documents Step -->
+    <string name="upload_documents_title">رفع المستندات</string>
+    <string name="upload_documents_description">تحميل المستندات المطلوبة بصيغ (رسمية ومعتمدة) ، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة.</string>
+    <string name="mortgage_certificate_attachment">يرجاء إرفاق شهادة الرهن</string>
+
+    <!-- File Upload Helper Text -->
+    <string name="allowed_file_types">فقط ملفات pdf, jpg, png, doc بحجم 5 ميجابايت أو أقل</string>
+
+
+    <!-- Sailing Regions Step -->
+    <string name="sailing_regions_title">بيانات البخارة</string>
+    <string name="sailing_regions_description">يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة.</string>
+    <string name="sailing_regions_selection">مناطق الإبحار</string>
+    <string name="select_sailing_regions_placeholder">اختر مناطق الإبحار</string>
+
+    <!-- Multi-Select Dropdown -->
+    <string name="clear_all">مسح الكل</string>
+    <string name="no_results">لا توجد نتائج</string>
+    <string name="search_placeholder">بحث...</string>
+
+    <string name="sailor_documents">مستندات البحارة</string>
 
 
 </resources>

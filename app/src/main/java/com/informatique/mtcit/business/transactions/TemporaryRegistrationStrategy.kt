@@ -242,34 +242,34 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     includeDecksCount = true
                 )
             )
-//
-//            steps.add(
-//                SharedSteps.marineUnitWeightsStep(
-//                    includeMaxPermittedLoad = true
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.engineInfoStep(
-//                    manufacturers = listOf(
-//                        "Manufacturer 1",
-//                        "Manufacturer 2",
-//                        "Manufacturer 3"
-//                    ),
-//                    enginesTypes = engineTypeOptions,
-//                    countries = countryOptions,
-//                    fuelTypes = engineFuelTypeOptions,
-//                    engineConditions = engineStatusOptions,
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.ownerInfoStep(
-//                    nationalities = countryOptions,
-//                    countries = countryOptions,
-//                    includeCompanyFields = true,
-//                )
-//            )
+
+            steps.add(
+                SharedSteps.marineUnitWeightsStep(
+                    includeMaxPermittedLoad = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.engineInfoStep(
+                    manufacturers = listOf(
+                        "Manufacturer 1",
+                        "Manufacturer 2",
+                        "Manufacturer 3"
+                    ),
+                    enginesTypes = engineTypeOptions,
+                    countries = countryOptions,
+                    fuelTypes = engineFuelTypeOptions,
+                    engineConditions = engineStatusOptions,
+                )
+            )
+
+            steps.add(
+                SharedSteps.ownerInfoStep(
+                    nationalities = countryOptions,
+                    countries = countryOptions,
+                    includeCompanyFields = true,
+                )
+            )
 
             // ✅ Check overallLength to determine if inspection documents are mandatory
             val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
@@ -514,7 +514,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 isFishingBoat = true
                 fishingBoatDataLoaded = false // Reset loaded flag when type changes
                 accumulatedFormData["isFishingBoat"] = "true"
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             } else {
                 println("❌ Not a fishing boat. Hiding agriculture field")
@@ -522,7 +522,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 fishingBoatDataLoaded = false
                 accumulatedFormData.remove("isFishingBoat")
                 accumulatedFormData.remove("agricultureRequestNumber")
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             }
 

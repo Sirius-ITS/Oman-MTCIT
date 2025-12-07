@@ -56,6 +56,9 @@ fun DynamicStepForm(
             "engineCondition" -> "engineStatuses"
             "fuelTypes" -> "engineFuelTypes"
             "buildingMaterial" -> "buildMaterials"
+            "bankName" -> "bankName"
+            "mortgagePurpose" -> "mortgagePurpose"
+            "sailingRegions" -> "sailingRegions"
             else -> null
         }
     }
@@ -208,7 +211,7 @@ fun DynamicStepForm(
                         }
 
                         is FormField.OwnerList -> {
-                            // Parse owners from JSON value
+                            // Parse owners from JSON mortgageValue
                             val owners = remember(field.value) {
                                 try {
                                     Json.decodeFromString<List<OwnerData>>(
@@ -434,6 +437,39 @@ fun DynamicStepForm(
                                     val json = Json.encodeToString(updatedSailors)
                                     onFieldChange(field.id, json, null)
                                 }
+                            )
+                        }
+
+                        is FormField.MultiSelectDropDown -> {
+                            // Parse selected options from JSON array
+                            val selectedOptions = remember(field.value) {
+                                try {
+                                    Json.decodeFromString<List<String>>(field.value)
+                                } catch (_: Exception) {
+                                    emptyList()
+                                }
+                            }
+
+                            // Get the lookup key for the field
+                            val lookupKey = getLookupKeyForField(field.id)
+
+                            // Determine if shimmer loading should be shown
+                            val isShimmerLoading = lookupKey != null && lookupLoadingStates[lookupKey] == true
+
+                            CustomMultiSelectDropdown(
+                                label = field.label,
+                                options = if (isShimmerLoading) emptyList() else field.options,
+                                selectedOptions = selectedOptions,
+                                onOptionsSelected = { updatedSelection ->
+                                    val json = Json.encodeToString(updatedSelection)
+                                    onFieldChange(field.id, json, null)
+                                },
+                                error = field.error,
+                                mandatory = field.mandatory,
+                                placeholder = field.placeholder ?: field.label,
+                                isLoading = isShimmerLoading,
+                                maxSelection = field.maxSelection,
+                                showSelectionCount = field.showSelectionCount
                             )
                         }
                     }

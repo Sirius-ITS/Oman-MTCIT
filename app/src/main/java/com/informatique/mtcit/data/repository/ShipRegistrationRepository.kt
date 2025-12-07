@@ -87,6 +87,9 @@ interface ShipRegistrationRepository {
         inspectionDocumentsFile: ByteArray?,
         inspectionDocumentsName: String?
     ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
+
+    // Create navigation license request for a selected ship (returns API response wrapper)
+    suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse>
 }
 
 @Singleton
@@ -193,5 +196,10 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
             inspectionDocumentsFile,
             inspectionDocumentsName
         )
+    }
+
+    override suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse> {
+        println("📞 ShipRegistrationRepository: Creating navigation license for shipInfoId=$shipInfoId")
+        return registrationApiService.createNavigationLicense(shipInfoId)
     }
 }

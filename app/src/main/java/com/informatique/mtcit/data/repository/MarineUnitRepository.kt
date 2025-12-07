@@ -22,6 +22,13 @@ interface MarineUnitRepository {
     suspend fun loadShipsForOwner(ownerCivilId: String?, commercialRegNumber: String?): List<MarineUnit>
 
     /**
+     * 🔒 NEW: Load ONLY mortgaged ships for owner (for Release Mortgage transaction)
+     * Uses dedicated API endpoint: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     * @param ownerId The owner ID (civil ID or commercial registration number)
+     */
+    suspend fun loadMortgagedShipsForOwner(ownerId: String): List<MarineUnit>
+
+    /**
      * Get the current status of a marine unit
      * Returns: ACTIVE, SUSPENDED, CANCELLED
      */
@@ -223,6 +230,20 @@ class MarineUnitRepositoryImpl @Inject constructor(
             }
         }.getOrElse {
             println("⚠️ Failed to fetch ships from API: ${it.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * 🔒 NEW: Load ONLY mortgaged ships for Release Mortgage transaction
+     * Uses dedicated API: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     */
+    override suspend fun loadMortgagedShipsForOwner(ownerId: String): List<MarineUnit> {
+        println("🔒 loadMortgagedShipsForOwner called with ownerId=$ownerId")
+        println("📡 Using dedicated mortgaged ships API endpoint")
+
+        return apiService.getMortgagedShips(ownerId).getOrElse {
+            println("⚠️ Failed to fetch mortgaged ships from API: ${it.message}")
             emptyList()
         }
     }

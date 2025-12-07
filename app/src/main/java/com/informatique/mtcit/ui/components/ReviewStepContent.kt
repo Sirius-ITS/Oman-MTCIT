@@ -134,7 +134,7 @@ fun ReviewStepContent(
                         step = step,
                         stepFieldsWithData = stepFieldsWithData,
                         formData = formData,
-                        isExpandedByDefault = index == 1, // First step expanded by default
+                        isExpandedByDefault = false, // First step expanded by default
                         onViewFile = onViewFile
                     )
                 }
@@ -288,6 +288,31 @@ private fun ReviewFieldItem(
                 DisplayRegularValue(
                     if (value == "true") localizedApp(R.string.yes) else localizedApp(R.string.no)
                 )
+            }
+
+            is com.informatique.mtcit.common.FormField.MultiSelectDropDown -> {
+                // Display selected options as comma-separated list or chips
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Parse JSON array of selected options
+                val selectedOptions = try {
+                    kotlinx.serialization.json.Json.decodeFromString<List<String>>(value)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                if (selectedOptions.isNotEmpty()) {
+                    DisplayRegularValue(selectedOptions.joinToString(", "))
+                } else {
+                    DisplayRegularValue(localizedApp(R.string.not_provided))
+                }
             }
 
             else -> {
@@ -640,7 +665,7 @@ private fun DisplayOwnerListData(
             }
         }
     } else {
-        // Fallback - if JSON parsing fails, show the raw value
+        // Fallback - if JSON parsing fails, show the raw mortgageValue
         DisplayRegularValue(value)
     }
 }
@@ -780,7 +805,7 @@ private fun DisplayFileAttachment(
 }
 
 /**
- * Display owner detail row (label: value)
+ * Display owner detail row (label: mortgageValue)
  */
 @Composable
 private fun OwnerDetailRow(
@@ -812,7 +837,7 @@ private fun OwnerDetailRow(
 }
 
 /**
- * Display regular field value in a card
+ * Display regular field mortgageValue in a card
  */
 @Composable
 private fun DisplayRegularValue(value: String) {

@@ -1,5 +1,7 @@
 package com.informatique.mtcit.business.transactions
 
+import android.content.Context
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
@@ -13,6 +15,10 @@ import com.informatique.mtcit.business.transactions.marineunit.rules.ReleaseMort
 import com.informatique.mtcit.business.transactions.marineunit.usecases.ValidateMarineUnitUseCase
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
 import com.informatique.mtcit.data.repository.MarineUnitRepository
+import com.informatique.mtcit.data.api.MortgageApiService
+import com.informatique.mtcit.data.helpers.FileUploadHelper
+import com.informatique.mtcit.data.model.OwnerFileUpload
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
  * Strategy for Release Mortgage
@@ -20,7 +26,8 @@ import com.informatique.mtcit.data.repository.MarineUnitRepository
  * 1. Person Type Selection (Individual/Company)
  * 2. Commercial Registration (conditional - only for Company)
  * 3. Unit Selection (choose from mortgaged ships) - WITH BUSINESS VALIDATION
- * 4. Review
+ * 4. Upload Documents (mortgage certificate)
+ * 5. Review
  */
 class ReleaseMortgageStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -29,7 +36,9 @@ class ReleaseMortgageStrategy @Inject constructor(
     private val releaseMortgageRules: ReleaseMortgageRules,
     private val validateMarineUnitUseCase: ValidateMarineUnitUseCase,
     private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
-    private val marineUnitRepository: MarineUnitRepository
+    private val marineUnitRepository: MarineUnitRepository,
+    private val mortgageApiService: MortgageApiService,
+    @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -38,6 +47,9 @@ class ReleaseMortgageStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
+
+    // ✅ Store the created redemption request ID for later status update
+    private var createdRedemptionRequestId: Int? = null
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -68,26 +80,29 @@ class ReleaseMortgageStrategy @Inject constructor(
         // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
         val commercialReg = formData["selectionData"]
 
-        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+        println("🔒 loadShipsForSelectedType (RELEASE MORTGAGE) - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
-        val (ownerCivilId, commercialRegNumber) = when (personType) {
+        // ✅ Determine ownerId based on person type
+        val ownerId = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                "16" // TODO: Get from authenticated user
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null)
+                println("✅ Company: Using commercialRegNumber")
+                commercialReg ?: "16" // Use selected commercial reg or fallback
             }
-            else -> Pair(null, null)
+            else -> {
+                println("⚠️ Unknown person type, using default ownerId")
+                "16"
+            }
         }
 
-        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
+        println("🔍 Calling loadMortgagedShipsForOwner with ownerId=$ownerId")
+        println("📋 Note: This will fetch ONLY mortgaged ships (using getMortgagedShips API)")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
-        println("✅ Loaded ${marineUnits.size} ships")
+        marineUnits = marineUnitRepository.loadMortgagedShipsForOwner(ownerId)
+        println("✅ Loaded ${marineUnits.size} mortgaged ships")
         return marineUnits
     }
 
@@ -129,6 +144,12 @@ class ReleaseMortgageStrategy @Inject constructor(
                 showOwnedUnitsWarning = true
             )
         )
+        steps.add(
+            SharedSteps.uploadDocumentsStep(
+                documentLabel = R.string.mortgage_certificate_attachment,
+                documentId = "ownershipProof"
+            )
+        )
 
         // Step 4: Review
         steps.add(SharedSteps.reviewStep())
@@ -165,10 +186,206 @@ class ReleaseMortgageStrategy @Inject constructor(
         // ✅ Accumulate form data for dynamic step logic
         accumulatedFormData.putAll(data)
         println("📦 ReleaseMortgage - Accumulated data: $accumulatedFormData")
+
+        // ✅ Check if this is the file upload step (step after marine unit selection)
+        val steps = getSteps()
+        val currentStepData = steps.getOrNull(step)
+
+        // Check if the current step has the file upload field
+        val hasFileUpload = currentStepData?.fields?.any { it.id == "ownershipProof" } == true
+
+        if (hasFileUpload && accumulatedFormData.containsKey("ownershipProof")) {
+            println("📤 File upload step completed - creating redemption request NOW")
+
+            // Create the redemption request immediately
+            try {
+                val result = createRedemptionRequest(accumulatedFormData)
+
+                result.onSuccess { response ->
+                    // ✅ Store the request ID for later status update in review step
+                    createdRedemptionRequestId = response.data.id
+                    println("💾 STORED REDEMPTION REQUEST ID: $createdRedemptionRequestId")
+                }
+
+                result.onFailure { error ->
+                    println("❌ Failed to create redemption request: ${error.message}")
+                    println("🔄 Re-throwing error to prevent navigation and show error to user")
+                    // ✅ Throw the error to prevent navigation and show error in UI
+                    throw error
+                }
+            } catch (e: Exception) {
+                println("❌ Exception in createRedemptionRequest: ${e.message}")
+                e.printStackTrace()
+
+                // ✅ Provide helpful error message in Arabic
+                val userMessage = when {
+                    e.message?.contains("400") == true ->
+                        "خطأ في البيانات المرسلة إلى الخادم (400). يرجى التأكد من:\n" +
+                        "• اختيار سفينة صحيحة\n" +
+                        "• رفع ملف شهادة الرهن\n" +
+                        "• الاتصال بالإنترنت"
+
+                    e.message?.contains("404") == true ->
+                        "لم يتم العثور على خدمة فك الرهن على الخادم (404)"
+
+                    e.message?.contains("500") == true ->
+                        "خطأ في الخادم (500). يرجى المحاولة لاحقاً"
+
+                    e.message?.contains("timeout") == true || e.message?.contains("Timeout") == true ->
+                        "انتهت مهلة الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً"
+
+                    else ->
+                        "فشل إنشاء طلب فك الرهن: ${e.message}"
+                }
+
+                // Re-throw with user-friendly message
+                throw Exception(userMessage)
+            }
+        }
+
         return step
     }
 
+    /**
+     * Create redemption request with the accumulated form data
+     * This is called automatically after file upload step
+     */
+    private suspend fun createRedemptionRequest(formData: Map<String, String>): Result<com.informatique.mtcit.data.model.CreateMortgageRedemptionResponse> {
+        println("=".repeat(80))
+        println("🔓 Creating mortgage redemption request...")
+        println("=".repeat(80))
+
+        // Extract data from form
+        val selectedUnitsJson = formData["selectedMarineUnits"]
+        val ownershipProofUri = formData["ownershipProof"]
+
+        println("📋 Form Data:")
+        println("   Selected Units JSON: $selectedUnitsJson")
+        println("   Ownership Proof URI: $ownershipProofUri")
+
+        // Validate required fields
+        if (selectedUnitsJson.isNullOrBlank() || selectedUnitsJson == "[]") {
+            println("❌ Marine unit not selected")
+            return Result.failure(Exception("يرجى اختيار السفينة"))
+        }
+
+        if (ownershipProofUri.isNullOrBlank() || !ownershipProofUri.startsWith("content://")) {
+            println("❌ File not uploaded")
+            return Result.failure(Exception("يرجى رفع ملف شهادة الرهن"))
+        }
+
+        // Parse the selected ship ID (similar to mortgage strategy)
+        val shipId = try {
+            val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+            val maritimeIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+            val firstMaritimeId = maritimeIds.firstOrNull()
+
+            if (firstMaritimeId.isNullOrBlank()) {
+                println("❌ Failed to parse maritime ID from: $selectedUnitsJson")
+                return Result.failure(Exception("تنسيق اختيار السفينة غير صالح"))
+            }
+
+            println("📍 Extracted maritime ID (MMSI): $firstMaritimeId")
+
+            // Find the MarineUnit object that matches this maritimeId
+            val selectedUnit = marineUnits.firstOrNull { it.maritimeId == firstMaritimeId }
+            if (selectedUnit == null) {
+                println("❌ Could not find MarineUnit with maritimeId: $firstMaritimeId")
+                return Result.failure(Exception("السفينة المحددة غير موجودة"))
+            }
+
+            // Convert the actual ship ID to Int
+            val actualShipId = selectedUnit.id.toIntOrNull()
+            if (actualShipId == null) {
+                println("❌ Ship ID is not a valid integer: ${selectedUnit.id}")
+                return Result.failure(Exception("معرف السفينة غير صالح"))
+            }
+
+            println("✅ Found matching MarineUnit:")
+            println("   Maritime ID (MMSI): ${selectedUnit.maritimeId}")
+            println("   Actual Ship ID: $actualShipId")
+            println("   Ship Name: ${selectedUnit.shipName}")
+
+            actualShipId
+        } catch (e: Exception) {
+            println("❌ Exception parsing selected units: ${e.message}")
+            e.printStackTrace()
+            return Result.failure(Exception("فشل تحليل السفينة المحددة: ${e.message}"))
+        }
+
+        // Convert file URI to OwnerFileUpload
+        val fileUpload = try {
+            val uri = android.net.Uri.parse(ownershipProofUri)
+            val engineFile = FileUploadHelper.uriToFileUpload(appContext, uri)
+            if (engineFile == null) {
+                println("❌ Could not convert URI to file upload")
+                return Result.failure(Exception("فشل تحميل الملف"))
+            }
+
+            // Convert to OwnerFileUpload
+            OwnerFileUpload(
+                fileName = engineFile.fileName,
+                fileUri = engineFile.fileUri,
+                fileBytes = engineFile.fileBytes,
+                mimeType = engineFile.mimeType ?: "application/octet-stream",
+                docOwnerId = "ownershipProof",
+                docId = 1
+            )
+        } catch (e: Exception) {
+            println("❌ Exception converting file URI: ${e.message}")
+            e.printStackTrace()
+            return Result.failure(Exception("فشل معالجة الملف: ${e.message}"))
+        }
+
+        println("📎 File prepared: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes)")
+
+        // Create the redemption request
+        val request = com.informatique.mtcit.data.model.CreateMortgageRedemptionRequest(
+            shipInfoId = shipId,
+            statusId = 1  // Always 1 for new requests
+        )
+
+        println("📤 Sending redemption request to API...")
+        println("   Ship ID: ${request.shipInfoId}")
+        println("   Status ID: ${request.statusId}")
+        println("   File: ${fileUpload.fileName}")
+
+        // Call API
+        val result = mortgageApiService.createMortgageRedemptionRequest(request, listOf(fileUpload))
+
+        result.onSuccess { response ->
+            println("✅ Redemption request created successfully!")
+            println("   Redemption ID: ${response.data.id}")
+            println("   Ship ID: ${response.data.ship?.id}")
+            println("   Status ID: ${response.data.status?.id}")
+        }
+
+        result.onFailure { error ->
+            println("❌ Failed to create redemption request: ${error.message}")
+        }
+
+        println("=".repeat(80))
+
+        return result
+    }
+
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        return repository.submitRegistration(data)
+        // ✅ Submit is not used for ReleaseMortgage - the request is created in processStepData
+        // This is only here for interface compatibility
+        println("⚠️ ReleaseMortgage.submit() called - but request was already created in processStepData")
+        return Result.success(true)
+    }
+
+    // ✅ Implement interface methods for request ID and status update
+    override fun getCreatedRequestId(): Int? {
+        return createdRedemptionRequestId
+    }
+
+    override fun getStatusUpdateEndpoint(requestId: Int): String? {
+        return "api/v1/mortgage-redemption-request/$requestId/update-status"
+    }
+
+    override fun getTransactionTypeName(): String {
+        return "فك الرهن"
     }
 }
