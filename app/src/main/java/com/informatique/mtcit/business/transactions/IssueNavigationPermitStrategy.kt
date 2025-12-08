@@ -123,27 +123,36 @@ class IssueNavigationPermitStrategy @Inject constructor(
     }
 
     override fun getSteps(): List<StepData> {
-        return listOf(
-            // User type
-            SharedSteps.personTypeStep(options = typeOptions),
+        val steps = mutableListOf<StepData>()
+        // Step 1: Person Type
+        steps.add(SharedSteps.personTypeStep(typeOptions))
 
-            SharedSteps.commercialRegistrationStep(commercialOptions),
+        // Step 2: Commercial Registration (فقط للشركات)
+        val selectedPersonType = accumulatedFormData["selectionPersonType"]
+        if (selectedPersonType == "شركة") {
+            steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
+        }
 
+        steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false, // اختيار وحدة واحدة فقط
-                showOwnedUnitsWarning = true,
-                showAddNewButton = false
-            ),
-            SharedSteps.sailingRegionsStep(
-                sailingRegions = sailingRegionsOptions
-            ),
-            SharedSteps.sailorInfoStep(
-                jobs = crewJobTitles
-            ),
-
-            SharedSteps.reviewStep()
+                allowMultipleSelection = false,
+                showAddNewButton = true,
+                showOwnedUnitsWarning = true
+            )
         )
+        steps.add(SharedSteps.sailingRegionsStep(
+            sailingRegions = sailingRegionsOptions
+        ))
+        steps.add( SharedSteps.sailorInfoStep(
+            jobs = crewJobTitles
+        ))
+
+        // Review Step (shows all collected data)
+        steps.add(SharedSteps.reviewStep())
+
+        println("📋 Total steps count: ${steps.size}")
+        return steps
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
@@ -155,135 +164,6 @@ class IssueNavigationPermitStrategy @Inject constructor(
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         // Update accumulated data first
         accumulatedFormData.putAll(data)
-
-        // Helper to extract integer id from various JSON shapes
-        fun extractIdFromJsonElement(el: kotlinx.serialization.json.JsonElement): Int? {
-            return try {
-                when (el) {
-                    is kotlinx.serialization.json.JsonPrimitive -> el.content.toIntOrNull()
-                    is kotlinx.serialization.json.JsonObject -> {
-                        val primitiveCandidates = listOf("id", "shipInfo", "shipInfoId", "shipId")
-                        primitiveCandidates.mapNotNull { key ->
-                            try { el[key]?.jsonPrimitive?.content?.toIntOrNull() } catch (_: Exception) { null }
-                        }.firstOrNull() ?: run {
-                            val shipObj = el["ship"]
-                            if (shipObj is kotlinx.serialization.json.JsonObject) {
-                                shipObj["id"]?.jsonPrimitive?.content?.toIntOrNull()
-                            } else null
-                        }
-                    }
-                    else -> null
-                }
-            } catch (_: Exception) {
-                null
-            }
-        }
-
-        // If user chose person type 'فرد' skip commercial registration step
-        if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
-            return 2
-        }
-
-        // Detect Unit Selection step (index 2 in this strategy) and create navigation license if needed
-        if (step == 2) {
-            val selectedJson = accumulatedFormData["selectedMarineUnits"]
-            val existingRequestId = accumulatedFormData["requestId"]
-
-            // If user selected existing ship(s) and we don't have a requestId yet -> create navigation license
-            if (!selectedJson.isNullOrEmpty() && selectedJson != "[]" && existingRequestId.isNullOrEmpty()) {
-                try {
-                    // Try parse as simple array of ids e.g. ["45"] or [45]
-                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                    val parsed = json.parseToJsonElement(selectedJson)
-
-                    // Prefer exact ID strings coming from the selector (most UI send array of id strings)
-                    var shipInfoId: Int? = null
-
-                    if (parsed is kotlinx.serialization.json.JsonArray && parsed.isNotEmpty()) {
-                        val first = parsed[0]
-                        // If primitive string, use raw content and see if it matches any marineUnits.id
-                        if (first is kotlinx.serialization.json.JsonPrimitive && first.isString) {
-                          val idStr = first.content
-                          println("🔎 selectedMarineUnits first element raw: '$idStr'")
-                          // Exact match with marineUnits ids (string compare)
-                          val matched = marineUnits.find { it.id == idStr }
-                          if (matched != null) {
-                            shipInfoId = idStr.toIntOrNull()
-                            println("🔎 matched marineUnits entry id=${matched.id} name=${matched.shipName}")
-                          } else {
-                            // maybe the selector sends ship object stringified; try to extract any integer inside
-                            shipInfoId = idStr.toIntOrNull()
-                          }
-                        } else {
-                          // If first item is object, try extractor
-                          extractIdFromJsonElement(first)?.let { shipInfoId = it }
-                        }
-                    } else if (parsed is kotlinx.serialization.json.JsonObject) {
-                        // If object was provided directly
-                        extractIdFromJsonElement(parsed)?.let { shipInfoId = it }
-                    } else if (parsed is kotlinx.serialization.json.JsonPrimitive) {
-                        extractIdFromJsonElement(parsed)?.let { shipInfoId = it }
-                    }
-
-                    // Build candidate ids to try (robust against different shapes)
-                    val candidates = mutableListOf<Int>()
-                    shipInfoId?.let { candidates.add(it) }
-
-                    // Extract any integers from the raw selected JSON string as fallback
-                    val regexInts = "\\d+".toRegex()
-                    regexInts.findAll(selectedJson).mapNotNull { it.value.toIntOrNull() }.forEach { candidates.add(it) }
-
-                    // Add numeric ids from loaded marineUnits
-                    marineUnits.mapNotNull { it.id.toIntOrNull() }.forEach { if (!candidates.contains(it)) candidates.add(it) }
-
-                    println("🔁 Candidate shipInfoIds to try: $candidates (from parsed=$shipInfoId, extracted ints, marineUnits)")
-
-                    var created = false
-                    val tried = mutableListOf<Int>()
-
-                    for (candidate in candidates) {
-                        if (created) break
-                        if (tried.contains(candidate)) continue
-                        tried.add(candidate)
-                        println("📤 Trying createNavigationLicense with shipInfoId=$candidate")
-                        val res = repository.createNavigationLicense(candidate)
-                        res.fold(onSuccess = { resp ->
-                            val navId = resp.data?.id
-                            if (navId != null) {
-                                accumulatedFormData["requestId"] = navId.toString()
-                                accumulatedFormData["shipInfoId"] = candidate.toString()
-                                println("✅ Navigation request created with id=$navId for shipInfoId=$candidate")
-                                created = true
-                            } else {
-                                println("❌ Navigation API returned no id for candidate $candidate (response: $resp)")
-                            }
-                        }, onFailure = { ex ->
-                            println("❌ createNavigationLicense failed for candidate $candidate: ${ex.message}")
-                        })
-                    }
-
-                    if (!created) {
-                        println("❌ All attempts failed. Candidates tried: $tried. SelectedJson: $selectedJson")
-                    }
-                } catch (e: Exception) {
-                    println("❌ Exception while creating navigation license: ${e.message}")
-                }
-            }
-        }
-
-        // legacy check for special test value handling
-        if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){
-             // ✅ TODO: Uncomment after backend integration is complete
-             // This forwards to RequestDetailScreen when compliance issues are detected
-             /*
-             navigationManager.navigate(NavRoutes.RequestDetailRoute.createRoute(
-                 CheckShipCondition(shipData = "")
-             ))
-             return -1
-             */
-             // ✅ For now, continue normal flow
-             return step
-         }
         return step
     }
 
