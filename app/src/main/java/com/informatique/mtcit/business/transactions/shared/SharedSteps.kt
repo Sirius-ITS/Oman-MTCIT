@@ -119,7 +119,8 @@ object SharedSteps {
         return StepData(
             titleRes = R.string.sailor_info,
             descriptionRes = R.string.sailor_info_description,
-            fields = fields
+            fields = fields,
+            requiredLookups = listOf("crewJobTitles")
         )
     }
 

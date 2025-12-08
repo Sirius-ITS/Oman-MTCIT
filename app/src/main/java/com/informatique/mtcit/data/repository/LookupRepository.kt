@@ -26,6 +26,7 @@ interface LookupRepository {
     suspend fun getMarineActivities(): Result<List<String>>
     suspend fun getBuildMaterials(): Result<List<String>>
     suspend fun getNavigationAreas(): Result<List<String>>
+    suspend fun getCrewJobTitles(): Result<List<String>>
     suspend fun getCitiesByCountry(countryId: String): Result<List<String>>
     suspend fun getMortgageReasons(): Result<List<String>>
     suspend fun getBanks(): Result<List<String>>
@@ -45,11 +46,15 @@ interface LookupRepository {
     fun getCountryId(countryName: String): String?
     fun getBuildMaterialId(materialName: String): Int?
 
+    // Crew job titles
+    fun getCrewJobTitleId(jobName: String): Int?
+
     // ✅ NEW: Get raw lookup objects (with id, nameEn, nameAr) for engine submission
     suspend fun getEngineTypesRaw(): List<EngineType>
     suspend fun getCountriesRaw(): List<Country>
     suspend fun getFuelTypesRaw(): List<FuelType>
     suspend fun getEngineStatusesRaw(): List<EngineStatus>
+    suspend fun getCrewJobTitlesRaw(): List<CrewJobTitle>
 
     // Get IDs from cached data for API submissions
     fun getBankId(bankName: String): Int?
@@ -81,6 +86,7 @@ class LookupRepositoryImpl @Inject constructor(
     private val cachedCities = mutableMapOf<String, List<City>>()
     private var cachedCommercialRegistrations: List<SelectableItem>? = null
     private var cachedPersonTypes: List<PersonType>? = null
+    private var cachedCrewJobTitles: List<CrewJobTitle>? = null
 
     override suspend fun getPorts(): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
@@ -108,6 +114,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -138,6 +145,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -168,6 +176,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -210,6 +219,7 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 Result.failure(e)
             }
         }
@@ -244,6 +254,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -278,6 +289,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -312,6 +324,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -342,6 +355,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -372,6 +386,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -406,6 +421,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -440,6 +456,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -474,6 +491,33 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getCrewJobTitles(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            if (cachedCrewJobTitles != null) {
+                return@withContext Result.success(cachedCrewJobTitles!!.map { getLocalizedName(it.nameAr, it.nameEn) })
+            }
+
+            val result = apiService.getCrewJobTitles()
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success) {
+                        cachedCrewJobTitles = response.data
+                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                    } else {
+                        Result.failure(Exception(response.message ?: "Failed to fetch crew job titles"))
+                    }
+                },
+                onFailure = { exception ->
+                    Result.failure(exception)
+                }
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -510,6 +554,7 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 Result.failure(e)
             }
         }
@@ -540,6 +585,7 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 Result.failure(e)
             }
         }
@@ -569,6 +615,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -603,6 +650,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -633,6 +681,7 @@ class LookupRepositoryImpl @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            e.printStackTrace()
             Result.failure(e)
         }
     }
@@ -664,6 +713,7 @@ class LookupRepositoryImpl @Inject constructor(
         cachedCities.clear()
         cachedCommercialRegistrations = null
         cachedPersonTypes = null
+        cachedCrewJobTitles = null
     }
 
     /**
@@ -705,6 +755,10 @@ class LookupRepositoryImpl @Inject constructor(
         return cachedBuildMaterials?.find { getLocalizedName(it.nameAr, it.nameEn) == materialName }?.id
     }
 
+    override fun getCrewJobTitleId(jobName: String): Int? {
+        return cachedCrewJobTitles?.find { getLocalizedName(it.nameAr, it.nameEn) == jobName }?.id
+    }
+
     /**
      * Get raw lookup objects (with id, nameEn, nameAr) for engine submission
      */
@@ -732,6 +786,7 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 emptyList()
             }
         }
@@ -761,6 +816,7 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 emptyList()
             }
         }
@@ -790,6 +846,7 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
                 emptyList()
             }
         }
@@ -817,6 +874,33 @@ class LookupRepositoryImpl @Inject constructor(
                     }
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
+                emptyList()
+            }
+        }
+    }
+
+    override suspend fun getCrewJobTitlesRaw(): List<CrewJobTitle> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (cachedCrewJobTitles != null) return@withContext cachedCrewJobTitles!!
+                val result = apiService.getCrewJobTitles()
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            cachedCrewJobTitles = response.data
+                            response.data
+                        } else {
+                            emptyList()
+                        }
+                    },
+                    onFailure = { ex ->
+                        ex.printStackTrace()
+                        emptyList()
+                    }
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
                 emptyList()
             }
         }

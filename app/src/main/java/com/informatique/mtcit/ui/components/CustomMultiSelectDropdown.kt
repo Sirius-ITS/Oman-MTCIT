@@ -439,7 +439,7 @@ fun SelectedChip(
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = extraColors.cardBackground.copy(alpha = 0.2f),
+        color = extraColors.cardBackground.copy(alpha = 0.9f),
         modifier = Modifier.height(32.dp)
     ) {
         Row(

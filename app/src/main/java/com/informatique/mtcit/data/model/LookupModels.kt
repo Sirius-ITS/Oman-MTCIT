@@ -107,6 +107,13 @@ data class Bank(
     val nameEn: String
 )
 
+@Serializable
+data class CrewJobTitle(
+    val id: Int,
+    val nameAr: String,
+    val nameEn: String
+)
+
 /**
  * Reference types for API requests
  * These are used when sending data to the API (only ID is needed)

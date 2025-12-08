@@ -7,7 +7,6 @@ import com.informatique.mtcit.ui.components.DefaultBusinessIcon
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
@@ -782,6 +781,64 @@ class LookupApiService @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(Exception("Failed to get navigation areas: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get list of crew job titles
+     * API: api/v1/crew-job-title
+     */
+    suspend fun getCrewJobTitles(): Result<LookupResponse<CrewJobTitle>> {
+        return try {
+            when (val response = repo.onGet("api/v1/crew-job-title")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+
+                            val dataElem = responseJson.jsonObject.getValue("data")
+                            // data can be either an array or a paginated object - try array first
+                            if (dataElem is kotlinx.serialization.json.JsonArray) {
+                                val items: List<CrewJobTitle> = json.decodeFromJsonElement(dataElem)
+                                return Result.success(LookupResponse(true, items))
+                            }
+
+                            // If it's an object with content
+                            if (dataElem is kotlinx.serialization.json.JsonObject) {
+                                val content = dataElem["content"]
+                                if (content is kotlinx.serialization.json.JsonArray) {
+                                    val items: List<CrewJobTitle> = json.decodeFromJsonElement(content)
+                                    return Result.success(LookupResponse(true, items))
+                                }
+                            }
+
+                            // fallback: try decode data as List from string
+                            try {
+                                val rawStr = dataElem.toString()
+                                val list: List<CrewJobTitle> = json.decodeFromString(rawStr)
+                                return Result.success(LookupResponse(true, list))
+                            } catch (_: Exception) {
+                                // ignore
+                            }
+
+                            return Result.failure(Exception("Failed to fetch crew job titles - unexpected data format"))
+                        } else {
+                            Result.failure(Exception("Failed to fetch crew job titles"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty crew job titles response"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get crew job titles: ${'$'}{response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get crew job titles: ${'$'}{e.message}"))
         }
     }
 }

@@ -38,6 +38,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
     private var typeOptions: List<PersonType> = emptyList()
     private var sailingRegionsOptions: List<String> = emptyList()
+    private var crewJobTitles: List<String> = emptyList()
 
     // Cache for accumulated form data (used to decide steps like other strategies)
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
@@ -107,7 +108,13 @@ class IssueNavigationPermitStrategy @Inject constructor(
                         sailingRegionsOptions = areas
                     }
                 }
-                // add other lookups if needed
+                "crewJobTitles" -> {
+                    if (crewJobTitles.isEmpty()) {
+                        val jobs = lookupRepository.getCrewJobTitles().getOrNull() ?: emptyList()
+                        crewJobTitles = jobs
+                    }
+                }
+                 // add other lookups if needed
             }
         }
 
@@ -132,8 +139,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 sailingRegions = sailingRegionsOptions
             ),
             SharedSteps.sailorInfoStep(
-                jobs = listOf("Captain", "Chief Engineer", "Boatswain",
-                    "Electro-Technical Officer", "Navigator", "Chief Medical Officer")
+                jobs = crewJobTitles
             ),
 
             SharedSteps.reviewStep()
