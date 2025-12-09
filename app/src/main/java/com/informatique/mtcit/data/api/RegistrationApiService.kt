@@ -1,6 +1,6 @@
 package com.informatique.mtcit.data.api
 
-import android.content.Context
+import com.informatique.mtcit.data.model.CreateNavigationResponse
 import com.informatique.mtcit.data.model.CreateRegistrationRequest
 import com.informatique.mtcit.data.model.CreateRegistrationResponse
 import com.informatique.mtcit.data.model.DocumentValidationResponse
@@ -20,11 +20,9 @@ import io.ktor.http.content.PartData
 import io.ktor.utils.io.streams.asInput
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
-import com.informatique.mtcit.data.model.CreateNavigationResponse
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.encodeToString
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -331,13 +329,11 @@ class RegistrationApiService @Inject constructor(
      * - files: Multipart files (mapped by docOwnerId)
      */
     suspend fun submitEngines(
-        context: Context,
         requestId: Int,
         engines: List<EngineSubmissionRequest>,
         files: List<EngineFileUpload>
     ): Result<EngineSubmissionResponse> {
         // use context to avoid unused-parameter warning
-        val _ctx = context
         return try {
             println("🚀 RegistrationApiService: Submitting engines for requestId=$requestId...")
             println("📊 Engines count: ${engines.size}")
@@ -426,14 +422,12 @@ class RegistrationApiService @Inject constructor(
      * POST api/v1/registration-requests/{requestId}/owners
      */
     suspend fun submitOwners(
-        context: Context,
         requestId: Int,
         owners: List<OwnerSubmissionRequest>,
         files: List<OwnerFileUpload>
     ): Result<OwnerSubmissionResponse> {
         // use context to avoid unused-parameter warning
-        val _ctx = context
-        return try {
+        try {
             println("🚀 RegistrationApiService: Submitting owners for requestId=$requestId...")
             println("📊 Owners count: ${owners.size}")
             println("📎 Files count: ${files.size}")
@@ -513,7 +507,6 @@ class RegistrationApiService @Inject constructor(
         inspectionDocumentsName: String?
     ): Result<DocumentValidationResponse> {
         // avoid unused-parameter warnings in implementations that require context in other flows
-        val _dummy = requestId
         return try {
             println("🚀 RegistrationApiService: Validating build status for requestId=$requestId...")
             // Build multipart and send, similar pattern as other multipart endpoints

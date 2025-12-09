@@ -175,7 +175,7 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         files: List<EngineFileUpload>
     ): Result<EngineSubmissionResponse> {
         println("📞 ShipRegistrationRepository: Calling submitEngines API...")
-        return registrationApiService.submitEngines(context, requestId, engines, files)
+        return registrationApiService.submitEngines(requestId, engines, files)
     }
 
     override suspend fun updateOwners(requestId: String, ownersJson: String): Result<Unit> {
@@ -190,7 +190,7 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         files: List<OwnerFileUpload>
     ): Result<OwnerSubmissionResponse> {
         println("📞 ShipRegistrationRepository: Calling submitOwners API...")
-        return registrationApiService.submitOwners(context, requestId, owners, files)
+        return registrationApiService.submitOwners(requestId, owners, files)
     }
 
     override suspend fun validateBuildStatus(

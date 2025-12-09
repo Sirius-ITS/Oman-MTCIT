@@ -29,21 +29,49 @@ class LookupApiService @Inject constructor(
      * Get list of ship types
      * API: api/v1/coremdshiptype
      */
+//    suspend fun getShipTypes(): Result<LookupResponse<ShipType>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-ship-type/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//                            // الـ data دلوقتي مباشرة array مش object
+//                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+//
+//                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(dataArray)
+//
+//                            Result.success(LookupResponse(true, shipTypes))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch ship types"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty ship types response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get ship types: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get ship types: ${e.message}"))
+//        }
+//    }
     suspend fun getShipTypes(): Result<LookupResponse<ShipType>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdshiptype")) {
+            when (val response = repo.onGet("api/v1/core-md-ship-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, shipTypes))
                         } else {
                             Result.failure(Exception("Failed to fetch ship types"))
@@ -67,21 +95,50 @@ class LookupApiService @Inject constructor(
      * Get ship types by category ID
      * API: api/v1/coremdshiptype/category/{categoryId}
      */
+//    suspend fun getShipTypesByCategory(categoryId: Int): Result<LookupResponse<ShipType>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-ship-type/category/$categoryId")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, shipTypes))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch ship types by category"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty ship types response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get ship types by category: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get ship types by category: ${e.message}"))
+//        }
+//    }
     suspend fun getShipTypesByCategory(categoryId: Int): Result<LookupResponse<ShipType>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdshiptype/category/$categoryId")) {
+            when (val response = repo.onGet("api/v1/core-md-ship-type/category/$categoryId")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val shipTypes: List<ShipType> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, shipTypes))
                         } else {
                             Result.failure(Exception("Failed to fetch ship types by category"))
@@ -105,21 +162,50 @@ class LookupApiService @Inject constructor(
      * Get list of ship categories
      * API: api/v1/coremdshipcategory
      */
+//    suspend fun getShipCategories(): Result<LookupResponse<ShipCategory>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-ship-category/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val categories: List<ShipCategory> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, categories))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch ship categories"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty ship categories response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get ship categories: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get ship categories: ${e.message}"))
+//        }
+//    }
     suspend fun getShipCategories(): Result<LookupResponse<ShipCategory>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdshipcategory")) {
+            when (val response = repo.onGet("api/v1/core-md-ship-category/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val categories: List<ShipCategory> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val categories: List<ShipCategory> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, categories))
                         } else {
                             Result.failure(Exception("Failed to fetch ship categories"))
@@ -143,20 +229,52 @@ class LookupApiService @Inject constructor(
      * Get list of engine types
      * API: api/v1/coremdshipenginetypes
      */
+//    suspend fun getEngineTypes(): Result<LookupResponse<EngineType>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-ship-engine-type/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val types: List<EngineType> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, types))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch engine types"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty engine types response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get engine types: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get engine types: ${e.message}"))
+//        }
+//    }
     suspend fun getEngineTypes(): Result<LookupResponse<EngineType>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdshipenginetype")) {
+            when (val response = repo.onGet("api/v1/core-md-ship-engine-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
+                            // الـ data دلوقتي مباشرة array مش object
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
 
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val types: List<EngineType> = json.decodeFromJsonElement(content)
+                            val types: List<EngineType> = json.decodeFromJsonElement(dataArray)
 
                             Result.success(LookupResponse(true, types))
                         } else {
@@ -181,21 +299,50 @@ class LookupApiService @Inject constructor(
      * Get list of engine statuses
      * API: api/v1/coremdshipenginestatus
      */
+//    suspend fun getEngineStatuses(): Result<LookupResponse<EngineStatus>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-ship-engine-status/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val statuses: List<EngineStatus> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, statuses))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch engine statuses"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty engine statuses response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get engine statuses: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get engine statuses: ${e.message}"))
+//        }
+//    }
     suspend fun getEngineStatuses(): Result<LookupResponse<EngineStatus>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdshipenginestatus")) {
+            when (val response = repo.onGet("api/v1/core-md-ship-engine-status/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val statuses: List<EngineStatus> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val statuses: List<EngineStatus> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, statuses))
                         } else {
                             Result.failure(Exception("Failed to fetch engine statuses"))
@@ -215,25 +362,55 @@ class LookupApiService @Inject constructor(
         }
     }
 
+
     /**
      * Get list of engine fuel type
      * API: api/v1/coremdshipenginefueltype
      */
+//    suspend fun getEngineFuelTypes(): Result<LookupResponse<FuelType>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-ship-engine-fuel-type/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val fuelTypes: List<FuelType> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, fuelTypes))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch fuel types"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty fuel types response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get fuel types: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get fuel types: ${e.message}"))
+//        }
+//    }
     suspend fun getEngineFuelTypes(): Result<LookupResponse<FuelType>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdshipenginefueltype")) {
+            when (val response = repo.onGet("api/v1/core-md-ship-engine-fuel-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val fuelTypes: List<FuelType> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val fuelTypes: List<FuelType> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, fuelTypes))
                         } else {
                             Result.failure(Exception("Failed to fetch fuel types"))
@@ -257,21 +434,50 @@ class LookupApiService @Inject constructor(
      * Get list of proof types
      * API: api/v1/coremdprooftype
      */
+//    suspend fun getProofTypes(): Result<LookupResponse<ProofType>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-proof-type/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val proofTypes: List<ProofType> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, proofTypes))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch proof types"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty proof types response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get proof types: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get proof types: ${e.message}"))
+//        }
+//    }
     suspend fun getProofTypes(): Result<LookupResponse<ProofType>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdprooftype")) {
+            when (val response = repo.onGet("api/v1/core-md-proof-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val proofTypes: List<ProofType> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val proofTypes: List<ProofType> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, proofTypes))
                         } else {
                             Result.failure(Exception("Failed to fetch proof types"))
@@ -295,21 +501,50 @@ class LookupApiService @Inject constructor(
      * Get list of ports
      * API: api/v1/coremdportofregistry
      */
+//    suspend fun getPorts(): Result<LookupResponse<Port>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-port-of-registry/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val ports: List<Port> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, ports))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch ports"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty ports response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get ports: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get ports: ${e.message}"))
+//        }
+//    }
     suspend fun getPorts(): Result<LookupResponse<Port>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdportofregistry")) {
+            when (val response = repo.onGet("api/v1/core-md-port-of-registry/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val ports: List<Port> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val ports: List<Port> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, ports))
                         } else {
                             Result.failure(Exception("Failed to fetch ports"))
@@ -333,22 +568,51 @@ class LookupApiService @Inject constructor(
      * Get list of marine activities
      * API: api/v1/coremdmarineactivity
      */
+//    suspend fun getMarineActivities(): Result<LookupResponse<MarineActivity>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-marine-activity/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val activities: List<MarineActivity> =
+//                                json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, activities))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch marine activities"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty marine activities response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get marine activities: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get marine activities: ${e.message}"))
+//        }
+//    }
     suspend fun getMarineActivities(): Result<LookupResponse<MarineActivity>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdmarineactivity")) {
+            when (val response = repo.onGet("api/v1/core-md-marine-activity/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val activities: List<MarineActivity> =
-                                json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val activities: List<MarineActivity> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, activities))
                         } else {
                             Result.failure(Exception("Failed to fetch marine activities"))
@@ -372,21 +636,50 @@ class LookupApiService @Inject constructor(
      * Get list of building materials
      * API: api/v1/coremdbuildmaterial
      */
+//    suspend fun getBuildMaterials(): Result<LookupResponse<BuildMaterial>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-build-material/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val materials: List<BuildMaterial> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, materials))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch building materials"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty building materials response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get building materials: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get building materials: ${e.message}"))
+//        }
+//    }
     suspend fun getBuildMaterials(): Result<LookupResponse<BuildMaterial>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdbuildmaterial")) {
+            when (val response = repo.onGet("api/v1/core-md-build-material/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val materials: List<BuildMaterial> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val materials: List<BuildMaterial> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, materials))
                         } else {
                             Result.failure(Exception("Failed to fetch building materials"))
@@ -410,21 +703,50 @@ class LookupApiService @Inject constructor(
      * Get list of countries
      * API: api/v1/coremdcountry
      */
+//    suspend fun getCountries(): Result<LookupResponse<Country>> {
+//        return try {
+//            when (val response = repo.onGet("api/v1/core-md-country/ddl")) {
+//                is RepoServiceState.Success -> {
+//                    val responseJson = response.response
+//                    if (!responseJson.jsonObject.isEmpty()) {
+//                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+//                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+//                        ) {
+//
+//                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
+//                            val content = paginatedData.getValue("content").jsonArray
+//
+//                            val countries: List<Country> = json.decodeFromJsonElement(content)
+//
+//                            Result.success(LookupResponse(true, countries))
+//                        } else {
+//                            Result.failure(Exception("Failed to fetch countries"))
+//                        }
+//                    } else {
+//                        Result.failure(Exception("Empty countries response"))
+//                    }
+//                }
+//
+//                is RepoServiceState.Error -> {
+//                    Result.failure(Exception("Failed to get countries: ${response.error}"))
+//                }
+//            }
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//            Result.failure(Exception("Failed to get countries: ${e.message}"))
+//        }
+//    }
     suspend fun getCountries(): Result<LookupResponse<Country>> {
         return try {
-            when (val response = repo.onGet("api/v1/coremdcountry")) {
+            when (val response = repo.onGet("api/v1/core-md-country/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
-
-                            val paginatedData = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = paginatedData.getValue("content").jsonArray
-
-                            val countries: List<Country> = json.decodeFromJsonElement(content)
-
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val countries: List<Country> = json.decodeFromJsonElement(dataArray)
                             Result.success(LookupResponse(true, countries))
                         } else {
                             Result.failure(Exception("Failed to fetch countries"))

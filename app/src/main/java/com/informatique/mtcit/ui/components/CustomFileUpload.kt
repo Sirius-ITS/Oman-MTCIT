@@ -51,6 +51,11 @@ fun CustomFileUpload(
     var fileName by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
 
+    // Ensure Excel extensions are always considered allowed when opening picker
+    val pickerAllowedTypes = remember(allowedTypes) {
+        (allowedTypes + listOf("xls", "xlsx")).map { it.lowercase() }.distinct()
+    }
+
     // Update selectedUri when mortgageValue changes (for persistence)
     LaunchedEffect(value) {
         if (value.isNotEmpty() && value.startsWith("content://")) {
@@ -62,6 +67,28 @@ fun CustomFileUpload(
             selectedMimeType = null
             fileName = ""
         }
+    }
+
+    // Determine if current file is an Excel file (by MIME type or filename/URL extension)
+    val isExcel by remember(selectedMimeType, fileName, value) {
+        mutableStateOf(
+            when {
+                // MIME types that often indicate Excel
+                selectedMimeType != null && (
+                        selectedMimeType!!.contains("spreadsheet", ignoreCase = true) ||
+                                selectedMimeType!!.contains("excel", ignoreCase = true) ||
+                                selectedMimeType!!.equals("application/vnd.ms-excel", ignoreCase = true) ||
+                                selectedMimeType!!.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ignoreCase = true)
+                        ) -> true
+
+                // Check filename or value (could be a URL or stored filename)
+                fileName.isNotBlank() && (fileName.lowercase().endsWith(".xls") || fileName.lowercase().endsWith(".xlsx")) -> true
+
+                value.isNotBlank() && (value.lowercase().endsWith(".xls") || value.lowercase().endsWith(".xlsx")) -> true
+
+                else -> false
+            }
+        )
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -97,14 +124,14 @@ fun CustomFileUpload(
                         ),
                     shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        containerColor = MaterialTheme.colorScheme.background
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         width = 1.dp,
                         color = if (error != null)
                             MaterialTheme.colorScheme.error
                         else
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.5f)
                     )
                 ) {
                     Row(
@@ -140,7 +167,7 @@ fun CustomFileUpload(
                     onDismissRequest = { showMenu = false },
                     offset = DpOffset(0.dp, 4.dp)
                 ) {
-                    // View option
+                    // View option - disabled for Excel files
                     DropdownMenuItem(
                         text = {
                             Row(
@@ -158,7 +185,8 @@ fun CustomFileUpload(
                         onClick = {
                             showMenu = false
                             onViewFile?.invoke(value, selectedMimeType ?: "application/*")
-                        }
+                        },
+                        enabled = !isExcel
                     )
 
                     // Replace option
@@ -178,7 +206,8 @@ fun CustomFileUpload(
                         },
                         onClick = {
                             showMenu = false
-                            onOpenFilePicker?.invoke(fieldId, allowedTypes)
+                            // Use enriched list that always contains Excel extensions
+                            onOpenFilePicker?.invoke(fieldId, pickerAllowedTypes)
                         }
                     )
 
@@ -215,7 +244,8 @@ fun CustomFileUpload(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onOpenFilePicker?.invoke(fieldId, allowedTypes)
+                        // Use enriched list that always contains Excel extensions
+                        onOpenFilePicker?.invoke(fieldId, pickerAllowedTypes)
                     },
                 shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(
