@@ -15,9 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
-import kotlin.collections.listOf
 
 /**
  * Strategy for Temporary Registration Certificate
@@ -136,9 +134,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
         steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false,
-                showAddNewButton = true,
-                showOwnedUnitsWarning = true
+                showAddNewButton = false
             )
         )
         steps.add(SharedSteps.sailingRegionsStep(
@@ -164,11 +160,94 @@ class IssueNavigationPermitStrategy @Inject constructor(
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         // Update accumulated data first
         accumulatedFormData.putAll(data)
+
+        // ✅ Check if we're on the marine unit selection step
+        val currentStepData = getSteps().getOrNull(step)
+        val currentStepFields = currentStepData?.fields?.map { it.id } ?: emptyList()
+
+        if (currentStepFields.contains("selectedMarineUnits")) {
+            println("🚢 Marine unit selection step completed")
+
+            // Extract selected ship info ID
+            val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
+            if (!selectedUnitsJson.isNullOrBlank() && selectedUnitsJson != "[]") {
+                try {
+                    // Parse selected maritime IDs
+                    val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                    val maritimeIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                    val firstMaritimeId = maritimeIds.firstOrNull()
+
+                    if (!firstMaritimeId.isNullOrBlank()) {
+                        // Find the ship with this maritime ID
+                        val selectedShip = marineUnits.firstOrNull { it.maritimeId == firstMaritimeId }
+
+                        if (selectedShip != null) {
+                            val shipInfoId = selectedShip.id.toIntOrNull()
+
+                            if (shipInfoId != null) {
+                                println("🔵 Calling createNavigationLicense for shipInfoId=$shipInfoId")
+
+                                // Call the API
+                                val result = repository.createNavigationLicense(shipInfoId)
+
+                                result.fold(
+                                    onSuccess = { response ->
+                                        println("✅ Navigation license created: requestId=${response.data?.id}")
+                                        // Store the request ID for later use
+                                        accumulatedFormData["navigationRequestId"] = response.data?.id?.toString() ?: ""
+                                    },
+                                    onFailure = { error ->
+                                        println("❌ Failed to create navigation license: ${error.message}")
+
+                                        // ✅ Parse error code from message format: "ERROR_CODE:406|message"
+                                        val errorMessage = error.message ?: ""
+                                        val errorCode = if (errorMessage.startsWith("ERROR_CODE:")) {
+                                            val parts = errorMessage.substringAfter("ERROR_CODE:").split("|", limit = 2)
+                                            if (parts.size == 2) {
+                                                val code = parts[0]
+                                                val message = parts[1]
+
+                                                // Store in formData for UI to display
+                                                accumulatedFormData["apiErrorCode"] = code
+                                                accumulatedFormData["apiErrorMessage"] = message
+
+                                                println("🔍 Extracted error code: $code, message: $message")
+                                                code
+                                            } else {
+                                                null
+                                            }
+                                        } else {
+                                            null
+                                        }
+
+                                        // If it's not a 406 error, show generic dialog instead
+                                        if (errorCode != "406") {
+                                            accumulatedFormData["apiError"] = errorMessage
+                                        }
+
+                                        // Return -1 to prevent navigation
+                                        return -1
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error processing selected units: ${e.message}")
+                    e.printStackTrace()
+                }
+            }
+        }
+
         return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
         return repository.submitRegistration(data)
+    }
+
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {

@@ -598,6 +598,9 @@ class RegistrationApiService @Inject constructor(
                                 ?: "Failed to create navigation license"
                             println("⚠️ Navigation license creation returned status $statusCode: $message")
 
+                            // ✅ Include status code in error message for 406 handling
+                            val errorWithCode = "ERROR_CODE:$statusCode|$message"
+
                             // If API says ship info not found, try alternative payload shapes
                             if (message.contains("Ship info not found", ignoreCase = true)) {
                                 println("🔁 Attempting alternate payloads for shipInfoId=$shipInfoId")
@@ -642,14 +645,32 @@ class RegistrationApiService @Inject constructor(
                                 }
                             }
 
-                            return Result.failure(Exception(message))
+                            return Result.failure(Exception(errorWithCode))
                         }
                     } else {
                         return Result.failure(Exception("Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
-                    return Result.failure(Exception(response.error?.toString() ?: "API error"))
+                    // ✅ Parse the error response to extract the message field
+                    val statusCode = response.code
+                    val errorBody = response.error?.toString() ?: "API error"
+
+                    println("⚠️ HTTP $statusCode - Response body: $errorBody")
+
+                    // Try to parse JSON error response to extract "message" field
+                    val errorMessage = try {
+                        val errorJson = json.parseToJsonElement(errorBody).jsonObject
+                        errorJson["message"]?.jsonPrimitive?.content ?: errorBody
+                    } catch (e: Exception) {
+                        errorBody
+                    }
+
+                    // Format with ERROR_CODE prefix for consistent handling
+                    val formattedError = "ERROR_CODE:$statusCode|$errorMessage"
+                    println("❌ Failed to create navigation license: $formattedError")
+
+                    return Result.failure(Exception(formattedError))
                 }
             }
 

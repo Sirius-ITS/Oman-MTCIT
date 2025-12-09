@@ -953,7 +953,7 @@ object SharedSteps {
 
     fun marineUnitSelectionStep(
         units: List<MarineUnit>,
-        allowMultipleSelection: Boolean = true,
+        allowMultipleSelection: Boolean = false,
         showOwnedUnitsWarning: Boolean = true,
         showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
     ): StepData {

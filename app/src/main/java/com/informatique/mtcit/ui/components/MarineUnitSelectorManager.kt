@@ -33,9 +33,9 @@ fun MarineUnitSelectorManager(
     units: List<MarineUnit>,
     selectedUnitIds: List<String>,
     addNewUnit: () -> Unit,
-    allowMultipleSelection: Boolean = true,
-    showOwnedUnitsWarning: Boolean = true,
-    showAddNewButton: Boolean,
+    allowMultipleSelection: Boolean = false,
+    showOwnedUnitsWarning: Boolean = false,
+    showAddNewButton: Boolean = false,
     onSelectionChange: (List<String>) -> Unit,
     validationState: ValidationState = ValidationState.Idle,
     onMarineUnitSelected: ((String) -> Unit)? = null
@@ -167,8 +167,8 @@ fun MarineUnitSelectorManager(
         }
 
         // Warning Card للسفن المملوكة
-        if (showOwnedUnitsWarning && ownedUnits.isNotEmpty()) {
-            WarningCard()
+//        if (showOwnedUnitsWarning && ownedUnits.isNotEmpty()) {
+//            WarningCard()
 
             ownedUnits.forEach { unit ->
                 MarineUnitSelectionCard(
@@ -221,7 +221,7 @@ fun MarineUnitSelectorManager(
                 )
             }
         }
-    }
+//    }
 
     // Bottom Sheet للتفاصيل الكاملة
     if (showBottomSheet && selectedUnitForDetails != null) {

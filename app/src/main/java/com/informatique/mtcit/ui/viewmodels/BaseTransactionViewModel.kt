@@ -314,11 +314,29 @@ abstract class BaseTransactionViewModel(
                     val commercialRegValue = mergedFormData["selectionData"]
                     val hasCommercialRegData = !commercialRegValue.isNullOrEmpty()
 
+                    println("🔍 DEBUG: Checking shouldLoadShips")
+                    println("   personType = $personType")
+                    println("   isPersonTypeStep = $isPersonTypeStep")
+                    println("   isCommercialRegStep = $isCommercialRegStep")
+                    println("   hasCommercialRegData = $hasCommercialRegData")
+
                     val shouldLoadShips = when {
-                        isPersonTypeStep && personType == "فرد" -> true
-                        isPersonTypeStep && personType == "شركة" -> false
-                        isCommercialRegStep && hasCommercialRegData -> true
-                        else -> false
+                        isPersonTypeStep && personType == "فرد" -> {
+                            println("✅ Should load ships: Individual person type selected")
+                            true
+                        }
+                        isPersonTypeStep && personType == "شركة" -> {
+                            println("ℹ️ Company selected - will load ships after commercial reg step")
+                            false
+                        }
+                        isCommercialRegStep && hasCommercialRegData -> {
+                            println("✅ Should load ships: Commercial registration data entered")
+                            true
+                        }
+                        else -> {
+                            println("❌ Should NOT load ships - conditions not met")
+                            false
+                        }
                     }
 
                     val strategy = currentStrategy
@@ -340,7 +358,38 @@ abstract class BaseTransactionViewModel(
                             return@launch
                         }
 
+                        // ✅ Handle return -1 (error/validation failure) BEFORE loading ships
                         if (requiredNextStep == -1) {
+                            println("=" .repeat(80))
+                            println("⛔⛔⛔ processStepData returned -1 (BLOCKING NAVIGATION)")
+                            println("=" .repeat(80))
+
+                            // ✅ Still need to refresh steps and merge formData to show error banner
+                            val updatedSteps = strategy.getSteps()
+                            val strategyFormData = strategy.getFormData()
+
+                            println("   Strategy formData keys: ${strategyFormData.keys}")
+                            println("   apiErrorCode = ${strategyFormData["apiErrorCode"]}")
+                            println("   apiErrorMessage = ${strategyFormData["apiErrorMessage"]}")
+
+                            val mergedFormData = currentState.formData.toMutableMap().apply {
+                                putAll(strategyFormData)
+                            }
+
+                            val updatedState = currentState.copy(
+                                steps = updatedSteps,
+                                formData = mergedFormData
+                            )
+
+                            _uiState.value = updatedState
+
+                            println("✅ UI State updated with error data:")
+                            println("   formData.size = ${_uiState.value.formData.size}")
+                            println("   apiErrorCode in UI = ${_uiState.value.formData["apiErrorCode"]}")
+                            println("   apiErrorMessage in UI = ${_uiState.value.formData["apiErrorMessage"]}")
+                            println("=" .repeat(80))
+
+                            // Handle special cases (like MortgageCertificateStrategy)
                             if (strategy is com.informatique.mtcit.business.transactions.MortgageCertificateStrategy) {
                                 val apiError = strategy.getLastApiError()
                                 if (apiError != null) {
@@ -348,6 +397,7 @@ abstract class BaseTransactionViewModel(
                                     strategy.clearLastApiError()
                                 }
                             }
+
                             return@launch
                         }
 
@@ -367,12 +417,35 @@ abstract class BaseTransactionViewModel(
                         // Refresh steps
                         val updatedSteps = strategy.getSteps()
 
-                        val updatedState = currentState.copy(steps = updatedSteps)
+                        // ✅ Merge strategy's formData (which may contain apiErrorCode/apiErrorMessage)
+                        val strategyFormData = strategy.getFormData()
+                        println("🔍 ViewModel: Merging strategy formData into uiState")
+                        println("   Current formData size: ${currentState.formData.size}")
+                        println("   Strategy formData size: ${strategyFormData.size}")
+                        println("   Strategy formData keys: ${strategyFormData.keys}")
+
+                        val mergedFormData = currentState.formData.toMutableMap().apply {
+                            putAll(strategyFormData)
+                        }
+
+                        println("   Merged formData size: ${mergedFormData.size}")
+                        println("   apiErrorCode in merged: ${mergedFormData["apiErrorCode"]}")
+                        println("   apiErrorMessage in merged: ${mergedFormData["apiErrorMessage"]}")
+
+                        val updatedState = currentState.copy(
+                            steps = updatedSteps,
+                            formData = mergedFormData
+                        )
+
+
+                        // ✅ Update UI state immediately to show error banner if present
                         _uiState.value = updatedState
+                        println("✅ ViewModel: UI state updated with merged formData")
 
                         navigationUseCase.getNextStep(currentStepIndex, updatedSteps.size)?.let { nextStep ->
                             val newCompletedSteps = updatedState.completedSteps + currentStepIndex
 
+                            // ✅ CRITICAL FIX: Use updatedState (which has merged formData) instead of _uiState.value
                             _uiState.value = updatedState.copy(
                                 currentStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep,
                                 completedSteps = newCompletedSteps,
@@ -382,6 +455,11 @@ abstract class BaseTransactionViewModel(
                                     updatedState.formData
                                 )
                             )
+
+                            println("✅✅✅ FINAL UI State updated:")
+                            println("   formData.size = ${_uiState.value.formData.size}")
+                            println("   apiErrorCode = ${_uiState.value.formData["apiErrorCode"]}")
+                            println("   apiErrorMessage = ${_uiState.value.formData["apiErrorMessage"]}")
 
                             val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
                             strategy.onStepOpened(targetStep)
