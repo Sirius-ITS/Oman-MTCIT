@@ -18,8 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
-import kotlin.collections.listOf
 
 /**
  * Strategy for Issue Navigation Permit
@@ -142,9 +142,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
         steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
-                allowMultipleSelection = false,
-                showAddNewButton = true,
-                showOwnedUnitsWarning = true
+                showAddNewButton = false
             )
         )
         steps.add(SharedSteps.sailingRegionsStep(
@@ -296,6 +294,10 @@ class IssueNavigationPermitStrategy @Inject constructor(
         // Final submission - all data has been submitted step by step
         println("✅ Issue Navigation Permit - All data submitted successfully")
         return Result.success(true)
+    }
+
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {

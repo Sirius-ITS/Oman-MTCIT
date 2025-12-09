@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +36,8 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
 import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 import com.informatique.mtcit.ui.viewmodels.ValidationState
+import com.informatique.mtcit.ui.components.ErrorBanner
+
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -77,6 +78,24 @@ fun TransactionFormContent(
     val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
     val inspectionMessage = uiState.formData["inspectionMessage"] ?: ""
 
+    // ✅ NEW: Extract error code and message for 406 banner
+    val apiErrorCode = uiState.formData["apiErrorCode"]
+    val apiErrorMessage = uiState.formData["apiErrorMessage"]
+    val shouldShowErrorBanner = apiErrorCode == "406" && !apiErrorMessage.isNullOrBlank()
+
+    // ✅ Debug logs - CRITICAL for troubleshooting
+    println("=" .repeat(80))
+    println("🔍 TransactionFormContent RENDER - Error Banner Check")
+    println("=" .repeat(80))
+    println("📊 uiState.formData.size = ${uiState.formData.size}")
+    println("📊 uiState.formData.keys = ${uiState.formData.keys.joinToString()}")
+    println("🔴 apiErrorCode = '$apiErrorCode'")
+    println("📝 apiErrorMessage = '$apiErrorMessage'")
+    println("🎯 shouldShowErrorBanner = $shouldShowErrorBanner")
+    println("=" .repeat(80))
+
+
+
     // ✅ NEW: Show inspection dialog when needed
     if (showInspectionDialog) {
         InspectionRequiredDialog(
@@ -93,32 +112,41 @@ fun TransactionFormContent(
     }
 
     // ✅ NEW: Show API error dialog when errors occur
+    // ✅ Show API error dialog for non-406 errors only
     uiState.apiError?.let { errorMessage ->
-        AlertDialog(
-            onDismissRequest = { viewModel.clearApiError() },
-            title = {
-                Text(
-                    text = localizedApp(R.string.error),
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(text = errorMessage)
-            },
-            confirmButton = {
-                Button(
-                    onClick = { viewModel.clearApiError() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = extraColors.startServiceButton
+        if (apiErrorCode != "406") {
+            AlertDialog(
+                onDismissRequest = {
+                    // Clear apiError from state
+                    onFieldValueChange("apiError", "")
+                },
+                title = {
+                    Text(
+                        text = localizedApp(R.string.error),
+                        fontWeight = FontWeight.Bold
                     )
-                ) {
-                    Text(localizedApp(R.string.ok))
-                }
-            },
-            containerColor = extraColors.cardBackground,
-            titleContentColor = extraColors.whiteInDarkMode,
-            textContentColor = extraColors.textSubTitle
-        )
+                },
+                text = {
+                    Text(text = errorMessage)
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            // Clear apiError from state
+                            onFieldValueChange("apiError", "")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = extraColors.startServiceButton
+                        )
+                    ) {
+                        Text(localizedApp(R.string.ok))
+                    }
+                },
+                containerColor = extraColors.cardBackground,
+                titleContentColor = extraColors.whiteInDarkMode,
+                textContentColor = extraColors.textSubTitle
+            )
+        }
     }
 
     Scaffold(
@@ -253,6 +281,7 @@ fun TransactionFormContent(
             }
 
             if (shouldShowStepper) {
+
                 val stepsToShow = if (hideStepperForFirstStep) {
                     // Exclude first step from stepper display
                     uiState.steps.drop(1).map { localizedApp(it.titleRes) }
@@ -291,6 +320,17 @@ fun TransactionFormContent(
                     },
                     modifier = Modifier.padding(horizontal = 16.dp).padding(top = 10.dp, bottom = 4.dp)
                 )
+
+                // ✅ Show ErrorBanner ONLY for 406 errors (below stepper, above content)
+                if (shouldShowErrorBanner) {
+                    ErrorBanner(
+                        message = apiErrorMessage ?: "",
+                        onDismiss = {
+                            onFieldValueChange("apiErrorCode", "")
+                            onFieldValueChange("apiErrorMessage", "")
+                        }
+                    )
+                }
             }
 
             // Form Content
@@ -411,7 +451,7 @@ fun GenericNavigationBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 18.dp, top = 4.dp),
+                .padding(top = 4.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
