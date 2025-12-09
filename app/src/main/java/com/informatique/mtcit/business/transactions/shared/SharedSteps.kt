@@ -9,11 +9,6 @@ import com.informatique.mtcit.ui.viewmodels.StepData
 /**
  * Reusable Step Library for Ship Category Transactions
  * Provides common step templates that can be customized per transaction
- *
- * Usage:
- * - ShipRegistrationStrategy uses all shared steps
- * - NameChangeStrategy reuses owner info + documents (different requirements)
- * - DimensionChangeStrategy reuses owner info + adds technical fields
  */
 object SharedSteps {
 
@@ -34,6 +29,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.PERSON_TYPE,  // ✅ Added
             titleRes = R.string.person_type_title,
             descriptionRes = R.string.person_type_desc,
             fields = fields
@@ -54,6 +50,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.COMMERCIAL_REGISTRATION,  // ✅ Added
             titleRes = R.string.commercial_registration_title,
             descriptionRes = R.string.commercial_registration_desc,
             fields = fields
@@ -84,6 +81,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.ENGINE_INFO,  // ✅ Added
             titleRes = R.string.engine_title,
             descriptionRes = R.string.engine_description,
             fields = fields,
@@ -117,6 +115,7 @@ object SharedSteps {
 
 
         return StepData(
+            stepType = StepType.CREW_MANAGEMENT,  // ✅ Added
             titleRes = R.string.sailor_info,
             descriptionRes = R.string.sailor_info_description,
             fields = fields,
@@ -374,10 +373,11 @@ object SharedSteps {
         fields.addAll(additionalFields)
 
         return StepData(
+            stepType = StepType.MARINE_UNIT_SELECTION,  // ✅ Added
             titleRes = R.string.unit_data,
             descriptionRes = R.string.unit_data_description,
             fields = fields,
-            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildMaterials")
+            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildingMaterials")
         )
     }
 
@@ -483,6 +483,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.CUSTOM,  // ✅ Added
             titleRes = R.string.mortgage_data,
             descriptionRes = R.string.mortgage_data_desc,
             fields = fields
@@ -620,6 +621,7 @@ object SharedSteps {
         }
 
         return StepData(
+            stepType = StepType.SHIP_DIMENSIONS,  // ✅ Added
             titleRes = R.string.marine_unit_dimensions_title,
             descriptionRes = R.string.marine_unit_dimensions_description,
             fields = fields
@@ -945,6 +947,7 @@ object SharedSteps {
      */
     fun reviewStep(): StepData {
         return StepData(
+            stepType = StepType.REVIEW,  // ✅ Added
             titleRes = R.string.review,
             descriptionRes = R.string.step_placeholder_content,
             fields = emptyList()
@@ -1099,6 +1102,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.NAVIGATION_AREAS,  // ✅ Added
             titleRes = R.string.sailing_regions_title, // "بيانات البخارة"
             descriptionRes = R.string.sailing_regions_description, // "يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة."
             fields = fields,

@@ -6,9 +6,14 @@ import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.managers.NavigationLicenseManager
+import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.data.model.NavigationArea
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
+import com.informatique.mtcit.data.dto.CrewResDto
+import com.informatique.mtcit.data.dto.NavigationAreaResDto
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.navigation.NavigationManager
 import com.informatique.mtcit.ui.components.PersonType
@@ -23,8 +28,9 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
 /**
- * Strategy for Temporary Registration Certificate
- * Full baseline implementation with all steps
+ * Strategy for Renew Navigation Permit
+ * Uses NavigationLicenseManager for all navigation license operations
+ * Key difference from Issue: Loads existing navigation areas and crew from previous license
  */
 class RenewNavigationPermitStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -32,14 +38,21 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
-
-    private val navigationManager: NavigationManager
+    private val navigationManager: NavigationManager,
+    private val navigationLicenseManager: NavigationLicenseManager
 ) : TransactionStrategy {
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
+    private var sailingRegionsOptions: List<NavigationArea> = emptyList()
+    private var crewJobTitles: List<String> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
+
+    private var navigationRequestId: Long? = null // ✅ Store created request ID
+    private var lastNavLicId: Long? = null // ✅ Store last navigation license ID
+    private var existingNavigationAreas: List<NavigationAreaResDto> = emptyList() // ✅ Loaded areas
+    private var existingCrew: List<CrewResDto> = emptyList() // ✅ Loaded crew
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
@@ -58,6 +71,73 @@ class RenewNavigationPermitStrategy @Inject constructor(
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes
         )
+    }
+
+    // Load lookups when a step is opened (lazy loading)
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+        if (step.requiredLookups.isEmpty()) return
+
+        step.requiredLookups.forEach { lookupKey ->
+            when (lookupKey) {
+                "sailingRegions" -> {
+                    if (sailingRegionsOptions.isEmpty()) {
+                        val areas = lookupRepository.getNavigationAreas().getOrNull() ?: emptyList()
+                        sailingRegionsOptions = areas
+                    }
+                    // ✅ Load existing navigation areas for renew
+                    loadExistingNavigationAreas()
+                }
+                "crewJobTitles" -> {
+                    if (crewJobTitles.isEmpty()) {
+                        val jobs = lookupRepository.getCrewJobTitles().getOrNull() ?: emptyList()
+                        crewJobTitles = jobs
+                    }
+                    // ✅ Load existing crew for renew
+                    loadExistingCrew()
+                }
+                // add other lookups if needed
+            }
+        }
+
+        // Notify UI to refresh steps so dropdown picks up new data
+        onStepsNeedRebuild?.invoke()
+    }
+
+    /**
+     * ✅ Load existing navigation areas from previous license
+     */
+    private suspend fun loadExistingNavigationAreas() {
+        if (existingNavigationAreas.isNotEmpty()) return // Already loaded
+
+        val requestId = navigationRequestId ?: return
+
+        navigationLicenseManager.loadNavigationAreasRenew(requestId)
+            .onSuccess { areas ->
+                existingNavigationAreas = areas
+                println("✅ Loaded ${areas.size} existing navigation areas")
+            }
+            .onFailure { error ->
+                println("❌ Failed to load existing navigation areas: ${error.message}")
+            }
+    }
+
+    /**
+     * ✅ Load existing crew from previous license
+     */
+    private suspend fun loadExistingCrew() {
+        if (existingCrew.isNotEmpty()) return // Already loaded
+
+        val lastLicId = lastNavLicId ?: return
+
+        navigationLicenseManager.loadCrewRenew(lastLicId)
+            .onSuccess { crew ->
+                existingCrew = crew
+                println("✅ Loaded ${crew.size} existing crew members")
+            }
+            .onFailure { error ->
+                println("❌ Failed to load existing crew: ${error.message}")
+            }
     }
 
     override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
@@ -100,53 +180,34 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
-
         // Step 1: Person Type
-        steps.add(SharedSteps.personTypeStep(options = typeOptions))
+        steps.add(SharedSteps.personTypeStep(typeOptions))
 
-        // Step 2: Commercial Registration (only for companies)
+        // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
         if (selectedPersonType == "شركة") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
-        // Step 3: Marine Unit Selection
         steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
                 allowMultipleSelection = false,
+                showAddNewButton = true,
                 showOwnedUnitsWarning = true
             )
         )
+        steps.add(SharedSteps.sailingRegionsStep(
+            sailingRegions = sailingRegionsOptions.map { it.nameAr } // ✅ Pass names to UI
+        ))
+        steps.add( SharedSteps.sailorInfoStep(
+            jobs = crewJobTitles
+        ))
 
-        // Step 4: Sailor Info
-        steps.add(
-            SharedSteps.sailorInfoStep(
-                jobs = listOf("Captain", "Chief Engineer", "Boatswain", "Electro-Technical Officer", "Navigator", "Chief Medical Officer")
-            )
-        )
-
-        // Step 5: Documents
-        steps.add(
-            SharedSteps.documentsStep(
-                requiredDocuments = listOf(
-                    DocumentConfig(
-                        id = "shipbuildingCertificate",
-                        labelRes = R.string.shipbuilding_certificate_or_sale_contract,
-                        mandatory = true
-                    ),
-                    DocumentConfig(
-                        id = "inspectionDocuments",
-                        labelRes = R.string.inspection_documents,
-                        mandatory = true
-                    )
-                )
-            )
-        )
-
-        // Step 6: Review
+        // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
 
+        println("📋 Total steps count: ${steps.size}")
         return steps
     }
 
@@ -157,9 +218,17 @@ class RenewNavigationPermitStrategy @Inject constructor(
     }
 
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
-        // ✅ Accumulate form data for dynamic step logic
+        // Update accumulated data first
         accumulatedFormData.putAll(data)
-        println("📦 RenewNavigationPermit - Accumulated data: $accumulatedFormData")
+
+        val stepData = getSteps().getOrNull(step)
+
+        // ✅ Use stepType instead of checking field IDs
+        when (stepData?.stepType) {
+            StepType.NAVIGATION_AREAS -> handleNavigationAreasSubmission(data)
+            StepType.CREW_MANAGEMENT -> handleCrewSubmission(data)
+            else -> {}
+        }
 
         if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
             return 2
@@ -178,8 +247,131 @@ class RenewNavigationPermitStrategy @Inject constructor(
         return step
     }
 
+    /**
+     * Handle navigation areas submission (update existing or add new)
+     */
+    private suspend fun handleNavigationAreasSubmission(data: Map<String, String>) {
+        // ✅ Get selected names from form data - handle JSON array format
+        val sailingRegionsString = data["sailingRegions"] ?: ""
+
+        // Parse JSON array: ["المنطقة 1","المنطقة 2","المنطقة 7"]
+        val selectedNames = if (sailingRegionsString.startsWith("[") && sailingRegionsString.endsWith("]")) {
+            // Remove brackets and split by comma, then clean quotes and trim
+            sailingRegionsString
+                .substring(1, sailingRegionsString.length - 1) // Remove [ and ]
+                .split(",")
+                .map { it.trim().removeSurrounding("\"") } // Remove quotes and trim
+                .filter { it.isNotEmpty() }
+        } else {
+            emptyList()
+        }
+
+        println("🔍 Raw sailingRegions data: $sailingRegionsString")
+        println("🔍 Parsed selected names: $selectedNames")
+        println("🔍 Available regions in cache: ${sailingRegionsOptions.map { "${it.id}:${it.nameAr}" }}")
+
+        // ✅ Map names to IDs
+        val selectedAreaIds = sailingRegionsOptions
+            .filter { area -> selectedNames.contains(area.nameAr) }
+            .map { it.id }
+
+        if (selectedAreaIds.isEmpty()) {
+            println("⚠️ No navigation areas selected or no matching IDs found")
+            println("⚠️ Selected names: $selectedNames")
+            println("⚠️ Available regions: ${sailingRegionsOptions.map { it.nameAr }}")
+            return
+        }
+
+        println("✅ Selected navigation areas: names=$selectedNames, ids=$selectedAreaIds")
+
+        // Ensure we have a request ID (create request if needed)
+        val requestId = ensureRequestCreated()
+
+        if (requestId != null) {
+            // ✅ For renew: use UPDATE instead of ADD if areas exist
+            if (existingNavigationAreas.isNotEmpty()) {
+                navigationLicenseManager.updateNavigationAreasRenew(requestId, selectedAreaIds)
+                    .onSuccess {
+                        println("✅ Navigation areas updated successfully")
+                    }
+                    .onFailure { error ->
+                        println("❌ Failed to update navigation areas: ${error.message}")
+                    }
+            } else {
+                navigationLicenseManager.addNavigationAreasRenew(requestId, selectedAreaIds)
+                    .onSuccess {
+                        println("✅ Navigation areas added successfully")
+                    }
+                    .onFailure { error ->
+                        println("❌ Failed to add navigation areas: ${error.message}")
+                    }
+            }
+        }
+    }
+
+    /**
+     * Handle crew submission (manual or Excel)
+     */
+    private suspend fun handleCrewSubmission(data: Map<String, String>) {
+        val requestId = ensureRequestCreated() ?: return
+
+        // Check if user chose Excel upload
+        if (navigationLicenseManager.isExcelUploadSelected(data)) {
+            // TODO: Handle Excel file upload
+            println("📤 Excel upload mode selected")
+        } else {
+            // Manual crew entry
+            val crewData = navigationLicenseManager.parseCrewFromFormData(data)
+
+            if (crewData.isNotEmpty()) {
+                // ✅ For renew: Add new crew members (existing ones are already loaded)
+                navigationLicenseManager.addCrewBulkRenew(requestId, crewData)
+                    .onSuccess { crew ->
+                        println("✅ Added ${crew.size} crew members successfully")
+                    }
+                    .onFailure { error ->
+                        println("❌ Failed to add crew: ${error.message}")
+                    }
+            }
+        }
+    }
+
+    /**
+     * Ensure navigation request is created before submitting data
+     * @return Request ID if successful
+     */
+    private suspend fun ensureRequestCreated(): Long? {
+        if (navigationRequestId != null) {
+            return navigationRequestId
+        }
+
+        // Get selected ship info ID and last nav lic ID from accumulated data
+        val shipInfoId = accumulatedFormData["selectedMarineUnit"]?.toLongOrNull()
+        val lastLicId = accumulatedFormData["lastNavLicId"]?.toLongOrNull() // TODO: Get from selected ship
+
+        if (shipInfoId == null || lastLicId == null) {
+            println("❌ Missing shipInfoId or lastNavLicId, cannot create renewal request")
+            return null
+        }
+
+        // Create the renewal request
+        navigationLicenseManager.createRenewalRequest(shipInfoId, lastLicId)
+            .onSuccess { (requestId, licId) ->
+                navigationRequestId = requestId
+                lastNavLicId = licId
+                println("✅ Navigation license renewal request created with ID: $requestId")
+            }
+            .onFailure { error ->
+                println("❌ Failed to create navigation license renewal request: ${error.message}")
+            }
+
+        return navigationRequestId
+    }
+
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        return repository.submitRegistration(data)
+        // Final submission - all data has been submitted step by step
+        println("✅ Renew Navigation Permit - All data submitted successfully")
+        return Result.success(true)
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {

@@ -1,5 +1,6 @@
 package com.informatique.mtcit.ui.viewmodels
 
+import com.informatique.mtcit.business.transactions.shared.StepType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.informatique.mtcit.business.transactions.FieldFocusResult
@@ -22,6 +23,7 @@ import kotlinx.coroutines.withContext
  * Shared data classes used by ViewModels
  */
 data class StepData(
+    val stepType: StepType = StepType.CUSTOM,  // ✅ NEW: Type-safe step identification
     val titleRes: Int,
     val descriptionRes: Int,
     val fields: List<FormField>,
@@ -180,7 +182,7 @@ abstract class BaseTransactionViewModel(
                 }
 
                 // Load dynamic options FIRST (before getting steps)
-                val dynamicOptions = currentStrategy?.loadDynamicOptions() ?: emptyMap()
+                currentStrategy?.loadDynamicOptions() ?: emptyMap()
 
                 // Now get steps (which will use the loaded options)
                 val steps = currentStrategy?.getSteps() ?: emptyList()

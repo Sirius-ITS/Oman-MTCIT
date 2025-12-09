@@ -25,7 +25,7 @@ interface LookupRepository {
     suspend fun getProofTypes(): Result<List<String>>
     suspend fun getMarineActivities(): Result<List<String>>
     suspend fun getBuildMaterials(): Result<List<String>>
-    suspend fun getNavigationAreas(): Result<List<String>>
+    suspend fun getNavigationAreas(): Result<List<NavigationArea>>
     suspend fun getCrewJobTitles(): Result<List<String>>
     suspend fun getCitiesByCountry(countryId: String): Result<List<String>>
     suspend fun getMortgageReasons(): Result<List<String>>
@@ -461,15 +461,10 @@ class LookupRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getNavigationAreas(): Result<List<String>> = withContext(Dispatchers.IO) {
+    override suspend fun getNavigationAreas(): Result<List<NavigationArea>> = withContext(Dispatchers.IO) {
         try {
             if (cachedNavigationAreas != null) {
-                return@withContext Result.success(cachedNavigationAreas!!.map {
-                    getLocalizedName(
-                        it.nameAr,
-                        it.nameEn
-                    )
-                })
+                return@withContext Result.success(cachedNavigationAreas!!)
             }
 
             val result = apiService.getNavigationAreas()
@@ -477,7 +472,7 @@ class LookupRepositoryImpl @Inject constructor(
                 onSuccess = { response ->
                     if (response.success) {
                         cachedNavigationAreas = response.data
-                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                        Result.success(response.data)
                     } else {
                         Result.failure(
                             Exception(

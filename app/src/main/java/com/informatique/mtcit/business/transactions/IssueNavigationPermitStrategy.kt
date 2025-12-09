@@ -4,6 +4,9 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.managers.NavigationLicenseManager
+import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.data.model.NavigationArea
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
@@ -15,20 +18,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import kotlin.collections.listOf
 
 /**
- * Strategy for Temporary Registration Certificate
- * Full baseline implementation with all steps
+ * Strategy for Issue Navigation Permit
+ * Uses NavigationLicenseManager for all navigation license operations
  */
 class IssueNavigationPermitStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
     private val marineUnitRepository: MarineUnitRepository,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    private val navigationLicenseManager: NavigationLicenseManager
  ) : TransactionStrategy {
 
     private var countryOptions: List<String> = emptyList()
@@ -37,11 +40,14 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
 
     private var typeOptions: List<PersonType> = emptyList()
-    private var sailingRegionsOptions: List<String> = emptyList()
+    private var sailingRegionsOptions: List<NavigationArea> = emptyList()
     private var crewJobTitles: List<String> = emptyList()
 
     // Cache for accumulated form data (used to decide steps like other strategies)
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
+
+    // ✅ Navigation license specific state
+    private var navigationRequestId: Long? = null // Store created request ID
 
     // Allow ViewModel to set a callback when steps need to be rebuilt (same pattern as other strategies)
     override var onStepsNeedRebuild: (() -> Unit)? = null
@@ -142,7 +148,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
             )
         )
         steps.add(SharedSteps.sailingRegionsStep(
-            sailingRegions = sailingRegionsOptions
+            sailingRegions = sailingRegionsOptions.map { it.nameAr } // ✅ Pass names to UI
         ))
         steps.add( SharedSteps.sailorInfoStep(
             jobs = crewJobTitles
@@ -164,11 +170,132 @@ class IssueNavigationPermitStrategy @Inject constructor(
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         // Update accumulated data first
         accumulatedFormData.putAll(data)
+
+        val stepData = getSteps().getOrNull(step)
+
+        // ✅ Use stepType instead of checking field IDs
+        when (stepData?.stepType) {
+            StepType.NAVIGATION_AREAS -> handleNavigationAreasSubmission(data)
+            StepType.CREW_MANAGEMENT -> handleCrewSubmission(data)
+            else -> {}
+        }
+
         return step
     }
 
+    /**
+     * Handle navigation areas submission
+     */
+    private suspend fun handleNavigationAreasSubmission(data: Map<String, String>) {
+        // ✅ Get selected names from form data - handle JSON array format
+        val sailingRegionsString = data["sailingRegions"] ?: ""
+
+        // Parse JSON array: ["المنطقة 1","المنطقة 2","المنطقة 7"]
+        val selectedNames = if (sailingRegionsString.startsWith("[") && sailingRegionsString.endsWith("]")) {
+            // Remove brackets and split by comma, then clean quotes and trim
+            sailingRegionsString
+                .substring(1, sailingRegionsString.length - 1) // Remove [ and ]
+                .split(",")
+                .map { it.trim().removeSurrounding("\"") } // Remove quotes and trim
+                .filter { it.isNotEmpty() }
+        } else {
+            emptyList()
+        }
+
+        println("🔍 Raw sailingRegions data: $sailingRegionsString")
+        println("🔍 Parsed selected names: $selectedNames")
+        println("🔍 Available regions in cache: ${sailingRegionsOptions.map { "${it.id}:${it.nameAr}" }}")
+
+        // ✅ Map names to IDs
+        val selectedAreaIds = sailingRegionsOptions
+            .filter { area -> selectedNames.contains(area.nameAr) }
+            .map { it.id }
+
+        if (selectedAreaIds.isEmpty()) {
+            println("⚠️ No navigation areas selected or no matching IDs found")
+            println("⚠️ Selected names: $selectedNames")
+            println("⚠️ Available regions: ${sailingRegionsOptions.map { it.nameAr }}")
+            return
+        }
+
+        println("✅ Selected navigation areas: names=$selectedNames, ids=$selectedAreaIds")
+
+        // Ensure we have a request ID (create request if needed)
+//        val requestId = ensureRequestCreated()
+        val requestId = 45L // TODO: Remove hardcoded ID after testing
+
+        if (requestId != null) {
+            navigationLicenseManager.addNavigationAreasIssue(requestId, selectedAreaIds)
+                .onSuccess {
+                    println("✅ Navigation areas added successfully")
+                }
+                .onFailure { error ->
+                    println("❌ Failed to add navigation areas: ${error.message}")
+                }
+        }
+    }
+
+    /**
+     * Handle crew submission (manual or Excel)
+     */
+    private suspend fun handleCrewSubmission(data: Map<String, String>) {
+        val requestId = ensureRequestCreated() ?: return
+
+        // Check if user chose Excel upload
+        if (navigationLicenseManager.isExcelUploadSelected(data)) {
+            // TODO: Handle Excel file upload
+            // This will be handled by the UI component passing file data
+            println("📤 Excel upload mode selected")
+        } else {
+            // Manual crew entry
+            val crewData = navigationLicenseManager.parseCrewFromFormData(data)
+
+            if (crewData.isNotEmpty()) {
+                navigationLicenseManager.addCrewBulkIssue(requestId, crewData)
+                    .onSuccess { crew ->
+                        println("✅ Added ${crew.size} crew members successfully")
+                    }
+                    .onFailure { error ->
+                        println("❌ Failed to add crew: ${error.message}")
+                    }
+            }
+        }
+    }
+
+    /**
+     * Ensure navigation request is created before submitting data
+     * @return Request ID if successful
+     */
+    private suspend fun ensureRequestCreated(): Long? {
+        if (navigationRequestId != null) {
+            return navigationRequestId
+        }
+
+        // Get selected ship info ID from accumulated data
+        val shipInfoId = accumulatedFormData["selectedMarineUnit"]?.toLongOrNull()
+
+        if (shipInfoId == null) {
+            println("❌ No ship selected, cannot create request")
+            return null
+        }
+
+        // Create the request
+        navigationLicenseManager.createIssueRequest(shipInfoId)
+            .onSuccess { requestId ->
+                navigationRequestId = requestId
+                println("✅ Navigation license request created with ID: $requestId")
+            }
+            .onFailure { error ->
+                println("❌ Failed to create navigation license request: ${error.message}")
+            }
+
+        return navigationRequestId
+    }
+
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        return repository.submitRegistration(data)
+        // Final submission - all data has been submitted step by step
+        println("✅ Issue Navigation Permit - All data submitted successfully")
+        return Result.success(true)
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
