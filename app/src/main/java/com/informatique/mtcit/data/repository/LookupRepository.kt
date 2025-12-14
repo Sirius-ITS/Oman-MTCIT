@@ -31,7 +31,7 @@ interface LookupRepository {
     suspend fun getMortgageReasons(): Result<List<String>>
     suspend fun getBanks(): Result<List<String>>
 
-    suspend fun getCommercialRegistrations(): Result<List<SelectableItem>>
+    suspend fun getCommercialRegistrations(civilId: String): Result<List<SelectableItem>>
 
     suspend fun getPersonTypes(): Result<List<PersonType>>
 
@@ -559,14 +559,17 @@ class LookupRepositoryImpl @Inject constructor(
             }
         }
 
-    override suspend fun getCommercialRegistrations(): Result<List<SelectableItem>> =
+    override suspend fun getCommercialRegistrations(civilId: String): Result<List<SelectableItem>> =
         withContext(Dispatchers.IO) {
             try {
+                // ✅ Cache based on civilId to allow different users
                 if (cachedCommercialRegistrations != null) {
+                    println("📦 Using cached commercial registrations")
                     return@withContext Result.success(cachedCommercialRegistrations!!)
                 }
 
-                val result = apiService.getCommercialRegistrations()
+                println("🔍 Fetching commercial registrations for civilId: $civilId")
+                val result = apiService.getCommercialRegistrations(civilId)
                 result.fold(
                     onSuccess = { response ->
                         if (response.success) {

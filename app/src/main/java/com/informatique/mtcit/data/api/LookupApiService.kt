@@ -775,25 +775,86 @@ class LookupApiService @Inject constructor(
     }
 
     /**
-     * Get list of commercial registrations (keeping mock for now - no API provided)
+     * Get list of commercial registrations for a civil ID
+     * API: GET api/v1/core-simulation-companies/ddl/{civilId}
+     * @param civilId The civil ID to get companies for (e.g., "12345678901234")
      */
-    suspend fun getCommercialRegistrations(): Result<LookupResponse<SelectableItem>> {
-        // TODO: Replace with real API when available
-        val data = listOf(
-            SelectableItem(
-                id = "CR-2024-001",
-                title = "شركة النور للتجارة",
-                code = "CR-2024-001",
-                description = "شركة تجارية متخصصة في استيراد وتصدير\nالمواد الغذائية"
-            ),
-            SelectableItem(
-                id = "CR-2024-002",
-                title = "مؤسسة البحر للملاحة",
-                code = "CR-2024-002",
-                description = "مؤسسة متخصصة في النقل البحري\nوالخدمات اللوجستية"
-            )
-        )
-        return Result.success(LookupResponse(true, data))
+    suspend fun getCommercialRegistrations(civilId: String): Result<LookupResponse<SelectableItem>> {
+        return try {
+            println("🔍 Calling API: api/v1/core-simulation-companies/ddl/$civilId")
+
+            when (val response = repo.onGet("api/v1/core-simulation-companies/ddl/$civilId")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received")
+                    println("📄 Response JSON: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        println("📊 Status Code: $statusCode, Success: $success")
+
+                        if (statusCode == 200 && success) {
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            println("📦 Companies array size: ${dataArray.size}")
+
+                            // Parse each company item
+                            val companies = dataArray.mapNotNull { companyItem ->
+                                try {
+                                    val obj = companyItem.jsonObject
+                                    val id = obj.getValue("id").jsonPrimitive.int
+                                    val companyNameAr = obj.getValue("companyNameAr").jsonPrimitive.content
+                                    val companyNameEn = obj.getValue("companyNameEn").jsonPrimitive.content
+                                    val crNumber = obj.getValue("crNumber").jsonPrimitive.content
+                                    val companyDescription = obj.getValue("companyDescription").jsonPrimitive.content
+                                    val isActive = obj.getValue("isActive").jsonPrimitive.int
+
+                                    // Only return active companies
+                                    if (isActive == 1) {
+                                        SelectableItem(
+                                            id = crNumber, // Use CR number as ID
+                                            title = companyNameAr,
+                                            code = crNumber,
+                                            description = "$companyDescription\n$companyNameEn"
+                                        )
+                                    } else {
+                                        null
+                                    }
+                                } catch (e: Exception) {
+                                    println("⚠️ Failed to parse company: ${e.message}")
+                                    e.printStackTrace()
+                                    null
+                                }
+                            }
+
+                            println("✅ Successfully fetched ${companies.size} commercial registrations")
+                            Result.success(LookupResponse(success = true, data = companies))
+                        } else {
+                            println("❌ Service failed with status: $statusCode")
+                            Result.failure(Exception("Service failed with status: $statusCode"))
+                        }
+                    } else {
+                        println("❌ Empty response from server")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API Error - Code: ${response.code}")
+                    println("❌ Error message: ${response.error}")
+                    Result.failure(Exception("API Error: ${response.error}"))
+                }
+
+                else -> {
+                    println("❌ Unknown response type")
+                    Result.failure(Exception("Unknown response type"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getCommercialRegistrations: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get commercial registrations: ${e.message}"))
+        }
     }
 
     /**

@@ -50,19 +50,35 @@ class IssueNavigationPermitStrategy @Inject constructor(
      */
     override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
         val personType = formData["selectionPersonType"]
+        val commercialReg = formData["selectionData"]
 
-        // For now use ownerCivilId workaround as other strategies (API limitation)
+        println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
+
+        // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> Pair("12345678", null)
-            "شركة" -> Pair("12345678", null)
+            "فرد" -> {
+                println("✅ Individual: Using ownerCivilId")
+                Pair("12345678", null)
+            }
+            "شركة" -> {
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+            }
             else -> Pair(null, null)
         }
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
 
-        // Debug logging
-        println("✅ IssueNavigationPermit - Loaded ${'$'}{marineUnits.size} ships")
-        marineUnits.forEach { println("   - ${'$'}{it.shipName} (ID: ${'$'}{it.id})") }
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber,
+            // **********************************************************************************************************
+            //Request Type Id
+            requestTypeId = TransactionType.ISSUE_NAVIGATION_PERMIT.toRequestTypeId() // ✅ Issue Navigation Permit ID
+        )
+
+        println("✅ IssueNavigationPermit - Loaded ${marineUnits.size} ships")
+        marineUnits.forEach { println("   - ${it.shipName} (ID: ${it.id})") }
 
         return marineUnits
     }
@@ -77,7 +93,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         countryOptions = countries
