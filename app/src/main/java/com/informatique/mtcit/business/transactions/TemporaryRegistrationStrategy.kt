@@ -83,7 +83,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
         // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
 
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
 
         // Store in instance variables
         typeOptions = personTypes
@@ -123,25 +123,29 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
-        // Because current API only returns data when using ownerCivilId filter
-        // In production, company should use commercialRegNumber
+        // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
+        // For individuals, use ownerCivilId
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId")
                 Pair("12345678", null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null) // ✅ Use ownerCivilId instead of commercialRegNumber for testing
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
             }
             else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber,
+            // **********************************************************************************************************
+            //Request Type Id
+            requestTypeId = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.toRequestTypeId() // ✅ Temporary Registration Certificate ID
+        )
 
         println("✅ Loaded ${marineUnits.size} ships")
         marineUnits.forEach { unit ->

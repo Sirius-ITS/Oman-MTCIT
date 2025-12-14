@@ -18,8 +18,13 @@ interface MarineUnitRepository {
     /**
      * ✅ NEW: Load ships for a specific owner (individual or company)
      * Called explicitly when user selects type and presses Next
+     * @param requestTypeId Transaction ID to filter ships (e.g., 7 for temp cert, 8 for permanent)
      */
-    suspend fun loadShipsForOwner(ownerCivilId: String?, commercialRegNumber: String?): List<MarineUnit>
+    suspend fun loadShipsForOwner(
+        ownerCivilId: String?,
+        commercialRegNumber: String?,
+        requestTypeId: String? = null
+    ): List<MarineUnit>
 
     /**
      * 🔒 NEW: Load ONLY mortgaged ships for owner (for Release Mortgage transaction)
@@ -188,32 +193,38 @@ class MarineUnitRepositoryImpl @Inject constructor(
     /**
      * ✅ NEW: Load ships explicitly when user selects type and presses Next
      * For testing: uses fixed civil id "12345678"
+     * @param requestTypeId Transaction ID to filter ships based on transaction type
      */
-    override suspend fun loadShipsForOwner(ownerCivilId: String?, commercialRegNumber: String?): List<MarineUnit> {
-        println("🚢 loadShipsForOwner called with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+    override suspend fun loadShipsForOwner(
+        ownerCivilId: String?,
+        commercialRegNumber: String?,
+        requestTypeId: String?
+    ): List<MarineUnit> {
+        println("🚢 loadShipsForOwner called with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber, requestTypeId=$requestTypeId")
 
         // ✅ For testing: use fixed test ID "12345678" for both person types
-        // Priority: if commercialRegNumber is provided, use it (for company)
-        //           otherwise use ownerCivilId (for individual)
+        // The API always requires ownerId, even for companies
         val testCivilId = "12345678"
 
         return when {
-            // Company: use commercial registration number
+            // Company: send BOTH ownerCivilId AND commercialRegNumber
             !commercialRegNumber.isNullOrBlank() -> {
-                println("✅ Loading ships for COMPANY with commercialRegNumber=$commercialRegNumber")
+                println("✅ Loading ships for COMPANY with commercialRegNumber=$commercialRegNumber, ownerCivilId=$ownerCivilId")
                 apiService.getMyShips(
-                    ownerCivilId = null, // ✅ Don't send civil ID for companies
+                    ownerCivilId = ownerCivilId ?: testCivilId, // ✅ Send owner civil ID (required by API)
                     commercialRegNumber = commercialRegNumber,
+                    requestTypeId = requestTypeId, // ✅ Pass transaction ID
                     stepActive = true,
                     useTestCivilId = false
                 )
             }
-            // Individual: use owner civil ID
+            // Individual: use owner civil ID only
             !ownerCivilId.isNullOrBlank() -> {
                 println("✅ Loading ships for INDIVIDUAL with ownerCivilId=$ownerCivilId")
                 apiService.getMyShips(
                     ownerCivilId = ownerCivilId,
                     commercialRegNumber = null, // ✅ Don't send commercial reg for individuals
+                    requestTypeId = requestTypeId, // ✅ Pass transaction ID
                     stepActive = true,
                     useTestCivilId = false
                 )
@@ -224,6 +235,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
                 apiService.getMyShips(
                     ownerCivilId = testCivilId,
                     commercialRegNumber = null,
+                    requestTypeId = requestTypeId, // ✅ Pass transaction ID
                     stepActive = true,
                     useTestCivilId = true
                 )

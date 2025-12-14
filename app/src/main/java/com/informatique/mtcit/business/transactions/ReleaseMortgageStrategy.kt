@@ -55,7 +55,7 @@ class ReleaseMortgageStrategy @Inject constructor(
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
 
         portOptions = ports
         countryOptions = countries
@@ -77,32 +77,43 @@ class ReleaseMortgageStrategy @Inject constructor(
 
     override suspend fun loadShipsForSelectedType(formData: Map<String, String>): List<MarineUnit> {
         val personType = formData["selectionPersonType"]
-        // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
+        // ✅ Extract CR Number from selectionData (not company name)
         val commercialReg = formData["selectionData"]
 
         println("🔒 loadShipsForSelectedType (RELEASE MORTGAGE) - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ Determine ownerId based on person type
-        val ownerId = when (personType) {
+        // ✅ For individuals: send ownerCivilId + requestTypeId ONLY (no commercialNumber)
+        // ✅ For companies: send ownerCivilId + requestTypeId + commercialNumber (CR Number)
+        val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                "16" // TODO: Get from authenticated user
+                println("✅ Individual: Using ownerCivilId + requestTypeId ONLY")
+                Pair("12345678", null) // TODO: Get from authenticated user
             }
             "شركة" -> {
-                println("✅ Company: Using commercialRegNumber")
-                commercialReg ?: "16" // Use selected commercial reg or fallback
+                println("✅ Company: Using ownerCivilId + requestTypeId + commercialNumber (CR Number from selectionData)")
+                Pair("12345678", commercialReg) // ✅ commercialReg contains CR Number (e.g., "123456-1")
             }
             else -> {
-                println("⚠️ Unknown person type, using default ownerId")
-                "16"
+                println("⚠️ Unknown person type, using default (individual)")
+                Pair("12345678", null)
             }
         }
 
-        println("🔍 Calling loadMortgagedShipsForOwner with ownerId=$ownerId")
-        println("📋 Note: This will fetch ONLY mortgaged ships (using getMortgagedShips API)")
+        println("🔍 Calling loadShipsForOwner with:")
+        println("   ownerCivilId=$ownerCivilId")
+        println("   commercialRegNumber=$commercialRegNumber")
+        println("   requestTypeId=13 (Release Mortgage)")
 
-        marineUnits = marineUnitRepository.loadMortgagedShipsForOwner(ownerId)
-        println("✅ Loaded ${marineUnits.size} mortgaged ships")
+        // ✅ Use loadShipsForOwner instead of loadMortgagedShipsForOwner
+        // This will filter ships by requestTypeId and send proper parameters based on person type
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber, // ✅ null for individuals, CR Number for companies
+            // **********************************************************************************************************
+            //Request Type Id
+            requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId() // ✅ Release Mortgage ID
+        )
+        println("✅ Loaded ${marineUnits.size} ships for Release Mortgage")
         return marineUnits
     }
 
@@ -135,6 +146,7 @@ class ReleaseMortgageStrategy @Inject constructor(
                 )
             )
         }
+
 
         // Step 3: Marine Unit Selection - WITH BUSINESS RULES
         steps.add(

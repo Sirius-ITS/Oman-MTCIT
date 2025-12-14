@@ -45,7 +45,7 @@ class CancelRegistrationStrategy @Inject constructor(
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         // Cache the options for use in getSteps()
@@ -74,23 +74,28 @@ class CancelRegistrationStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId")
                 Pair("12345678", null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null)
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
             }
             else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber,
+            // **********************************************************************************************************
+            //Request Type Id
+            requestTypeId = TransactionType.CANCEL_PERMANENT_REGISTRATION.toRequestTypeId() // ✅ Cancel Registration ID
+        )
         println("✅ Loaded ${marineUnits.size} ships")
         return marineUnits
     }

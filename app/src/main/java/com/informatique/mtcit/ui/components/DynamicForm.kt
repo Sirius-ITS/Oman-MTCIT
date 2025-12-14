@@ -349,14 +349,15 @@ fun DynamicStepForm(
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
                                                     println("🎯 SelectableItem clicked")
                                                     println("📝 Field ID: ${field.id}")
-                                                    println("🆔 Item ID: ${item.id}")
-                                                    println("📊 Item Title: ${item.title}")
+                                                    println("🆔 Item ID (CR Number): ${item.id}")
+                                                    println("📊 Item Title (Company Name): ${item.title}")
                                                     println("━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
                                                     selectedId = item.id
 
-                                                    // ✅ الحل: ابعت الـ title أو id حسب احتياجك
-                                                    onFieldChange(field.id, item.title, null)
+                                                    // ✅ FIXED: Send the CR Number (item.id) instead of company name (item.title)
+                                                    // This ensures the API receives the commercialNumber correctly
+                                                    onFieldChange(field.id, item.id, null)
                                                 }
                                             )
                                         }
