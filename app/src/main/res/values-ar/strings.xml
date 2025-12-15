@@ -872,7 +872,12 @@
 
     <!-- Upload Documents Step -->
     <string name="upload_documents_title">رفع المستندات</string>
+    <string name="upload_documents">رفع المستندات</string>
     <string name="upload_documents_description">تحميل المستندات المطلوبة بصيغ (رسمية ومعتمدة) ، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة.</string>
+    <string name="upload_mandatory_documents">رفع المستندات الإلزامية</string>
+    <string name="upload_mandatory_documents_description">يرجى رفع جميع المستندات الإلزامية المطلوبة لاستكمال المعاملة</string>
+    <string name="upload_optional_documents">رفع المستندات الاختيارية</string>
+    <string name="upload_optional_documents_description">يمكنك رفع المستندات الاختيارية لتسريع عملية المعالجة</string>
     <string name="mortgage_certificate_attachment">يرجاء إرفاق شهادة الرهن</string>
 
     <!-- File Upload Helper Text -->

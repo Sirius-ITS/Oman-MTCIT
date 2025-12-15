@@ -61,6 +61,9 @@ class MortgageCertificateStrategy @Inject constructor(
     private var banks: List<String> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ NEW: Store required documents from API
+    private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
+
     // Store API error to prevent navigation and show error dialog
     private var lastApiError: String? = null
 
@@ -164,9 +167,27 @@ class MortgageCertificateStrategy @Inject constructor(
             emptyList()
         }
 
+        println("📄 MortgageCertificate - Fetching required documents from API...")
+        val requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId()
+        val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
+            println("❌ ERROR fetching required documents: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+
+        println("✅ Fetched ${requiredDocumentsList.size} required documents:")
+        requiredDocumentsList.forEach { docItem ->
+            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            println("   - ${docItem.document.nameAr} ($mandatoryText)")
+        }
+
         portOptions = ports
         countryOptions = countries
         personTypeOptions = personTypes
+        commercialOptions = commercialRegistrations
+        mortgageReasons = mortgageReasonsList
+        banks = banksList
+        requiredDocuments = requiredDocumentsList // ✅ Store documents
         commercialOptions = commercialRegistrations
         mortgageReasons = mortgageReasonsList
         banks = banksList
@@ -263,13 +284,11 @@ class MortgageCertificateStrategy @Inject constructor(
             )
         )
 
-        // Step 4: Mortgage Data
-        println("🔍 DEBUG: Building mortgage data step")
+        // Step 4: Mortgage Data with Dynamic Documents
+        println("🔍 DEBUG: Building mortgage data step with documents")
         println("🔍 DEBUG: Member variables - banks.size = ${banks.size}, mortgageReasons.size = ${mortgageReasons.size}")
 
         // ✅ FIX: Fetch data directly from repository cache instead of relying on member variables
-        // This ensures data is available even if Strategy instance was recreated
-        // Using runBlocking is safe here because repository uses in-memory cache
         val currentBanks = runBlocking {
             lookupRepository.getBanks().getOrNull() ?: emptyList()
         }
@@ -279,11 +298,13 @@ class MortgageCertificateStrategy @Inject constructor(
 
         println("🔍 DEBUG: From repository cache - banks.size = ${currentBanks.size}, banks = $currentBanks")
         println("🔍 DEBUG: From repository cache - mortgageReasons.size = ${currentMortgageReasons.size}, reasons = $currentMortgageReasons")
+        println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
 
         steps.add(
             SharedSteps.mortgageDataStep(
                 banks = currentBanks,
-                mortgagePurposes = currentMortgageReasons
+                mortgagePurposes = currentMortgageReasons,
+                requiredDocuments = requiredDocuments  // ✅ Pass documents to be rendered in same step
             )
         )
 
@@ -292,6 +313,7 @@ class MortgageCertificateStrategy @Inject constructor(
 
         return steps
     }
+
 
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         val unit = marineUnits.find { it.id.toString() == unitId }
@@ -464,41 +486,39 @@ class MortgageCertificateStrategy @Inject constructor(
 
             // Call the API in a blocking way (will be handled in coroutine context)
             var apiCallSucceeded = false
-            runBlocking {
-                try {
-                    val result = createMortgageRequest(accumulatedFormData)
-                    result.fold(
-                        onSuccess = { response ->
-                            println("✅ Mortgage request created successfully!")
-                            println("   Mortgage ID: ${response.data.id}")
-                            println("   Message: ${response.message}")
+            try {
+                val result = createMortgageRequest(accumulatedFormData)
+                result.fold(
+                    onSuccess = { response ->
+                        println("✅ Mortgage request created successfully!")
+                        println("   Mortgage ID: ${response.data.id}")
+                        println("   Message: ${response.message}")
 
-                            // ✅ CRITICAL: Store the mortgage request ID in the member variable
-                            createdMortgageRequestId = response.data.id
-                            println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
+                        // ✅ CRITICAL: Store the mortgage request ID in the member variable
+                        createdMortgageRequestId = response.data.id
+                        println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
 
-                            // Store the mortgage request ID for later use
-                            accumulatedFormData["mortgageRequestId"] = response.data.id.toString()
-                            lastApiError = null // Clear any previous error
-                            apiCallSucceeded = true
-                        },
-                        onFailure = { error ->
-                            println("❌ Failed to create mortgage request: ${error.message}")
-                            error.printStackTrace()
+                        // Store the mortgage request ID for later use
+                        accumulatedFormData["mortgageRequestId"] = response.data.id.toString()
+                        lastApiError = null // Clear any previous error
+                        apiCallSucceeded = true
+                    },
+                    onFailure = { error ->
+                        println("❌ Failed to create mortgage request: ${error.message}")
+                        error.printStackTrace()
 
-                            // Store error for Toast display
-                            lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الرهن"
-                            apiCallSucceeded = false
-                        }
-                    )
-                } catch (e: Exception) {
-                    println("❌ Exception while creating mortgage request: ${e.message}")
-                    e.printStackTrace()
+                        // Store error for Toast display
+                        lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الرهن"
+                        apiCallSucceeded = false
+                    }
+                )
+            } catch (e: Exception) {
+                println("❌ Exception while creating mortgage request: ${e.message}")
+                e.printStackTrace()
 
-                    // Store error for Toast display
-                    lastApiError = e.message ?: "حدث خطأ غير متوقع"
-                    apiCallSucceeded = false
-                }
+                // Store error for Toast display
+                lastApiError = e.message ?: "حدث خطأ غير متوقع"
+                apiCallSucceeded = false
             }
 
             // Return -1 to prevent navigation if API call failed
@@ -663,110 +683,75 @@ class MortgageCertificateStrategy @Inject constructor(
         println("=".repeat(80))
         println("📤 Sending mortgage request to API...")
 
-        // Check if user attached a file in the mortgageApplication field
-        val mortgageApplicationUri = formData["mortgageApplication"]
-        if (!mortgageApplicationUri.isNullOrBlank() && mortgageApplicationUri.startsWith("content://")) {
-            try {
-                val uri = android.net.Uri.parse(mortgageApplicationUri)
-                val fileUpload = FileUploadHelper.uriToFileUpload(appContext, uri)
-                if (fileUpload != null) {
-                    val ownerFile = OwnerFileUpload(
-                        fileName = fileUpload.fileName,
-                        fileUri = fileUpload.fileUri,
-                        fileBytes = fileUpload.fileBytes,
-                        mimeType = fileUpload.mimeType ?: "application/octet-stream",
-                        docOwnerId = "mortgageApplication",
-                        docId = 1
-                    )
+        // ✅ NEW: Collect all uploaded documents from dynamic fields
+        val uploadedDocuments = mutableListOf<OwnerFileUpload>()
 
-                    println("📎 Found mortgage application file: ${ownerFile.fileName} - uploading multipart")
-                    // Try regular multipart first
-                    val result = mortgageApiService.createMortgageRequestWithDocuments(request, listOf(ownerFile))
+        // Get all document fields (document_43, document_44, etc.)
+        requiredDocuments
+            .filter { it.document.isActive == 1 }
+            .forEach { docItem ->
+                val fieldId = "document_${docItem.document.id}"
+                val documentUri = formData[fieldId]
 
-                    // Debug: log the returned value
-                    result.onSuccess { response ->
-                        // ✅ Store the created request ID
-                        createdMortgageRequestId = response.data.id
-                        println("=".repeat(80))
-                        println("💾 STORED MORTGAGE REQUEST ID (MULTIPART): $createdMortgageRequestId")
-                        println("=".repeat(80))
+                if (!documentUri.isNullOrBlank() && documentUri.startsWith("content://")) {
+                    try {
+                        val uri = android.net.Uri.parse(documentUri)
+                        val fileUpload = FileUploadHelper.uriToFileUpload(appContext, uri)
 
-                        println("=".repeat(80))
-                        println("🔍🔍🔍 API RESPONSE VALUE CHECK 🔍🔍🔍")
-                        println("=".repeat(80))
-                        println("📤 SENT to API: mortgageValue = $valueDouble")
-                        println("📥 RECEIVED from API: response.data.mortgageValue = ${response.data.mortgageValue}")
-                        println("⚠️ COMPARISON: Sent=$valueDouble, Received=${response.data.mortgageValue}")
-                        if (response.data.mortgageValue != valueDouble) {
-                            println("❌❌❌ VALUE MISMATCH! Backend returned different value!")
-                            println("   This means: CLIENT sent correct value but SERVER stored/returned 0.0")
-                            println("   Action needed: Backend team must check mapping/DB defaults")
-                        } else {
-                            println("✅✅✅ VALUE MATCH! Backend correctly stored the value")
+                        if (fileUpload != null) {
+                            // Determine proper MIME type
+                            val properMimeType = when {
+                                fileUpload.fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                                fileUpload.fileName.endsWith(".jpg", ignoreCase = true) ||
+                                fileUpload.fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                                fileUpload.fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                                fileUpload.fileName.endsWith(".doc", ignoreCase = true) -> "application/msword"
+                                fileUpload.fileName.endsWith(".docx", ignoreCase = true) -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                else -> fileUpload.mimeType
+                            }
+
+                            val ownerFile = OwnerFileUpload(
+                                fileName = fileUpload.fileName,
+                                fileUri = fileUpload.fileUri,
+                                fileBytes = fileUpload.fileBytes,
+                                mimeType = properMimeType,
+                                docOwnerId = "document_${docItem.document.id}", // ✅ Use document ID
+                                docId = docItem.document.id // ✅ Send the actual document ID from API
+                            )
+
+                            uploadedDocuments.add(ownerFile)
+                            println("📎 Added document: ${docItem.document.nameAr} (id=${docItem.document.id}, file=${ownerFile.fileName}, mimeType=$properMimeType)")
                         }
-                        println("=".repeat(80))
+                    } catch (e: Exception) {
+                        println("⚠️ Failed to process document ${docItem.document.nameAr}: ${e.message}")
                     }
-                    result.onFailure { error ->
-                        println("❌ createMortgageRequestWithDocuments failed: ${error.message}")
-                    }
-
-                    if (result.isSuccess) return result
-
-                    // If failed, inspect message and retry with flat multipart if likely server expects flat form fields
-                    val errMsg = result.exceptionOrNull()?.message ?: ""
-                    println("⚠️ createMortgageRequestWithDocuments failed: $errMsg")
-                    val shouldRetryFlat = listOf("mortgage_value", "MORTGAGE_VALUE", "Content-Type 'application/json' is not supported", "cannot insert NULL into", "ORA-01400").any { errMsg.contains(it, ignoreCase = true) }
-                    if (shouldRetryFlat) {
-                        println("🔁 Retrying with flat multipart fields (createMortgageRequestWithDocumentsFlat)")
-                        val retryResult = mortgageApiService.createMortgageRequestWithDocumentsFlat(request, listOf(ownerFile))
-
-                        // ✅ Store the created request ID from retry
-                        retryResult.onSuccess { response ->
-                            createdMortgageRequestId = response.data.id
-                            println("💾 STORED MORTGAGE REQUEST ID (FLAT MULTIPART RETRY): $createdMortgageRequestId")
-                        }
-
-                        return retryResult
-                    }
-
-                    return result
-                } else {
-                    println("⚠️ Could not convert mortgageApplication URI to file (uri=$mortgageApplicationUri)")
                 }
-            } catch (e: Exception) {
-                println("❌ Exception converting mortgageApplication URI to file: ${e.message}")
-                e.printStackTrace()
             }
-        }
 
-        // No file attached or failed to convert -> fallback to JSON POST
-        val result = mortgageApiService.createMortgageRequest(request)
+        println("📋 Total documents to upload: ${uploadedDocuments.size}")
 
-        // Debug: log the returned value
+        // ✅ FINAL STRATEGY: Use multipart with 'request' field (JSON as Text) + files
+        println("📤 Creating mortgage request with multipart/form-data (request + files)...")
+        val result = mortgageApiService.createMortgageRequestWithDocuments(request, uploadedDocuments)
+
         result.onSuccess { response ->
-            // ✅ Store the created request ID
             createdMortgageRequestId = response.data.id
             println("=".repeat(80))
             println("💾 STORED MORTGAGE REQUEST ID: $createdMortgageRequestId")
             println("=".repeat(80))
 
-            println("=".repeat(80))
-            println("🔍🔍🔍 API RESPONSE VALUE CHECK (JSON POST) 🔍🔍🔍")
-            println("=".repeat(80))
-            println("📤 SENT to API: mortgageValue = $valueDouble")
-            println("📥 RECEIVED from API: response.data.mortgageValue = ${response.data.mortgageValue}")
-            println("⚠️ COMPARISON: Sent=$valueDouble, Received=${response.data.mortgageValue}")
-            if (response.data.mortgageValue != valueDouble) {
-                println("❌❌❌ VALUE MISMATCH! Backend returned different value!")
-                println("   This means: CLIENT sent correct value but SERVER stored/returned 0.0")
-                println("   Action needed: Backend team must check mapping/DB defaults")
+            if (uploadedDocuments.isNotEmpty()) {
+                println("✅ Uploaded documents:")
+                uploadedDocuments.forEach { doc ->
+                    println("   - ${doc.fileName} (docId=${doc.docId})")
+                }
             } else {
-                println("✅✅✅ VALUE MATCH! Backend correctly stored the value")
+                println("ℹ️ No documents uploaded")
             }
-            println("=".repeat(80))
         }
+
         result.onFailure { error ->
-            println("❌ createMortgageRequest (JSON) failed: ${error.message}")
+            println("❌ Create mortgage request failed: ${error.message}")
         }
 
         return result

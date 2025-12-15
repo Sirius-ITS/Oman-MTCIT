@@ -1224,4 +1224,43 @@ class LookupApiService @Inject constructor(
             Result.failure(Exception("Failed to get crew job titles: ${'$'}{e.message}"))
         }
     }
+
+    /**
+     * Get required documents for a specific request type
+     * API: api/v1/reqtype/{requestTypeId}/documents
+     *
+     * @param requestTypeId The ID of the request type
+     * @return Result containing list of required documents
+     */
+    suspend fun getRequiredDocumentsByRequestType(requestTypeId: String): Result<RequiredDocumentsResponse> {
+        return try {
+            when (val response = repo.onGet("api/v1/reqtype/$requestTypeId/documents")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+                            val documentsResponse: RequiredDocumentsResponse =
+                                json.decodeFromJsonElement(responseJson)
+                            Result.success(documentsResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to fetch required documents"
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty required documents response"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get required documents: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get required documents: ${e.message}"))
+        }
+    }
 }

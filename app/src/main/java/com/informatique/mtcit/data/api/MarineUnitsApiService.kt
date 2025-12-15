@@ -61,7 +61,7 @@ class MarineUnitsApiService @Inject constructor(
         return try {
             // If the step is not active, don't call the API unless test-mode override is enabled.
             if (!stepActive && !useTestCivilId) {
-                println("⏸️ getMyShips: call suppressed because stepActive=false. Provide stepActive=true when you want to fetch ships.")
+                println("⏸ getMyShips: call suppressed because stepActive=false. Provide stepActive=true when you want to fetch ships.")
                 return Result.failure(IllegalStateException("getMyShips suppressed: step not active"))
             }
 
@@ -119,7 +119,7 @@ class MarineUnitsApiService @Inject constructor(
             println("🔍 Fetching ships with filter: $filterJson")
             println("📋 Base64 encoded filter: $base64Filter")
 
-            val endpoint = "api/v1/deletion-requests/get-my-ships$filterParam"
+            val endpoint = "api/v1/mortgage-request/get-my-ships$filterParam"
             println("📡 Full API Call: $endpoint")
 
             when (val response = repo.onGet(endpoint)) {
@@ -161,7 +161,7 @@ class MarineUnitsApiService @Inject constructor(
                                         marineUnit
                                     }
                                 } catch (e: Exception) {
-                                    println("⚠️ Failed to parse active ship: ${e.message}")
+                                    println("⚠ Failed to parse active ship: ${e.message}")
                                     e.printStackTrace()
                                     null
                                 }
@@ -184,7 +184,7 @@ class MarineUnitsApiService @Inject constructor(
                                         marineUnit
                                     }
                                 } catch (e: Exception) {
-                                    println("⚠️ Failed to parse non-active ship: ${e.message}")
+                                    println("⚠ Failed to parse non-active ship: ${e.message}")
                                     e.printStackTrace()
                                     null
                                 }
@@ -217,7 +217,7 @@ class MarineUnitsApiService @Inject constructor(
                         val errorJson = response.error.toString()
                         println("❌ Error as string: $errorJson")
                     } catch (e: Exception) {
-                        println("⚠️ Could not stringify error: ${e.message}")
+                        println("⚠ Could not stringify error: ${e.message}")
                     }
 
                     Result.failure(Exception("API Error ${response.code}: ${response.error}"))
@@ -227,8 +227,8 @@ class MarineUnitsApiService @Inject constructor(
             println("❌ Exception in getMyShips: ${e.message}")
             e.printStackTrace()
             Result.failure(Exception("Failed to get ships: ${e.message}"))
-        }
-    }
+          }
+     }
 
     /**
      * ✅ Generic function to parse ship JSON object to MarineUnit model

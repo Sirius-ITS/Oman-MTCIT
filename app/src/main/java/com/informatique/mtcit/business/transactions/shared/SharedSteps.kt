@@ -398,11 +398,13 @@ object SharedSteps {
      */
     fun mortgageDataStep(
         banks: List<String>,
-        mortgagePurposes: List<String>
+        mortgagePurposes: List<String>,
+        requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
     ): StepData {
         println("🔍 SharedSteps.mortgageDataStep called")
         println("🔍 Received banks: size=${banks.size}, data=$banks")
         println("🔍 Received mortgagePurposes: size=${mortgagePurposes.size}, data=$mortgagePurposes")
+        println("🔍 Received requiredDocuments: size=${requiredDocuments.size}")
 
         val fields = mutableListOf<FormField>()
 
@@ -461,26 +463,36 @@ object SharedSteps {
             )
         )
 
-//        // Mortgage End Date (mandatory)
-//        fields.add(
-//            FormField.DatePicker(
-//                id = "mortgageEndDate",
-//                labelRes = R.string.mortgage_end_date,
-//                allowPastDates = false,
-//                mandatory = true
-//            )
-//        )
+        // *******************************************************************************************************************************************
+        // ✅ Add dynamic document file pickers based on API response
+        if (requiredDocuments.isNotEmpty()) {
+            println("📄 Adding ${requiredDocuments.size} document file pickers to mortgageDataStep")
 
-        // Mortgage Application Document (mandatory)
-        fields.add(
-            FormField.FileUpload(
-                id = "mortgageApplication",
-                labelRes = R.string.mortgage_application,
-                allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
-                maxSizeMB = 5,
-                mandatory = true
-            )
-        )
+            // Filter only active documents and sort by order
+            val activeDocuments = requiredDocuments
+                .filter { it.document.isActive == 1 }
+                .sortedBy { it.document.docOrder }
+
+            println("📄 After filtering (isActive == 1): ${activeDocuments.size} active documents")
+
+            // Add a file upload field for each active document
+            activeDocuments.forEachIndexed { index, docItem ->
+                val document = docItem.document
+                val isMandatory = document.isMandatory == 1
+
+                println("   File Picker #${index + 1}: ${document.nameAr} - ${if (isMandatory) "إلزامي" else "اختياري"} (id=${document.id})")
+
+                fields.add(
+                    FormField.FileUpload(
+                        id = "document_${document.id}",
+                        label = document.nameAr,
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                        maxSizeMB = 5,
+                        mandatory = isMandatory
+                    )
+                )
+            }
+        }
 
         return StepData(
             stepType = StepType.CUSTOM,  // ✅ Added
@@ -530,6 +542,77 @@ object SharedSteps {
         return StepData(
             titleRes = R.string.upload_documents_title, // "رفع المستندات"
             descriptionRes = R.string.upload_documents_description, // "تحميل المستندات المطلوبة بصيغ (رسمية ومعتمدة) ، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة."
+            fields = fields
+        )
+    }
+
+    /**
+     * ✅ NEW: Dynamic Documents Upload Step (رفع المستندات الديناميكية)
+     * Used for: Uploading multiple required documents based on API response
+     *
+     * Creates multiple file upload fields based on the documents array from API.
+     * Each document from the API will have its own file picker.
+     *
+     * @param documents List of required documents from API (RequiredDocumentItem)
+     * @param allowedTypes List of allowed file types (default: pdf, jpg, jpeg, png, doc, docx)
+     * @param maxSizeMB Maximum file size in MB (default: 5)
+     * @return StepData with dynamic file upload fields
+     *
+     * Example API response:
+     * ```json
+     * {
+     *   "data": [
+     *     {"id": 83, "document": {"id": 43, "nameAr": "رخصة", "isMandatory": 1, "isActive": 1}},
+     *     {"id": 84, "document": {"id": 44, "nameAr": "شهادة", "isMandatory": 0, "isActive": 1}}
+     *   ]
+     * }
+     * ```
+     *
+     * This will create 2 file pickers:
+     * - document_43: رخصة (mandatory)
+     * - document_44: شهادة (optional)
+     */
+
+
+    // *****************************************************************************************************************
+    fun dynamicDocumentsStep(
+        documents: List<com.informatique.mtcit.data.model.RequiredDocumentItem>,
+        allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+        maxSizeMB: Int = 5
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        println("📄 SharedSteps.dynamicDocumentsStep called")
+        println("📄 Received ${documents.size} documents from API")
+
+        // Filter only active documents and sort by order
+        val activeDocuments = documents
+            .filter { it.document.isActive == 1 }
+            .sortedBy { it.document.docOrder }
+
+        println("📄 Creating ${activeDocuments.size} file pickers (after filtering active only)")
+
+        // Create a file upload field for each document
+        activeDocuments.forEach { docItem ->
+            val document = docItem.document
+            val isMandatory = document.isMandatory == 1
+
+            println("   📎 ${document.nameAr} - ${if (isMandatory) "إلزامي" else "اختياري"} (id=${document.id})")
+
+            fields.add(
+                FormField.FileUpload(
+                    id = "document_${document.id}",
+                    label = document.nameAr, // Use Arabic name as label
+                    allowedTypes = allowedTypes,
+                    maxSizeMB = maxSizeMB,
+                    mandatory = isMandatory
+                )
+            )
+        }
+
+        return StepData(
+            titleRes = R.string.upload_documents,
+            descriptionRes = R.string.upload_documents_description,
             fields = fields
         )
     }

@@ -846,7 +846,12 @@
 
     <!-- Upload Documents Step -->
     <string name="upload_documents_title">Upload Documents</string>
+    <string name="upload_documents">Upload Documents</string>
     <string name="upload_documents_description">Upload the required documents in (official and certified) formats, as they will be used in reviewing the application and taking the necessary procedures.</string>
+    <string name="upload_mandatory_documents">Upload Mandatory Documents</string>
+    <string name="upload_mandatory_documents_description">Please upload all mandatory documents required to complete the transaction</string>
+    <string name="upload_optional_documents">Upload Optional Documents</string>
+    <string name="upload_optional_documents_description">You can upload optional documents to speed up the processing</string>
     <string name="mortgage_certificate_attachment">Please attach the mortgage certificate</string>
 
     <!-- File Upload Helper Text -->
