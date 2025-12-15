@@ -621,9 +621,145 @@ class RegistrationRequestManager @Inject constructor(
         context: Context? = null // ✅ NEW: Optional context for file operations
     ): StepProcessResult {
 
+        // ✅ DEBUG: Print what we received
+        println("🔍 processStepIfNeeded called")
+        println("   - stepFields: $stepFields")
+        println("   - formData keys: ${formData.keys}")
+        println("   - formData['selectedMarineUnits']: ${formData["selectedMarineUnits"]}")
+        println("   - formData['isAddingNewUnit']: ${formData["isAddingNewUnit"]}")
+
+        // ✅ PRIORITY 1: Check if this is the Marine Unit Selection step (where user picks existing ship)
+        val hasMarineUnitSelectionField = stepFields.contains("selectedMarineUnits")
+        println("🔍 hasMarineUnitSelectionField = $hasMarineUnitSelectionField")
+
+        if (hasMarineUnitSelectionField) {
+            val selectedUnitsJson = formData["selectedMarineUnits"]
+            val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
+
+            println("🔍 Marine Unit Selection Step detected!")
+            println("   - selectedUnitsJson: $selectedUnitsJson")
+            println("   - isAddingNewUnit: $isAddingNewUnit")
+
+            // Check if user selected an existing ship (has JSON with ship data and not adding new)
+            if (!selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNewUnit) {
+                println("🔍 Marine Unit Selection Step - User selected EXISTING marine unit")
+                println("🔍 Extracting ship ID from activeCoreShips...")
+
+                try {
+                    // Parse the selected marine units JSON
+                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    val unitsArray = json.parseToJsonElement(selectedUnitsJson).jsonArray
+
+                    println("🔍 Parsed JSON array, size: ${unitsArray.size}")
+
+                    if (unitsArray.isNotEmpty()) {
+                        val firstElement = unitsArray[0]
+                        var shipId: String? = null
+
+                        // ✅ FIXED: Handle two possible formats:
+                        // Format 1: Array of IDs: ["192"]
+                        // Format 2: Array of objects: [{"id": "192", "name": "...", ...}]
+
+                        if (firstElement is kotlinx.serialization.json.JsonPrimitive) {
+                            // Format 1: Simple array of IDs
+                            shipId = firstElement.content
+                            println("🔍 Format 1 detected: Simple ID array")
+                            println("🔍 Extracted shipId: $shipId")
+                        } else if (firstElement is kotlinx.serialization.json.JsonObject) {
+                            // Format 2: Array of objects
+                            val selectedUnit = firstElement.jsonObject
+                            shipId = selectedUnit["id"]?.jsonPrimitive?.content
+                            println("🔍 Format 2 detected: Object array")
+                            println("🔍 First unit in array: $selectedUnit")
+                            println("🔍 Extracted shipId: $shipId")
+
+                            // Extract other IDs if available
+                            selectedUnit["shipInfoId"]?.jsonPrimitive?.content?.let {
+                                formData["shipInfoId"] = it
+                                println("✅ Found shipInfoId: $it")
+                            }
+                        }
+
+                        if (shipId != null) {
+                            println("✅ Found existing ship ID from activeCoreShips: $shipId")
+                            println("✅ Setting requestId = $shipId (no new registration request created)")
+
+                            // ✅ Use the existing ship's ID as requestId
+                            formData["requestId"] = shipId
+                            formData["shipId"] = shipId
+
+                            println("✅ Using existing marine unit - requestId successfully set to: $shipId")
+                            println("✅ formData after setting requestId: ${formData["requestId"]}")
+                            return StepProcessResult.Success("Using existing marine unit (ID: $shipId)")
+                        } else {
+                            println("⚠️ Could not extract ship ID from selectedMarineUnits JSON")
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error parsing selectedMarineUnits JSON: ${e.message}")
+                    e.printStackTrace()
+                }
+            } else if (isAddingNewUnit) {
+                println("🔍 Marine Unit Selection Step - User is adding NEW marine unit")
+                println("   Will create registration request when Unit Selection step is completed")
+                // Don't do anything here - wait for Unit Selection step
+                return StepProcessResult.NoAction
+            }
+        } else {
+            println("⚠️ selectedMarineUnits field NOT found in stepFields!")
+        }
+
         // ✅ Check if this is the Unit Selection Step (ship info)
         val hasUnitSelectionFields = stepFields.any { it == "unitType" || it == "callSign" }
         if (hasUnitSelectionFields && formData.containsKey("unitType")) {
+
+            // ✅ NEW: Check if user selected an existing marine unit
+            val selectedUnitsJson = formData["selectedMarineUnits"]
+            val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
+
+            // Check if user selected an existing ship (has JSON with ship data and not adding new)
+            if (!selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNewUnit) {
+                println("🔍 User selected EXISTING marine unit - Extracting ship ID from activeCoreShips...")
+
+                try {
+                    // Parse the selected marine units JSON
+                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    val unitsArray = json.parseToJsonElement(selectedUnitsJson).jsonArray
+
+                    if (unitsArray.isNotEmpty()) {
+                        // Get the first selected unit's ID
+                        val selectedUnit = unitsArray[0].jsonObject
+                        val shipId = selectedUnit["id"]?.jsonPrimitive?.content
+
+                        if (shipId != null) {
+                            println("✅ Found existing ship ID: $shipId")
+                            println("   Using ship ID as requestId (no new registration request created)")
+
+                            // ✅ Use the existing ship's ID as requestId
+                            formData["requestId"] = shipId
+                            formData["shipId"] = shipId
+
+                            // Extract other IDs if available
+                            selectedUnit["shipInfoId"]?.jsonPrimitive?.content?.let {
+                                formData["shipInfoId"] = it
+                            }
+
+                            println("✅ Using existing ship - requestId set to: $shipId")
+                            return StepProcessResult.Success("Using existing marine unit (ID: $shipId)")
+                        } else {
+                            println("⚠️ Could not extract ship ID from selectedMarineUnits JSON")
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error parsing selectedMarineUnits JSON: ${e.message}")
+                    e.printStackTrace()
+                    // Continue to create new registration request as fallback
+                }
+            }
+
+            // ✅ User is adding a NEW marine unit - create registration request
+            println("🔍 User is ADDING NEW marine unit - Creating registration request...")
+
             // ✅ SIMULATION MODE: Use hardcoded test data instead of calling API
             // This prevents creating new ships during engine testing
             /*println("🔍 Detected Unit Selection Step - SIMULATION MODE ENABLED")
@@ -847,9 +983,35 @@ class RegistrationRequestManager @Inject constructor(
 
         // ✅ NEW: Check if this is the Review Step (no fields = review step)
         if (stepFields.isEmpty()) {
-            println("🔍 Detected Review Step - Sending request...")
+            println("🔍 Detected Review Step - Checking if we should send request...")
+            println("🔍 Current requestId from formData: $requestId")
+            println("🔍 Full formData keys: ${formData.keys}")
+
+            // ✅ Check if user selected an EXISTING ship (skip send-request for existing ships)
+            val selectedUnitsJson = formData["selectedMarineUnits"]
+            val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
+            val hasSelectedExistingUnit = !selectedUnitsJson.isNullOrEmpty() &&
+                                          selectedUnitsJson != "[]" &&
+                                          !isAddingNewUnit
+
+            if (hasSelectedExistingUnit) {
+                println("✅ User selected EXISTING ship - SKIPPING send-request API")
+                println("   Review Step should not be shown for existing ships")
+                println("   Existing ship ID (requestId): $requestId")
+                // Don't call send-request API for existing ships
+                return StepProcessResult.NoAction
+            }
+
+            // ✅ User is adding a NEW ship - call send-request API
+            println("🔍 User is adding NEW ship - Sending request...")
+
+            if (requestId == null) {
+                println("❌ No requestId available - cannot send request")
+                return StepProcessResult.Error("No request ID available")
+            }
 
             return try {
+                println("📡 Calling send-request API with requestId: $requestId")
                 val result = sendRequest(requestId.toInt())
 
                 when (result) {

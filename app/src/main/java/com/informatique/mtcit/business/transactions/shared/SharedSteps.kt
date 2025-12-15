@@ -954,6 +954,69 @@ object SharedSteps {
         )
     }
 
+    /**
+     * Payment Details Step (الدفع - التفاصيل)
+     * First payment step - displays payment breakdown using PaymentDetailsScreen UI
+     * Shows total cost, tax, line items, and "Pay" button
+     *
+     * Note: Payment data is fetched dynamically when step is opened
+     */
+    fun paymentDetailsStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Add info card to display payment instructions
+        fields.add(
+            FormField.InfoCard(
+                id = "paymentDetailsInfo",
+                labelRes = R.string.review, // Will use review for now, can add specific string later
+                items = listOf(
+                    R.string.review, // Reusing existing strings temporarily
+                    R.string.review,
+                    R.string.review
+                ),
+                showCheckmarks = false,
+                mandatory = false
+            )
+        )
+
+        return StepData(
+            stepType = StepType.PAYMENT,
+            titleRes = R.string.review, // Will be replaced with payment-specific title
+            descriptionRes = R.string.step_placeholder_content,
+            fields = fields
+        )
+    }
+
+    /**
+     * Payment Success Step (الدفع - نجح)
+     * Second payment step - displays success confirmation using PaymentSuccessScreen UI
+     * Shows payment receipt details and success animation
+     * This is the final step after payment is submitted
+     */
+    fun paymentSuccessStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Add info card for success message
+        fields.add(
+            FormField.InfoCard(
+                id = "paymentSuccessInfo",
+                labelRes = R.string.review, // Will use review for now
+                items = listOf(
+                    R.string.review // Reusing existing strings temporarily
+                ),
+                showCheckmarks = true,
+                mandatory = false
+            )
+        )
+
+        return StepData(
+            stepType = StepType.PAYMENT_SUCCESS,
+            titleRes = R.string.review, // Will be replaced with success-specific title
+            descriptionRes = R.string.step_placeholder_content,
+            fields = fields
+        )
+    }
+
     fun marineUnitSelectionStep(
         units: List<MarineUnit>,
         allowMultipleSelection: Boolean = false,

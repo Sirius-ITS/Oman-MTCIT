@@ -58,6 +58,16 @@ enum class StepType {
     DOCUMENTS,
 
     /**
+     * Payment details and submission step
+     */
+    PAYMENT,
+
+    /**
+     * Payment success confirmation step
+     */
+    PAYMENT_SUCCESS,
+
+    /**
      * Review/summary step (final step)
      */
     REVIEW,
@@ -67,4 +77,3 @@ enum class StepType {
      */
     CUSTOM
 }
-
