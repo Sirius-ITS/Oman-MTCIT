@@ -63,7 +63,7 @@ class MortgageApiService @Inject constructor(
             println("   Start Date: ${request.startDate}")
             println("   Mortgage Value: ${request.mortgageValue}")
             println("   Status ID: ${request.statusId}")
-            println("\n📤 Full Request Body (JSON):")
+            println("\n📤 Full Request Body (JSON): $requestBody")
             println(requestBody)
             println("=".repeat(80))
 
@@ -171,6 +171,7 @@ class MortgageApiService @Inject constructor(
                     dispose = {},
                     partHeaders = Headers.build {
                         append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
                     }
                 )
             )
@@ -259,67 +260,48 @@ class MortgageApiService @Inject constructor(
         return try {
             println("🚀 MortgageApiService: Creating mortgage request WITH documents...")
 
-            // Build dto JSON with alternate keys to support different backend mappings
-            val dtoElement = json.parseToJsonElement(json.encodeToString(request)).jsonObject.toMutableMap()
-            // Ensure the canonical 'mortgageValue' key exists (matches @SerialName("mortgageValue") on model)
-            dtoElement["mortgageValue"] = kotlinx.serialization.json.JsonPrimitive(request.mortgageValue)
-            // Also add alternative names to be safe
-            dtoElement["mortgageValue"] = kotlinx.serialization.json.JsonPrimitive(request.mortgageValue)
-            dtoElement["mortgage_value"] = kotlinx.serialization.json.JsonPrimitive(request.mortgageValue)
-            val dtoJson = json.encodeToString(kotlinx.serialization.json.JsonObject(dtoElement))
-            println("📤 DTO: $dtoJson")
+            // ✅ Build dto JSON with documents array
+            val dtoElement = json.parseToJsonElement(json.encodeToString(CreateMortgageRequest.serializer(), request))
+            val objMap = dtoElement.jsonObject.toMutableMap()
+
+            // Add value under multiple keys for compatibility
+            objMap["value"] = JsonPrimitive(request.mortgageValue)
+            objMap["mortgageValue"] = JsonPrimitive(request.mortgageValue)
+            objMap["mortgage_value"] = JsonPrimitive(request.mortgageValue)
+
+            // ✅ Add documents array with fileName and documentId for each file
+            if (files.isNotEmpty()) {
+                val documentsArray = files.map { file ->
+                    JsonObject(mapOf(
+                        "fileName" to JsonPrimitive(file.fileName),
+                        "documentId" to JsonPrimitive(file.docId)
+                    ))
+                }
+                objMap["documents"] = kotlinx.serialization.json.JsonArray(documentsArray)
+                println("📄 Added ${files.size} documents to dto: ${documentsArray.joinToString { "{fileName:${it.jsonObject["fileName"]}, documentId:${it.jsonObject["documentId"]}}" }}")
+            }
+
+            val dtoJson = json.encodeToString(JsonObject.serializer(), JsonObject(objMap))
+            println("📤 DTO JSON: $dtoJson")
 
             val formData = mutableListOf<PartData>()
 
-            // dto part
+            // ✅ 1. Add "dto" field (REQUIRED by backend)
             formData.add(
                 PartData.FormItem(
                     value = dtoJson,
                     dispose = {},
                     partHeaders = Headers.build {
                         append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
                     }
                 )
             )
 
-            // Also include individual scalar fields as form parts to be compatible with APIs
-            // that expect flat form fields instead of a single 'dto' JSON.
-            try {
-                formData.add(PartData.FormItem(value = request.shipInfoId.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"shipId\"")
-                }))
-                formData.add(PartData.FormItem(value = request.bankId.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"bankId\"")
-                }))
-                formData.add(PartData.FormItem(value = request.mortgageReasonId.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgageReasonId\"")
-                }))
-                formData.add(PartData.FormItem(value = request.financingContractNumber ?: "", dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"financingContractNumber\"")
-                }))
-                formData.add(PartData.FormItem(value = request.startDate ?: "", dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"startDate\"")
-                }))
-                // ensure mortgage value is sent under several keys (include lowercase 'value')
-                formData.add(PartData.FormItem(value = request.mortgageValue.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"value\"")
-                }))
-                formData.add(PartData.FormItem(value = request.mortgageValue.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgageValue\"")
-                }))
-                formData.add(PartData.FormItem(value = request.mortgageValue.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgage_value\"")
-                }))
-                formData.add(PartData.FormItem(value = request.statusId.toString(), dispose = {}, partHeaders = Headers.build {
-                    append(HttpHeaders.ContentDisposition, "form-data; name=\"statusId\"")
-                }))
-            } catch (e: Exception) {
-                println("⚠️ Failed to add scalar form fields to multipart: ${e.message}")
-            }
-
-            // files parts
+            // ✅ 2. Add files (binary uploads)
             files.forEach { fileUpload ->
-                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes)")
+                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes) - documentId=${fileUpload.docId}")
+
                 formData.add(
                     PartData.BinaryItem(
                         provider = { fileUpload.fileBytes.inputStream().asInput() },
@@ -483,106 +465,6 @@ class MortgageApiService @Inject constructor(
         }
     }
 
-    /**
-     * Fallback: Create mortgage request using flat multipart fields (no "dto" JSON).
-     * Some backend implementations only accept form fields, not a dto JSON inside multipart.
-     */
-    suspend fun createMortgageRequestWithDocumentsFlat(
-        request: CreateMortgageRequest,
-        files: List<OwnerFileUpload>
-    ): Result<CreateMortgageResponse> {
-        return try {
-            println("🚀 MortgageApiService: Creating mortgage request WITH documents (FLAT multipart)...")
-
-            val formData = mutableListOf<PartData>()
-
-            // Add scalar fields explicitly using expected keys
-            formData.add(PartData.FormItem(value = request.shipInfoId.toString(), dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"shipId\"")
-            }))
-            formData.add(PartData.FormItem(value = request.bankId.toString(), dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"bankId\"")
-            }))
-            formData.add(PartData.FormItem(value = request.mortgageReasonId.toString(), dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgageReasonId\"")
-            }))
-            formData.add(PartData.FormItem(value = request.financingContractNumber, dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"financingContractNumber\"")
-            }))
-            formData.add(PartData.FormItem(value = request.startDate, dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"startDate\"")
-            }))
-            // send mortgage mortgageValue under several keys just in case
-            val valueString = request.mortgageValue.toString()
-            formData.add(PartData.FormItem(value = valueString, dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgageValue\"")
-            }))
-            formData.add(PartData.FormItem(value = valueString, dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgageValue\"")
-            }))
-            formData.add(PartData.FormItem(value = valueString, dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"mortgage_value\"")
-            }))
-            formData.add(PartData.FormItem(value = request.statusId.toString(), dispose = {}, partHeaders = Headers.build {
-                append(HttpHeaders.ContentDisposition, "form-data; name=\"statusId\"")
-            }))
-
-            // files
-            files.forEach { fileUpload ->
-                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes)")
-                formData.add(
-                    PartData.BinaryItem(
-                        provider = { fileUpload.fileBytes.inputStream().asInput() },
-                        dispose = {},
-                        partHeaders = Headers.build {
-                            append(HttpHeaders.ContentDisposition, "form-data; name=\"files\"; filename=\"${fileUpload.fileName}\"")
-                            append(HttpHeaders.ContentType, fileUpload.mimeType)
-                        }
-                    )
-                )
-            }
-
-            // Debug print
-            println("📤 Debug FormData parts for createMortgageRequestWithDocumentsFlat:")
-            formData.forEach { part ->
-                when (part) {
-                    is PartData.FormItem -> println("   - FormItem header=${part.headers[HttpHeaders.ContentDisposition]} mortgageValue='${part.value}'")
-                    is PartData.BinaryItem -> println("   - BinaryItem header=${part.headers[HttpHeaders.ContentDisposition]}")
-                    else -> println("   - Unknown part type: $part")
-                }
-            }
-
-            val url = "api/v1/mortgage-request"
-            when (val response = repo.onPostMultipart(url, formData)) {
-                is RepoServiceState.Success -> {
-                    val responseJson = response.response
-                    println("✅ Mortgage create-with-docs (flat) response: $responseJson")
-                    if (!responseJson.jsonObject.isEmpty()) {
-                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
-                        if (statusCode == 200 || statusCode == 201) {
-                            val mortgageResponse: CreateMortgageResponse = json.decodeFromJsonElement(responseJson)
-                            return Result.success(mortgageResponse)
-                        } else {
-                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "Failed to create mortgage request with documents"
-                            return Result.failure(Exception(message))
-                        }
-                    } else {
-                        return Result.failure(Exception("Empty response from server"))
-                    }
-                }
-                is RepoServiceState.Error -> {
-                    return Result.failure(Exception("API Error: ${response.error}"))
-                }
-            }
-
-        } catch (e: Exception) {
-            println("❌ Exception in createMortgageRequestWithDocumentsFlat: ${e.message}")
-            e.printStackTrace()
-            return Result.failure(Exception("Failed to create mortgage request flat: ${e.message}"))
-        }
-        return Result.failure(Exception("Unexpected flow"))
-    }
 
     /**
      * Update mortgage request status
@@ -716,7 +598,7 @@ class MortgageApiService @Inject constructor(
                     dispose = {},
                     partHeaders = Headers.build {
                         append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
-                        // NO Content-Type - same as mortgage
+                        append(HttpHeaders.ContentType, "application/json")
                     }
                 )
             )

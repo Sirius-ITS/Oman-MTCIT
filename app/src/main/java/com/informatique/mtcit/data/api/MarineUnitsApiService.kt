@@ -61,7 +61,7 @@ class MarineUnitsApiService @Inject constructor(
         return try {
             // If the step is not active, don't call the API unless test-mode override is enabled.
             if (!stepActive && !useTestCivilId) {
-                println("⏸️ getMyShips: call suppressed because stepActive=false. Provide stepActive=true when you want to fetch ships.")
+                println("⏸ getMyShips: call suppressed because stepActive=false. Provide stepActive=true when you want to fetch ships.")
                 return Result.failure(IllegalStateException("getMyShips suppressed: step not active"))
             }
 
@@ -119,7 +119,7 @@ class MarineUnitsApiService @Inject constructor(
             println("🔍 Fetching ships with filter: $filterJson")
             println("📋 Base64 encoded filter: $base64Filter")
 
-            val endpoint = "api/v1/deletion-requests/get-my-ships$filterParam"
+            val endpoint = "api/v1/mortgage-request/get-my-ships$filterParam"
             println("📡 Full API Call: $endpoint")
 
             when (val response = repo.onGet(endpoint)) {
@@ -143,26 +143,48 @@ class MarineUnitsApiService @Inject constructor(
                             println("📦 Active ships: ${activeCoreShips.size}")
                             println("📦 Non-active ships: ${nonActiveCoreShips.size}")
 
-                            // Parse active ships
+                            // ✅ FIXED: Parse active ships using the OUTER id from activeCoreShips
                             val activeShips = activeCoreShips.mapNotNull { shipItem ->
                                 try {
                                     // Each item has: id, ship{}, isCurrent, shipInfoEngines[], shipInfoOwners[]
-                                    val shipObject = shipItem.jsonObject.getValue("ship").jsonObject
-                                    parseMarineUnit(shipObject)
+                                    val outerShipItemObject = shipItem.jsonObject
+                                    val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
+                                    val shipObject = outerShipItemObject.getValue("ship").jsonObject
+
+                                    // ✅ Parse the ship and override the ID with the outer ID
+                                    val marineUnit = parseMarineUnit(shipObject)
+
+                                    // ✅ Override the ship.id with the outer activeCoreShips[].id
+                                    if (outerShipId != null) {
+                                        marineUnit.copy(id = outerShipId)
+                                    } else {
+                                        marineUnit
+                                    }
                                 } catch (e: Exception) {
-                                    println("⚠️ Failed to parse active ship: ${e.message}")
+                                    println("⚠ Failed to parse active ship: ${e.message}")
                                     e.printStackTrace()
                                     null
                                 }
                             }
 
-                            // Parse non-active ships
+                            // ✅ FIXED: Parse non-active ships using the OUTER id
                             val nonActiveShips = nonActiveCoreShips.mapNotNull { shipItem ->
                                 try {
-                                    val shipObject = shipItem.jsonObject.getValue("ship").jsonObject
-                                    parseMarineUnit(shipObject)
+                                    val outerShipItemObject = shipItem.jsonObject
+                                    val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
+                                    val shipObject = outerShipItemObject.getValue("ship").jsonObject
+
+                                    // ✅ Parse the ship and override the ID with the outer ID
+                                    val marineUnit = parseMarineUnit(shipObject)
+
+                                    // ✅ Override the ship.id with the outer nonActiveCoreShip[].id
+                                    if (outerShipId != null) {
+                                        marineUnit.copy(id = outerShipId)
+                                    } else {
+                                        marineUnit
+                                    }
                                 } catch (e: Exception) {
-                                    println("⚠️ Failed to parse non-active ship: ${e.message}")
+                                    println("⚠ Failed to parse non-active ship: ${e.message}")
                                     e.printStackTrace()
                                     null
                                 }
@@ -195,7 +217,7 @@ class MarineUnitsApiService @Inject constructor(
                         val errorJson = response.error.toString()
                         println("❌ Error as string: $errorJson")
                     } catch (e: Exception) {
-                        println("⚠️ Could not stringify error: ${e.message}")
+                        println("⚠ Could not stringify error: ${e.message}")
                     }
 
                     Result.failure(Exception("API Error ${response.code}: ${response.error}"))
@@ -205,8 +227,8 @@ class MarineUnitsApiService @Inject constructor(
             println("❌ Exception in getMyShips: ${e.message}")
             e.printStackTrace()
             Result.failure(Exception("Failed to get ships: ${e.message}"))
-        }
-    }
+          }
+     }
 
     /**
      * ✅ Generic function to parse ship JSON object to MarineUnit model

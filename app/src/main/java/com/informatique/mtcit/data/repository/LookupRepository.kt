@@ -60,6 +60,9 @@ interface LookupRepository {
     fun getBankId(bankName: String): Int?
     fun getMortgageReasonId(reasonName: String): Int?
 
+    // Get required documents by request type ID
+    suspend fun getRequiredDocumentsByRequestType(requestTypeId: String): Result<List<RequiredDocumentItem>>
+
     fun clearCache()
 }
 
@@ -921,4 +924,34 @@ class LookupRepositoryImpl @Inject constructor(
     override fun getMortgageReasonId(reasonName: String): Int? {
         return cachedMortgageReasons?.find { getLocalizedName(it.nameAr, it.nameEn) == reasonName }?.id
     }
+
+    override suspend fun getRequiredDocumentsByRequestType(requestTypeId: String): Result<List<RequiredDocumentItem>> =
+        withContext(Dispatchers.IO) {
+            try {
+                println("📄 Fetching required documents for requestTypeId: $requestTypeId")
+                val result = apiService.getRequiredDocumentsByRequestType(requestTypeId)
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            println("✅ Successfully fetched ${response.data.size} required documents")
+                            // Filter only active documents and sort by docOrder
+                            val activeDocuments = response.data
+                                .filter { it.document.isActive == 1 }
+                                .sortedBy { it.document.docOrder }
+                            Result.success(activeDocuments)
+                        } else {
+                            println("❌ Failed to fetch required documents: ${response.message}")
+                            Result.failure(Exception(response.message))
+                        }
+                    },
+                    onFailure = { exception ->
+                        println("❌ Error fetching required documents: ${exception.message}")
+                        Result.failure(exception)
+                    }
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Result.failure(e)
+            }
+        }
 }
