@@ -1237,10 +1237,19 @@ class LookupApiService @Inject constructor(
             when (val response = repo.onGet("api/v1/reqtype/$requestTypeId/documents")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
+
+                    // ✅ DEBUG: Print the raw JSON response
+                    println("🔍 RAW JSON RESPONSE for required documents:")
+                    println(responseJson.toString())
+
                     if (!responseJson.jsonObject.isEmpty()) {
                         if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
                             && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
                         ) {
+                            // ✅ DEBUG: Print the data array
+                            println("🔍 DATA ARRAY:")
+                            println(responseJson.jsonObject["data"].toString())
+
                             val documentsResponse: RequiredDocumentsResponse =
                                 json.decodeFromJsonElement(responseJson)
                             Result.success(documentsResponse)

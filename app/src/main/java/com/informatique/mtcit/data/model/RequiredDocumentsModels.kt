@@ -5,6 +5,25 @@ import kotlinx.serialization.Serializable
 /**
  * Response model for fetching required documents by request type
  * GET api/v1/reqtype/{requestTypeId}/documents
+ *
+ * ✅ UPDATED: API returns documents directly in data array, not nested
+ * Example response:
+ * {
+ *   "message": "Retrieved Successfully",
+ *   "statusCode": 200,
+ *   "success": true,
+ *   "timestamp": "2025-12-16 15:32:50",
+ *   "data": [
+ *     {
+ *       "id": 101,
+ *       "nameAr": " رخصه سفينه",
+ *       "nameEn": "ship license",
+ *       "docOrder": 1,
+ *       "isMandatory": 1,
+ *       "isActive": 1
+ *     }
+ *   ]
+ * }
  */
 @Serializable
 data class RequiredDocumentsResponse(
@@ -12,29 +31,30 @@ data class RequiredDocumentsResponse(
     val statusCode: Int,
     val success: Boolean,
     val timestamp: String,
-    val data: List<RequiredDocumentItem>
+    val data: List<DocumentInfo> // ✅ Changed from RequiredDocumentItem to DocumentInfo
 )
 
 /**
- * Individual required document item
- */
-@Serializable
-data class RequiredDocumentItem(
-    val id: Int,
-    val requestTypeId: Int,
-    val document: DocumentInfo
-)
-
-/**
- * Document information
+ * Document information - returned directly in data array
  */
 @Serializable
 data class DocumentInfo(
     val id: Int,
     val nameAr: String,
-    val nameEn: String,
-    val docOrder: Int,
-    val isMandatory: Int, // 1 = mandatory, 0 = optional
-    val isActive: Int // 1 = active, 0 = inactive
+    val nameEn: String? = null,
+    val docOrder: Int? = 0,
+    val isMandatory: Int = 0,
+    val isActive: Int = 1
 )
+
+/**
+ * Wrapper for documents (used internally to maintain compatibility)
+ * ✅ This is created programmatically from DocumentInfo
+ */
+data class RequiredDocumentItem(
+    val id: Int,
+    val requestTypeId: Int? = null,
+    val document: DocumentInfo
+)
+
 

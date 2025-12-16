@@ -929,8 +929,18 @@ class LookupRepositoryImpl @Inject constructor(
                     onSuccess = { response ->
                         if (response.success) {
                             println("✅ Successfully fetched ${response.data.size} required documents")
+
+                            // ✅ Convert DocumentInfo to RequiredDocumentItem wrapper
+                            val documents = response.data.map { documentInfo ->
+                                RequiredDocumentItem(
+                                    id = documentInfo.id,
+                                    requestTypeId = requestTypeId.toIntOrNull(),
+                                    document = documentInfo
+                                )
+                            }
+
                             // Filter only active documents and sort by docOrder
-                            val activeDocuments = response.data
+                            val activeDocuments = documents
                                 .filter { it.document.isActive == 1 }
                                 .sortedBy { it.document.docOrder }
                             Result.success(activeDocuments)

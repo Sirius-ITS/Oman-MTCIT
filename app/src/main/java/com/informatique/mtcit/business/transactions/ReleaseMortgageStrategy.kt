@@ -48,6 +48,9 @@ class ReleaseMortgageStrategy @Inject constructor(
     private var marineUnits: List<MarineUnit> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ NEW: Store required documents from API
+    private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
+
     // ✅ Store the created redemption request ID for later status update
     private var createdRedemptionRequestId: Int? = null
 
@@ -57,10 +60,25 @@ class ReleaseMortgageStrategy @Inject constructor(
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
 
+        println("📄 ReleaseMortgage - Fetching required documents from API...")
+        val requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId()
+        val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
+            println("❌ ERROR fetching required documents: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+
+        println("✅ Fetched ${requiredDocumentsList.size} required documents:")
+        requiredDocumentsList.forEach { docItem ->
+            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            println("   - ${docItem.document.nameAr} ($mandatoryText)")
+        }
+
         portOptions = ports
         countryOptions = countries
         personTypeOptions = personTypes
         commercialOptions = commercialRegistrations
+        requiredDocuments = requiredDocumentsList // ✅ Store documents
 
         println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
 
@@ -156,14 +174,16 @@ class ReleaseMortgageStrategy @Inject constructor(
                 showOwnedUnitsWarning = true
             )
         )
+
+        // Step 4: Upload Documents (Dynamic from API)
+        println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
         steps.add(
-            SharedSteps.uploadDocumentsStep(
-                documentLabel = R.string.mortgage_certificate_attachment,
-                documentId = "ownershipProof"
+            SharedSteps.dynamicDocumentsStep(
+                documents = requiredDocuments  // ✅ Pass documents from API
             )
         )
 
-        // Step 4: Review
+        // Step 5: Review
         steps.add(SharedSteps.reviewStep())
 
         return steps
