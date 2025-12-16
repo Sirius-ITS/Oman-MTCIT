@@ -256,7 +256,7 @@
 //            // Service Name
 //            PaymentDetailRow(
 //                label = "اسم الخدمة",
-//                value = "طلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية"
+//                mortgageValue = "طلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية"
 //            )
 //
 //            HorizontalDivider(
@@ -267,7 +267,7 @@
 //            // Required Payment
 //            PaymentDetailRow(
 //                label = "المبلغ الواجب دفعه",
-//                value = "55 ريال عماني",
+//                mortgageValue = "55 ريال عماني",
 //                valueColor = extraColors.blue1,
 //                isBold = true
 //            )
@@ -280,19 +280,19 @@
 //            // Due Amount
 //            PaymentDetailRow(
 //                label = "المبلغ المستحق",
-//                value = "25,000"
+//                mortgageValue = "25,000"
 //            )
 //
 //            // Fees Drawing
 //            PaymentDetailRow(
 //                label = "الرسوم الرقم لطلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية",
-//                value = "30,000"
+//                mortgageValue = "30,000"
 //            )
 //
 //            // Total Amount
 //            PaymentDetailRow(
 //                label = "رسوم الخدمة",
-//                value = "الرسوم الرقم لطلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية"
+//                mortgageValue = "الرسوم الرقم لطلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية"
 //            )
 //
 //            HorizontalDivider(
@@ -303,7 +303,7 @@
 //            // Total
 //            PaymentDetailRow(
 //                label = "التكلفة الكلية",
-//                value = "55,000",
+//                mortgageValue = "55,000",
 //                valueColor = extraColors.blue1,
 //                isBold = true,
 //                isLarge = true
@@ -315,7 +315,7 @@
 //@Composable
 //private fun PaymentDetailRow(
 //    label: String,
-//    value: String,
+//    mortgageValue: String,
 //    valueColor: Color? = null,
 //    isBold: Boolean = false,
 //    isLarge: Boolean = false
@@ -339,7 +339,7 @@
 //        Spacer(modifier = Modifier.width(16.dp))
 //
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = if (isLarge) 16.sp else 14.sp,
 //            fontWeight = if (isBold) FontWeight.Bold else FontWeight.Medium,
 //            color = valueColor ?: extraColors.whiteInDarkMode,
@@ -785,13 +785,13 @@
 //    ) {
 //        PaymentItemRow(
 //            label = "المبلغ المستحق",
-//            value = "25,000",
+//            mortgageValue = "25,000",
 //            isHighlighted = false
 //        )
 //
 //        PaymentItemRow(
 //            label = "الرسوم الرقم لطلب معاينة",
-//            value = "30,000",
+//            mortgageValue = "30,000",
 //            isHighlighted = false
 //        )
 //
@@ -803,7 +803,7 @@
 //
 //        PaymentItemRow(
 //            label = "المبلغ الواجب دفعه",
-//            value = "55 ريال عماني",
+//            mortgageValue = "55 ريال عماني",
 //            isHighlighted = true
 //        )
 //    }
@@ -812,7 +812,7 @@
 //@Composable
 //private fun PaymentItemRow(
 //    label: String,
-//    value: String,
+//    mortgageValue: String,
 //    isHighlighted: Boolean
 //) {
 //    val extraColors = LocalExtraColors.current
@@ -833,7 +833,7 @@
 //        )
 //
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = if (isHighlighted) 15.sp else 14.sp,
 //            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium,
 //            color = if (isHighlighted) extraColors.blue1 else extraColors.whiteInDarkMode,
@@ -1321,23 +1321,23 @@
 //            ) {
 //                PaymentRow(
 //                    label = "المبلغ الواجب دفعه",
-//                    value = "55 ريال عماني",
+//                    mortgageValue = "55 ريال عماني",
 //                    isHighlighted = true
 //                )
 //
 //                PaymentRow(
 //                    label = "المبلغ المستحق",
-//                    value = "25,000"
+//                    mortgageValue = "25,000"
 //                )
 //
 //                PaymentRow(
 //                    label = "الرسوم الرقم لطلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية",
-//                    value = "30,000"
+//                    mortgageValue = "30,000"
 //                )
 //
 //                PaymentRow(
 //                    label = "رسوم الخدمة",
-//                    value = "الرسوم الرقم لطلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية"
+//                    mortgageValue = "الرسوم الرقم لطلب معاينة / معاينة استثنائية للسفينة أو الوحدة البحرية"
 //                )
 //            }
 //
@@ -1393,7 +1393,7 @@
 //@Composable
 //private fun PaymentRow(
 //    label: String,
-//    value: String,
+//    mortgageValue: String,
 //    isHighlighted: Boolean = false
 //) {
 //    val extraColors = LocalExtraColors.current
@@ -1417,7 +1417,7 @@
 //        Spacer(modifier = Modifier.width(16.dp))
 //
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = if (isHighlighted) 15.sp else 14.sp,
 //            fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium,
 //            color = if (isHighlighted) extraColors.blue1 else extraColors.whiteInDarkMode,
@@ -1888,14 +1888,14 @@
 //            // Payment Items
 //            PaymentRow(
 //                label = "المبلغ المستحق",
-//                value = "25,00"
+//                mortgageValue = "25,00"
 //            )
 //
 //            Spacer(modifier = Modifier.height(12.dp))
 //
 //            PaymentRow(
 //                label = "رسوم المعاينة الاستثنائية",
-//                value = "30,00"
+//                mortgageValue = "30,00"
 //            )
 //
 //            Spacer(modifier = Modifier.height(16.dp))
@@ -2004,7 +2004,7 @@
 //@Composable
 //private fun PaymentRow(
 //    label: String,
-//    value: String
+//    mortgageValue: String
 //) {
 //    val extraColors = LocalExtraColors.current
 //
@@ -2021,7 +2021,7 @@
 //        )
 //
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = 14.sp,
 //            fontWeight = FontWeight.Medium,
 //            color = extraColors.whiteInDarkMode,
@@ -2486,14 +2486,14 @@
 //            // Payment Items
 //            PaymentRow(
 //                label = "المبلغ المستحق",
-//                value = "25,00"
+//                mortgageValue = "25,00"
 //            )
 //
 //            Spacer(modifier = Modifier.height(12.dp))
 //
 //            PaymentRow(
 //                label = "رسوم المعاينة الاستثنائية",
-//                value = "30,00"
+//                mortgageValue = "30,00"
 //            )
 //
 //            Spacer(modifier = Modifier.height(16.dp))
@@ -2557,7 +2557,7 @@
 //@Composable
 //private fun PaymentRow(
 //    label: String,
-//    value: String
+//    mortgageValue: String
 //) {
 //    val extraColors = LocalExtraColors.current
 //
@@ -2574,7 +2574,7 @@
 //        )
 //
 //        Text(
-//            text = value,
+//            text = mortgageValue,
 //            fontSize = 15.sp,
 //            fontWeight = FontWeight.Medium,
 //            color = extraColors.whiteInDarkMode,

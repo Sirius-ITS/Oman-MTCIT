@@ -479,7 +479,7 @@ private fun parseShipComplianceData(data: String): ParsedRequestData {
  * Parse attachments/general request data
  */
 private fun parseAttachmentsData(data: String): ParsedRequestData {
-    // Simple key-value parsing
+    // Simple key-mortgageValue parsing
     val items = data.lines()
         .filter { it.contains(":") }
         .mapNotNull { line ->

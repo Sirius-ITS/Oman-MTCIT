@@ -33,9 +33,9 @@ fun MarineUnitSelectorManager(
     units: List<MarineUnit>,
     selectedUnitIds: List<String>,
     addNewUnit: () -> Unit,
-    allowMultipleSelection: Boolean = true,
-    showOwnedUnitsWarning: Boolean = true,
-    showAddNewButton: Boolean,
+    allowMultipleSelection: Boolean = false,
+    showOwnedUnitsWarning: Boolean = false,
+    showAddNewButton: Boolean = false,
     onSelectionChange: (List<String>) -> Unit,
     validationState: ValidationState = ValidationState.Idle,
     onMarineUnitSelected: ((String) -> Unit)? = null
@@ -118,23 +118,23 @@ fun MarineUnitSelectorManager(
         nonOwnedUnits.forEach { unit ->
             MarineUnitSelectionCard(
                 unit = unit,
-                isSelected = selectedUnitIds.contains(unit.maritimeId),
-                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.maritimeId),
+                isSelected = selectedUnitIds.contains(unit.id), // ✅ Fixed: Use unit.id instead of unit.maritimeId
+                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id), // ✅ Fixed
                 onToggleSelection = {
                     // Check if validation is needed
                     if (onMarineUnitSelected != null) {
                         // Update selection state immediately for UI feedback
                         val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
-                                selectedUnitIds - unit.maritimeId
+                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
+                                selectedUnitIds - unit.id // ✅ Fixed
                             } else {
-                                selectedUnitIds + unit.maritimeId
+                                selectedUnitIds + unit.id // ✅ Fixed
                             }
                         } else {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
                                 emptyList()
                             } else {
-                                listOf(unit.maritimeId)
+                                listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
                             }
                         }
                         onSelectionChange(newSelection)
@@ -144,16 +144,16 @@ fun MarineUnitSelectorManager(
                     } else {
                         // Regular selection without validation
                         val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
-                                selectedUnitIds - unit.maritimeId
+                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
+                                selectedUnitIds - unit.id // ✅ Fixed
                             } else {
-                                selectedUnitIds + unit.maritimeId
+                                selectedUnitIds + unit.id // ✅ Fixed
                             }
                         } else {
-                            if (selectedUnitIds.contains(unit.maritimeId)) {
+                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
                                 emptyList()
                             } else {
-                                listOf(unit.maritimeId)
+                                listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
                             }
                         }
                         onSelectionChange(newSelection)
@@ -167,29 +167,29 @@ fun MarineUnitSelectorManager(
         }
 
         // Warning Card للسفن المملوكة
-        if (showOwnedUnitsWarning && ownedUnits.isNotEmpty()) {
-            WarningCard()
+//        if (showOwnedUnitsWarning && ownedUnits.isNotEmpty()) {
+//            WarningCard()
 
             ownedUnits.forEach { unit ->
                 MarineUnitSelectionCard(
                     unit = unit,
-                    isSelected = selectedUnitIds.contains(unit.maritimeId),
-                    isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.maritimeId),
+                    isSelected = selectedUnitIds.contains(unit.id), // ✅ Fixed: Use unit.id instead of unit.maritimeId
+                    isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id), // ✅ Fixed
                     onToggleSelection = {
                         // Check if validation is needed
                         if (onMarineUnitSelected != null) {
                             // Update selection state immediately for UI feedback
                             val newSelection = if (allowMultipleSelection) {
-                                if (selectedUnitIds.contains(unit.maritimeId)) {
-                                    selectedUnitIds - unit.maritimeId
+                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
+                                    selectedUnitIds - unit.id // ✅ Fixed
                                 } else {
-                                    selectedUnitIds + unit.maritimeId
+                                    selectedUnitIds + unit.id // ✅ Fixed
                                 }
                             } else {
-                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
                                     emptyList()
                                 } else {
-                                    listOf(unit.maritimeId)
+                                    listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
                                 }
                             }
                             onSelectionChange(newSelection)
@@ -199,16 +199,16 @@ fun MarineUnitSelectorManager(
                         } else {
                             // Regular selection
                             val newSelection = if (allowMultipleSelection) {
-                                if (selectedUnitIds.contains(unit.maritimeId)) {
-                                    selectedUnitIds - unit.maritimeId
+                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
+                                    selectedUnitIds - unit.id // ✅ Fixed
                                 } else {
-                                    selectedUnitIds + unit.maritimeId
+                                    selectedUnitIds + unit.id // ✅ Fixed
                                 }
                             } else {
-                                if (selectedUnitIds.contains(unit.maritimeId)) {
+                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
                                     emptyList()
                                 } else {
-                                    listOf(unit.maritimeId)
+                                    listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
                                 }
                             }
                             onSelectionChange(newSelection)
@@ -221,7 +221,7 @@ fun MarineUnitSelectorManager(
                 )
             }
         }
-    }
+//    }
 
     // Bottom Sheet للتفاصيل الكاملة
     if (showBottomSheet && selectedUnitForDetails != null) {

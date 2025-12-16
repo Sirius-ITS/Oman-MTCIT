@@ -6,6 +6,10 @@ import com.informatique.mtcit.data.repository.LandingRepository
 import com.informatique.mtcit.data.repository.LandingRepositoryImpl
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepositoryImpl
+import com.informatique.mtcit.data.repository.NavigationLicenseRepository
+import com.informatique.mtcit.data.repository.NavigationLicenseRepositoryImpl
+import com.informatique.mtcit.data.repository.PaymentRepository
+import com.informatique.mtcit.data.repository.PaymentRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -36,4 +40,16 @@ abstract class RepositoryModule {
     abstract fun bindLookupRepository(
         impl: LookupRepositoryImpl
     ): LookupRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNavigationLicenseRepository(
+        impl: NavigationLicenseRepositoryImpl
+    ): NavigationLicenseRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPaymentRepository(
+        impl: PaymentRepositoryImpl
+    ): PaymentRepository
 }

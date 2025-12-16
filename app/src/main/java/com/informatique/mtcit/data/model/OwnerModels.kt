@@ -10,7 +10,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class OwnerSubmissionRequest(
     val isCompany: Int, // 0 = Individual, 1 = Company
-    val ownerName: String,
+    val ownerName: String, // Arabic name
+    val ownerNameEn: String? = null, // English name
     val ownerCivilId: String? = null, // For individuals
     val commercialRegNumber: String? = null, // For companies
     val ownershipPercentage: Double,
@@ -63,7 +64,7 @@ data class OwnerFileUpload(
     val fileName: String,
     val fileUri: String,
     val fileBytes: ByteArray,
-    val mimeType: String = "application/octet-stream",
+    val mimeType: String = "",
     val docOwnerId: String, // Which owner this file belongs to
     val docId: Int // Which document type (1, 2, 3, etc.)
 ) {
@@ -93,4 +94,3 @@ data class OwnerFileUpload(
         return result
     }
 }
-

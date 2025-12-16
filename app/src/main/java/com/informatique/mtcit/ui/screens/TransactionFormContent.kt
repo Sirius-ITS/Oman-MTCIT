@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +36,8 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
 import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 import com.informatique.mtcit.ui.viewmodels.ValidationState
+import com.informatique.mtcit.ui.components.ErrorBanner
+
 
 /**
  * Generic Transaction Form Content - Shared UI for all transaction screens
@@ -67,6 +70,84 @@ fun TransactionFormContent(
 
     // Check if current step is the review step (last step with no fields)
     val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.fields?.isEmpty() == true
+
+    // Collect processing state from viewModel (to disable Next button and show loader)
+    val isProcessingNext by viewModel.isProcessingNext.collectAsState()
+
+    // ✅ NEW: Check if inspection dialog should be shown
+    val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
+    val inspectionMessage = uiState.formData["inspectionMessage"] ?: ""
+
+    // ✅ NEW: Extract error code and message for 406 banner
+    val apiErrorCode = uiState.formData["apiErrorCode"]
+    val apiErrorMessage = uiState.formData["apiErrorMessage"]
+    val shouldShowErrorBanner = apiErrorCode == "406" && !apiErrorMessage.isNullOrBlank()
+
+    // ✅ Debug logs - CRITICAL for troubleshooting
+    println("=" .repeat(80))
+    println("🔍 TransactionFormContent RENDER - Error Banner Check")
+    println("=" .repeat(80))
+    println("📊 uiState.formData.size = ${uiState.formData.size}")
+    println("📊 uiState.formData.keys = ${uiState.formData.keys.joinToString()}")
+    println("🔴 apiErrorCode = '$apiErrorCode'")
+    println("📝 apiErrorMessage = '$apiErrorMessage'")
+    println("🎯 shouldShowErrorBanner = $shouldShowErrorBanner")
+    println("=" .repeat(80))
+
+
+
+    // ✅ NEW: Show inspection dialog when needed
+    if (showInspectionDialog) {
+        InspectionRequiredDialog(
+            message = inspectionMessage,
+            text = localizedApp(R.string.done),
+            icon = Icons.Default.Done,
+            onDismiss = {
+                // Clear the dialog flag
+                onFieldValueChange("showInspectionDialog", "false")
+                // Navigate back to home or request detail screen
+                navController.popBackStack()
+            }
+        )
+    }
+
+    // ✅ NEW: Show API error dialog when errors occur
+    // ✅ Show API error dialog for non-406 errors only
+    uiState.apiError?.let { errorMessage ->
+        if (apiErrorCode != "406") {
+            AlertDialog(
+                onDismissRequest = {
+                    // Clear apiError from state
+                    onFieldValueChange("apiError", "")
+                },
+                title = {
+                    Text(
+                        text = localizedApp(R.string.error),
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(text = errorMessage)
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            // Clear apiError from state
+                            onFieldValueChange("apiError", "")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = extraColors.startServiceButton
+                        )
+                    ) {
+                        Text(localizedApp(R.string.ok))
+                    }
+                },
+                containerColor = extraColors.cardBackground,
+                titleContentColor = extraColors.whiteInDarkMode,
+                textContentColor = extraColors.textSubTitle
+            )
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -150,22 +231,21 @@ fun TransactionFormContent(
                 totalSteps = uiState.steps.size,
                 onPreviousClick = previousStep,
                 onNextClick = {
-                    if (uiState.currentStep < uiState.steps.size - 1) {
-                        // Not on last step - check if we're on review step
-//                        if (isReviewStep && viewModel is MarineRegistrationViewModel) {
-//                            // On review step for Marine Registration - validate before proceeding
-//                            viewModel.validateOnReviewStep()
-//                        } else {
-                            // Regular next step
+                    // ✅ Check if we're on the last step
+                    if (uiState.currentStep >= uiState.steps.size - 1) {
+                        // On last step - check if it needs special API handling (like marine name)
+                        val currentStepFields = uiState.steps.getOrNull(uiState.currentStep)?.fields?.map { it.id } ?: emptyList()
+                        val isMarineNameStep = currentStepFields.contains("marineUnitName")
+                        if (isMarineNameStep) {
+                            // Marine name step - call nextStep() to trigger API via processStepData()
                             nextStep()
-//                        }
-                    } else {
-                        // On last step (final submission)
-//                        if (viewModel is MarineRegistrationViewModel) {
-//                            viewModel.validateAndSubmit()
-//                        } else {
+                        } else {
+                            // Regular last step (like OTP) - submit the form
                             submitForm()
-//                        }
+                        }
+                    } else {
+                        // Not on last step - always call nextStep()
+                        nextStep()
                     }
                 },
                 canProceed = if (isReviewStep) {
@@ -174,8 +254,10 @@ fun TransactionFormContent(
                 } else {
                     uiState.canProceedToNext
                 },
-                isSubmitting = submissionState is UIState.Loading,
-                isReviewStep = isReviewStep // Pass the review step flag
+                // Use viewModel processing flag to disable next button when heavy processing is running
+                isSubmitting = submissionState is UIState.Loading || isProcessingNext,
+                isReviewStep = isReviewStep, // Pass the review step flag
+                isProcessingStep = uiState.isProcessingStep // ✅ FIXED: Pass the actual processing state from uiState
             )
         }
     ) { paddingValues ->
@@ -199,6 +281,7 @@ fun TransactionFormContent(
             }
 
             if (shouldShowStepper) {
+
                 val stepsToShow = if (hideStepperForFirstStep) {
                     // Exclude first step from stepper display
                     uiState.steps.drop(1).map { localizedApp(it.titleRes) }
@@ -237,6 +320,17 @@ fun TransactionFormContent(
                     },
                     modifier = Modifier.padding(horizontal = 16.dp).padding(top = 10.dp, bottom = 4.dp)
                 )
+
+                // ✅ Show ErrorBanner ONLY for 406 errors (below stepper, above content)
+                if (shouldShowErrorBanner) {
+                    ErrorBanner(
+                        message = apiErrorMessage ?: "",
+                        onDismiss = {
+                            onFieldValueChange("apiErrorCode", "")
+                            onFieldValueChange("apiErrorMessage", "")
+                        }
+                    )
+                }
             }
 
             // Form Content
@@ -334,11 +428,16 @@ fun GenericNavigationBottomBar(
     onNextClick: () -> Unit,
     canProceed: Boolean,
     isSubmitting: Boolean = false,
-    isReviewStep: Boolean = false // Add parameter to detect review step
+    isReviewStep: Boolean = false, // Add parameter to detect review step
+    isProcessingStep: Boolean = false // ✅ NEW: Loading state for Next button
 ) {
     val extraColors = LocalExtraColors.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth()
+            .padding(  bottom = WindowInsets.navigationBars
+                .asPaddingValues()
+                .calculateBottomPadding() + 4.dp
+            ),
         shape = RoundedCornerShape(
             topStart = 16.dp,
             topEnd = 16.dp
@@ -352,7 +451,7 @@ fun GenericNavigationBottomBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 18.dp, top = 4.dp),
+                .padding(top = 4.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -360,6 +459,7 @@ fun GenericNavigationBottomBar(
                 OutlinedButton(
                     onClick = onPreviousClick,
                     modifier = Modifier.weight(1f),
+                    enabled = !isProcessingStep, // ✅ Disable back button during processing
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = extraColors.startServiceButton,
                         contentColor = Color.White
@@ -372,31 +472,43 @@ fun GenericNavigationBottomBar(
             Spacer(modifier = Modifier.width(12.dp))
             Button(
                 onClick = onNextClick,
-                enabled = canProceed && !isSubmitting,
+                enabled = canProceed && !isSubmitting && !isProcessingStep, // ✅ Disable during processing
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = extraColors.startServiceButton,
                     contentColor = Color.White
                 ),
                 border = ButtonDefaults.outlinedButtonBorder(
-                    enabled = canProceed && !isSubmitting
+                    enabled = canProceed && !isSubmitting && !isProcessingStep
                 ),
                 shape = RoundedCornerShape(18.dp)
             ) {
-                // Show "Accept & Send" on review step OR last step
-                if (isReviewStep || currentStep >= totalSteps - 1) {
-                    Text(localizedApp(R.string.accept_and_send))
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(localizedApp(R.string.next_button))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Default.NavigateNext,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                if (isSubmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(localizedApp(R.string.loading))
+                    }
+                } else {
+                    // Show "Accept & Send" on review step OR last step
+                    if (isReviewStep || currentStep >= totalSteps - 1) {
+                        Text(localizedApp(R.string.accept_and_send))
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(localizedApp(R.string.next_button))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Default.NavigateNext,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -491,5 +603,19 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" },
             error = error
         )
+
+        is FormField.MultiSelectDropDown -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            selectedOptions = try {
+                kotlinx.serialization.json.Json.decodeFromString(value.ifEmpty { "[]" })
+            } catch (e: Exception) {
+                emptyList()
+            },
+            error = error
+        )
     }
 }
+
+
+

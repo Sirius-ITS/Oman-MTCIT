@@ -5,7 +5,6 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.ui.components.PersonType
@@ -16,11 +15,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.MortgageCertificateRules
 import com.informatique.mtcit.business.transactions.marineunit.usecases.ValidateMarineUnitUseCase
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
 import com.informatique.mtcit.data.repository.MarineUnitRepository
+import android.content.Context
+import com.informatique.mtcit.data.helpers.FileUploadHelper
+import com.informatique.mtcit.data.model.OwnerFileUpload
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.format.ResolverStyle
 
 /**
  * Strategy for Mortgage Certificate Issuance
@@ -39,7 +47,9 @@ class MortgageCertificateStrategy @Inject constructor(
     private val mortgageRules: MortgageCertificateRules,
     private val validateMarineUnitUseCase: ValidateMarineUnitUseCase,
     private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
-    private val marineUnitRepository: MarineUnitRepository
+    private val marineUnitRepository: MarineUnitRepository,
+    private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService,
+    @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -47,20 +57,147 @@ class MortgageCertificateStrategy @Inject constructor(
     private var personTypeOptions: List<PersonType> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
+    private var mortgageReasons: List<String> = emptyList()
+    private var banks: List<String> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ NEW: Store required documents from API
+    private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
+
+    // Store API error to prevent navigation and show error dialog
+    private var lastApiError: String? = null
+
+    // ✅ NEW: Store created mortgage request ID for status update
+    private var createdMortgageRequestId: Int? = null
+
+    // Helper: normalize different input date formats into ISO yyyy-MM-dd
+    private fun normalizeDateToIso(input: String?): String? {
+        if (input == null) return null
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return null
+
+        // Fast numeric fallback: match D/M/YYYY or M/D/YYYY etc (non-digit separator allowed)
+        val numericDateRegex = Regex("^\\s*(\\d{1,2})\\D(\\d{1,2})\\D(\\d{2,4})\\s*$")
+        val match = numericDateRegex.find(trimmed)
+        if (match != null) {
+            val g = match.groupValues
+            val a = g[1].toIntOrNull() ?: -1
+            val b = g[2].toIntOrNull() ?: -1
+            var c = g[3].toIntOrNull() ?: -1
+            if (c in 0..99) {
+                // two-digit year -> assume 2000-based (simple heuristic)
+                c += if (c >= 70) 1900 else 2000
+            }
+            // Try interpreting as day/month/year first (common in our locale)
+            try {
+                if (c > 0 && b in 1..12 && a in 1..31) {
+                    val ld = LocalDate.of(c, b, a)
+                    return ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+            } catch (_: Exception) {
+                // ignore and try month/day/year
+            }
+            // Try month/day/year (US style)
+            try {
+                if (c > 0 && a in 1..12 && b in 1..31) {
+                    val ld = LocalDate.of(c, a, b)
+                    return ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                }
+            } catch (_: Exception) {
+                // fallthrough to pattern parsing
+            }
+        }
+
+        val patterns = listOf(
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "yyyyMMdd",
+            "d/M/yyyy",
+            "d-M-yyyy",
+            "d.M.yyyy",
+            "dd/MM/yyyy",
+            "dd-MM-yyyy",
+            "dd.MM.yyyy",
+            "M/d/yyyy",
+            "MM/dd/yyyy"
+        )
+
+        for (p in patterns) {
+            try {
+                val fmt = DateTimeFormatter.ofPattern(p).withResolverStyle(ResolverStyle.STRICT)
+                val ld = LocalDate.parse(trimmed, fmt)
+                return ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
+            } catch (e: DateTimeParseException) {
+                // try next
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+
+        // Last resort: try ISO parse
+        return try {
+            val ld = LocalDate.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE)
+            ld.format(DateTimeFormatter.ISO_LOCAL_DATE)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        println("📋 ===============================================")
+        println("📋 MortgageCertificate - loadDynamicOptions() CALLED")
+        println("📋 ===============================================")
+
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+
+        println("🏦 MortgageCertificate - Fetching banks from API...")
+        val banksList = lookupRepository.getBanks().getOrElse { error ->
+            println("❌ ERROR fetching banks: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+
+        println("💰 MortgageCertificate - Fetching mortgage reasons from API...")
+        val mortgageReasonsList = lookupRepository.getMortgageReasons().getOrElse { error ->
+            println("❌ ERROR fetching mortgage reasons: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+
+        println("📄 MortgageCertificate - Fetching required documents from API...")
+        val requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId()
+        val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
+            println("❌ ERROR fetching required documents: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+
+        println("✅ Fetched ${requiredDocumentsList.size} required documents:")
+        requiredDocumentsList.forEach { docItem ->
+            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            println("   - ${docItem.document.nameAr} ($mandatoryText)")
+        }
 
         portOptions = ports
         countryOptions = countries
         personTypeOptions = personTypes
         commercialOptions = commercialRegistrations
+        mortgageReasons = mortgageReasonsList
+        banks = banksList
+        requiredDocuments = requiredDocumentsList // ✅ Store documents
+        commercialOptions = commercialRegistrations
+        mortgageReasons = mortgageReasonsList
+        banks = banksList
 
         println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
+        println("🏦 STORING banks in member variable: size=${banks.size}, data=$banks")
+        println("💰 STORING mortgageReasons in member variable: size=${mortgageReasons.size}, data=$mortgageReasons")
+        println("📋 ===============================================")
+        println("📋 loadDynamicOptions() COMPLETED")
+        println("📋 ===============================================")
 
         return mapOf(
             "registrationPort" to ports,
@@ -69,7 +206,9 @@ class MortgageCertificateStrategy @Inject constructor(
             "bankCountry" to countries,
             "marineUnits" to emptyList<String>(),
             "commercialRegistration" to commercialRegistrations,
-            "personType" to personTypes
+            "personType" to personTypes,
+            "mortgagePurpose" to mortgageReasonsList,
+            "bankName" to banksList
         )
     }
 
@@ -80,23 +219,28 @@ class MortgageCertificateStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
+        // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId")
                 Pair("12345678", null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null)
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
             }
             else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber,
+            // **********************************************************************************************************
+            //Request Type Id
+            requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId() // ✅ Mortgage Certificate ID
+        )
         println("✅ Loaded ${marineUnits.size} ships")
         return marineUnits
     }
@@ -140,73 +284,27 @@ class MortgageCertificateStrategy @Inject constructor(
             )
         )
 
-        // Step 4: Mortgage Data
+        // Step 4: Mortgage Data with Dynamic Documents
+        println("🔍 DEBUG: Building mortgage data step with documents")
+        println("🔍 DEBUG: Member variables - banks.size = ${banks.size}, mortgageReasons.size = ${mortgageReasons.size}")
+
+        // ✅ FIX: Fetch data directly from repository cache instead of relying on member variables
+        val currentBanks = runBlocking {
+            lookupRepository.getBanks().getOrNull() ?: emptyList()
+        }
+        val currentMortgageReasons = runBlocking {
+            lookupRepository.getMortgageReasons().getOrNull() ?: emptyList()
+        }
+
+        println("🔍 DEBUG: From repository cache - banks.size = ${currentBanks.size}, banks = $currentBanks")
+        println("🔍 DEBUG: From repository cache - mortgageReasons.size = ${currentMortgageReasons.size}, reasons = $currentMortgageReasons")
+        println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
+
         steps.add(
-            StepData(
-                titleRes = R.string.mortgage_data,
-                descriptionRes = R.string.mortgage_data_desc,
-                fields = listOf(
-                    FormField.DropDown(
-                        id = "bankName",
-                        labelRes = R.string.bank_name,
-                        options = listOf(
-                            "Bank Muscat",
-                            "National Bank of Oman",
-                            "Bank Dhofar",
-                            "Sohar International Bank",
-                            "Oman Arab Bank",
-                            "HSBC Oman",
-                            "Ahli Bank",
-                            "Bank Nizwa"
-                        ),
-                        mandatory = true
-                    ),
-                    FormField.TextField(
-                        id = "mortgageContractNumber",
-                        labelRes = R.string.mortgage_contract_number,
-                        placeholder = "Enter mortgage contract number",
-                        isNumeric = true,
-                        mandatory = true
-                    ),
-                    FormField.DropDown(
-                        id = "mortgagePurpose",
-                        labelRes = R.string.mortgage_purpose,
-                        options = listOf(
-                            "Purchase Financing",
-                            "Refinancing",
-                            "Modification/Upgrade",
-                            "Business Loan",
-                            "Other"
-                        ),
-                        mandatory = true
-                    ),
-                    FormField.TextField(
-                        id = "mortgageValue",
-                        labelRes = R.string.mortgage_value,
-                        placeholder = "Enter mortgage value in OMR",
-                        isNumeric = true,
-                        mandatory = true
-                    ),
-                    FormField.DatePicker(
-                        id = "mortgageStartDate",
-                        labelRes = R.string.mortgage_start_date,
-                        allowPastDates = true,
-                        mandatory = true
-                    ),
-                    FormField.DatePicker(
-                        id = "mortgageEndDate",
-                        labelRes = R.string.mortgage_end_date,
-                        allowPastDates = false,
-                        mandatory = true
-                    ),
-                    FormField.FileUpload(
-                        id = "mortgageApplication",
-                        labelRes = R.string.mortgage_application,
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
-                        maxSizeMB = 5,
-                        mandatory = true
-                    )
-                )
+            SharedSteps.mortgageDataStep(
+                banks = currentBanks,
+                mortgagePurposes = currentMortgageReasons,
+                requiredDocuments = requiredDocuments  // ✅ Pass documents to be rendered in same step
             )
         )
 
@@ -215,6 +313,7 @@ class MortgageCertificateStrategy @Inject constructor(
 
         return steps
     }
+
 
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         val unit = marineUnits.find { it.id.toString() == unitId }
@@ -367,8 +466,295 @@ class MortgageCertificateStrategy @Inject constructor(
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
         // ✅ Accumulate form data for dynamic step logic
         accumulatedFormData.putAll(data)
-        println("📦 MortgageCertificate - Accumulated data: $accumulatedFormData")
+        println("📦 MortgageCertificate - processStepData called for step $step")
+        println("📦 Current step data: $data")
+        println("📦 Accumulated data: $accumulatedFormData")
+
+        // Clear previous error
+        lastApiError = null
+
+        // Check if we just completed the Mortgage Data step
+        val currentSteps = getSteps()
+        val currentStepData = currentSteps.getOrNull(step)
+
+        println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
+        println("🔍 R.string.mortgage_data mortgageValue: ${R.string.mortgage_data}")
+
+        // The mortgage data step has titleRes = R.string.mortgage_data
+        if (currentStepData?.titleRes == R.string.mortgage_data) {
+            println("🏦 ✅ Mortgage Data step completed - calling API to create mortgage request...")
+
+            // Call the API in a blocking way (will be handled in coroutine context)
+            var apiCallSucceeded = false
+            try {
+                val result = createMortgageRequest(accumulatedFormData)
+                result.fold(
+                    onSuccess = { response ->
+                        println("✅ Mortgage request created successfully!")
+                        println("   Mortgage ID: ${response.data.id}")
+                        println("   Message: ${response.message}")
+
+                        // ✅ CRITICAL: Store the mortgage request ID in the member variable
+                        createdMortgageRequestId = response.data.id
+                        println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
+
+                        // Store the mortgage request ID for later use
+                        accumulatedFormData["mortgageRequestId"] = response.data.id.toString()
+                        lastApiError = null // Clear any previous error
+                        apiCallSucceeded = true
+                    },
+                    onFailure = { error ->
+                        println("❌ Failed to create mortgage request: ${error.message}")
+                        error.printStackTrace()
+
+                        // Store error for Toast display
+                        lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الرهن"
+                        apiCallSucceeded = false
+                    }
+                )
+            } catch (e: Exception) {
+                println("❌ Exception while creating mortgage request: ${e.message}")
+                e.printStackTrace()
+
+                // Store error for Toast display
+                lastApiError = e.message ?: "حدث خطأ غير متوقع"
+                apiCallSucceeded = false
+            }
+
+            // Return -1 to prevent navigation if API call failed
+            if (!apiCallSucceeded) {
+                println("⚠️ API call failed - returning -1 to prevent navigation")
+                return -1
+            }
+        } else {
+            println("ℹ️ This is not the mortgage data step, skipping API call")
+        }
+
         return step
+    }
+
+    /**
+     * Get the last API error message if any
+     * Used by UI to display error dialogs
+     */
+    fun getLastApiError(): String? = lastApiError
+
+    /**
+     * Clear the last API error
+     */
+    fun clearLastApiError() {
+        lastApiError = null
+    }
+
+    /**
+     * Create a mortgage request from the accumulated form data
+     */
+    private suspend fun createMortgageRequest(formData: Map<String, String>): Result<com.informatique.mtcit.data.model.CreateMortgageResponse> {
+        // Extract data from form
+        // The marine unit selection field ID is "selectedMarineUnits"
+        val selectedUnitsJson = formData["selectedMarineUnits"] // This is a JSON array
+        val bankName = formData["bankName"]
+        val mortgagePurpose = formData["mortgagePurpose"]
+        val mortgageContractNumber = formData["mortgageContractNumber"]
+        val mortgageValue = formData["mortgageValue"]
+        val mortgageStartDate = formData["mortgageStartDate"]
+
+        println("📋 Creating mortgage request with:")
+        println("   Selected Units JSON: $selectedUnitsJson")
+        println("   Bank: $bankName")
+        println("   Purpose: $mortgagePurpose")
+        println("   Contract Number: $mortgageContractNumber")
+        println("   Value: $mortgageValue")
+        println("   Start Date: $mortgageStartDate")
+
+        // Validate required fields
+        if (selectedUnitsJson.isNullOrBlank() || selectedUnitsJson == "[]") {
+            return Result.failure(Exception("Marine unit not selected"))
+        }
+        if (bankName.isNullOrBlank()) {
+            return Result.failure(Exception("Bank not selected"))
+        }
+        if (mortgagePurpose.isNullOrBlank()) {
+            return Result.failure(Exception("Mortgage purpose not selected"))
+        }
+        if (mortgageContractNumber.isNullOrBlank()) {
+            return Result.failure(Exception("Contract number is required"))
+        }
+        if (mortgageValue.isNullOrBlank()) {
+            return Result.failure(Exception("Mortgage mortgageValue is required"))
+        }
+        if (mortgageStartDate.isNullOrBlank()) {
+            return Result.failure(Exception("Start date is required"))
+        }
+
+        // Parse the selected units JSON (it's an array like ["987654321"] - these are maritimeIds/MMSI numbers)
+        // We need to find the actual ship ID from the MarineUnit objects
+        val shipId = try {
+            // Remove brackets and quotes, split by comma, take first
+            val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+            val maritimeIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+            val firstMaritimeId = maritimeIds.firstOrNull()
+
+            if (firstMaritimeId.isNullOrBlank()) {
+                println("❌ Failed to parse maritime ID from: $selectedUnitsJson")
+                return Result.failure(Exception("Invalid marine unit selection format"))
+            }
+
+            println("📍 Extracted maritime ID (MMSI): $firstMaritimeId")
+
+            // Find the MarineUnit object that matches this maritimeId
+            val selectedUnit = marineUnits.firstOrNull { it.maritimeId == firstMaritimeId }
+            if (selectedUnit == null) {
+                println("❌ Could not find MarineUnit with maritimeId: $firstMaritimeId")
+                println("   Available units: ${marineUnits.map { "maritimeId=${it.maritimeId}, id=${it.id}" }}")
+                return Result.failure(Exception("Selected marine unit not found in available units"))
+            }
+
+            // Convert the actual ship ID (from database) to Int
+            val actualShipId = selectedUnit.id.toIntOrNull()
+            if (actualShipId == null) {
+                println("❌ Ship ID is not a valid integer: ${selectedUnit.id}")
+                return Result.failure(Exception("Invalid ship ID format"))
+            }
+
+            println("✅ Found matching MarineUnit:")
+            println("   Maritime ID (MMSI): ${selectedUnit.maritimeId}")
+            println("   Actual Ship ID (database): $actualShipId")
+            println("   Ship Name: ${selectedUnit.shipName}")
+            println("   IMO Number: ${selectedUnit.imoNumber}")
+
+            actualShipId
+        } catch (e: Exception) {
+            println("❌ Exception parsing selected units: ${e.message}")
+            e.printStackTrace()
+            return Result.failure(Exception("Failed to parse selected marine unit: ${e.message}"))
+        }
+
+        // Get IDs from the lookup repository
+        val bankIdValue: Int? = lookupRepository.getBankId(bankName)
+        val mortgageReasonIdValue: Int? = lookupRepository.getMortgageReasonId(mortgagePurpose)
+
+        println("🔍 ID Lookup Results:")
+        println("   Bank Name: '$bankName' → Bank ID: '$bankIdValue' (type: ${bankIdValue?.javaClass?.simpleName})")
+        println("   Mortgage Purpose: '$mortgagePurpose' → Reason ID: $mortgageReasonIdValue")
+
+        if (bankIdValue == null) {
+            println("❌ Bank ID is null - available banks in cache:")
+            // This will help debug what banks are available
+            return Result.failure(Exception("Bank ID not found for: $bankName"))
+        }
+        if (mortgageReasonIdValue == null) {
+            return Result.failure(Exception("Mortgage reason ID not found for: $mortgagePurpose"))
+        }
+
+
+        // Parse mortgage mortgageValue
+        val valueDouble = mortgageValue.toDoubleOrNull() ?: run {
+            return Result.failure(Exception("Invalid mortgage mortgageValue: $mortgageValue"))
+        }
+
+        // Normalize the start date to ISO yyyy-MM-dd
+        val normalizedStartDate = normalizeDateToIso(mortgageStartDate)
+            ?: return Result.failure(Exception("Invalid start date format: $mortgageStartDate (expected YYYY-MM-DD)"))
+
+        // Create the request
+        val request = com.informatique.mtcit.data.model.CreateMortgageRequest(
+            shipInfoId = shipId,
+            bankId = bankIdValue,  // Now guaranteed to be non-null Int
+            mortgageReasonId = mortgageReasonIdValue,  // Now guaranteed to be non-null Int
+            financingContractNumber = mortgageContractNumber,
+            startDate = normalizedStartDate,
+            mortgageValue = valueDouble
+            // statusId is automatic = 1
+        )
+
+        println("=".repeat(80))
+        println("🔍🔍🔍 DEBUG: MORTGAGE VALUE TRACKING 🔍🔍🔍")
+        println("=".repeat(80))
+        println("📥 INPUT from form field 'mortgageValue': '$mortgageValue' (type: ${mortgageValue.javaClass.simpleName})")
+        println("🔢 PARSED to Double: $valueDouble (type: ${valueDouble.javaClass.simpleName})")
+        println("📦 REQUEST OBJECT being sent:")
+        println("   request.mortgageValue = $valueDouble")
+        println("   request.shipId = $shipId")
+        println("   request.bankId = $bankIdValue")
+        println("   request.mortgageReasonId = $mortgageReasonIdValue")
+        println("   request.financingContractNumber = '$mortgageContractNumber'")
+        println("   request.startDate = '$normalizedStartDate'")
+        println("=".repeat(80))
+        println("📤 Sending mortgage request to API...")
+
+        // ✅ NEW: Collect all uploaded documents from dynamic fields
+        val uploadedDocuments = mutableListOf<OwnerFileUpload>()
+
+        // Get all document fields (document_43, document_44, etc.)
+        requiredDocuments
+            .filter { it.document.isActive == 1 }
+            .forEach { docItem ->
+                val fieldId = "document_${docItem.document.id}"
+                val documentUri = formData[fieldId]
+
+                if (!documentUri.isNullOrBlank() && documentUri.startsWith("content://")) {
+                    try {
+                        val uri = android.net.Uri.parse(documentUri)
+                        val fileUpload = FileUploadHelper.uriToFileUpload(appContext, uri)
+
+                        if (fileUpload != null) {
+                            // Determine proper MIME type
+                            val properMimeType = when {
+                                fileUpload.fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                                fileUpload.fileName.endsWith(".jpg", ignoreCase = true) ||
+                                fileUpload.fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                                fileUpload.fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                                fileUpload.fileName.endsWith(".doc", ignoreCase = true) -> "application/msword"
+                                fileUpload.fileName.endsWith(".docx", ignoreCase = true) -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                else -> fileUpload.mimeType
+                            }
+
+                            val ownerFile = OwnerFileUpload(
+                                fileName = fileUpload.fileName,
+                                fileUri = fileUpload.fileUri,
+                                fileBytes = fileUpload.fileBytes,
+                                mimeType = properMimeType,
+                                docOwnerId = "document_${docItem.document.id}", // ✅ Use document ID
+                                docId = docItem.document.id // ✅ Send the actual document ID from API
+                            )
+
+                            uploadedDocuments.add(ownerFile)
+                            println("📎 Added document: ${docItem.document.nameAr} (id=${docItem.document.id}, file=${ownerFile.fileName}, mimeType=$properMimeType)")
+                        }
+                    } catch (e: Exception) {
+                        println("⚠️ Failed to process document ${docItem.document.nameAr}: ${e.message}")
+                    }
+                }
+            }
+
+        println("📋 Total documents to upload: ${uploadedDocuments.size}")
+
+        // ✅ FINAL STRATEGY: Use multipart with 'request' field (JSON as Text) + files
+        println("📤 Creating mortgage request with multipart/form-data (request + files)...")
+        val result = mortgageApiService.createMortgageRequestWithDocuments(request, uploadedDocuments)
+
+        result.onSuccess { response ->
+            createdMortgageRequestId = response.data.id
+            println("=".repeat(80))
+            println("💾 STORED MORTGAGE REQUEST ID: $createdMortgageRequestId")
+            println("=".repeat(80))
+
+            if (uploadedDocuments.isNotEmpty()) {
+                println("✅ Uploaded documents:")
+                uploadedDocuments.forEach { doc ->
+                    println("   - ${doc.fileName} (docId=${doc.docId})")
+                }
+            } else {
+                println("ℹ️ No documents uploaded")
+            }
+        }
+
+        result.onFailure { error ->
+            println("❌ Create mortgage request failed: ${error.message}")
+        }
+
+        return result
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
@@ -434,5 +820,40 @@ class MortgageCertificateStrategy @Inject constructor(
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
         }
+    }
+
+    /**
+     * ✅ Get the created mortgage request ID
+     * Used in review step to submit status update
+     */
+    fun getCreatedMortgageRequestId(): Int? {
+        println("🔍 getCreatedMortgageRequestId() called")
+        println("   createdMortgageRequestId = $createdMortgageRequestId")
+        println("   accumulatedFormData['mortgageRequestId'] = ${accumulatedFormData["mortgageRequestId"]}")
+
+        // ✅ Fallback: Try to get from accumulated form data if member variable is null
+        if (createdMortgageRequestId == null) {
+            val idFromFormData = accumulatedFormData["mortgageRequestId"]?.toIntOrNull()
+            if (idFromFormData != null) {
+                println("⚠️ createdMortgageRequestId was null, using value from formData: $idFromFormData")
+                createdMortgageRequestId = idFromFormData
+            }
+        }
+
+        return createdMortgageRequestId
+    }
+
+    // ✅ Implement TransactionStrategy interface methods for dynamic status update
+
+    override fun getStatusUpdateEndpoint(requestId: Int): String {
+        return "api/v1/mortgage-request/$requestId/update-status"
+    }
+
+    override fun getCreatedRequestId(): Int? {
+        return getCreatedMortgageRequestId()
+    }
+
+    override fun getTransactionTypeName(): String {
+        return "Mortgage"
     }
 }

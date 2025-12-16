@@ -9,11 +9,6 @@ import com.informatique.mtcit.ui.viewmodels.StepData
 /**
  * Reusable Step Library for Ship Category Transactions
  * Provides common step templates that can be customized per transaction
- *
- * Usage:
- * - ShipRegistrationStrategy uses all shared steps
- * - NameChangeStrategy reuses owner info + documents (different requirements)
- * - DimensionChangeStrategy reuses owner info + adds technical fields
  */
 object SharedSteps {
 
@@ -34,6 +29,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.PERSON_TYPE,  // ✅ Added
             titleRes = R.string.person_type_title,
             descriptionRes = R.string.person_type_desc,
             fields = fields
@@ -54,6 +50,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.COMMERCIAL_REGISTRATION,  // ✅ Added
             titleRes = R.string.commercial_registration_title,
             descriptionRes = R.string.commercial_registration_desc,
             fields = fields
@@ -84,6 +81,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.ENGINE_INFO,  // ✅ Added
             titleRes = R.string.engine_title,
             descriptionRes = R.string.engine_description,
             fields = fields,
@@ -95,7 +93,15 @@ object SharedSteps {
         jobs: List<String>,
     ): StepData {
         val fields = mutableListOf<FormField>()
-
+        fields.add(
+            FormField.FileUpload(
+                id = "sailorDocuments",
+                labelRes = R.string.sailor_documents, // add this string resource if missing
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                maxSizeMB = 5,
+                mandatory =true
+            )
+        )
         fields.add(
             FormField.SailorList(
                 id = "sailors",
@@ -106,10 +112,14 @@ object SharedSteps {
             )
         )
 
+
+
         return StepData(
+            stepType = StepType.CREW_MANAGEMENT,  // ✅ Added
             titleRes = R.string.sailor_info,
             descriptionRes = R.string.sailor_info_description,
-            fields = fields
+            fields = fields,
+            requiredLookups = listOf("crewJobTitles")
         )
     }
 
@@ -363,12 +373,250 @@ object SharedSteps {
         fields.addAll(additionalFields)
 
         return StepData(
+            stepType = StepType.MARINE_UNIT_SELECTION,  // ✅ Added
             titleRes = R.string.unit_data,
             descriptionRes = R.string.unit_data_description,
             fields = fields,
-            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildMaterials")
+            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildingMaterials")
         )
     }
+
+    /**
+     * Mortgage Data Step (بيانات الرهن)
+     * Used for: Mortgage Registration transactions
+     *
+     * Collects mortgage information including:
+     * - Bank Name
+     * - Mortgage Contract Number
+     * - Mortgage Purpose
+     * - Mortgage Value
+     * - Start and End Dates
+     * - Mortgage Application Document
+     *
+     * @param banks List of bank names
+     * @param mortgagePurposes List of mortgage purposes
+     */
+    fun mortgageDataStep(
+        banks: List<String>,
+        mortgagePurposes: List<String>,
+        requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
+    ): StepData {
+        println("🔍 SharedSteps.mortgageDataStep called")
+        println("🔍 Received banks: size=${banks.size}, data=$banks")
+        println("🔍 Received mortgagePurposes: size=${mortgagePurposes.size}, data=$mortgagePurposes")
+        println("🔍 Received requiredDocuments: size=${requiredDocuments.size}")
+
+        val fields = mutableListOf<FormField>()
+
+        // Bank Name (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "bankName",
+                labelRes = R.string.bank_name,
+                options = banks,
+                mandatory = true,
+                placeholder =  R.string.bank_name.toString()
+            )
+        )
+
+        // Mortgage Contract Number (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "mortgageContractNumber",
+                labelRes = R.string.mortgage_contract_number,
+                placeholder = "Enter mortgage contract number",
+                isNumeric = true,
+                mandatory = true
+            )
+        )
+
+        // Mortgage Purpose (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "mortgagePurpose",
+                labelRes = R.string.mortgage_purpose,
+                options = mortgagePurposes,
+                mandatory = true,
+                placeholder = R.string.select_mortgage_purpose.toString()
+            )
+        )
+
+        // Mortgage Value (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "mortgageValue",
+                labelRes = R.string.mortgage_value,
+                placeholder = "Enter mortgage mortgageValue in OMR",
+                isNumeric = true,
+                isDecimal = true,
+                mandatory = true
+            )
+        )
+
+        // Mortgage Start Date (mandatory)
+        fields.add(
+            FormField.DatePicker(
+                id = "mortgageStartDate",
+                labelRes = R.string.mortgage_start_date,
+                allowPastDates = true,
+                mandatory = true
+            )
+        )
+
+        // *******************************************************************************************************************************************
+        // ✅ Add dynamic document file pickers based on API response
+        if (requiredDocuments.isNotEmpty()) {
+            println("📄 Adding ${requiredDocuments.size} document file pickers to mortgageDataStep")
+
+            // Filter only active documents and sort by order
+            val activeDocuments = requiredDocuments
+                .filter { it.document.isActive == 1 }
+                .sortedBy { it.document.docOrder }
+
+            println("📄 After filtering (isActive == 1): ${activeDocuments.size} active documents")
+
+            // Add a file upload field for each active document
+            activeDocuments.forEachIndexed { index, docItem ->
+                val document = docItem.document
+                val isMandatory = document.isMandatory == 1
+
+                println("   File Picker #${index + 1}: ${document.nameAr} - ${if (isMandatory) "إلزامي" else "اختياري"} (id=${document.id})")
+
+                fields.add(
+                    FormField.FileUpload(
+                        id = "document_${document.id}",
+                        label = document.nameAr,
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                        maxSizeMB = 5,
+                        mandatory = isMandatory
+                    )
+                )
+            }
+        }
+
+        return StepData(
+            stepType = StepType.CUSTOM,  // ✅ Added
+            titleRes = R.string.mortgage_data,
+            descriptionRes = R.string.mortgage_data_desc,
+            fields = fields
+        )
+    }
+
+
+    /**
+     * Upload Documents Step (رفع المستندات)
+     * Used for: Uploading required documents for marine unit mortgage/pledge transactions
+     *
+     * Collects mortgage-related documents including:
+     * - Mortgage certificate attachment (شهادة الرهن)
+     *
+     * The description explains that documents will be formatted officially
+     * and used during application review and necessary procedures.
+     *
+     * @param documentLabel Custom label for the document (default: mortgage certificate)
+     * @param documentId Field ID for the document upload
+     * @param allowedTypes List of allowed file types
+     * @param maxSizeMB Maximum file size in MB
+     * @param mandatory Whether the document is required
+     */
+    fun uploadDocumentsStep(
+        documentLabel: Int = R.string.mortgage_certificate_attachment,
+        documentId: String = "mortgageCertificate",
+        allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+        maxSizeMB: Int = 5,
+        mandatory: Boolean = true
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Document Upload Field
+        fields.add(
+            FormField.FileUpload(
+                id = documentId,
+                labelRes = documentLabel,
+                allowedTypes = allowedTypes,
+                maxSizeMB = maxSizeMB,
+                mandatory = mandatory
+            )
+        )
+
+        return StepData(
+            titleRes = R.string.upload_documents_title, // "رفع المستندات"
+            descriptionRes = R.string.upload_documents_description, // "تحميل المستندات المطلوبة بصيغ (رسمية ومعتمدة) ، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة."
+            fields = fields
+        )
+    }
+
+    /**
+     * ✅ NEW: Dynamic Documents Upload Step (رفع المستندات الديناميكية)
+     * Used for: Uploading multiple required documents based on API response
+     *
+     * Creates multiple file upload fields based on the documents array from API.
+     * Each document from the API will have its own file picker.
+     *
+     * @param documents List of required documents from API (RequiredDocumentItem)
+     * @param allowedTypes List of allowed file types (default: pdf, jpg, jpeg, png, doc, docx)
+     * @param maxSizeMB Maximum file size in MB (default: 5)
+     * @return StepData with dynamic file upload fields
+     *
+     * Example API response:
+     * ```json
+     * {
+     *   "data": [
+     *     {"id": 83, "document": {"id": 43, "nameAr": "رخصة", "isMandatory": 1, "isActive": 1}},
+     *     {"id": 84, "document": {"id": 44, "nameAr": "شهادة", "isMandatory": 0, "isActive": 1}}
+     *   ]
+     * }
+     * ```
+     *
+     * This will create 2 file pickers:
+     * - document_43: رخصة (mandatory)
+     * - document_44: شهادة (optional)
+     */
+
+
+    // *****************************************************************************************************************
+    fun dynamicDocumentsStep(
+        documents: List<com.informatique.mtcit.data.model.RequiredDocumentItem>,
+        allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+        maxSizeMB: Int = 5
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        println("📄 SharedSteps.dynamicDocumentsStep called")
+        println("📄 Received ${documents.size} documents from API")
+
+        // Filter only active documents and sort by order
+        val activeDocuments = documents
+            .filter { it.document.isActive == 1 }
+            .sortedBy { it.document.docOrder }
+
+        println("📄 Creating ${activeDocuments.size} file pickers (after filtering active only)")
+
+        // Create a file upload field for each document
+        activeDocuments.forEach { docItem ->
+            val document = docItem.document
+            val isMandatory = document.isMandatory == 1
+
+            println("   📎 ${document.nameAr} - ${if (isMandatory) "إلزامي" else "اختياري"} (id=${document.id})")
+
+            fields.add(
+                FormField.FileUpload(
+                    id = "document_${document.id}",
+                    label = document.nameAr, // Use Arabic name as label
+                    allowedTypes = allowedTypes,
+                    maxSizeMB = maxSizeMB,
+                    mandatory = isMandatory
+                )
+            )
+        }
+
+        return StepData(
+            titleRes = R.string.upload_documents,
+            descriptionRes = R.string.upload_documents_description,
+            fields = fields
+        )
+    }
+
 
     /**
      * Marine Unit Dimensions Step
@@ -456,6 +704,7 @@ object SharedSteps {
         }
 
         return StepData(
+            stepType = StepType.SHIP_DIMENSIONS,  // ✅ Added
             titleRes = R.string.marine_unit_dimensions_title,
             descriptionRes = R.string.marine_unit_dimensions_description,
             fields = fields
@@ -781,15 +1030,79 @@ object SharedSteps {
      */
     fun reviewStep(): StepData {
         return StepData(
+            stepType = StepType.REVIEW,  // ✅ Added
             titleRes = R.string.review,
             descriptionRes = R.string.step_placeholder_content,
             fields = emptyList()
         )
     }
 
+    /**
+     * Payment Details Step (الدفع - التفاصيل)
+     * First payment step - displays payment breakdown using PaymentDetailsScreen UI
+     * Shows total cost, tax, line items, and "Pay" button
+     *
+     * Note: Payment data is fetched dynamically when step is opened
+     */
+    fun paymentDetailsStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Add info card to display payment instructions
+        fields.add(
+            FormField.InfoCard(
+                id = "paymentDetailsInfo",
+                labelRes = R.string.review, // Will use review for now, can add specific string later
+                items = listOf(
+                    R.string.review, // Reusing existing strings temporarily
+                    R.string.review,
+                    R.string.review
+                ),
+                showCheckmarks = false,
+                mandatory = false
+            )
+        )
+
+        return StepData(
+            stepType = StepType.PAYMENT,
+            titleRes = R.string.review, // Will be replaced with payment-specific title
+            descriptionRes = R.string.step_placeholder_content,
+            fields = fields
+        )
+    }
+
+    /**
+     * Payment Success Step (الدفع - نجح)
+     * Second payment step - displays success confirmation using PaymentSuccessScreen UI
+     * Shows payment receipt details and success animation
+     * This is the final step after payment is submitted
+     */
+    fun paymentSuccessStep(): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Add info card for success message
+        fields.add(
+            FormField.InfoCard(
+                id = "paymentSuccessInfo",
+                labelRes = R.string.review, // Will use review for now
+                items = listOf(
+                    R.string.review // Reusing existing strings temporarily
+                ),
+                showCheckmarks = true,
+                mandatory = false
+            )
+        )
+
+        return StepData(
+            stepType = StepType.PAYMENT_SUCCESS,
+            titleRes = R.string.review, // Will be replaced with success-specific title
+            descriptionRes = R.string.step_placeholder_content,
+            fields = fields
+        )
+    }
+
     fun marineUnitSelectionStep(
         units: List<MarineUnit>,
-        allowMultipleSelection: Boolean = true,
+        allowMultipleSelection: Boolean = false,
         showOwnedUnitsWarning: Boolean = true,
         showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
     ): StepData {
@@ -899,6 +1212,47 @@ object SharedSteps {
             titleRes = R.string.transfer_inspection_title,
             descriptionRes = R.string.transfer_inspection_description,
             fields = fields
+        )
+    }
+    // أضف الـ function دي في SharedSteps object
+
+    /**
+     * Sailing Regions Selection Step (مناطق الإبحار)
+     * Used for: Issuing sailing permits for marine units
+     *
+     * Allows user to select multiple sailing regions where the marine unit is authorized to operate.
+     * Displays selected regions as removable chips.
+     *
+     * @param sailingRegions List of available sailing regions from API
+     * @param maxSelection Maximum number of regions that can be selected (null = unlimited)
+     * @param showSelectionCount Show "X selected" text in the field
+     */
+    fun sailingRegionsStep(
+        sailingRegions: List<String>,
+        maxSelection: Int? = null,
+        showSelectionCount: Boolean = true
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Multi-Select Sailing Regions Field
+        fields.add(
+            FormField.MultiSelectDropDown(
+                id = "sailingRegions",
+                labelRes = R.string.sailing_regions_selection, // "مناطق الإبحار"
+                options = sailingRegions,
+                mandatory = true,
+                placeholder = R.string.select_sailing_regions_placeholder.toString(), // "اختر مناطق الإبحار"
+                maxSelection = maxSelection,
+                showSelectionCount = showSelectionCount
+            )
+        )
+
+        return StepData(
+            stepType = StepType.NAVIGATION_AREAS,  // ✅ Added
+            titleRes = R.string.sailing_regions_title, // "بيانات البخارة"
+            descriptionRes = R.string.sailing_regions_description, // "يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة."
+            fields = fields,
+            requiredLookups = listOf("sailingRegions")
         )
     }
 

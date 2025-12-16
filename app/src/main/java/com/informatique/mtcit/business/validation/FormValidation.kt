@@ -147,6 +147,19 @@ class FormValidator @Inject constructor(
                 }
                 field.copy(error = error)
             }
+
+            is FormField.MultiSelectDropDown -> {
+                val error = when {
+                    field.value == "[]" || field.value.isBlank() -> {
+                        if (field.mandatory) "${field.label} is required - please select at least one option" else null
+                    }
+                    field.maxSelection != null && field.selectedOptions.size > field.maxSelection -> {
+                        "Maximum ${field.maxSelection} selections allowed"
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
         }
     }
     /**
@@ -180,6 +193,7 @@ class FormValidator @Inject constructor(
                 is FormField.TextField -> field.copy(value = value)
                 is FormField.DropDown -> field.copy(value = value)
                 is FormField.DatePicker -> field.copy(value = value)
+                is FormField.MultiSelectDropDown -> field.copy(value = value)
                 else -> field
             }
             validate(updatedField)

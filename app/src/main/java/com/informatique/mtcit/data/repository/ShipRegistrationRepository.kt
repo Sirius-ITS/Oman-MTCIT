@@ -92,6 +92,21 @@ interface ShipRegistrationRepository {
         inspectionDocumentsFile: ByteArray?,
         inspectionDocumentsName: String?
     ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
+
+    /**
+     * Send registration request and check if inspection is needed
+     * POST api/v1/registration-requests/{request-id}/send-request
+     */
+    suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse>
+
+    /**
+     * Reserve ship/marine name
+     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     */
+    suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit>
+
+    // Create navigation license request for a selected ship (returns API response wrapper)
+    suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse>
 }
 
 @Singleton
@@ -173,7 +188,7 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         files: List<EngineFileUpload>
     ): Result<EngineSubmissionResponse> {
         println("📞 ShipRegistrationRepository: Calling submitEngines API...")
-        return registrationApiService.submitEngines(context, requestId, engines, files)
+        return registrationApiService.submitEngines(requestId, engines, files)
     }
 
     override suspend fun updateOwners(requestId: String, ownersJson: String): Result<Unit> {
@@ -188,7 +203,7 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         files: List<OwnerFileUpload>
     ): Result<OwnerSubmissionResponse> {
         println("📞 ShipRegistrationRepository: Calling submitOwners API...")
-        return registrationApiService.submitOwners(context, requestId, owners, files)
+        return registrationApiService.submitOwners(requestId, owners, files)
     }
 
     override suspend fun validateBuildStatus(
@@ -206,5 +221,20 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
             inspectionDocumentsFile,
             inspectionDocumentsName
         )
+    }
+
+    override suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {
+        println("📞 ShipRegistrationRepository: Calling sendRequest API...")
+        return registrationApiService.sendRequest(requestId)
+    }
+
+    override suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit> {
+        println("📞 ShipRegistrationRepository: Calling shipNameReservation API...")
+        return registrationApiService.shipNameReservation(requestId, marineName)
+    }
+
+    override suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse> {
+        println("📞 ShipRegistrationRepository: Creating navigation license for shipInfoId=$shipInfoId")
+        return registrationApiService.createNavigationLicense(shipInfoId)
     }
 }

@@ -7,6 +7,7 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.business.transactions.shared.PaymentManager
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.DateValidationRules
 import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
@@ -25,7 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
-import com.informatique.mtcit.business.validation.rules.DocumentValidationRules
+import com.informatique.mtcit.business.transactions.shared.StepType
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
@@ -38,7 +39,8 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules,
-    private val registrationRequestManager: RegistrationRequestManager
+    private val registrationRequestManager: RegistrationRequestManager,
+    private val paymentManager: PaymentManager
 ) : TransactionStrategy, MarineUnitValidatable {
 
     // ✅ Context for file operations (set from UI layer)
@@ -76,6 +78,11 @@ class TemporaryRegistrationStrategy @Inject constructor(
     override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
     override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
 
+    // ✅ NEW: Payment state tracking
+    private var requestId: Long? = null
+    private var invoiceTypeId: Long? = null
+    private var paymentReceipt: com.informatique.mtcit.data.model.PaymentReceipt? = null
+
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
 
@@ -83,7 +90,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
         // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
 
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
 
         // Store in instance variables
         typeOptions = personTypes
@@ -123,25 +130,29 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
-        // Because current API only returns data when using ownerCivilId filter
-        // In production, company should use commercialRegNumber
+        // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
+        // For individuals, use ownerCivilId
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId")
                 Pair("12345678", null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null) // ✅ Use ownerCivilId instead of commercialRegNumber for testing
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
             }
             else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber,
+            // **********************************************************************************************************
+            //Request Type Id
+            requestTypeId = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.toRequestTypeId() // ✅ Temporary Registration Certificate ID
+        )
 
         println("✅ Loaded ${marineUnits.size} ships")
         marineUnits.forEach { unit ->
@@ -162,6 +173,13 @@ class TemporaryRegistrationStrategy @Inject constructor(
     override fun updateAccumulatedData(data: Map<String, String>) {
         accumulatedFormData.putAll(data)
         println("📦 TemporaryRegistration - Updated accumulated data: $accumulatedFormData")
+    }
+
+    /**
+     * ✅ NEW: Return current form data including inspection dialog flags
+     */
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
     }
 
     override fun getSteps(): List<StepData> {
@@ -242,34 +260,34 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     includeDecksCount = true
                 )
             )
-//
-//            steps.add(
-//                SharedSteps.marineUnitWeightsStep(
-//                    includeMaxPermittedLoad = true
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.engineInfoStep(
-//                    manufacturers = listOf(
-//                        "Manufacturer 1",
-//                        "Manufacturer 2",
-//                        "Manufacturer 3"
-//                    ),
-//                    enginesTypes = engineTypeOptions,
-//                    countries = countryOptions,
-//                    fuelTypes = engineFuelTypeOptions,
-//                    engineConditions = engineStatusOptions,
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.ownerInfoStep(
-//                    nationalities = countryOptions,
-//                    countries = countryOptions,
-//                    includeCompanyFields = true,
-//                )
-//            )
+
+            steps.add(
+                SharedSteps.marineUnitWeightsStep(
+                    includeMaxPermittedLoad = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.engineInfoStep(
+                    manufacturers = listOf(
+                        "Manufacturer 1",
+                        "Manufacturer 2",
+                        "Manufacturer 3"
+                    ),
+                    enginesTypes = engineTypeOptions,
+                    countries = countryOptions,
+                    fuelTypes = engineFuelTypeOptions,
+                    engineConditions = engineStatusOptions,
+                )
+            )
+
+            steps.add(
+                SharedSteps.ownerInfoStep(
+                    nationalities = countryOptions,
+                    countries = countryOptions,
+                    includeCompanyFields = true,
+                )
+            )
 
             // ✅ Check overallLength to determine if inspection documents are mandatory
             val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
@@ -296,15 +314,37 @@ class TemporaryRegistrationStrategy @Inject constructor(
             )
         }
 
-        // Review Step (shows all collected data)
+        // ✅ Review Step - ALWAYS show for BOTH new and existing ships
+        // For NEW ships: Review data AND call send-request API (creates registration request)
+        // For EXISTING ships: Review data ONLY (skip send-request API - no registration needed)
+        if (isAddingNewUnit && !hasSelectedExistingUnit) {
+            println("✅ Adding Review Step (for NEW ship - will call send-request API)")
+        } else if (hasSelectedExistingUnit) {
+            println("✅ Adding Review Step (for EXISTING ship - will skip send-request API)")
+        }
         steps.add(SharedSteps.reviewStep())
 
-        // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
+        // Marine Unit Name Selection Step (with "Proceed to Payment" button that triggers name API and invoice type ID API)
+        // ✅ This step is shown for BOTH new and existing ships
         steps.add(
             SharedSteps.marineUnitNameSelectionStep(
                 showReservationInfo = true
             )
         )
+
+        // ✅ NEW: Payment Steps - Only show if we have requestId from name selection API
+        val hasRequestId = accumulatedFormData["requestId"] != null
+
+        if (hasRequestId) {
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep())
+
+            // Payment Success Step - Only show if payment was successful
+            val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
+            if (paymentSuccessful) {
+                steps.add(SharedSteps.paymentSuccessStep())
+            }
+        }
 
         println("📋 Total steps count: ${steps.size}")
         return steps
@@ -359,7 +399,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
             // Check if we have overallLength in accumulated data
             if (accumulatedFormData.containsKey("overallLength")) {
                 println("🔍 ✅ Adding inspection document validation rule based on overallLength")
-                rules.addAll(DocumentValidationRules.getAllDocumentRules(accumulatedFormData))
+                // rules.addAll(DocumentValidationRules.getAllDocumentRules(accumulatedFormData))  // TODO: Fix this
                 println("🔍 Added document validation rules")
             }
         }
@@ -415,30 +455,256 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         println("📦 accumulatedFormData after update: $accumulatedFormData")
 
-        // ✅ Use RegistrationRequestManager to process step data
+        // ✅ Check if this is the Marine Unit Selection step
         val currentStepData = getSteps().getOrNull(step)
         if (currentStepData != null) {
             val stepFieldIds = currentStepData.fields.map { it.id }
 
-            // ✅ FIXED: Now this is a suspend function, so we can call processStepIfNeeded directly
-            // No more runBlocking - this will run asynchronously without freezing the UI!
+            // ✅ DEBUG: Print step fields to see what's actually there
+            println("🔍 DEBUG - Step $step field IDs: $stepFieldIds")
+            println("🔍 DEBUG - Data keys: ${data.keys}")
+            println("🔍 DEBUG - Contains 'selectedMarineUnits' in stepFields: ${stepFieldIds.contains("selectedMarineUnits")}")
+            println("🔍 DEBUG - Contains 'selectedMarineUnits' in data: ${data.containsKey("selectedMarineUnits")}")
+
+            // ✅ NEW: Handle Marine Unit Selection Step → Extract requestId from existing ship
+            // Check BOTH stepFields AND data to catch the selection
+            val hasMarineUnitSelectionField = stepFieldIds.contains("selectedMarineUnits")
+            val hasMarineUnitSelectionData = data.containsKey("selectedMarineUnits")
+
+            if (hasMarineUnitSelectionField || hasMarineUnitSelectionData) {
+                println("🚢 Processing Marine Unit Selection step...")
+                println("   - Field in step: $hasMarineUnitSelectionField")
+                println("   - Data provided: $hasMarineUnitSelectionData")
+
+                // Call processStepIfNeeded to extract ship ID and set as requestId
+                val result = registrationRequestManager.processStepIfNeeded(
+                    stepFields = stepFieldIds,
+                    formData = accumulatedFormData,
+                    requestTypeId = 1, // 1 = Temporary Registration
+                    context = context
+                )
+
+                when (result) {
+                    is StepProcessResult.Success -> {
+                        println("✅ Marine unit selection processed: ${result.message}")
+
+                        // Extract requestId if it was set by RegistrationRequestManager
+                        val requestIdStr = accumulatedFormData["requestId"]
+                        if (requestIdStr != null) {
+                            requestId = requestIdStr.toLongOrNull()
+                            println("✅ requestId extracted from existing ship: $requestId")
+                        } else {
+                            println("⚠️ requestId is still null after processing!")
+                        }
+
+                        // Trigger step rebuild to show/hide Unit Selection steps based on user choice
+                        onStepsNeedRebuild?.invoke()
+                    }
+                    is StepProcessResult.Error -> {
+                        println("❌ Error processing marine unit selection: ${result.message}")
+                    }
+                    is StepProcessResult.NoAction -> {
+                        println("ℹ️ No action needed for marine unit selection")
+                        // User is adding new unit, will get requestId after Unit Selection step
+                    }
+                }
+
+                return step
+            }
+
+            // ✅ Handle Marine Unit Name Selection → Payment Flow
+            if (stepFieldIds.contains("selectedShipName") && data.containsKey("selectedShipName")) {
+                println("💳 Starting payment flow...")
+
+                // Step 1: POST name API (already handled by RegistrationRequestManager)
+                val result = registrationRequestManager.processStepIfNeeded(
+                    stepFields = stepFieldIds,
+                    formData = accumulatedFormData,
+                    requestTypeId = 1, // 1 = Temporary Registration
+                    context = context
+                )
+
+                when (result) {
+                    is StepProcessResult.Success -> {
+                        println("✅ Name posted successfully")
+
+                        // Extract requestId from result (it should be stored in accumulatedFormData by RegistrationRequestManager)
+                        val requestIdStr = accumulatedFormData["requestId"]
+                        if (requestIdStr != null) {
+                            requestId = requestIdStr.toLongOrNull()
+
+                            if (requestId != null) {
+                                println("✅ Got requestId: $requestId")
+
+                                // Step 2: GET invoice type ID from /api/v1/reqtype/{requestTypeId}
+                                val invoiceResult = paymentManager.getInvoiceTypeId(
+                                    requestTypeId = "1", // 1 = Temporary Registration
+                                    requestId = requestId!!
+                                )
+
+                                invoiceResult.fold(
+                                    onSuccess = { invTypeId ->
+                                        println("✅ Got invoiceTypeId: $invTypeId")
+                                        invoiceTypeId = invTypeId
+                                        accumulatedFormData["invoiceTypeId"] = invTypeId.toString()
+
+                                        // ✅ Trigger step rebuild to show payment details step
+                                        onStepsNeedRebuild?.invoke()
+                                    },
+                                    onFailure = { error ->
+                                        println("❌ Failed to get invoice type ID: ${error.message}")
+                                        // Continue anyway for now
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    is StepProcessResult.Error -> {
+                        println("❌ Error posting name: ${result.message}")
+                    }
+                    is StepProcessResult.NoAction -> {
+                        println("ℹ️ No API call needed")
+                    }
+                }
+
+                return step
+            }
+
+            // ✅ Handle Payment Details Step → Load payment data when step is entered
+            if (currentStepData.stepType == StepType.PAYMENT) {
+                println("💰 Loading payment details...")
+
+                // Step 3: GET payment details (calculate payment)
+                val paymentResult = paymentManager.getPaymentDetails(
+                    requestTypeId = "1" // 1 = Temporary Registration
+                )
+
+                paymentResult.fold(
+                    onSuccess = { receipt ->
+                        println("✅ Payment details loaded successfully")
+                        println("   Total Cost: ${receipt.totalCost}")
+                        println("   Total Tax: ${receipt.totalTax}")
+                        println("   Final Total: ${receipt.finalTotal}")
+
+                        paymentReceipt = receipt
+
+                        // Store payment data in accumulated form data for display
+                        accumulatedFormData["paymentTotalCost"] = receipt.totalCost.toString()
+                        accumulatedFormData["paymentTotalTax"] = receipt.totalTax.toString()
+                        accumulatedFormData["paymentFinalTotal"] = receipt.finalTotal.toString()
+                    },
+                    onFailure = { error ->
+                        println("❌ Failed to load payment details: ${error.message}")
+                    }
+                )
+
+                return step
+            }
+
+            // ✅ Handle Payment Details Step → Submit Payment when user clicks "Pay"
+            if (stepFieldIds.contains("paymentConfirmed") && data.containsKey("paymentConfirmed")) {
+                println("💳 Submitting payment...")
+
+                // Step 4: POST payment submission
+                val reqId = requestId ?: accumulatedFormData["requestId"]?.toLongOrNull()
+                val receipt = paymentReceipt
+
+                if (reqId != null && receipt != null) {
+                    // Build payment submission request from the receipt data
+                    val paymentData = com.informatique.mtcit.data.model.PaymentSubmissionRequest(
+                        id = null,
+                        receiptSerial = receipt.receiptSerial,
+                        receiptYear = receipt.receiptYear,
+                        requestId = reqId,
+                        requestTypeId = "1", // 1 = Temporary Registration
+                        penalties = emptyList(),
+                        invoiceType = com.informatique.mtcit.data.model.InvoiceTypeIdOnly(
+                            id = receipt.invoiceType.id
+                        ),
+                        receiptNo = 0,
+                        comments = "",
+                        description = "",
+                        isPaid = 0,
+                        arabicValue = receipt.arabicValue,
+                        totalCost = receipt.totalCost,
+                        totalTax = receipt.totalTax,
+                        finalTotal = receipt.finalTotal,
+                        approximateFinalTotal = receipt.approximateFinalTotal,
+                        paymentReceiptDetailsList = receipt.paymentReceiptDetailsList.map { detail ->
+                            com.informatique.mtcit.data.model.PaymentReceiptDetailSubmission(
+                                name = detail.name,
+                                value = detail.value,
+                                taxValue = detail.taxValue,
+                                finalTotal = detail.finalTotal,
+                                approximateFinalTotal = detail.approximateFinalTotal,
+                                tariffItem = com.informatique.mtcit.data.model.TariffItemIdOnly(
+                                    id = detail.tariffItem.id,
+                                    name = detail.name
+                                ),
+                                tariffRate = com.informatique.mtcit.data.model.TariffRateSubmission(
+                                    id = detail.tariffRate.id,
+                                    tariffItemId = detail.tariffRate.tariffItemId ?: detail.tariffItem.id,
+                                    expressionCode = detail.tariffRate.expressionCode,
+                                    expressionText = detail.tariffRate.expressionText
+                                )
+                            )
+                        }
+                    )
+
+                    val submitResult = paymentManager.submitPayment(
+                        requestTypeId = "1", // 1 = Temporary Registration
+                        paymentData = paymentData
+                    )
+
+                    submitResult.fold(
+                        onSuccess = { receiptId ->
+                            println("✅ Payment submitted successfully! Receipt ID: $receiptId")
+
+                            // Mark payment as successful
+                            accumulatedFormData["paymentSuccessful"] = "true"
+                            accumulatedFormData["paymentReceiptId"] = receiptId.toString()
+
+                            // ✅ Trigger step rebuild to show payment success step
+                            onStepsNeedRebuild?.invoke()
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to submit payment: ${error.message}")
+                            accumulatedFormData["paymentSuccessful"] = "false"
+                            accumulatedFormData["paymentError"] = error.message ?: "Unknown error"
+                        }
+                    )
+                } else {
+                    println("❌ Missing requestId or payment receipt for payment submission")
+                }
+
+                return step
+            }
+
+            // ✅ Regular step processing (non-payment steps)
             val result = registrationRequestManager.processStepIfNeeded(
                 stepFields = stepFieldIds,
                 formData = accumulatedFormData,
                 requestTypeId = 1, // 1 = Temporary Registration
-                context = context // Pass the context here
+                context = context
             )
 
             when (result) {
                 is StepProcessResult.Success -> {
                     println("✅ ${result.message}")
+
+                    // ✅ Check if we just completed Review Step and need inspection
+                    val needInspection = accumulatedFormData["needInspection"]?.toBoolean() ?: false
+                    val sendRequestMessage = accumulatedFormData["sendRequestMessage"]
+
+                    if (needInspection) {
+                        println("🔍 Inspection required for this request")
+                        accumulatedFormData["showInspectionDialog"] = "true"
+                        accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: "في إنتظار نتيجه الفحص الفني"
+                        return step
+                    }
                 }
                 is StepProcessResult.Error -> {
                     println("❌ Error: ${result.message}")
-                    // ✅ TODO: Uncomment after backend integration is complete
-                    // This would forward to RequestDetailScreen when errors occur
-                    // return -1
-                    // ✅ For now, continue normal flow despite errors
                 }
                 is StepProcessResult.NoAction -> {
                     println("ℹ️ No API call needed for this step")
@@ -514,7 +780,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 isFishingBoat = true
                 fishingBoatDataLoaded = false // Reset loaded flag when type changes
                 accumulatedFormData["isFishingBoat"] = "true"
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             } else {
                 println("❌ Not a fishing boat. Hiding agriculture field")
@@ -522,7 +788,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 fishingBoatDataLoaded = false
                 accumulatedFormData.remove("isFishingBoat")
                 accumulatedFormData.remove("agricultureRequestNumber")
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             }
 

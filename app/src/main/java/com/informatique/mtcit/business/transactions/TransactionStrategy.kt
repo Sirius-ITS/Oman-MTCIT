@@ -49,7 +49,7 @@ interface TransactionStrategy {
     /**
      * Handle dynamic field changes (e.g., owner type change)
      * @param fieldId Field that changed
-     * @param value New value
+     * @param value New mortgageValue
      * @param formData Current form data
      * @return Updated form data
      */
@@ -60,7 +60,7 @@ interface TransactionStrategy {
     /**
      * Handle field focus lost events (e.g., company lookup)
      * @param fieldId Field that lost focus
-     * @param value Current value
+     * @param value Current mortgageValue
      */
     suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
         return FieldFocusResult.NoAction
@@ -100,6 +100,15 @@ interface TransactionStrategy {
     }
 
     /**
+     * ✅ NEW: Get current form data including any flags set by strategy (e.g., showInspectionDialog)
+     * @return Current accumulated form data
+     */
+    fun getFormData(): Map<String, String> {
+        // Default implementation - return empty map
+        return emptyMap()
+    }
+
+    /**
      * ✅ NEW: Callback to notify ViewModel when steps need to be rebuilt
      * This is used after lazy-loading lookups to refresh the UI with updated dropdown options
      * Strategies can set this callback and invoke it when their step data changes
@@ -127,6 +136,42 @@ interface TransactionStrategy {
     var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)?
         get() = null
         set(_) {}
+
+    /**
+     * ✅ NEW: Get the status update endpoint for this transaction
+     * Each transaction can provide its own endpoint format
+     *
+     * @param requestId The request ID for this transaction
+     * @return The API endpoint for updating status, or null if not supported
+     *
+     * Example implementations:
+     * - Mortgage: "api/v1/mortgage-request/$requestId/update-status"
+     * - Registration: "api/v1/ship-registration/$requestId/update-status"
+     * - Inspection: "api/v1/inspection-request/$requestId/update-status"
+     */
+    fun getStatusUpdateEndpoint(requestId: Int): String? {
+        // Default: no status update supported
+        return null
+    }
+
+    /**
+     * ✅ NEW: Get the created request ID for this transaction
+     * Used in review step to get the ID for status update
+     *
+     * @return The request ID, or null if not created yet or not applicable
+     */
+    fun getCreatedRequestId(): Int? {
+        // Default: no request ID tracking
+        return null
+    }
+
+    /**
+     * ✅ NEW: Get the transaction type name for logging/display
+     * @return The transaction type name (e.g., "Mortgage", "Registration")
+     */
+    fun getTransactionTypeName(): String {
+        return "Transaction"
+    }
 }
 
 /**

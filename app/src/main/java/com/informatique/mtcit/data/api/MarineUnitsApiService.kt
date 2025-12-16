@@ -31,27 +31,37 @@ class MarineUnitsApiService @Inject constructor(
      *
      * API Documentation:
      * - Filter must be Base64 encoded
-     * - For individuals (after PKI auth): send ownerCivilId
-     * - For companies (after PKI auth): send commercialRegNumber
+     * - For individuals (after PKI auth): send ownerId
+     * - For companies (after PKI auth): send ownerId + commercialNumber (CR Number)
+     * - requestTypeId: Transaction ID from navigation (e.g., 7 for temp cert, 8 for permanent, etc.)
+     *
+     * API Required JSON Shape:
+     * {
+     *   "requestTypeId": 0,           // Must be a number
+     *   "commercialNumber": "string", // CR Number for companies (not company name)
+     *   "ownerId": "string"           // Owner civil ID
+     * }
      *
      * Behavior changes:
      * - The API call will NOT be performed unless `stepActive` is true. This prevents
      *   automatic network calls when the transaction flow hasn't reached the ships step.
-     * - Pass `ownerCivilId` for individuals or `commercialRegNumber` for companies.
+     * - Pass `ownerCivilId` for individuals or `commercialRegNumber` (CR Number) for companies.
+     * - Pass `requestTypeId` to filter ships based on transaction type.
      * - For local testing you can set `useTestCivilId = true` to use a fixed civil ID.
      *   When `useTestCivilId` is true, the call will be executed even if `stepActive` is false
      *   so you can test without changing callers everywhere.
      */
     suspend fun getMyShips(
         ownerCivilId: String? = null,
-        commercialRegNumber: String? = null,
+        commercialRegNumber: String? = null, // ✅ This should be the CR Number, NOT the company name
+        requestTypeId: String? = null,
         stepActive: Boolean = false,
         useTestCivilId: Boolean = false
     ): Result<List<MarineUnit>> {
         return try {
             // If the step is not active, don't call the API unless test-mode override is enabled.
             if (!stepActive && !useTestCivilId) {
-                println("⏸️ getMyShips: call suppressed because stepActive=false. Provide stepActive=true when you want to fetch ships.")
+                println("⏸ getMyShips: call suppressed because stepActive=false. Provide stepActive=true when you want to fetch ships.")
                 return Result.failure(IllegalStateException("getMyShips suppressed: step not active"))
             }
 
@@ -59,37 +69,44 @@ class MarineUnitsApiService @Inject constructor(
                 println("🧪 getMyShips: stepActive is false but useTestCivilId=true => forcing call with test civil id")
             }
 
-            // ✅ Determine which identifier to send. Priority:
-            // 1) commercialRegNumber (if provided) - for companies
-            // 2) ownerCivilId (if provided) - for individuals
-            // 3) test civil id if useTestCivilId == true
-
             println("🔍 Input parameters:")
             println("   - ownerCivilId: $ownerCivilId")
-            println("   - commercialRegNumber: $commercialRegNumber")
+            println("   - commercialRegNumber (CR Number): $commercialRegNumber")
+            println("   - requestTypeId: $requestTypeId")
             println("   - stepActive: $stepActive")
             println("   - useTestCivilId: $useTestCivilId")
 
-            // ✅ Build filter JSON depending on which identifier is present
-            // Priority: commercialRegNumber first (for companies), then ownerCivilId (for individuals)
-            val filterJson = when {
-                !commercialRegNumber.isNullOrBlank() -> {
-                    println("✅ Using commercialRegNumber for company")
-                    """{"commercialRegNumber":"$commercialRegNumber"}"""
+            // Build filter JSON in the shape required by the API:
+            // For companies: { "requestTypeId": 0, "commercialNumber": "string", "ownerId": "string" }
+            // For individuals: { "requestTypeId": 0, "ownerId": "string" } ← commercialNumber NOT included
+            // - requestTypeId must be a number (default 0)
+            // - commercialNumber should contain the CR Number (only for companies)
+            // - ownerId is the owner civil id (required)
+            val requestTypeInt = requestTypeId?.toIntOrNull() ?: 0
+            val commercialNumberForFilter = commercialRegNumber?.takeIf { it.isNotBlank() }
+            val ownerIdForFilter = when {
+                !ownerCivilId.isNullOrBlank() -> ownerCivilId
+                useTestCivilId -> "12345678"
+                else -> ""
+            }
+
+            if (ownerIdForFilter.isBlank()) {
+                println("❌ No ownerId provided (required)")
+                return Result.failure(IllegalArgumentException("ownerId is required"))
+            }
+
+            // Use kotlinx.serialization to build a safe JSON object (handles non-ascii content)
+            // ✅ Only include commercialNumber if it has a value (for companies)
+            val filterJsonElement = kotlinx.serialization.json.buildJsonObject {
+                put("requestTypeId", kotlinx.serialization.json.JsonPrimitive(requestTypeInt))
+                // ✅ Only add commercialNumber field if it exists (companies only)
+                if (commercialNumberForFilter != null) {
+                    put("commercialNumber", kotlinx.serialization.json.JsonPrimitive(commercialNumberForFilter))
                 }
-                !ownerCivilId.isNullOrBlank() -> {
-                    println("✅ Using ownerCivilId for individual")
-                    """{"ownerCivilId":"$ownerCivilId"}"""
-                }
-                useTestCivilId -> {
-                    println("✅ Using test civil ID")
-                    """{"ownerCivilId":"12345678"}"""
-                }
-                else -> {
-                    println("❌ No identifier provided")
-                    return Result.failure(IllegalArgumentException("ownerCivilId or commercialRegNumber required"))
-                }
-            }.trimIndent()
+                put("ownerId", kotlinx.serialization.json.JsonPrimitive(ownerIdForFilter))
+            }
+
+            val filterJson = filterJsonElement.toString()
 
             // Base64 encode the filter
             val base64Filter = Base64.encodeToString(
@@ -102,7 +119,7 @@ class MarineUnitsApiService @Inject constructor(
             println("🔍 Fetching ships with filter: $filterJson")
             println("📋 Base64 encoded filter: $base64Filter")
 
-            val endpoint = "api/v1/user-profile/getMyShips$filterParam"
+            val endpoint = "api/v1/mortgage-request/get-my-ships$filterParam"
             println("📡 Full API Call: $endpoint")
 
             when (val response = repo.onGet(endpoint)) {
@@ -118,23 +135,66 @@ class MarineUnitsApiService @Inject constructor(
 
                         if (statusCode == 200 && success) {
                             val data = responseJson.jsonObject.getValue("data").jsonObject
-                            val content = data.getValue("content").jsonArray
-                            println("📦 Content array size: ${content.size}")
 
-                            // Parse each ship item
-                            val ships = content.mapNotNull { shipItem ->
+                            // ✅ NEW API Structure: activeCoreShips[] and nonActiveCoreShip[]
+                            val activeCoreShips = data["activeCoreShips"]?.jsonArray ?: emptyList()
+                            val nonActiveCoreShips = data["nonActiveCoreShip"]?.jsonArray ?: emptyList()
+
+                            println("📦 Active ships: ${activeCoreShips.size}")
+                            println("📦 Non-active ships: ${nonActiveCoreShips.size}")
+
+                            // ✅ FIXED: Parse active ships using the OUTER id from activeCoreShips
+                            val activeShips = activeCoreShips.mapNotNull { shipItem ->
                                 try {
-                                    val coreShipDto = shipItem.jsonObject.getValue("coreShipsResDto").jsonObject
-                                    parseMarineUnit(coreShipDto)
+                                    // Each item has: id, ship{}, isCurrent, shipInfoEngines[], shipInfoOwners[]
+                                    val outerShipItemObject = shipItem.jsonObject
+                                    val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
+                                    val shipObject = outerShipItemObject.getValue("ship").jsonObject
+
+                                    // ✅ Parse the ship and override the ID with the outer ID
+                                    val marineUnit = parseMarineUnit(shipObject)
+
+                                    // ✅ Override the ship.id with the outer activeCoreShips[].id
+                                    if (outerShipId != null) {
+                                        marineUnit.copy(id = outerShipId)
+                                    } else {
+                                        marineUnit
+                                    }
                                 } catch (e: Exception) {
-                                    println("⚠️ Failed to parse ship: ${e.message}")
+                                    println("⚠ Failed to parse active ship: ${e.message}")
                                     e.printStackTrace()
                                     null
                                 }
                             }
 
-                            println("✅ Successfully fetched ${ships.size} ships")
-                            Result.success(ships)
+                            // ✅ FIXED: Parse non-active ships using the OUTER id
+                            val nonActiveShips = nonActiveCoreShips.mapNotNull { shipItem ->
+                                try {
+                                    val outerShipItemObject = shipItem.jsonObject
+                                    val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
+                                    val shipObject = outerShipItemObject.getValue("ship").jsonObject
+
+                                    // ✅ Parse the ship and override the ID with the outer ID
+                                    val marineUnit = parseMarineUnit(shipObject)
+
+                                    // ✅ Override the ship.id with the outer nonActiveCoreShip[].id
+                                    if (outerShipId != null) {
+                                        marineUnit.copy(id = outerShipId)
+                                    } else {
+                                        marineUnit
+                                    }
+                                } catch (e: Exception) {
+                                    println("⚠ Failed to parse non-active ship: ${e.message}")
+                                    e.printStackTrace()
+                                    null
+                                }
+                            }
+
+                            // Combine both active and non-active ships
+                            val allShips = activeShips + nonActiveShips
+
+                            println("✅ Successfully fetched ${allShips.size} ships (${activeShips.size} active, ${nonActiveShips.size} non-active)")
+                            Result.success(allShips)
                         } else {
                             println("❌ Service failed with status: $statusCode")
                             println("❌ Response body: $responseJson")
@@ -157,7 +217,7 @@ class MarineUnitsApiService @Inject constructor(
                         val errorJson = response.error.toString()
                         println("❌ Error as string: $errorJson")
                     } catch (e: Exception) {
-                        println("⚠️ Could not stringify error: ${e.message}")
+                        println("⚠ Could not stringify error: ${e.message}")
                     }
 
                     Result.failure(Exception("API Error ${response.code}: ${response.error}"))
@@ -167,11 +227,16 @@ class MarineUnitsApiService @Inject constructor(
             println("❌ Exception in getMyShips: ${e.message}")
             e.printStackTrace()
             Result.failure(Exception("Failed to get ships: ${e.message}"))
-        }
-    }
+          }
+     }
 
     /**
-     * Parse ship JSON object to MarineUnit model
+     * ✅ Generic function to parse ship JSON object to MarineUnit model
+     * 🔄 Shared by: getMyShips (temporary certificate) & getMortgagedShips (mortgage release)
+     *
+     * This function handles ship data from different API responses:
+     * - Temporary Certificate: data.content[].coreShipsResDto
+     * - Mortgaged Ships: data[] (direct array)
      */
     private fun parseMarineUnit(shipJson: kotlinx.serialization.json.JsonObject): MarineUnit {
         return MarineUnit(
@@ -222,6 +287,82 @@ class MarineUnitsApiService @Inject constructor(
             deadweightTonnage = shipJson["deadweightTonnage"]?.jsonPrimitive?.content ?: "",
             maxLoadCapacity = shipJson["maxLoadCapacity"]?.jsonPrimitive?.content ?: "",
         )
+    }
+
+    /**
+     * 🔒 Get mortgaged ships for owner (Mortgage Release Transaction)
+     *
+     * API: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     *
+     * Response structure:
+     * {
+     *   "data": [ { ship1 }, { ship2 }, ... ]  ← Direct array of ships
+     * }
+     *
+     * ⚠️ Different from getMyShips:
+     * - getMyShips: Returns ALL ships in data.content[].coreShipsResDto (for temp certificate)
+     * - getMortgagedShips: Returns ONLY mortgaged ships in data[] (for mortgage release)
+     *
+     * @param ownerId The owner ID (civil ID or commercial registration number)
+     * @return Result with list of mortgaged ships ONLY
+     */
+    suspend fun getMortgagedShips(ownerId: String): Result<List<MarineUnit>> {
+        return try {
+            println("🔒 Fetching mortgaged ships for owner: $ownerId")
+
+            val endpoint = "api/v1/ship/$ownerId/owner-mortgaged-ships"
+            println("📡 API Endpoint: $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received")
+                    println("📄 Response JSON: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        println("📊 Status Code: $statusCode, Success: $success")
+
+                        if (statusCode == 200 && success) {
+                            // ✅ For mortgaged ships: data is a direct array (not nested in content)
+                            val data = responseJson.jsonObject.getValue("data").jsonArray
+                            println("📦 Mortgaged ships count: ${data.size}")
+
+                            // Parse each ship using the same generic parser
+                            val ships = data.mapNotNull { shipItem ->
+                                try {
+                                    parseMarineUnit(shipItem.jsonObject)
+                                } catch (e: Exception) {
+                                    println("⚠️ Failed to parse mortgaged ship: ${e.message}")
+                                    e.printStackTrace()
+                                    null
+                                }
+                            }
+
+                            println("✅ Successfully parsed ${ships.size} mortgaged ships")
+                            Result.success(ships)
+                        } else {
+                            println("❌ API failed with status: $statusCode")
+                            Result.failure(Exception("API failed with status: $statusCode"))
+                        }
+                    } else {
+                        println("❌ Empty response from server")
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API Error - Code: ${response.code}")
+                    println("❌ Error: ${response.error}")
+                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getMortgagedShips: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get mortgaged ships: ${e.message}"))
+        }
     }
 
     /**

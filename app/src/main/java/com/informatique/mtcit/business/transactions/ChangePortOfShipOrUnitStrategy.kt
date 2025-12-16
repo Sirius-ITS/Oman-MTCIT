@@ -46,7 +46,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         portOptions = ports
@@ -75,25 +75,26 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
-        // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
-        // Because current API only returns data when using ownerCivilId filter
-        // In production, company should use commercialRegNumber
+        // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId")
                 Pair("12345678", null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null) // ✅ Use ownerCivilId instead of commercialRegNumber for testing
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
             }
             else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-        println("📋 Note: Using ownerCivilId='12345678' for both person types (API limitation)")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(ownerCivilId, commercialRegNumber)
+        marineUnits = marineUnitRepository.loadShipsForOwner(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialRegNumber,
+            requestTypeId = "19" // ✅ Ship Port Change ID
+        )
 
         println("✅ Loaded ${marineUnits.size} ships")
         marineUnits.forEach { unit ->
@@ -223,7 +224,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 isFishingBoat = true
                 fishingBoatDataLoaded = false // Reset loaded flag when type changes
                 accumulatedFormData["isFishingBoat"] = "true"
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             } else {
                 println("❌ Not a fishing boat. Hiding agriculture field")
@@ -231,7 +232,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 fishingBoatDataLoaded = false
                 accumulatedFormData.remove("isFishingBoat")
                 accumulatedFormData.remove("agricultureRequestNumber")
-                // ✅ Store the unitType value immediately
+                // ✅ Store the unitType mortgageValue immediately
                 accumulatedFormData["unitType"] = value
             }
 
