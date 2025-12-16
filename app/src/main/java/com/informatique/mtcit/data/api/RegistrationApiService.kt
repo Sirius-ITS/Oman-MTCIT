@@ -12,6 +12,9 @@ import com.informatique.mtcit.data.model.OwnerSubmissionRequest
 import com.informatique.mtcit.data.model.OwnerSubmissionResponse
 import com.informatique.mtcit.data.model.UpdateDimensionsRequest
 import com.informatique.mtcit.data.model.UpdateWeightsRequest
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionReasonResponse
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
 import io.ktor.http.Headers
@@ -23,6 +26,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.boolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -773,4 +778,137 @@ class RegistrationApiService @Inject constructor(
             Result.failure(Exception("Failed to reserve marine name: ${e.message}"))
         }
     }
+
+
+    /**
+     * Get deletion reasons
+     * GET api/v1/deletionmdreason
+     */
+    suspend fun getDeletionReasons(): Result<DeletionReasonResponse> {
+        return try {
+            val apiUrl = "api/v1/deletionmdreason" // Replace with your actual endpoint
+
+            when (val response = repo.onGet(apiUrl)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+
+                        if (statusCode == 200 && success) {
+                            val deletionReasonResponse: DeletionReasonResponse =
+                                json.decodeFromJsonElement(responseJson.jsonObject)
+                            Result.success(deletionReasonResponse)
+                        } else {
+                            val message = responseJson.jsonObject.getValue("message").jsonPrimitive.content
+                            Result.failure(Exception("Service failed: $message"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty deletion reasons response"))
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get deletion reasons: ${response.error}"))
+                }
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get deletion reasons: ${e.message}"))
+        }
+    }
+
+    /**
+     * submit deletion request with files (multipart/form-data)
+     * POST api/v1/deletion-requests
+     *
+     * This API consumes form-data with:
+     * - dto: JSON object with deletionReasonId and shipInfoId
+     * - files: Multipart files
+     */
+    suspend fun submitDeletionRequest(
+        deletionReasonId: Int,
+        shipInfoId: Int,
+        files: List<DeletionFileUpload>
+    ): Result<DeletionSubmitResponse> {
+        return try {
+            println("📤 submitDeletionRequest called")
+            println("📤 reasonId=$deletionReasonId, shipId=$shipInfoId, files=${files.size}")
+
+            val formData = mutableListOf<PartData>()
+
+            // 1. Add DTO as FormItem (NOT BinaryItem) ✅
+            val dtoJson = """{"deletionReason":{"id":$deletionReasonId}, "shipInfo":{"id":$shipInfoId}}"""
+            println("📤 DTO JSON: $dtoJson")
+
+            formData.add(
+                PartData.BinaryItem(
+                    provider = { dtoJson.toByteArray().inputStream().asInput() },
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            // 2. Add files (same as submitEngines) ✅
+            files.forEach { fileUpload ->
+                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes)")
+
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { fileUpload.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${fileUpload.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, fileUpload.mimeType)
+                        }
+                    )
+                )
+            }
+
+            println("📤 Total parts: ${formData.size}")
+
+            val apiUrl = "api/v1/deletion-requests"
+
+            when (val response = repo.onPostMultipart(apiUrl, formData)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Success: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+
+                        if (statusCode == 200 && success) {
+                            val submitResponse: DeletionSubmitResponse =
+                                json.decodeFromJsonElement(responseJson.jsonObject)
+                            println("✅ Parsed response: ${submitResponse.data?.id}")
+                            Result.success(submitResponse)
+                        } else {
+                            val message = responseJson.jsonObject.getValue("message").jsonPrimitive.content
+                            println("❌ API Error: $message")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ Error: ${response.error}")
+                    Result.failure(Exception("Failed to submit: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to submit deletion request: ${e.message}"))
+        }
+    }
+
 }
