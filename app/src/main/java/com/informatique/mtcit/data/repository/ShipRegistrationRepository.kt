@@ -11,7 +11,10 @@ import com.informatique.mtcit.data.model.OwnerFileUpload
 import com.informatique.mtcit.data.model.OwnerSubmissionRequest
 import com.informatique.mtcit.data.model.OwnerSubmissionResponse
 import com.informatique.mtcit.data.model.UpdateDimensionsRequest
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
 import com.informatique.mtcit.data.model.UpdateWeightsRequest
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionReasonResponse
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -23,6 +26,8 @@ interface ShipRegistrationRepository {
     suspend fun saveDraft(formData: Map<String, String>): Result<Unit>
     suspend fun loadDraft(): Result<Map<String, String>?>
     suspend fun deleteDraft(): Result<Unit>
+    suspend fun getDeletionReasons(): Result<DeletionReasonResponse>
+    suspend fun submitDeletionRequest(deletionReasonId: Int, shipInfoId: Int, files: List<DeletionFileUpload>): Result<DeletionSubmitResponse>
 
     /**
      * Create a new registration request and get requestId
@@ -126,6 +131,14 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
             // TODO: Delete from local database
             // draftDao.deleteDraft()
         }
+    }
+
+    override suspend fun getDeletionReasons(): Result<DeletionReasonResponse> {
+        return registrationApiService.getDeletionReasons()
+    }
+
+    override suspend fun submitDeletionRequest(deletionReasonId: Int, shipInfoId: Int, files: List<DeletionFileUpload>): Result<DeletionSubmitResponse> {
+        return registrationApiService.submitDeletionRequest(deletionReasonId, shipInfoId, files)
     }
 
     override suspend fun createRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse> {

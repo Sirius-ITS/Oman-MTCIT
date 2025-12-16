@@ -6,6 +6,8 @@ import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
+import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
@@ -31,13 +33,14 @@ class CancelRegistrationStrategy @Inject constructor(
     private val marineUnitRepository: MarineUnitRepository,
     private val lookupRepository: LookupRepository
 ) : TransactionStrategy {
-
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
+    private var deletionReasonOptions: List<String> = emptyList() // ✅ NEW: Dynamic deletion reasons
+    private var deletionReasonMap: Map<String, Int> = emptyMap() // ✅ NEW: Map name to ID
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf() // ✅ Track form data
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
@@ -47,6 +50,67 @@ class CancelRegistrationStrategy @Inject constructor(
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
+
+        // ✅ NEW: Fetch deletion reasons from API
+        try {
+            val deletionReasonsResult = repository.getDeletionReasons()
+            deletionReasonsResult.onSuccess { reasonsResponse ->
+                // Create map of name -> id for later lookup
+                val reasonsList = reasonsResponse.data?.content?.mapNotNull { item ->
+                    val name = item?.nameAr
+                    val id = item?.id
+                    if (name != null && id != null) {
+                        println("🗑️ Loaded reason: '$name' -> ID: $id")
+                        Pair(name, id)
+                    } else {
+                        println("⚠️ Skipping reason with null name or id: $item")
+                        null
+                    }
+                } ?: emptyList()
+
+                deletionReasonOptions = reasonsList.map { it.first }
+                deletionReasonMap = reasonsList.toMap()
+
+                println("🗑️ ========== Deletion Reasons Loaded ==========")
+                println("🗑️ Total reasons: ${deletionReasonOptions.size}")
+                println("🗑️ Deletion Reason Options: $deletionReasonOptions")
+                println("🗑️ Deletion Reason Map: $deletionReasonMap")
+                println("🗑️ ============================================")
+            }.onFailure { error ->
+                println("❌ Error fetching deletion reasons: ${error.message}")
+                error.printStackTrace()
+                // Fallback to hardcoded options if API fails
+                deletionReasonOptions = listOf(
+                    "بيع السفينة",
+                    "تفكيك السفينة",
+                    "فقدان السفينة",
+                    "نقل التسجيل لدولة أخرى",
+                    "غرق السفينة",
+                    "أخرى"
+                )
+                // Create dummy IDs for fallback
+                deletionReasonMap = deletionReasonOptions.withIndex().associate { (index, name) ->
+                    name to (index + 1)
+                }
+                println("🗑️ Using fallback deletion reasons")
+            }
+        } catch (e: Exception) {
+            println("❌ Exception fetching deletion reasons: ${e.message}")
+            e.printStackTrace()
+            // Fallback to hardcoded options
+            deletionReasonOptions = listOf(
+                "بيع السفينة",
+                "تفكيك السفينة",
+                "فقدان السفينة",
+                "نقل التسجيل لدولة أخرى",
+                "غرق السفينة",
+                "أخرى"
+            )
+            deletionReasonMap = deletionReasonOptions.withIndex().associate { (index, name) ->
+                name to (index + 1)
+            }
+            println("🗑️ Using fallback deletion reasons due to exception")
+        }
 
         // Cache the options for use in getSteps()
         portOptions = ports
@@ -63,7 +127,8 @@ class CancelRegistrationStrategy @Inject constructor(
             "ownerNationality" to countries,
             "ownerCountry" to countries,
             "registrationCountry" to countries,
-            "unitType" to shipTypes
+            "unitType" to shipTypes,
+            "deletionReasons" to deletionReasonOptions // ✅ NEW: Return deletion reasons
         )
     }
 
@@ -136,18 +201,13 @@ class CancelRegistrationStrategy @Inject constructor(
                         id = "cancellationReason",
                         labelRes = R.string.reason_for_cancellation,
                         mandatory = true,
-                        options = listOf(
-                            "بيع السفينة",
-                            "تفكيك السفينة",
-                            "فقدان السفينة",
-                            "نقل التسجيل لدولة أخرى",
-                            "غرق السفينة",
-                            "أخرى"
-                        )
+                        options = deletionReasonOptions // ✅ Use dynamic options from API
                     ),
                     FormField.FileUpload(
                         id = "reasonProofDocument",
                         labelRes = R.string.reason_proof_document,
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                        maxSizeMB = 5,
                         mandatory = true
                     )
                 )
@@ -173,6 +233,59 @@ class CancelRegistrationStrategy @Inject constructor(
         accumulatedFormData.putAll(data)
         println("📦 CancelRegistration - Accumulated data: $accumulatedFormData")
         return step
+    }
+
+    suspend fun submitDeletionWithFiles(
+        data: Map<String, String>,
+        files: List<DeletionFileUpload>
+    ): Result<DeletionSubmitResponse> {
+        return try {
+            println("📤 ========== submitDeletionWithFiles ==========")
+
+            //Static values for testing ( deletionReasonId, shipInfoId )
+//            val deletionReasonId = 2 // For testing
+//            println("📤 Deletion Reason ID: $deletionReasonId")
+//
+//            val shipInfoId = 162 // For testing
+//            println("📤 Ship Info ID: $shipInfoId")
+
+            //Dynamic values for production ip to get ( deletionReasonId, shipInfoId )
+            val deletionReasonName = data["cancellationReason"]
+                ?: return Result.failure(Exception("سبب الشطب مطلوب"))
+
+            val deletionReasonId = deletionReasonMap[deletionReasonName]
+                ?: return Result.failure(Exception("سبب الشطب غير صحيح"))
+
+            // Extract ship info ID
+            val selectedMarineUnitId = data["selectedMarineUnit"]
+                ?: return Result.failure(Exception("السفينة مطلوبة"))
+
+            val shipInfoId = selectedMarineUnitId.toIntOrNull()
+                ?: return Result.failure(Exception("معرف السفينة غير صحيح"))
+
+            println("📤 Files received: ${files.size}")
+
+            files.forEachIndexed { index, file ->
+                println("📎 File $index: ${file.fileName} (${file.fileBytes.size} bytes)")
+            }
+
+            if (files.isEmpty()) {
+                println("❌ ERROR: No files provided!")
+                return Result.failure(Exception("يجب إرفاق مستند واحد على الأقل"))
+            }
+
+            println("📤 Submitting: reasonId=$deletionReasonId, shipId=$shipInfoId, files=${files.size}")
+
+            // ✅ Call repository directly - no .fold() here
+            val result = repository.submitDeletionRequest(deletionReasonId, shipInfoId, files)
+
+            // ✅ Return the Result as-is to ViewModel
+            result
+        } catch (e: Exception) {
+            println("❌ Exception: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {

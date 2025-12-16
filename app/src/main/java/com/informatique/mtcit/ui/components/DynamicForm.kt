@@ -201,9 +201,16 @@ fun DynamicStepForm(
                                 maxSizeMB = field.maxSizeMB,
                                 mandatory = field.mandatory,
                                 fieldId = field.id,
-                                onOpenFilePicker = onOpenFilePicker,
+
+                                onOpenFilePicker = { fieldId, allowedTypes ->
+                                    onOpenFilePicker?.invoke(fieldId, allowedTypes)
+                                },
+
                                 onViewFile = onViewFile,
-                                onRemoveFile = onRemoveFile
+
+                                onRemoveFile = { fieldId ->
+                                    onRemoveFile?.invoke(fieldId)
+                                }
                             )
                         }
 
