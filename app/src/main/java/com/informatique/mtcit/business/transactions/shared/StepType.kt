@@ -23,6 +23,11 @@ enum class StepType {
     MARINE_UNIT_SELECTION,
 
     /**
+     * Marine unit name selection/reservation step
+     */
+    MARINE_UNIT_NAME_SELECTION,
+
+    /**
      * Navigation areas/sailing regions selection step
      */
     NAVIGATION_AREAS,
@@ -58,9 +63,19 @@ enum class StepType {
     DOCUMENTS,
 
     /**
+     * Documents upload step
+     */
+    MORTGAGE_DATA,
+
+    /**
      * Payment details and submission step
      */
     PAYMENT,
+
+    /**
+     * Payment confirmation step (when user clicks Pay button)
+     */
+    PAYMENT_CONFIRMATION,
 
     /**
      * Payment success confirmation step

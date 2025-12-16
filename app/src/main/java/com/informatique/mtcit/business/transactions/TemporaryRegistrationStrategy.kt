@@ -64,9 +64,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private var filteredShipTypeOptions: List<String> = emptyList()
     private var isShipTypeFiltered: Boolean = false
 
-    // Map to store category name -> category ID for ship types filtering
-    private var shipCategoryIdMap: Map<String, Int> = emptyMap()
-
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
@@ -80,8 +77,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
     // ✅ NEW: Payment state tracking
     private var requestId: Long? = null
-    private var invoiceTypeId: Long? = null
-    private var paymentReceipt: com.informatique.mtcit.data.model.PaymentReceipt? = null
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
@@ -107,17 +102,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
             // ❌ Removed: ports, countries, shipTypes, shipCategories, marineActivities, proofTypes, engineStatuses
             // These will be loaded lazily via onStepOpened() when user reaches those steps
         )
-    }
-
-    /**
-     * Build a map of category name -> category ID
-     * TODO: Replace with actual mapping when ShipCategory objects are returned from API
-     */
-    private fun buildCategoryIdMap(categoryNames: List<String>): Map<String, Int> {
-        // Mock mapping - replace with actual IDs from API
-        return categoryNames.mapIndexed { index, name ->
-            name to (index + 1)
-        }.toMap()
     }
 
     /**
@@ -455,259 +439,90 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         println("📦 accumulatedFormData after update: $accumulatedFormData")
 
-        // ✅ Check if this is the Marine Unit Selection step
+        // ✅ Get current step data
         val currentStepData = getSteps().getOrNull(step)
         if (currentStepData != null) {
-            val stepFieldIds = currentStepData.fields.map { it.id }
+            val stepType = currentStepData.stepType
 
-            // ✅ DEBUG: Print step fields to see what's actually there
-            println("🔍 DEBUG - Step $step field IDs: $stepFieldIds")
+            println("🔍 DEBUG - Step $step type: $stepType")
             println("🔍 DEBUG - Data keys: ${data.keys}")
-            println("🔍 DEBUG - Contains 'selectedMarineUnits' in stepFields: ${stepFieldIds.contains("selectedMarineUnits")}")
-            println("🔍 DEBUG - Contains 'selectedMarineUnits' in data: ${data.containsKey("selectedMarineUnits")}")
 
-            // ✅ NEW: Handle Marine Unit Selection Step → Extract requestId from existing ship
-            // Check BOTH stepFields AND data to catch the selection
-            val hasMarineUnitSelectionField = stepFieldIds.contains("selectedMarineUnits")
-            val hasMarineUnitSelectionData = data.containsKey("selectedMarineUnits")
-
-            if (hasMarineUnitSelectionField || hasMarineUnitSelectionData) {
-                println("🚢 Processing Marine Unit Selection step...")
-                println("   - Field in step: $hasMarineUnitSelectionField")
-                println("   - Data provided: $hasMarineUnitSelectionData")
-
-                // Call processStepIfNeeded to extract ship ID and set as requestId
-                val result = registrationRequestManager.processStepIfNeeded(
-                    stepFields = stepFieldIds,
-                    formData = accumulatedFormData,
-                    requestTypeId = 1, // 1 = Temporary Registration
-                    context = context
-                )
-
-                when (result) {
-                    is StepProcessResult.Success -> {
-                        println("✅ Marine unit selection processed: ${result.message}")
-
-                        // Extract requestId if it was set by RegistrationRequestManager
-                        val requestIdStr = accumulatedFormData["requestId"]
-                        if (requestIdStr != null) {
-                            requestId = requestIdStr.toLongOrNull()
-                            println("✅ requestId extracted from existing ship: $requestId")
-                        } else {
-                            println("⚠️ requestId is still null after processing!")
-                        }
-
-                        // Trigger step rebuild to show/hide Unit Selection steps based on user choice
-                        onStepsNeedRebuild?.invoke()
-                    }
-                    is StepProcessResult.Error -> {
-                        println("❌ Error processing marine unit selection: ${result.message}")
-                    }
-                    is StepProcessResult.NoAction -> {
-                        println("ℹ️ No action needed for marine unit selection")
-                        // User is adding new unit, will get requestId after Unit Selection step
-                    }
-                }
-
-                return step
-            }
-
-            // ✅ Handle Marine Unit Name Selection → Payment Flow
-            if (stepFieldIds.contains("selectedShipName") && data.containsKey("selectedShipName")) {
-                println("💳 Starting payment flow...")
-
-                // Step 1: POST name API (already handled by RegistrationRequestManager)
-                val result = registrationRequestManager.processStepIfNeeded(
-                    stepFields = stepFieldIds,
-                    formData = accumulatedFormData,
-                    requestTypeId = 1, // 1 = Temporary Registration
-                    context = context
-                )
-
-                when (result) {
-                    is StepProcessResult.Success -> {
-                        println("✅ Name posted successfully")
-
-                        // Extract requestId from result (it should be stored in accumulatedFormData by RegistrationRequestManager)
-                        val requestIdStr = accumulatedFormData["requestId"]
-                        if (requestIdStr != null) {
-                            requestId = requestIdStr.toLongOrNull()
-
-                            if (requestId != null) {
-                                println("✅ Got requestId: $requestId")
-
-                                // Step 2: GET invoice type ID from /api/v1/reqtype/{requestTypeId}
-                                val invoiceResult = paymentManager.getInvoiceTypeId(
-                                    requestTypeId = "1", // 1 = Temporary Registration
-                                    requestId = requestId!!
-                                )
-
-                                invoiceResult.fold(
-                                    onSuccess = { invTypeId ->
-                                        println("✅ Got invoiceTypeId: $invTypeId")
-                                        invoiceTypeId = invTypeId
-                                        accumulatedFormData["invoiceTypeId"] = invTypeId.toString()
-
-                                        // ✅ Trigger step rebuild to show payment details step
-                                        onStepsNeedRebuild?.invoke()
-                                    },
-                                    onFailure = { error ->
-                                        println("❌ Failed to get invoice type ID: ${error.message}")
-                                        // Continue anyway for now
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    is StepProcessResult.Error -> {
-                        println("❌ Error posting name: ${result.message}")
-                    }
-                    is StepProcessResult.NoAction -> {
-                        println("ℹ️ No API call needed")
-                    }
-                }
-
-                return step
-            }
-
-            // ✅ Handle Payment Details Step → Load payment data when step is entered
-            if (currentStepData.stepType == StepType.PAYMENT) {
-                println("💰 Loading payment details...")
-
-                // Step 3: GET payment details (calculate payment)
-                val paymentResult = paymentManager.getPaymentDetails(
-                    requestTypeId = "1" // 1 = Temporary Registration
-                )
-
-                paymentResult.fold(
-                    onSuccess = { receipt ->
-                        println("✅ Payment details loaded successfully")
-                        println("   Total Cost: ${receipt.totalCost}")
-                        println("   Total Tax: ${receipt.totalTax}")
-                        println("   Final Total: ${receipt.finalTotal}")
-
-                        paymentReceipt = receipt
-
-                        // Store payment data in accumulated form data for display
-                        accumulatedFormData["paymentTotalCost"] = receipt.totalCost.toString()
-                        accumulatedFormData["paymentTotalTax"] = receipt.totalTax.toString()
-                        accumulatedFormData["paymentFinalTotal"] = receipt.finalTotal.toString()
-                    },
-                    onFailure = { error ->
-                        println("❌ Failed to load payment details: ${error.message}")
-                    }
-                )
-
-                return step
-            }
-
-            // ✅ Handle Payment Details Step → Submit Payment when user clicks "Pay"
-            if (stepFieldIds.contains("paymentConfirmed") && data.containsKey("paymentConfirmed")) {
-                println("💳 Submitting payment...")
-
-                // Step 4: POST payment submission
-                val reqId = requestId ?: accumulatedFormData["requestId"]?.toLongOrNull()
-                val receipt = paymentReceipt
-
-                if (reqId != null && receipt != null) {
-                    // Build payment submission request from the receipt data
-                    val paymentData = com.informatique.mtcit.data.model.PaymentSubmissionRequest(
-                        id = null,
-                        receiptSerial = receipt.receiptSerial,
-                        receiptYear = receipt.receiptYear,
-                        requestId = reqId,
-                        requestTypeId = "1", // 1 = Temporary Registration
-                        penalties = emptyList(),
-                        invoiceType = com.informatique.mtcit.data.model.InvoiceTypeIdOnly(
-                            id = receipt.invoiceType.id
-                        ),
-                        receiptNo = 0,
-                        comments = "",
-                        description = "",
-                        isPaid = 0,
-                        arabicValue = receipt.arabicValue,
-                        totalCost = receipt.totalCost,
-                        totalTax = receipt.totalTax,
-                        finalTotal = receipt.finalTotal,
-                        approximateFinalTotal = receipt.approximateFinalTotal,
-                        paymentReceiptDetailsList = receipt.paymentReceiptDetailsList.map { detail ->
-                            com.informatique.mtcit.data.model.PaymentReceiptDetailSubmission(
-                                name = detail.name,
-                                value = detail.value,
-                                taxValue = detail.taxValue,
-                                finalTotal = detail.finalTotal,
-                                approximateFinalTotal = detail.approximateFinalTotal,
-                                tariffItem = com.informatique.mtcit.data.model.TariffItemIdOnly(
-                                    id = detail.tariffItem.id,
-                                    name = detail.name
-                                ),
-                                tariffRate = com.informatique.mtcit.data.model.TariffRateSubmission(
-                                    id = detail.tariffRate.id,
-                                    tariffItemId = detail.tariffRate.tariffItemId ?: detail.tariffItem.id,
-                                    expressionCode = detail.tariffRate.expressionCode,
-                                    expressionText = detail.tariffRate.expressionText
-                                )
-                            )
-                        }
-                    )
-
-                    val submitResult = paymentManager.submitPayment(
-                        requestTypeId = "1", // 1 = Temporary Registration
-                        paymentData = paymentData
-                    )
-
-                    submitResult.fold(
-                        onSuccess = { receiptId ->
-                            println("✅ Payment submitted successfully! Receipt ID: $receiptId")
-
-                            // Mark payment as successful
-                            accumulatedFormData["paymentSuccessful"] = "true"
-                            accumulatedFormData["paymentReceiptId"] = receiptId.toString()
-
-                            // ✅ Trigger step rebuild to show payment success step
-                            onStepsNeedRebuild?.invoke()
-                        },
-                        onFailure = { error ->
-                            println("❌ Failed to submit payment: ${error.message}")
-                            accumulatedFormData["paymentSuccessful"] = "false"
-                            accumulatedFormData["paymentError"] = error.message ?: "Unknown error"
-                        }
-                    )
-                } else {
-                    println("❌ Missing requestId or payment receipt for payment submission")
-                }
-
-                return step
-            }
-
-            // ✅ Regular step processing (non-payment steps)
-            val result = registrationRequestManager.processStepIfNeeded(
-                stepFields = stepFieldIds,
+            // ✅ Call RegistrationRequestManager to process registration-related steps
+            val registrationResult = registrationRequestManager.processStepIfNeeded(
+                stepType = stepType,
                 formData = accumulatedFormData,
                 requestTypeId = 1, // 1 = Temporary Registration
                 context = context
             )
 
-            when (result) {
+            when (registrationResult) {
                 is StepProcessResult.Success -> {
-                    println("✅ ${result.message}")
+                    println("✅ Registration step processed: ${registrationResult.message}")
 
-                    // ✅ Check if we just completed Review Step and need inspection
-                    val needInspection = accumulatedFormData["needInspection"]?.toBoolean() ?: false
-                    val sendRequestMessage = accumulatedFormData["sendRequestMessage"]
+                    // Extract requestId if it was set
+                    val requestIdStr = accumulatedFormData["requestId"]
+                    if (requestIdStr != null) {
+                        requestId = requestIdStr.toLongOrNull()
+                        println("✅ requestId: $requestId")
+                    }
 
-                    if (needInspection) {
-                        println("🔍 Inspection required for this request")
-                        accumulatedFormData["showInspectionDialog"] = "true"
-                        accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: "في إنتظار نتيجه الفحص الفني"
-                        return step
+                    // Check if we need to trigger step rebuild
+                    if (stepType == StepType.MARINE_UNIT_SELECTION) {
+                        onStepsNeedRebuild?.invoke()
+                    }
+
+                    // Check if we just completed Review Step and need inspection
+                    if (stepType == StepType.REVIEW) {
+                        val needInspection = accumulatedFormData["needInspection"]?.toBoolean() ?: false
+                        val sendRequestMessage = accumulatedFormData["sendRequestMessage"]
+
+                        if (needInspection) {
+                            println("🔍 Inspection required for this request")
+                            accumulatedFormData["showInspectionDialog"] = "true"
+                            accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: "في إنتظار نتيجه الفحص الفني"
+                            return step
+                        }
                     }
                 }
                 is StepProcessResult.Error -> {
-                    println("❌ Error: ${result.message}")
+                    println("❌ Registration error: ${registrationResult.message}")
                 }
                 is StepProcessResult.NoAction -> {
-                    println("ℹ️ No API call needed for this step")
+                    println("ℹ️ No registration action needed for this step")
+                }
+            }
+
+            // ✅ Call PaymentManager to process payment-related steps
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = stepType,
+                formData = accumulatedFormData,
+                requestTypeId = 1 // 1 = Temporary Registration
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Check if payment was successful and trigger step rebuild
+                    if (stepType == StepType.PAYMENT_CONFIRMATION) {
+                        val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
+                        if (paymentSuccessful) {
+                            println("✅ Payment successful - triggering step rebuild")
+                            onStepsNeedRebuild?.invoke()
+                        }
+                    }
+
+                    // Check if we loaded payment details and trigger step rebuild
+                    if (stepType == StepType.PAYMENT) {
+                        println("✅ Payment details loaded - triggering step rebuild")
+                        onStepsNeedRebuild?.invoke()
+                    }
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed for this step")
                 }
             }
         }

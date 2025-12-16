@@ -19,95 +19,216 @@ class PaymentManager @Inject constructor(
 ) {
 
     /**
-     * Step 1: Get Invoice Type ID
-     * Called BEFORE entering payment step to get the invoice type ID
+     * Process step based on StepType and call appropriate API
+     * Similar to RegistrationRequestManager.processStepIfNeeded()
      *
-     * @param requestTypeId Transaction type ID (e.g., "1" for temporary registration)
-     * @param requestId The created request ID
-     * @return Result with invoice type ID or error
+     * @param stepType The type of the current step
+     * @param formData All accumulated form data
+     * @param requestTypeId Transaction type ID (e.g., 1 for temporary registration)
+     * @return Result indicating success or error
      */
-    suspend fun getInvoiceTypeId(
-        requestTypeId: String,
-        requestId: Long
-    ): Result<Long> {
-        return try {
-            println("🚀 PaymentManager: Getting invoice type ID for requestType=$requestTypeId, requestId=$requestId...")
+    suspend fun processStepIfNeeded(
+        stepType: StepType,
+        formData: MutableMap<String, String>,
+        requestTypeId: Int
+    ): StepProcessResult {
+        println("🔍 PaymentManager.processStepIfNeeded called")
+        println("   - stepType: $stepType")
+        println("   - requestTypeId: $requestTypeId")
+        println("   - formData keys: ${formData.keys}")
 
-            val result = withContext(Dispatchers.IO) {
-                paymentRepository.getInvoiceTypeId(requestTypeId, requestId)
+        return when (stepType) {
+            // ✅ Marine Unit Name Selection Step - Name reservation is handled by RegistrationRequestManager
+            StepType.MARINE_UNIT_NAME_SELECTION -> {
+                println("ℹ️ Marine Unit Name Selection step - handled by RegistrationRequestManager")
+                StepProcessResult.NoAction
             }
 
-            result.fold(
-                onSuccess = { invoiceTypeId ->
-                    println("✅ Invoice Type ID retrieved: $invoiceTypeId")
-                    Result.success(invoiceTypeId)
-                },
-                onFailure = { exception ->
-                    println("❌ Failed to get invoice type ID: ${exception.message}")
-                    exception.printStackTrace()
-                    Result.failure(exception)
+            // ✅ Payment Details Step - Load payment receipt
+            StepType.PAYMENT -> {
+                println("💰 Payment Details step detected - loading payment receipt...")
+
+                // Extract coreShipsInfoId from formData
+                val coreShipsInfoId = formData["shipInfoId"] ?: formData["requestId"]
+
+                if (coreShipsInfoId == null) {
+                    println("❌ Missing coreShipsInfoId for payment receipt")
+                    return StepProcessResult.Error("Missing ship info ID for payment")
                 }
-            )
-        } catch (e: Exception) {
-            println("❌ Exception in getInvoiceTypeId: ${e.message}")
-            e.printStackTrace()
-            Result.failure(e)
+
+                println("📍 Using coreShipsInfoId: $coreShipsInfoId")
+
+                try {
+                    val result = getPaymentReceipt(requestTypeId, coreShipsInfoId)
+
+                    result.fold(
+                        onSuccess = { receipt ->
+                            println("✅ Payment receipt loaded successfully")
+
+                            // Store receipt data in formData
+                            formData["paymentReceiptSerial"] = receipt.receiptSerial.toString()
+                            formData["paymentReceiptYear"] = receipt.receiptYear.toString()
+                            formData["paymentTotalCost"] = receipt.totalCost.toString()
+                            formData["paymentTotalTax"] = receipt.totalTax.toString()
+                            formData["paymentFinalTotal"] = receipt.finalTotal.toString()
+                            formData["paymentArabicValue"] = receipt.arabicValue
+                            formData["paymentInvoiceTypeId"] = receipt.invoiceType.id.toString()
+
+                            // Store full receipt as JSON for later submission
+                            val receiptJson = kotlinx.serialization.json.Json.encodeToString(
+                                PaymentReceipt.serializer(),
+                                receipt
+                            )
+                            formData["paymentReceiptJson"] = receiptJson
+
+                            StepProcessResult.Success("Payment details loaded successfully")
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to load payment receipt: ${error.message}")
+                            StepProcessResult.Error(error.message ?: "Failed to load payment details")
+                        }
+                    )
+                } catch (e: Exception) {
+                    println("❌ Exception loading payment receipt: ${e.message}")
+                    e.printStackTrace()
+                    StepProcessResult.Error("Failed to load payment details: ${e.message}")
+                }
+            }
+
+            // ✅ Payment Confirmation Step - Submit payment
+            StepType.PAYMENT_CONFIRMATION -> {
+                println("💳 Payment Confirmation step detected - submitting payment...")
+
+                val receiptJson = formData["paymentReceiptJson"]
+
+                if (receiptJson == null) {
+                    println("❌ Missing payment receipt data for submission")
+                    return StepProcessResult.Error("Missing payment receipt data")
+                }
+
+                try {
+                    // Parse the stored receipt
+                    val receipt = kotlinx.serialization.json.Json.decodeFromString(
+                        PaymentReceipt.serializer(),
+                        receiptJson
+                    )
+
+                    // Build payment submission request
+                    val paymentData = PaymentSubmissionRequest(
+                        id = null,
+                        receiptSerial = receipt.receiptSerial,
+                        receiptYear = receipt.receiptYear,
+                        requestId = null, // ✅ NEW: No requestId field in new API
+                        requestTypeId = requestTypeId.toString(),
+                        penalties = emptyList(),
+                        invoiceType = InvoiceTypeIdOnly(id = receipt.invoiceType.id),
+                        receiptNo = 0,
+                        comments = "",
+                        description = "",
+                        isPaid = 0,
+                        arabicValue = receipt.arabicValue,
+                        totalCost = receipt.totalCost,
+                        totalTax = receipt.totalTax,
+                        finalTotal = receipt.finalTotal,
+                        approximateFinalTotal = receipt.approximateFinalTotal,
+                        paymentReceiptDetailsList = receipt.paymentReceiptDetailsList.map { detail ->
+                            PaymentReceiptDetailSubmission(
+                                name = detail.name,
+                                value = detail.value,
+                                taxValue = detail.taxValue,
+                                finalTotal = detail.finalTotal,
+                                approximateFinalTotal = detail.approximateFinalTotal,
+                                tariffItem = TariffItemIdOnly(
+                                    id = detail.tariffItem.id,
+                                    name = detail.name
+                                ),
+                                tariffRate = TariffRateSubmission(
+                                    id = detail.tariffRate.id,
+                                    tariffItemId = detail.tariffRate.tariffItemId ?: detail.tariffItem.id,
+                                    expressionCode = detail.tariffRate.expressionCode,
+                                    expressionText = detail.tariffRate.expressionText
+                                )
+                            )
+                        }
+                    )
+
+                    val result = submitPayment(requestTypeId.toString(), paymentData)
+
+                    result.fold(
+                        onSuccess = { receiptId ->
+                            println("✅ Payment submitted successfully! Receipt ID: $receiptId")
+                            formData["paymentReceiptId"] = receiptId.toString()
+                            formData["paymentSuccessful"] = "true"
+                            StepProcessResult.Success("Payment submitted successfully")
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to submit payment: ${error.message}")
+                            formData["paymentSuccessful"] = "false"
+                            formData["paymentError"] = error.message ?: "Unknown error"
+                            StepProcessResult.Error(error.message ?: "Failed to submit payment")
+                        }
+                    )
+                } catch (e: Exception) {
+                    println("❌ Exception submitting payment: ${e.message}")
+                    e.printStackTrace()
+                    formData["paymentSuccessful"] = "false"
+                    formData["paymentError"] = e.message ?: "Unknown error"
+                    StepProcessResult.Error("Failed to submit payment: ${e.message}")
+                }
+            }
+
+            else -> {
+                println("ℹ️ Step type $stepType - no payment action needed")
+                StepProcessResult.NoAction
+            }
         }
     }
 
     /**
-     * Step 2: Get Payment Details (Calculate Payment)
-     * Called when user enters payment details step
-     *
-     * @param requestTypeId Transaction type ID to determine correct endpoint
-     * @return Result with payment receipt data or error
+     * Get payment receipt with coreShipsInfoId
      */
-    suspend fun getPaymentDetails(
-        requestTypeId: String
+    private suspend fun getPaymentReceipt(
+        requestTypeId: Int,
+        coreShipsInfoId: String
     ): Result<PaymentReceipt> {
         return try {
-            println("🚀 PaymentManager: Getting payment details for requestType=$requestTypeId...")
+            println("🚀 PaymentManager: Getting payment receipt...")
+            println("   RequestType: $requestTypeId, CoreShipsInfoId: $coreShipsInfoId")
 
             val result = withContext(Dispatchers.IO) {
-                paymentRepository.getPaymentDetails(requestTypeId)
+                paymentRepository.getPaymentReceipt(requestTypeId, coreShipsInfoId)
             }
 
             result.fold(
                 onSuccess = { paymentReceipt ->
-                    println("✅ Payment details retrieved successfully")
+                    println("✅ Payment receipt retrieved successfully")
                     println("   Total Cost: ${paymentReceipt.totalCost}")
                     println("   Total Tax: ${paymentReceipt.totalTax}")
                     println("   Final Total: ${paymentReceipt.finalTotal}")
                     Result.success(paymentReceipt)
                 },
                 onFailure = { exception ->
-                    println("❌ Failed to get payment details: ${exception.message}")
+                    println("❌ Failed to get payment receipt: ${exception.message}")
                     exception.printStackTrace()
                     Result.failure(exception)
                 }
             )
         } catch (e: Exception) {
-            println("❌ Exception in getPaymentDetails: ${e.message}")
+            println("❌ Exception in getPaymentReceipt: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
         }
     }
 
     /**
-     * Step 3: Submit Payment
-     * Called when user clicks "Pay" button
-     *
-     * @param requestTypeId Transaction type ID to determine correct endpoint
-     * @param paymentData The payment submission data
-     * @return Result with payment receipt ID or error
+     * Submit payment
      */
-    suspend fun submitPayment(
+    private suspend fun submitPayment(
         requestTypeId: String,
         paymentData: PaymentSubmissionRequest
     ): Result<Long> {
         return try {
             println("🚀 PaymentManager: Submitting payment for requestType=$requestTypeId...")
-            println("   Request ID: ${paymentData.requestId}")
             println("   Final Total: ${paymentData.finalTotal}")
 
             val result = withContext(Dispatchers.IO) {
@@ -130,89 +251,5 @@ class PaymentManager @Inject constructor(
             e.printStackTrace()
             Result.failure(e)
         }
-    }
-
-    /**
-     * Helper: Get Core Ship Data from API
-     * Used to fetch ship details for payment submission
-     *
-     * @param requestTypeId Transaction type ID
-     * @param requestId The created request ID
-     * @return Result with core ship data or error
-     */
-    suspend fun getCoreShipData(
-        requestTypeId: String,
-        requestId: Long
-    ): Result<CoreShipsDto> {
-        return try {
-            println("🚀 PaymentManager: Getting core ship data for requestType=$requestTypeId, requestId=$requestId...")
-
-            val result = withContext(Dispatchers.IO) {
-                paymentRepository.getCoreShipData(requestTypeId, requestId)
-            }
-
-            result.fold(
-                onSuccess = { coreShipData ->
-                    println("✅ Core ship data retrieved: ${coreShipData.shipName} (ID: ${coreShipData.id})")
-                    Result.success(coreShipData)
-                },
-                onFailure = { exception ->
-                    println("❌ Failed to get core ship data: ${exception.message}")
-                    exception.printStackTrace()
-                    Result.failure(exception)
-                }
-            )
-        } catch (e: Exception) {
-            println("❌ Exception in getCoreShipData: ${e.message}")
-            e.printStackTrace()
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Helper: Build payment submission request from payment receipt and core ship data
-     */
-    fun buildPaymentSubmissionRequest(
-        paymentReceipt: PaymentReceipt,
-        requestId: Long,
-        requestTypeId: String
-    ): PaymentSubmissionRequest {
-        return PaymentSubmissionRequest(
-            id = null,
-            receiptSerial = paymentReceipt.receiptSerial,
-            receiptYear = paymentReceipt.receiptYear,
-            requestId = requestId,
-            requestTypeId = requestTypeId,
-            penalties = emptyList(),
-            invoiceType = InvoiceTypeIdOnly(id = paymentReceipt.invoiceType.id),
-            receiptNo = 0,
-            comments = "",
-            description = "",
-            isPaid = 0,
-            arabicValue = paymentReceipt.arabicValue,
-            totalCost = paymentReceipt.totalCost,
-            totalTax = paymentReceipt.totalTax,
-            finalTotal = paymentReceipt.finalTotal,
-            approximateFinalTotal = paymentReceipt.approximateFinalTotal,
-            paymentReceiptDetailsList = paymentReceipt.paymentReceiptDetailsList.map { detail ->
-                PaymentReceiptDetailSubmission(
-                    name = detail.name,
-                    value = detail.value,
-                    taxValue = detail.taxValue,
-                    finalTotal = detail.finalTotal,
-                    approximateFinalTotal = detail.approximateFinalTotal,
-                    tariffItem = TariffItemIdOnly(
-                        id = detail.tariffItem.id,
-                        name = detail.tariffItem.nameAr ?: detail.name
-                    ),
-                    tariffRate = TariffRateSubmission(
-                        id = detail.tariffRate.id,
-                        tariffItemId = detail.tariffRate.tariffItemId ?: detail.tariffItem.id,
-                        expressionCode = detail.tariffRate.expressionCode,
-                        expressionText = detail.tariffRate.expressionText
-                    )
-                )
-            }
-        )
     }
 }

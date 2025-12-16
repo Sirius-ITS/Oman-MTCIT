@@ -377,6 +377,58 @@ class RegistrationRequestManager @Inject constructor(
     }
 
     /**
+     * Submit engine - wrapper method that parses engine data and calls submitEnginesWithFiles
+     */
+    suspend fun submitEngine(
+        formData: Map<String, String>,
+        requestId: Int,
+        context: Context
+    ): UpdateResult {
+        return try {
+            val enginesJson = formData["engines"]
+            if (enginesJson.isNullOrEmpty() || enginesJson == "[]") {
+                println("⚠️ No engines to submit")
+                return UpdateResult.Success
+            }
+
+            val engines = parseEnginesFromJson(enginesJson, formData, context)
+            val files = parseEngineFilesFromFormData(context, formData)
+
+            submitEnginesWithFiles(context, requestId, engines, files)
+        } catch (e: Exception) {
+            println("❌ Exception in submitEngine: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Submit owner - wrapper method that parses owner data and calls submitOwnersWithFiles
+     */
+    suspend fun submitOwner(
+        formData: Map<String, String>,
+        requestId: Int,
+        context: Context
+    ): UpdateResult {
+        return try {
+            val ownersJson = formData["owners"]
+            if (ownersJson.isNullOrEmpty() || ownersJson == "[]") {
+                println("⚠️ No owners to submit")
+                return UpdateResult.Success
+            }
+
+            val owners = parseOwnersFromJson(ownersJson, formData, context)
+            val files = parseOwnerFilesFromFormData(context, formData)
+
+            submitOwnersWithFiles(context, requestId, owners, files)
+        } catch (e: Exception) {
+            println("❌ Exception in submitOwner: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
      * Submit owners with documents (NEW - multipart/form-data with files)
      * Called after owner info step when user has uploaded owner documents
      *
@@ -609,477 +661,310 @@ class RegistrationRequestManager @Inject constructor(
     /**
      * Detect which step was just completed and call appropriate API
      *
-     * @param stepFields The field IDs in the current step
+     * @param stepType The type of the current step
      * @param formData All accumulated form data
+     * @param requestTypeId Type of registration (1=Temporary, 2=Permanent, etc.)
      * @param context Android context (needed for engine file uploads)
      * @return Result indicating success or error
      */
     suspend fun processStepIfNeeded(
-        stepFields: List<String>,
+        stepType: StepType,
         formData: MutableMap<String, String>,
         requestTypeId: Int,
-        context: Context? = null // ✅ NEW: Optional context for file operations
+        context: Context? = null
     ): StepProcessResult {
 
-        // ✅ DEBUG: Print what we received
-        println("🔍 processStepIfNeeded called")
-        println("   - stepFields: $stepFields")
+        println("🔍 RegistrationRequestManager.processStepIfNeeded called")
+        println("   - stepType: $stepType")
+        println("   - requestTypeId: $requestTypeId")
         println("   - formData keys: ${formData.keys}")
-        println("   - formData['selectedMarineUnits']: ${formData["selectedMarineUnits"]}")
-        println("   - formData['isAddingNewUnit']: ${formData["isAddingNewUnit"]}")
 
-        // ✅ PRIORITY 1: Check if this is the Marine Unit Selection step (where user picks existing ship)
-        val hasMarineUnitSelectionField = stepFields.contains("selectedMarineUnits")
-        println("🔍 hasMarineUnitSelectionField = $hasMarineUnitSelectionField")
-
-        if (hasMarineUnitSelectionField) {
-            val selectedUnitsJson = formData["selectedMarineUnits"]
-            val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
-
-            println("🔍 Marine Unit Selection Step detected!")
-            println("   - selectedUnitsJson: $selectedUnitsJson")
-            println("   - isAddingNewUnit: $isAddingNewUnit")
-
-            // Check if user selected an existing ship (has JSON with ship data and not adding new)
-            if (!selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNewUnit) {
-                println("🔍 Marine Unit Selection Step - User selected EXISTING marine unit")
-                println("🔍 Extracting ship ID from activeCoreShips...")
-
-                try {
-                    // Parse the selected marine units JSON
-                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                    val unitsArray = json.parseToJsonElement(selectedUnitsJson).jsonArray
-
-                    println("🔍 Parsed JSON array, size: ${unitsArray.size}")
-
-                    if (unitsArray.isNotEmpty()) {
-                        val firstElement = unitsArray[0]
-                        var shipId: String? = null
-
-                        // ✅ FIXED: Handle two possible formats:
-                        // Format 1: Array of IDs: ["192"]
-                        // Format 2: Array of objects: [{"id": "192", "name": "...", ...}]
-
-                        if (firstElement is kotlinx.serialization.json.JsonPrimitive) {
-                            // Format 1: Simple array of IDs
-                            shipId = firstElement.content
-                            println("🔍 Format 1 detected: Simple ID array")
-                            println("🔍 Extracted shipId: $shipId")
-                        } else if (firstElement is kotlinx.serialization.json.JsonObject) {
-                            // Format 2: Array of objects
-                            val selectedUnit = firstElement.jsonObject
-                            shipId = selectedUnit["id"]?.jsonPrimitive?.content
-                            println("🔍 Format 2 detected: Object array")
-                            println("🔍 First unit in array: $selectedUnit")
-                            println("🔍 Extracted shipId: $shipId")
-
-                            // Extract other IDs if available
-                            selectedUnit["shipInfoId"]?.jsonPrimitive?.content?.let {
-                                formData["shipInfoId"] = it
-                                println("✅ Found shipInfoId: $it")
-                            }
-                        }
-
-                        if (shipId != null) {
-                            println("✅ Found existing ship ID from activeCoreShips: $shipId")
-                            println("✅ Setting requestId = $shipId (no new registration request created)")
-
-                            // ✅ Use the existing ship's ID as requestId
-                            formData["requestId"] = shipId
-                            formData["shipId"] = shipId
-
-                            println("✅ Using existing marine unit - requestId successfully set to: $shipId")
-                            println("✅ formData after setting requestId: ${formData["requestId"]}")
-                            return StepProcessResult.Success("Using existing marine unit (ID: $shipId)")
-                        } else {
-                            println("⚠️ Could not extract ship ID from selectedMarineUnits JSON")
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("❌ Error parsing selectedMarineUnits JSON: ${e.message}")
-                    e.printStackTrace()
-                }
-            } else if (isAddingNewUnit) {
-                println("🔍 Marine Unit Selection Step - User is adding NEW marine unit")
-                println("   Will create registration request when Unit Selection step is completed")
-                // Don't do anything here - wait for Unit Selection step
-                return StepProcessResult.NoAction
-            }
-        } else {
-            println("⚠️ selectedMarineUnits field NOT found in stepFields!")
-        }
-
-        // ✅ Check if this is the Unit Selection Step (ship info)
-        val hasUnitSelectionFields = stepFields.any { it == "unitType" || it == "callSign" }
-        if (hasUnitSelectionFields && formData.containsKey("unitType")) {
-
-            // ✅ NEW: Check if user selected an existing marine unit
-            val selectedUnitsJson = formData["selectedMarineUnits"]
-            val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
-
-            // Check if user selected an existing ship (has JSON with ship data and not adding new)
-            if (!selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNewUnit) {
-                println("🔍 User selected EXISTING marine unit - Extracting ship ID from activeCoreShips...")
-
-                try {
-                    // Parse the selected marine units JSON
-                    val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                    val unitsArray = json.parseToJsonElement(selectedUnitsJson).jsonArray
-
-                    if (unitsArray.isNotEmpty()) {
-                        // Get the first selected unit's ID
-                        val selectedUnit = unitsArray[0].jsonObject
-                        val shipId = selectedUnit["id"]?.jsonPrimitive?.content
-
-                        if (shipId != null) {
-                            println("✅ Found existing ship ID: $shipId")
-                            println("   Using ship ID as requestId (no new registration request created)")
-
-                            // ✅ Use the existing ship's ID as requestId
-                            formData["requestId"] = shipId
-                            formData["shipId"] = shipId
-
-                            // Extract other IDs if available
-                            selectedUnit["shipInfoId"]?.jsonPrimitive?.content?.let {
-                                formData["shipInfoId"] = it
-                            }
-
-                            println("✅ Using existing ship - requestId set to: $shipId")
-                            return StepProcessResult.Success("Using existing marine unit (ID: $shipId)")
-                        } else {
-                            println("⚠️ Could not extract ship ID from selectedMarineUnits JSON")
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("❌ Error parsing selectedMarineUnits JSON: ${e.message}")
-                    e.printStackTrace()
-                    // Continue to create new registration request as fallback
-                }
-            }
-
-            // ✅ User is adding a NEW marine unit - create registration request
-            println("🔍 User is ADDING NEW marine unit - Creating registration request...")
-
-            // ✅ SIMULATION MODE: Use hardcoded test data instead of calling API
-            // This prevents creating new ships during engine testing
-            /*println("🔍 Detected Unit Selection Step - SIMULATION MODE ENABLED")
-            println("⚠️ Skipping API call - Using test data instead")
-
-            // Store simulated IDs in form data
-            formData["requestId"] = "446"
-            formData["shipInfoId"] = "486"
-            formData["shipId"] = "566"
-            formData["requestNumber"] = "324/2025"
-
-            println("✅ SIMULATED Request ID: 381")
-            println("✅ SIMULATED Ship Info ID: 421")
-            println("✅ SIMULATED Ship ID: 503")
-            println("✅ SIMULATED Request Serial: 266/2025")
-
-            return StepProcessResult.Success("Registration request simulated (test mode)")*/
-
-            // ✅ TODO: Uncomment below to use REAL API instead of simulation
-
-            println("🔍 Detected Unit Selection Step - Creating or updating registration request...")
-
-            val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
-            return when (result) {
-                is RegistrationRequestResult.Success -> {
-                    // Store IDs in form data
-                    formData["requestId"] = result.requestId
-                    result.shipInfoId?.let { formData["shipInfoId"] = it }
-                    result.shipId?.let { formData["shipId"] = it }
-                    result.requestNumber?.let { formData["requestNumber"] = it }
-
-                    StepProcessResult.Success("Registration request created/updated")
-                }
-                is RegistrationRequestResult.Error -> {
-                    StepProcessResult.Error(result.message)
-                }
-            }
-        }
-
-        // Get requestId for subsequent calls
+        // Get requestId from formData (may be null initially)
         val requestId = formData["requestId"]
 
-        if (requestId == null) {
-            // No requestId yet, this step doesn't need API call
-            return StepProcessResult.NoAction
-        }
+        return when (stepType) {
+            // ✅ Marine Unit Selection Step - Extract requestId from existing ship
+            StepType.MARINE_UNIT_SELECTION -> {
+                println("🚢 Marine Unit Selection step detected")
 
-        // ✅ Check if this is the Dimensions Step
-        // Always send PUT request (whether first time or user went back and changed)
-        val hasDimensionsFields = stepFields.containsAll(listOf("overallLength", "overallWidth", "depth"))
-        if (hasDimensionsFields) {
-            println("🔍 Detected Dimensions Step - Updating dimensions (always sends PUT)...")
+                val selectedUnitsJson = formData["selectedMarineUnits"]
+                val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
 
-            val result = updateDimensions(requestId!!, formData) // Use !! since we checked for null above
-            return when (result) {
-                is UpdateResult.Success -> StepProcessResult.Success("Dimensions updated")
-                is UpdateResult.Error -> StepProcessResult.Error(result.message)
-            }
-        }
+                // Check if user selected an existing ship
+                if (!selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNewUnit) {
+                    println("🔍 User selected EXISTING marine unit - extracting ship ID...")
 
-        // ✅ Check if this is the Weights Step
-        // Always send PUT request (whether first time or user went back and changed)
-        val hasWeightsFields = stepFields.containsAll(listOf("grossTonnage", "netTonnage"))
-        if (hasWeightsFields) {
-            println("🔍 Detected Weights Step - Updating weights (always sends PUT)...")
+                    try {
+                        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                        val unitsArray = json.parseToJsonElement(selectedUnitsJson).jsonArray
 
-            val result = updateWeights(requestId!!, formData) // Use !! since we checked for null above
-            return when (result) {
-                is UpdateResult.Success -> StepProcessResult.Success("Weights updated")
-                is UpdateResult.Error -> StepProcessResult.Error(result.message)
-            }
-        }
+                        if (unitsArray.isNotEmpty()) {
+                            val firstElement = unitsArray[0]
+                            var shipId: String? = null
 
-        // ✅ Check if this is the Owner Info Step
-        val hasOwnerFields = stepFields.contains("owners")
-        if (hasOwnerFields) {
-            println("🔍 Detected Owner Info Step - Submitting owners with multipart API...")
+                            // Handle two formats: ["192"] or [{"id": "192", ...}]
+                            if (firstElement is kotlinx.serialization.json.JsonPrimitive) {
+                                shipId = firstElement.content
+                                println("🔍 Format 1: Simple ID array -> $shipId")
+                            } else if (firstElement is kotlinx.serialization.json.JsonObject) {
+                                val selectedUnit = firstElement.jsonObject
+                                shipId = selectedUnit["id"]?.jsonPrimitive?.content
+                                println("🔍 Format 2: Object array -> $shipId")
 
-            val ownersJson = formData["owners"]
+                                // Extract shipInfoId if available
+                                selectedUnit["shipInfoId"]?.jsonPrimitive?.content?.let {
+                                    formData["shipInfoId"] = it
+                                    println("✅ Found shipInfoId: $it")
+                                }
+                            }
 
-            if (ownersJson.isNullOrEmpty() || ownersJson == "[]") {
-                println("⚠️ No owners to submit")
-                return StepProcessResult.Success("No owners to update")
-            }
-
-            // ✅ Context is REQUIRED for multipart owner submission
-            if (context == null) {
-                println("❌ Context not available for owner file uploads - Cannot proceed")
-                return StepProcessResult.Error("Context required for owner submission")
-            }
-
-            // Parse owners JSON and convert to OwnerSubmissionRequest list
-            return try {
-                val owners = parseOwnersFromJson(ownersJson, context)
-                val files = parseOwnerFilesFromFormData(context, formData)
-
-                println("📊 Parsed ${owners.size} owners and ${files.size} files")
-
-                // ✅ ALWAYS call the multipart API (no JSON-only fallback)
-                val result = submitOwnersWithFiles(
-                    context = context,
-                    requestId = requestId.toInt(),
-                    owners = owners,
-                    files = files
-                )
-
-                when (result) {
-                    is UpdateResult.Success -> StepProcessResult.Success("Owners submitted successfully")
-                    is UpdateResult.Error -> StepProcessResult.Error(result.message)
-                }
-            } catch (e: Exception) {
-                println("❌ Error parsing owner data: ${e.message}")
-                e.printStackTrace()
-                StepProcessResult.Error("Failed to parse owner data: ${e.message}")
-            }
-        }
-
-        // ✅ Check if this is the Engine Info Step
-        val hasEngineFields = stepFields.contains("engines")
-        if (hasEngineFields) {
-            println("🔍 Detected Engine Info Step - Submitting engines with multipart API...")
-
-            val enginesJson = formData["engines"]
-
-            if (enginesJson.isNullOrEmpty() || enginesJson == "[]") {
-                println("⚠️ No engines to submit")
-                return StepProcessResult.Success("No engines to update")
-            }
-
-            // ✅ FIXED: Context is REQUIRED for multipart engine submission
-            if (context == null) {
-                println("❌ Context not available for engine file uploads - Cannot proceed")
-                return StepProcessResult.Error("Context required for engine submission")
-            }
-
-            // Parse engines JSON and convert to EngineSubmissionRequest list
-            return try {
-                val engines = parseEnginesFromJson(enginesJson, formData, context)
-                val files = parseEngineFilesFromFormData(context, formData)
-
-                println("📊 Parsed ${engines.size} engines and ${files.size} files")
-
-                // ✅ ALWAYS call the multipart API (no JSON-only fallback)
-                val result = submitEnginesWithFiles(
-                    context = context,
-                    requestId = requestId.toInt(),
-                    engines = engines,
-                    files = files
-                )
-
-                when (result) {
-                    is UpdateResult.Success -> StepProcessResult.Success("Engines submitted successfully")
-                    is UpdateResult.Error -> StepProcessResult.Error(result.message)
-                }
-            } catch (e: Exception) {
-                println("❌ Error parsing engine data: ${e.message}")
-                e.printStackTrace()
-                StepProcessResult.Error("Failed to parse engine data: ${e.message}")
-            }
-        }
-
-        // ✅ Check if this is the Documents Step
-        val hasDocumentFields = stepFields.any { it == "shipbuildingCertificate" || it == "inspectionDocuments" }
-        if (hasDocumentFields) {
-            println("🔍 Detected Documents Step - Validating build status documents...")
-
-            // ✅ Context is REQUIRED for document validation
-            if (context == null) {
-                println("❌ Context not available for document validation - Cannot proceed")
-                return StepProcessResult.Error("Context required for document validation")
-            }
-
-            // Check if at least one document is uploaded
-            val shipbuildingCertUri = formData["shipbuildingCertificate"]
-            val inspectionDocsUri = formData["inspectionDocuments"]
-
-            val hasShipbuildingCert = !shipbuildingCertUri.isNullOrEmpty() && shipbuildingCertUri != "null"
-            val hasInspectionDocs = !inspectionDocsUri.isNullOrEmpty() && inspectionDocsUri != "null"
-
-            if (!hasShipbuildingCert && !hasInspectionDocs) {
-                println("⚠️ No documents uploaded - skipping validation")
-                return StepProcessResult.Success("No documents to validate")
-            }
-
-            println("📎 Validating documents...")
-            println("   - Shipbuilding Certificate: ${if (hasShipbuildingCert) "✓" else "✗"}")
-            println("   - Inspection Documents: ${if (hasInspectionDocs) "✓" else "✗"}")
-
-            // Call validation API
-            return try {
-                val result = validateBuildStatusDocuments(
-                    context = context,
-                    requestId = requestId.toInt(),
-                    formData = formData
-                )
-
-                when (result) {
-                    is DocumentValidationResult.Success -> {
-                        println("✅ Documents validated successfully!")
-                        StepProcessResult.Success("Documents validated successfully")
-                    }
-                    is DocumentValidationResult.ValidationErrors -> {
-                        // Store field errors in formData for display in UI
-                        result.fieldErrors.forEach { (fieldId, error) ->
-                            formData["${fieldId}_error"] = error
+                            if (shipId != null) {
+                                println("✅ Using existing ship ID as requestId: $shipId")
+                                formData["requestId"] = shipId
+                                formData["shipId"] = shipId
+                                return StepProcessResult.Success("Using existing marine unit (ID: $shipId)")
+                            }
                         }
-                        println("❌ Document validation failed with errors: ${result.fieldErrors}")
-                        StepProcessResult.Error("Document validation failed")
+                    } catch (e: Exception) {
+                        println("❌ Error parsing selectedMarineUnits: ${e.message}")
+                        e.printStackTrace()
                     }
-                    is DocumentValidationResult.Error -> {
-                        println("❌ Document validation error: ${result.message}")
-                        StepProcessResult.Error(result.message)
-                    }
+                } else if (isAddingNewUnit) {
+                    println("🔍 User is adding NEW marine unit - will create registration request later")
+                    return StepProcessResult.NoAction
                 }
-            } catch (e: Exception) {
-                println("❌ Error validating documents: ${e.message}")
-                e.printStackTrace()
-                StepProcessResult.Error("Failed to validate documents: ${e.message}")
-            }
-        }
 
-        // ✅ NEW: Check if this is the Review Step (no fields = review step)
-        if (stepFields.isEmpty()) {
-            println("🔍 Detected Review Step - Checking if we should send request...")
-            println("🔍 Current requestId from formData: $requestId")
-            println("🔍 Full formData keys: ${formData.keys}")
-
-            // ✅ Check if user selected an EXISTING ship (skip send-request for existing ships)
-            val selectedUnitsJson = formData["selectedMarineUnits"]
-            val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
-            val hasSelectedExistingUnit = !selectedUnitsJson.isNullOrEmpty() &&
-                                          selectedUnitsJson != "[]" &&
-                                          !isAddingNewUnit
-
-            if (hasSelectedExistingUnit) {
-                println("✅ User selected EXISTING ship - SKIPPING send-request API")
-                println("   Review Step should not be shown for existing ships")
-                println("   Existing ship ID (requestId): $requestId")
-                // Don't call send-request API for existing ships
-                return StepProcessResult.NoAction
+                StepProcessResult.NoAction
             }
 
-            // ✅ User is adding a NEW ship - call send-request API
-            println("🔍 User is adding NEW ship - Sending request...")
+            // ✅ Unit Selection Step (Ship Info) - Create registration request for NEW ship
+            StepType.CUSTOM -> {
+                // Check if this is unit selection step by looking for unitType field
+                if (formData.containsKey("unitType")) {
+                    println("🚢 Unit Selection step detected (NEW ship)")
 
-            if (requestId == null) {
-                println("❌ No requestId available - cannot send request")
-                return StepProcessResult.Error("No request ID available")
-            }
+                    // Check if user is adding new unit (not selecting existing)
+                    val selectedUnitsJson = formData["selectedMarineUnits"]
+                    val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
 
-            return try {
-                println("📡 Calling send-request API with requestId: $requestId")
-                val result = sendRequest(requestId.toInt())
+                    if (isAddingNewUnit || selectedUnitsJson == "[]") {
+                        println("🔍 Creating registration request for NEW ship...")
 
-                when (result) {
-                    is SendRequestResult.Success -> {
-                        println("✅ Request sent successfully!")
-                        // Store the inspection flag in formData for the strategy to check
-                        formData["needInspection"] = result.needInspection.toString()
-                        formData["sendRequestMessage"] = result.message
-                        StepProcessResult.Success(result.message)
+                        val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
+
+                        when (result) {
+                            is RegistrationRequestResult.Success -> {
+                                println("✅ Registration request created/updated successfully")
+                                formData["requestId"] = result.requestId
+                                result.shipInfoId?.let { formData["shipInfoId"] = it }
+                                result.shipId?.let { formData["shipId"] = it }
+                                StepProcessResult.Success("Registration request created: ${result.requestId}")
+                            }
+                            is RegistrationRequestResult.Error -> {
+                                println("❌ Failed to create registration request: ${result.message}")
+                                StepProcessResult.Error(result.message)
+                            }
+                        }
+                    } else {
+                        StepProcessResult.NoAction
                     }
-                    is SendRequestResult.Error -> {
-                        println("❌ Send request error: ${result.message}")
-                        StepProcessResult.Error(result.message)
-                    }
+                } else {
+                    StepProcessResult.NoAction
                 }
-            } catch (e: Exception) {
-                println("❌ Error sending request: ${e.message}")
-                e.printStackTrace()
-                StepProcessResult.Error("Failed to send request: ${e.message}")
-            }
-        }
-
-        // ✅ NEW: Check if this is the Marine Unit Name Step (final step before payment)
-        val hasMarineNameField = stepFields.contains("marineUnitName")
-        if (hasMarineNameField) {
-            println("🔍 Detected Marine Unit Name Step - Reserving ship name...")
-
-            val marineName = formData["marineUnitName"]
-
-            if (marineName.isNullOrBlank()) {
-                println("⚠️ Marine name is empty - skipping reservation")
-                return StepProcessResult.Error("Marine name is required")
             }
 
-            return try {
-                val result = reserveMarineName(
-                    requestId = requestId,
-                    marineName = marineName.trim()
-                )
+            // ✅ Dimensions Step - Update dimensions
+            StepType.SHIP_DIMENSIONS -> {
+                println("📏 Ship Dimensions step detected")
+
+                if (requestId == null) {
+                    println("⚠️ No requestId - skipping dimensions update")
+                    return StepProcessResult.NoAction
+                }
+
+                val result = updateDimensions(requestId, formData)
 
                 when (result) {
                     is UpdateResult.Success -> {
-                        println("✅ Marine name reserved successfully!")
-                        // Show success dialog using InspectionRequiredDialog
-                        formData["showInspectionDialog"] = "true"
-                        formData["inspectionMessage"] = "تم حجز اسم الوحدة البحرية بنجاح!\n\nاسم الوحدة: ${marineName.trim()}\n\nجاهز للانتقال إلى الدفع"
-                        StepProcessResult.Success("Marine name reserved successfully")
+                        println("✅ Dimensions updated successfully")
+                        StepProcessResult.Success("Dimensions updated")
                     }
                     is UpdateResult.Error -> {
-                        println("❌ Marine name reservation error: ${result.message}")
-                        // Show error dialog using InspectionRequiredDialog
-                        formData["showInspectionDialog"] = "true"
-                        formData["inspectionMessage"] = "فشل حجز اسم الوحدة البحرية\n\n${result.message}"
+                        println("❌ Failed to update dimensions: ${result.message}")
                         StepProcessResult.Error(result.message)
                     }
                 }
-            } catch (e: Exception) {
-                println("❌ Error reserving marine name: ${e.message}")
-                e.printStackTrace()
-                // Show error dialog for exception
-                formData["showInspectionDialog"] = "true"
-                formData["inspectionMessage"] = "فشل حجز اسم الوحدة البحرية\n\n${e.message ?: "خطأ غير معروف"}"
-                StepProcessResult.Error("Failed to reserve marine name: ${e.message}")
+            }
+
+            // ✅ Weights Step - Update weights
+            StepType.SHIP_WEIGHTS -> {
+                println("⚖️ Ship Weights step detected")
+
+                if (requestId == null) {
+                    println("⚠️ No requestId - skipping weights update")
+                    return StepProcessResult.NoAction
+                }
+
+                val result = updateWeights(requestId, formData)
+
+                when (result) {
+                    is UpdateResult.Success -> {
+                        println("✅ Weights updated successfully")
+                        StepProcessResult.Success("Weights updated")
+                    }
+                    is UpdateResult.Error -> {
+                        println("❌ Failed to update weights: ${result.message}")
+                        StepProcessResult.Error(result.message)
+                    }
+                }
+            }
+
+            // ✅ Engine Info Step - Add engine
+            StepType.ENGINE_INFO -> {
+                println("🔧 Engine Info step detected")
+
+                if (requestId == null) {
+                    println("⚠️ No requestId - skipping engine submission")
+                    return StepProcessResult.NoAction
+                }
+
+                if (context == null) {
+                    println("⚠️ No context - cannot upload engine files")
+                    return StepProcessResult.Error("Context required for engine file upload")
+                }
+
+                val result = submitEngine(formData, requestId.toInt(), context)
+
+                when (result) {
+                    is UpdateResult.Success -> {
+                        println("✅ Engine submitted successfully")
+                        StepProcessResult.Success("Engine added")
+                    }
+                    is UpdateResult.Error -> {
+                        println("❌ Failed to submit engine: ${result.message}")
+                        StepProcessResult.Error(result.message)
+                    }
+                }
+            }
+
+            // ✅ Owner Info Step - Add owner
+            StepType.OWNER_INFO -> {
+                println("👤 Owner Info step detected")
+
+                if (requestId == null) {
+                    println("⚠️ No requestId - skipping owner submission")
+                    return StepProcessResult.NoAction
+                }
+
+                if (context == null) {
+                    println("⚠️ No context - cannot upload owner files")
+                    return StepProcessResult.Error("Context required for owner file upload")
+                }
+
+                val result = submitOwner(formData, requestId.toInt(), context)
+
+                when (result) {
+                    is UpdateResult.Success -> {
+                        println("✅ Owner submitted successfully")
+                        StepProcessResult.Success("Owner added")
+                    }
+                    is UpdateResult.Error -> {
+                        println("❌ Failed to submit owner: ${result.message}")
+                        StepProcessResult.Error(result.message)
+                    }
+                }
+            }
+
+            // ✅ Review Step - Send request (only for NEW ships)
+            StepType.REVIEW -> {
+                println("📋 Review step detected")
+
+                if (requestId == null) {
+                    println("❌ No requestId - cannot send request")
+                    return StepProcessResult.Error("No request ID available")
+                }
+
+                // Check if user selected existing ship
+                val selectedUnitsJson = formData["selectedMarineUnits"]
+                val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
+                val hasSelectedExistingUnit = !selectedUnitsJson.isNullOrEmpty() &&
+                                              selectedUnitsJson != "[]" &&
+                                              !isAddingNewUnit
+
+                if (hasSelectedExistingUnit) {
+                    println("✅ User selected EXISTING ship - SKIPPING send-request API")
+                    return StepProcessResult.NoAction
+                }
+
+                // User is adding NEW ship - call send-request API
+                println("🔍 User is adding NEW ship - sending request...")
+
+                try {
+                    val result = sendRequest(requestId.toInt())
+
+                    when (result) {
+                        is SendRequestResult.Success -> {
+                            println("✅ Request sent successfully!")
+                            formData["needInspection"] = result.needInspection.toString()
+                            formData["sendRequestMessage"] = result.message
+                            StepProcessResult.Success(result.message)
+                        }
+                        is SendRequestResult.Error -> {
+                            println("❌ Send request error: ${result.message}")
+                            StepProcessResult.Error(result.message)
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error sending request: ${e.message}")
+                    e.printStackTrace()
+                    StepProcessResult.Error("Failed to send request: ${e.message}")
+                }
+            }
+
+            // ✅ Marine Unit Name Selection Step - Reserve ship name
+            StepType.MARINE_UNIT_NAME_SELECTION -> {
+                println("🏷️ Marine Unit Name Selection step detected")
+
+                val marineName = formData["selectedShipName"]
+
+                if (marineName.isNullOrBlank()) {
+                    println("⚠️ Marine name is empty - skipping reservation")
+                    return StepProcessResult.Error("Marine name is required")
+                }
+
+                if (requestId == null) {
+                    println("❌ No requestId - cannot reserve name")
+                    return StepProcessResult.Error("No request ID available")
+                }
+
+                try {
+                    val result = reserveMarineName(
+                        requestId = requestId,
+                        marineName = marineName
+                    )
+
+                    when (result) {
+                        is UpdateResult.Success -> {
+                            println("✅ Marine name reserved successfully")
+                            StepProcessResult.Success("Marine name reserved: $marineName")
+                        }
+                        is UpdateResult.Error -> {
+                            println("❌ Failed to reserve marine name: ${result.message}")
+                            StepProcessResult.Error(result.message)
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Error reserving marine name: ${e.message}")
+                    e.printStackTrace()
+                    StepProcessResult.Error("Failed to reserve marine name: ${e.message}")
+                }
+            }
+
+            else -> {
+                println("ℹ️ Step type $stepType - no registration action needed")
+                StepProcessResult.NoAction
             }
         }
-
-        // No API call needed for this step
-        return StepProcessResult.NoAction
     }
 
     /**
@@ -1300,6 +1185,7 @@ class RegistrationRequestManager @Inject constructor(
      */
     private suspend fun parseOwnersFromJson(
         ownersJson: String,
+        formData: Map<String, String>,
         context: Context
     ): List<OwnerSubmissionRequest> {
         return withContext(Dispatchers.IO) {

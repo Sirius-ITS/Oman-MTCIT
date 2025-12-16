@@ -13,24 +13,15 @@ import javax.inject.Singleton
  */
 interface PaymentRepository {
     /**
-     * Get invoice type ID for a specific request
+     * Get payment receipt/details with base64 encoded filter
+     * Filter contains: {"requestType": 4, "coreShipsInfoId": "230"}
      */
-    suspend fun getInvoiceTypeId(requestTypeId: String, requestId: Long): Result<Long>
-
-    /**
-     * Get payment details/calculation
-     */
-    suspend fun getPaymentDetails(requestTypeId: String): Result<PaymentReceipt>
+    suspend fun getPaymentReceipt(requestType: Int, coreShipsInfoId: String): Result<PaymentReceipt>
 
     /**
      * Submit payment
      */
     suspend fun submitPayment(requestTypeId: String, paymentData: PaymentSubmissionRequest): Result<Long>
-
-    /**
-     * Get core ship data for payment submission
-     */
-    suspend fun getCoreShipData(requestTypeId: String, requestId: Long): Result<CoreShipsDto>
 }
 
 @Singleton
@@ -38,12 +29,8 @@ class PaymentRepositoryImpl @Inject constructor(
     private val apiService: PaymentApiService
 ) : PaymentRepository {
 
-    override suspend fun getInvoiceTypeId(requestTypeId: String, requestId: Long): Result<Long> {
-        return apiService.getInvoiceTypeId(requestTypeId, requestId)
-    }
-
-    override suspend fun getPaymentDetails(requestTypeId: String): Result<PaymentReceipt> {
-        return apiService.getPaymentDetails(requestTypeId)
+    override suspend fun getPaymentReceipt(requestType: Int, coreShipsInfoId: String): Result<PaymentReceipt> {
+        return apiService.getPaymentReceipt(requestType, coreShipsInfoId)
     }
 
     override suspend fun submitPayment(
@@ -51,9 +38,5 @@ class PaymentRepositoryImpl @Inject constructor(
         paymentData: PaymentSubmissionRequest
     ): Result<Long> {
         return apiService.submitPayment(requestTypeId, paymentData)
-    }
-
-    override suspend fun getCoreShipData(requestTypeId: String, requestId: Long): Result<CoreShipsDto> {
-        return apiService.getCoreShipData(requestTypeId, requestId)
     }
 }

@@ -3,6 +3,16 @@ package com.informatique.mtcit.data.model
 import kotlinx.serialization.Serializable
 
 /**
+ * Payment Receipt Request for GET /payment endpoint
+ * Filter is base64 encoded JSON: {"requestType": 4, "coreShipsInfoId": "230"}
+ */
+@Serializable
+data class PaymentReceiptRequest(
+    val requestType: Int,
+    val coreShipsInfoId: String
+)
+
+/**
  * Payment Receipt Response from GET /payment endpoint
  */
 @Serializable
@@ -218,4 +228,3 @@ data class PaymentResponse<T>(
     val timestamp: String,
     val data: T
 )
-
