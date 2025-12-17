@@ -911,4 +911,173 @@ class RegistrationApiService @Inject constructor(
         }
     }
 
+    /**
+     * Validate build status with dynamic documents
+     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     *
+     * Similar to Release Mortgage redemption request, but ONLY files (no other data)
+     *
+     * @param requestId The registration request ID
+     * @param documents List of document file uploads with documentId mapping
+     * @return Result with DocumentValidationResponse
+     */
+    suspend fun validateBuildStatusWithDocuments(
+        requestId: Int,
+        documents: List<com.informatique.mtcit.data.model.DocumentFileUpload>
+    ): Result<DocumentValidationResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🚀 RegistrationApiService: Validating build status with dynamic documents...")
+            println("=".repeat(80))
+
+            println("📤 Request Details:")
+            println("   Request ID: $requestId")
+            println("   Documents Count: ${documents.size}")
+            documents.forEachIndexed { index, doc ->
+                println("   Document $index: ${doc.fileName} (documentId=${doc.documentId}, ${doc.mimeType})")
+            }
+            println("=".repeat(80))
+
+            val url = "api/v1/registration-requests/$requestId/validate-build-status"
+
+            // Build multipart form data
+            val formParts = mutableListOf<PartData>()
+
+            // ✅ 1. Build documents DTO array
+            val documentsDto = documents.map { doc ->
+                com.informatique.mtcit.data.model.DocumentMetadata(
+                    fileName = doc.fileName,
+                    documentId = doc.documentId
+                )
+            }
+
+            val dtoWrapper = com.informatique.mtcit.data.model.DocumentValidationRequestDto(
+                documents = documentsDto
+            )
+
+            val dtoJson = json.encodeToString(dtoWrapper)
+            println("📤 DTO JSON: $dtoJson")
+
+            // Add "dto" field
+            formParts.add(
+                PartData.FormItem(
+                    value = dtoJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            println("✅ Added dto field: $dtoJson")
+
+            // ✅ 2. Add files (matching the DTO structure)
+            documents.forEach { doc ->
+                formParts.add(
+                    PartData.BinaryItem(
+                        provider = { doc.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${doc.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, doc.mimeType)
+                        }
+                    )
+                )
+                println("📎 Added file: ${doc.fileName} (${doc.fileBytes.size} bytes, documentId=${doc.documentId})")
+            }
+
+            // Debug: Print all form parts
+            println("📤 Debug - All FormData parts:")
+            formParts.forEachIndexed { index, part ->
+                when (part) {
+                    is PartData.FormItem -> {
+                        val cd = part.headers[HttpHeaders.ContentDisposition] ?: ""
+                        val ct = part.headers[HttpHeaders.ContentType] ?: ""
+                        println("   [$index] FormItem: disposition='$cd', contentType='$ct', value='${part.value}'")
+                    }
+                    is PartData.BinaryItem -> {
+                        val cd = part.headers[HttpHeaders.ContentDisposition] ?: ""
+                        val ct = part.headers[HttpHeaders.ContentType] ?: ""
+                        println("   [$index] BinaryItem: disposition='$cd', contentType='$ct'")
+                    }
+                    else -> println("   [$index] Unknown part type: $part")
+                }
+            }
+
+            println("📤 Sending ${formParts.size} form parts to $url")
+            println("=".repeat(80))
+
+            when (val response = repo.onPostMultipart(url, formParts)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            val validationResponse: DocumentValidationResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Documents validated successfully!")
+                            println("   Uploaded files: ${validationResponse.data?.uploadedFiles?.size ?: 0}")
+                            println("=".repeat(80))
+
+                            Result.success(validationResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to validate documents"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            println("   Full response: $responseJson")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error Response:")
+                    println("   Status Code: ${response.code}")
+                    println("   Error Data: ${response.error}")
+                    println("=".repeat(80))
+
+                    val errorDetails = try {
+                        when (val error = response.error) {
+                            is String -> error
+                            is kotlinx.serialization.json.JsonElement -> {
+                                val errorJson = error.jsonObject
+                                val message = errorJson["message"]?.jsonPrimitive?.content
+                                val error_desc = errorJson["error"]?.jsonPrimitive?.content
+                                message ?: error_desc ?: error.toString()
+                            }
+                            else -> response.error?.toString() ?: "No error details"
+                        }
+                    } catch (e: Exception) {
+                        response.error?.toString() ?: "Could not parse error details"
+                    }
+
+                    val errorMsg = if (response.code == 400) {
+                        "خطأ في البيانات المرسلة (400): $errorDetails"
+                    } else {
+                        "API Error: ${response.code} - $errorDetails"
+                    }
+
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in validateBuildStatusWithDocuments: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(e)
+        }
+    }
+
 }

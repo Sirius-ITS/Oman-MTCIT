@@ -32,3 +32,32 @@ data class UploadedFile(
     val contentType: String,
     val size: Int
 )
+
+/**
+ * Document metadata for dynamic document uploads
+ * Used in the DTO when uploading multiple documents
+ */
+@Serializable
+data class DocumentMetadata(
+    val fileName: String,
+    val documentId: Int
+)
+
+/**
+ * DTO wrapper for document validation with dynamic documents
+ */
+@Serializable
+data class DocumentValidationRequestDto(
+    val documents: List<DocumentMetadata>
+)
+
+/**
+ * File upload wrapper for dynamic documents
+ */
+data class DocumentFileUpload(
+    val fileName: String,
+    val fileUri: String,
+    val fileBytes: ByteArray,
+    val mimeType: String,
+    val documentId: Int
+)

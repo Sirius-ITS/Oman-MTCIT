@@ -82,7 +82,7 @@ interface ShipRegistrationRepository {
     ): Result<OwnerSubmissionResponse>
 
     /**
-     * Validate build status documents (NEW - multipart with files)
+     * Validate build status documents (old version - kept for backward compatibility)
      * POST api/v1/registration-requests/{requestId}/validate-build-status
      */
     suspend fun validateBuildStatus(
@@ -91,6 +91,15 @@ interface ShipRegistrationRepository {
         shipbuildingCertificateName: String?,
         inspectionDocumentsFile: ByteArray?,
         inspectionDocumentsName: String?
+    ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
+
+    /**
+     * Validate build status with dynamic documents
+     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     */
+    suspend fun validateBuildStatusWithDocuments(
+        requestId: Int,
+        documents: List<com.informatique.mtcit.data.model.DocumentFileUpload>
     ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
 
     /**
@@ -221,6 +230,14 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
             inspectionDocumentsFile,
             inspectionDocumentsName
         )
+    }
+
+    override suspend fun validateBuildStatusWithDocuments(
+        requestId: Int,
+        documents: List<com.informatique.mtcit.data.model.DocumentFileUpload>
+    ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse> {
+        println("📞 ShipRegistrationRepository: Calling validateBuildStatusWithDocuments API...")
+        return registrationApiService.validateBuildStatusWithDocuments(requestId, documents)
     }
 
     override suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {

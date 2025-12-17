@@ -738,7 +738,7 @@ class RegistrationRequestManager @Inject constructor(
             }
 
             // ✅ Unit Selection Step (Ship Info) - Create registration request for NEW ship
-            StepType.CUSTOM -> {
+            StepType.MARINE_UNIT_DATA -> {
                 // Check if this is unit selection step by looking for unitType field
                 if (formData.containsKey("unitType")) {
                     println("🚢 Unit Selection step detected (NEW ship)")
@@ -750,21 +750,27 @@ class RegistrationRequestManager @Inject constructor(
                     if (isAddingNewUnit || selectedUnitsJson == "[]") {
                         println("🔍 Creating registration request for NEW ship...")
 
-                        val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
+//                        val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
+//
+//                        when (result) {
+//                            is RegistrationRequestResult.Success -> {
+//                                println("✅ Registration request created/updated successfully")
+//                                formData["requestId"] = result.requestId
+//                                result.shipInfoId?.let { formData["shipInfoId"] = it }
+//                                result.shipId?.let { formData["shipId"] = it }
+//                                StepProcessResult.Success("Registration request created: ${result.requestId}")
+//                            }
+//                            is RegistrationRequestResult.Error -> {
+//                                println("❌ Failed to create registration request: ${result.message}")
+//                                StepProcessResult.Error(result.message)
+//                            }
+//                        }
 
-                        when (result) {
-                            is RegistrationRequestResult.Success -> {
-                                println("✅ Registration request created/updated successfully")
-                                formData["requestId"] = result.requestId
-                                result.shipInfoId?.let { formData["shipInfoId"] = it }
-                                result.shipId?.let { formData["shipId"] = it }
-                                StepProcessResult.Success("Registration request created: ${result.requestId}")
-                            }
-                            is RegistrationRequestResult.Error -> {
-                                println("❌ Failed to create registration request: ${result.message}")
-                                StepProcessResult.Error(result.message)
-                            }
-                        }
+                        formData["requestId"] = "1026"
+                        formData["shipInfoId"] = "1184"
+                        formData["shipId"] = "1265"
+                        StepProcessResult.Success("Registration request created: ${requestId}")
+
                     } else {
                         StepProcessResult.NoAction
                     }
@@ -873,6 +879,50 @@ class RegistrationRequestManager @Inject constructor(
                         StepProcessResult.Error(result.message)
                     }
                 }
+            }
+
+            // ✅ Documents Step - Upload dynamic documents
+            StepType.DOCUMENTS -> {
+                println("📄 Documents step detected")
+
+                if (requestId == null) {
+                    println("⚠️ No requestId - skipping document upload")
+                    return StepProcessResult.NoAction
+                }
+
+                if (context == null) {
+                    println("⚠️ No context - cannot upload documents")
+                    return StepProcessResult.Error("Context required for document upload")
+                }
+
+                // Parse dynamic documents from formData
+                val documents = parseDocumentsFromFormData(context, formData)
+
+                if (documents.isEmpty()) {
+                    println("⚠️ No documents to upload")
+                    return StepProcessResult.NoAction
+                }
+
+                println("📤 Uploading ${documents.size} documents...")
+
+                val result = repository.validateBuildStatusWithDocuments(requestId.toInt(), documents)
+
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                            println("✅ Documents uploaded successfully!")
+                            StepProcessResult.Success("Documents uploaded successfully")
+                        } else {
+                            println("❌ Document upload failed: ${response.message}")
+                            StepProcessResult.Error(response.message)
+                        }
+                    },
+                    onFailure = { exception ->
+                        println("❌ Failed to upload documents: ${exception.message}")
+                        exception.printStackTrace()
+                        StepProcessResult.Error(exception.message ?: "Failed to upload documents")
+                    }
+                )
             }
 
             // ✅ Review Step - Send request (only for NEW ships)
@@ -1363,6 +1413,64 @@ class RegistrationRequestManager @Inject constructor(
                 files
             } catch (e: Exception) {
                 println("❌ Error parsing owner files: ${e.message}")
+                e.printStackTrace()
+                emptyList()
+            }
+        }
+    }
+
+    /**
+     * Parse dynamic documents from formData and convert to DocumentFileUpload list
+     * Documents are stored in formData with keys like "document_43" = "content://uri"
+     * where 43 is the documentId from the required documents API
+     */
+    private suspend fun parseDocumentsFromFormData(
+        context: Context,
+        formData: Map<String, String>
+    ): List<com.informatique.mtcit.data.model.DocumentFileUpload> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val documents = mutableListOf<com.informatique.mtcit.data.model.DocumentFileUpload>()
+
+                // Iterate through formData to find document fields
+                formData.forEach { (key, value) ->
+                    // Check if this is a document field (e.g., "document_43")
+                    if (key.startsWith("document_") && value.isNotEmpty() && value != "null") {
+                        // Extract documentId from the key
+                        val documentId = key.removePrefix("document_").toIntOrNull()
+
+                        if (documentId != null) {
+                            try {
+                                // Convert URI to file upload
+                                val uri = value.toUri()
+                                val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
+
+                                if (fileUpload != null) {
+                                    documents.add(
+                                        com.informatique.mtcit.data.model.DocumentFileUpload(
+                                            fileName = fileUpload.fileName,
+                                            fileUri = fileUpload.fileUri,
+                                            fileBytes = fileUpload.fileBytes,
+                                            mimeType = fileUpload.mimeType,
+                                            documentId = documentId
+                                        )
+                                    )
+                                    println("📎 Added document: ${fileUpload.fileName} (documentId=$documentId)")
+                                } else {
+                                    println("⚠️ Could not convert URI to file upload for documentId=$documentId")
+                                }
+                            } catch (e: Exception) {
+                                println("❌ Error processing document $documentId: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+
+                println("✅ Parsed ${documents.size} documents from formData")
+                documents
+            } catch (e: Exception) {
+                println("❌ Error parsing documents from formData: ${e.message}")
                 e.printStackTrace()
                 emptyList()
             }

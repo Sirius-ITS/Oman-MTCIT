@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.data.model.RequiredDocumentItem
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
@@ -65,6 +66,9 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private var isShipTypeFiltered: Boolean = false
 
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
+    // ✅ NEW: Store required documents from API
+    private var requiredDocuments: List<RequiredDocumentItem> = emptyList()
+
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
 
@@ -86,10 +90,23 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        println("📄 RegistrationRequests - Fetching required documents from API...")
+        val requestTypeId = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.toRequestTypeId()
+        val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
+            println("❌ ERROR fetching required documents: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+        println("✅ Fetched ${requiredDocumentsList.size} required documents:")
+        requiredDocumentsList.forEach { docItem ->
+            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            println("   - ${docItem.document.nameAr} ($mandatoryText)")
+        }
 
         // Store in instance variables
         typeOptions = personTypes
         commercialOptions = commercialRegistrations
+        requiredDocuments = requiredDocumentsList // ✅ Store documents
 
         // ✅ Don't load ships here - they will be loaded when user presses Next
         // after selecting person type (individual/company)
@@ -238,40 +255,40 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 )
             )
 
-            steps.add(
-                SharedSteps.marineUnitDimensionsStep(
-                    includeHeight = true,
-                    includeDecksCount = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.marineUnitWeightsStep(
-                    includeMaxPermittedLoad = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.engineInfoStep(
-                    manufacturers = listOf(
-                        "Manufacturer 1",
-                        "Manufacturer 2",
-                        "Manufacturer 3"
-                    ),
-                    enginesTypes = engineTypeOptions,
-                    countries = countryOptions,
-                    fuelTypes = engineFuelTypeOptions,
-                    engineConditions = engineStatusOptions,
-                )
-            )
-
-            steps.add(
-                SharedSteps.ownerInfoStep(
-                    nationalities = countryOptions,
-                    countries = countryOptions,
-                    includeCompanyFields = true,
-                )
-            )
+//            steps.add(
+//                SharedSteps.marineUnitDimensionsStep(
+//                    includeHeight = true,
+//                    includeDecksCount = true
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.marineUnitWeightsStep(
+//                    includeMaxPermittedLoad = true
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.engineInfoStep(
+//                    manufacturers = listOf(
+//                        "Manufacturer 1",
+//                        "Manufacturer 2",
+//                        "Manufacturer 3"
+//                    ),
+//                    enginesTypes = engineTypeOptions,
+//                    countries = countryOptions,
+//                    fuelTypes = engineFuelTypeOptions,
+//                    engineConditions = engineStatusOptions,
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.ownerInfoStep(
+//                    nationalities = countryOptions,
+//                    countries = countryOptions,
+//                    includeCompanyFields = true,
+//                )
+//            )
 
             // ✅ Check overallLength to determine if inspection documents are mandatory
             val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
@@ -280,22 +297,12 @@ class TemporaryRegistrationStrategy @Inject constructor(
             println("🔍 DEBUG - overallLength: $overallLength")
             println("🔍 DEBUG - isInspectionDocMandatory: $isInspectionDocMandatory")
 
-            steps.add(
-                SharedSteps.documentsStep(
-                    requiredDocuments = listOf(
-                        DocumentConfig(
-                            id = "shipbuildingCertificate",
-                            labelRes = R.string.shipbuilding_certificate_or_sale_contract,
-                            mandatory = true
-                        ),
-                        DocumentConfig(
-                            id = "inspectionDocuments",
-                            labelRes = R.string.inspection_documents,
-                            mandatory = isInspectionDocMandatory // ✅ Dynamic based on length
-                        )
-                    )
-                )
-            )
+            println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
+//            steps.add(
+//                SharedSteps.dynamicDocumentsStep(
+//                    documents = requiredDocuments  // ✅ Pass documents from API
+//                )
+//            )
         }
 
         // ✅ Review Step - ALWAYS show for BOTH new and existing ships

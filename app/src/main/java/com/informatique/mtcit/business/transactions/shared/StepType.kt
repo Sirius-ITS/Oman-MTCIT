@@ -23,6 +23,11 @@ enum class StepType {
     MARINE_UNIT_SELECTION,
 
     /**
+     * Marine unit/ship selection step
+     */
+    MARINE_UNIT_DATA,
+
+    /**
      * Marine unit name selection/reservation step
      */
     MARINE_UNIT_NAME_SELECTION,

@@ -2,6 +2,7 @@ package com.informatique.mtcit.business.transactions.shared
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.data.model.RequiredDocumentItem
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.viewmodels.StepData
@@ -373,7 +374,7 @@ object SharedSteps {
         fields.addAll(additionalFields)
 
         return StepData(
-            stepType = StepType.MARINE_UNIT_SELECTION,  // ✅ Added
+            stepType = StepType.MARINE_UNIT_DATA,  // ✅ Added
             titleRes = R.string.unit_data,
             descriptionRes = R.string.unit_data_description,
             fields = fields,
@@ -576,7 +577,7 @@ object SharedSteps {
 
     // *****************************************************************************************************************
     fun dynamicDocumentsStep(
-        documents: List<com.informatique.mtcit.data.model.RequiredDocumentItem>,
+        documents: List<RequiredDocumentItem>,
         allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
         maxSizeMB: Int = 5
     ): StepData {
@@ -587,8 +588,8 @@ object SharedSteps {
 
         // Filter only active documents and sort by order
         val activeDocuments = documents
-            .filter { it.document.isActive == 1 }
-            .sortedBy { it.document.docOrder }
+//            .filter { it.document.isActive == 1 }
+//            .sortedBy { it.document.docOrder }
 
         println("📄 Creating ${activeDocuments.size} file pickers (after filtering active only)")
 
@@ -611,6 +612,7 @@ object SharedSteps {
         }
 
         return StepData(
+            stepType = StepType.DOCUMENTS,  // ✅ Added
             titleRes = R.string.upload_documents,
             descriptionRes = R.string.upload_documents_description,
             fields = fields
@@ -951,6 +953,7 @@ object SharedSteps {
         }
 
         return StepData(
+            stepType = StepType.SHIP_WEIGHTS,
             titleRes = R.string.marine_unit_weights_title,
             descriptionRes = R.string.marine_unit_weights_description,
             fields = fields
@@ -992,6 +995,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.OWNER_INFO,  // ✅ Added
             titleRes = R.string.owner_info,
             descriptionRes = R.string.owner_info_description,
             fields = fields,

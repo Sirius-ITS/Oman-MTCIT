@@ -940,10 +940,16 @@ class LookupRepositoryImpl @Inject constructor(
                             }
 
                             // Filter only active documents and sort by docOrder
-                            val activeDocuments = documents
-                                .filter { it.document.isActive == 1 }
-                                .sortedBy { it.document.docOrder }
-                            Result.success(activeDocuments)
+//                            val activeDocuments = documents
+//                                .filter { it.document.isActive == 1 }
+//                                .sortedBy { it.document.docOrder }
+//                            Result.success(activeDocuments)
+                            // ✅ FIXED: Don't filter by isActive - just sort by docOrder
+                            // The API returns all documents that should be shown regardless of isActive flag
+                            val sortedDocuments = documents.sortedBy { it.document.docOrder }
+
+                            println("📋 Returning ${sortedDocuments.size} documents after sorting")
+                            Result.success(sortedDocuments)
                         } else {
                             println("❌ Failed to fetch required documents: ${response.message}")
                             Result.failure(Exception(response.message))

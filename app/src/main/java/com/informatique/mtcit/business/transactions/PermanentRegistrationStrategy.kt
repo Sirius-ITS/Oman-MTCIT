@@ -336,15 +336,17 @@ class PermanentRegistrationStrategy @Inject constructor(
         // ✅ Use RegistrationRequestManager to process step data
         val currentStepData = getSteps().getOrNull(step)
         if (currentStepData != null) {
-            val stepFieldIds = currentStepData.fields.map { it.id }
+            val stepType = currentStepData.stepType
 
-            // ✅ FIXED: Now this is a suspend function, so we can call processStepIfNeeded directly
-            // No more runBlocking - this will run asynchronously without freezing the UI!
+            println("🔍 DEBUG - Step $step type: $stepType")
+            println("🔍 DEBUG - Data keys: ${data.keys}")
+
+            // ✅ Call RegistrationRequestManager to process registration-related steps
             val result = registrationRequestManager.processStepIfNeeded(
-                stepFields = stepFieldIds,
+                stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 2, // 2 = Permanent Registration
-                context = context // Pass the context here
+                requestTypeId = 1, // 1 = Temporary Registration
+                context = context
             )
 
             when (result) {
