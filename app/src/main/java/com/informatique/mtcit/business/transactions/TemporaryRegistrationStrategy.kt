@@ -47,6 +47,9 @@ class TemporaryRegistrationStrategy @Inject constructor(
     // ✅ Context for file operations (set from UI layer)
     var context: android.content.Context? = null
 
+    // ✅ Transaction context with all API endpoints
+    private val transactionContext: TransactionContext = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.context
+
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
@@ -78,6 +81,13 @@ class TemporaryRegistrationStrategy @Inject constructor(
     // ✅ NEW: Override the per-lookup callbacks for loading indicators
     override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
     override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
+
+    /**
+     * ✅ Get the transaction context with all API endpoints
+     */
+    override fun getContext(): TransactionContext {
+        return transactionContext
+    }
 
     // ✅ NEW: Payment state tracking
     private var requestId: Long? = null
@@ -538,7 +548,26 @@ class TemporaryRegistrationStrategy @Inject constructor(
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        return repository.submitRegistration(data)
+        println("=".repeat(80))
+        println("📤 TemporaryRegistrationStrategy.submit() called")
+        println("=".repeat(80))
+
+        // ✅ Get the created request ID
+        val requestId = getCreatedRequestId()
+
+        if (requestId == null) {
+            println("❌ No registration request ID found - cannot submit")
+            return Result.failure(Exception("لم يتم العثور على رقم الطلب. يرجى المحاولة مرة أخرى."))
+        }
+
+        println("✅ Registration Request ID: $requestId")
+        println("✅ Strategy validation complete - ready for submission")
+        println("   ViewModel will handle API call via submitOnReview()")
+        println("=".repeat(80))
+
+        // ✅ Return success - ViewModel will call submitOnReview() which handles the API
+        // No direct API call here - keep Strategy focused on business logic only
+        return Result.success(true)
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
@@ -1094,5 +1123,34 @@ class TemporaryRegistrationStrategy @Inject constructor(
             // ✅ Notify ViewModel even on failure (with empty list and success=false)
             onLookupCompleted?.invoke(lookupKey, emptyList(), false)
         }
+    }
+
+    // ✅ NEW: Implement TransactionStrategy interface methods for generic transaction handling
+
+    override fun getTransactionTypeName(): String {
+        return "شهادة تسجيل مؤقتة"
+    }
+
+    override fun getCreatedRequestId(): Int? {
+        // Get from accumulatedFormData or requestId property
+        val fromFormData = accumulatedFormData["requestId"]?.toIntOrNull()
+        val fromProperty = requestId?.toInt()
+
+        println("🔍 getCreatedRequestId() called:")
+        println("   - accumulatedFormData['requestId'] = ${accumulatedFormData["requestId"]}")
+        println("   - fromFormData (parsed) = $fromFormData")
+        println("   - requestId property = $requestId")
+        println("   - fromProperty (parsed) = $fromProperty")
+        println("   - Final result = ${fromFormData ?: fromProperty}")
+
+        return fromFormData ?: fromProperty
+    }
+
+    override fun getStatusUpdateEndpoint(requestId: Int): String {
+        return transactionContext.buildUpdateStatusUrl(requestId)
+    }
+
+    override fun getSendRequestEndpoint(requestId: Int): String {
+        return transactionContext.buildSendRequestUrl(requestId)
     }
 }

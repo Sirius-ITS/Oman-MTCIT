@@ -283,6 +283,7 @@ fun MarineRegistrationScreen(
         previousStep = viewModel::previousStep,
         nextStep = viewModel::nextStep,
         submitForm = viewModel::submitForm,
+        submitOnReview = viewModel::submitOnReview, // ✅ NEW: Direct review submission
         viewModel = viewModel
     )
 }

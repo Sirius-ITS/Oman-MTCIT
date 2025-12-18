@@ -60,6 +60,7 @@ fun TransactionFormContent(
     previousStep: () -> Unit,
     nextStep: () -> Unit,
     submitForm: () -> Unit,
+    submitOnReview: (() -> Unit)? = null,
     viewModel: BaseTransactionViewModel,
     hideStepperForFirstStep: Boolean = false // New parameter for Login flow
 ) {
@@ -233,15 +234,21 @@ fun TransactionFormContent(
                 onNextClick = {
                     // ✅ Check if we're on the last step
                     if (uiState.currentStep >= uiState.steps.size - 1) {
-                        // On last step - check if it needs special API handling (like marine name)
-                        val currentStepFields = uiState.steps.getOrNull(uiState.currentStep)?.fields?.map { it.id } ?: emptyList()
-                        val isMarineNameStep = currentStepFields.contains("marineUnitName")
-                        if (isMarineNameStep) {
-                            // Marine name step - call nextStep() to trigger API via processStepData()
-                            nextStep()
+                        // On last step - check if it's review step or special step
+                        if (isReviewStep && submitOnReview != null) {
+                            // ✅ Review step - use direct submission
+                            submitOnReview()
                         } else {
-                            // Regular last step (like OTP) - submit the form
-                            submitForm()
+                            // Check if it needs special API handling (like marine name)
+                            val currentStepFields = uiState.steps.getOrNull(uiState.currentStep)?.fields?.map { it.id } ?: emptyList()
+                            val isMarineNameStep = currentStepFields.contains("marineUnitName")
+                            if (isMarineNameStep) {
+                                // Marine name step - call nextStep() to trigger API via processStepData()
+                                nextStep()
+                            } else {
+                                // Regular last step (like OTP) - submit the form
+                                submitForm()
+                            }
                         }
                     } else {
                         // Not on last step - always call nextStep()

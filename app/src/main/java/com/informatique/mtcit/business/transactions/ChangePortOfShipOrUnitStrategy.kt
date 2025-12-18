@@ -117,6 +117,10 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         println("📦 TemporaryRegistration - Updated accumulated data: $accumulatedFormData")
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 

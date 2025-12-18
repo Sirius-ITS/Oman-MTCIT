@@ -71,6 +71,10 @@ class ShipDimensionsChangeStrategy @Inject constructor(
         return Result.success(true)
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     // ✅ Custom step - Ship identification (specific to dimension change)
     private fun createShipIdentificationStep(): StepData = StepData(
         titleRes = R.string.unit_data,

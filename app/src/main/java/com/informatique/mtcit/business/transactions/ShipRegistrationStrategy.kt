@@ -211,6 +211,10 @@ class ShipRegistrationStrategy @Inject constructor(
         return FieldFocusResult.NoAction
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
             return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")

@@ -612,11 +612,16 @@ abstract class BaseTransactionViewModel(
                     return@launch
                 }
 
+                // ✅ Step 1: Call strategy.submit() for validation
                 val result = strategy.submit(currentState.formData)
 
                 result.fold(
                     onSuccess = {
+                        println("✅ Strategy validation successful")
                         _submissionState.value = UIState.Success(true)
+
+                        // ✅ Step 2: Call the hook for child ViewModels to handle final submission
+                        onFormSubmitSuccess()
                     },
                     onFailure = { exception ->
                         _submissionState.value = UIState.Failure(exception)
@@ -628,6 +633,15 @@ abstract class BaseTransactionViewModel(
                 _error.value = AppError.Submission(e.message ?: "Unknown error")
             }
         }
+    }
+
+    /**
+     * ✅ Hook called after strategy.submit() succeeds
+     * Child ViewModels can override this to handle final API submission
+     */
+    protected open fun onFormSubmitSuccess() {
+        // Default: do nothing
+        // MarineRegistrationViewModel will override to call submitOnReview()
     }
 
     fun resetSubmissionState() {

@@ -135,4 +135,8 @@ class SuspendRegistrationStrategy @Inject constructor(
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
         return repository.submitRegistration(data)
     }
+
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
 }

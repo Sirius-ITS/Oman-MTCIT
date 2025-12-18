@@ -399,4 +399,133 @@ class MarineUnitsApiService @Inject constructor(
             Result.failure(Exception("Failed to get ship: ${e.message}"))
         }
     }
+
+    // =============================================================================================
+    // 🔧 GENERIC TRANSACTION FUNCTIONS
+    // =============================================================================================
+
+    /**
+     * ✅ Generic function to update any transaction status
+     * PUT {endpoint}/{requestId}/update-status
+     *
+     * @param endpoint Base endpoint (e.g., "api/v1/mortgage-request")
+     * @param requestId The transaction request ID
+     * @param statusId The new status ID
+     * @param transactionType The transaction type name for logging
+     * @param additionalData Optional additional data to send in request body
+     * @return Result with success/failure
+     */
+    suspend fun updateTransactionStatus(
+        endpoint: String,
+        requestId: Int,
+        statusId: Int,
+        transactionType: String = "Transaction",
+        additionalData: Map<String, Any> = emptyMap()
+    ): Result<Boolean> {
+        return try {
+            println("=".repeat(80))
+            println("🔄 Updating $transactionType status...")
+            println("=".repeat(80))
+            println("📤 Request Details:")
+            println("   Endpoint: $endpoint/$requestId/update-status")
+            println("   Status ID: $statusId")
+            if (additionalData.isNotEmpty()) {
+                println("   Additional Data: $additionalData")
+            }
+
+            // Create request body with statusId and any additional data
+            val requestData = mutableMapOf<String, kotlinx.serialization.json.JsonElement>(
+                "statusId" to kotlinx.serialization.json.JsonPrimitive(statusId)
+            )
+
+            // Add additional data if provided
+            additionalData.forEach { (key, value) ->
+                requestData[key] = when (value) {
+                    is String -> kotlinx.serialization.json.JsonPrimitive(value)
+                    is Int -> kotlinx.serialization.json.JsonPrimitive(value)
+                    is Long -> kotlinx.serialization.json.JsonPrimitive(value)
+                    is Double -> kotlinx.serialization.json.JsonPrimitive(value)
+                    is Boolean -> kotlinx.serialization.json.JsonPrimitive(value)
+                    else -> kotlinx.serialization.json.JsonPrimitive(value.toString())
+                }
+            }
+
+            val requestBody = json.encodeToString(
+                kotlinx.serialization.json.JsonObject.serializer(),
+                kotlinx.serialization.json.JsonObject(requestData)
+            )
+
+            println("📤 Request Body: $requestBody")
+            println("=".repeat(80))
+
+            val fullEndpoint = "$endpoint/$requestId/update-status"
+
+            when (val response = repo.onPutAuth(fullEndpoint, requestBody)) {
+                is RepoServiceState.Success -> {
+                    println("✅ $transactionType status updated successfully")
+                    println("📥 Response: ${response.response}")
+                    println("=".repeat(80))
+                    Result.success(true)
+                }
+                is RepoServiceState.Error -> {
+                    val errorMsg = "Failed to update $transactionType status (code: ${response.code})"
+                    println("❌ $errorMsg")
+                    println("=".repeat(80))
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception updating $transactionType status: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * ✅ Generic function to send/submit a transaction request (final submission)
+     * PUT {endpoint}/{requestId}/send-request
+     *
+     * This is called when user clicks "Accept and Send" on review page
+     *
+     * @param endpoint Base endpoint (e.g., "api/v1/mortgage-request")
+     * @param requestId The transaction request ID
+     * @param transactionType The transaction type name for logging
+     * @return Result with success/failure
+     */
+    suspend fun sendTransactionRequest(
+        endpoint: String,
+        requestId: Int,
+        transactionType: String = "Transaction"
+    ): Result<Boolean> {
+        return try {
+            println("=".repeat(80))
+            println("📤 Sending $transactionType Request...")
+            println("=".repeat(80))
+            println("   Request ID: $requestId")
+
+            val fullEndpoint = "$endpoint/$requestId/send-request"
+            println("   Endpoint: $fullEndpoint")
+
+            when (val response = repo.onPutAuth(fullEndpoint, "")) {
+                is RepoServiceState.Success -> {
+                    println("✅ $transactionType request sent successfully")
+                    println("📥 Response: ${response.response}")
+                    println("=".repeat(80))
+                    Result.success(true)
+                }
+                is RepoServiceState.Error -> {
+                    val errorMsg = "Failed to send $transactionType request (code: ${response.code})"
+                    println("❌ $errorMsg")
+                    println("   Error: ${response.error}")
+                    println("=".repeat(80))
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in send$transactionType Request: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(e)
+        }
+    }
 }

@@ -204,18 +204,11 @@ fun DynamicStepForm(
                                 maxSizeMB = field.maxSizeMB,
                                 mandatory = field.mandatory,
                                 fieldId = field.id,
-
-                                onOpenFilePicker = { fieldId, allowedTypes ->
-                                    onOpenFilePicker?.invoke(fieldId, allowedTypes)
-                                },
-
+                                onOpenFilePicker = onOpenFilePicker,
                                 onViewFile = onViewFile,
-
-                                onRemoveFile = { fieldId ->
-                                    onRemoveFile?.invoke(fieldId)
-                                }
+                                onRemoveFile = onRemoveFile
                             )
-                        }
+                          }
 
                         is FormField.OwnerList -> {
                             // Parse owners from JSON mortgageValue

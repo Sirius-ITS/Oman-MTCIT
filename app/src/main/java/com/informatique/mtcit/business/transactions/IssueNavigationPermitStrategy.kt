@@ -52,6 +52,9 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
     // Allow ViewModel to set a callback when steps need to be rebuilt (same pattern as other strategies)
     override var onStepsNeedRebuild: (() -> Unit)? = null
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
 
     /**
      * Load ships for the selected person type / commercial registration.
