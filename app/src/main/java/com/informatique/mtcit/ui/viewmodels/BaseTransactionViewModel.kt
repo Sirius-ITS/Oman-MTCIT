@@ -136,6 +136,11 @@ abstract class BaseTransactionViewModel(
                 strategy.context = context
                 println("✅ Context set for PermanentRegistrationStrategy")
             }
+            // ✅ NEW: Add CancelRegistrationStrategy
+            is com.informatique.mtcit.business.transactions.CancelRegistrationStrategy -> {
+                strategy.context = context
+                println("✅ Context set for CancelRegistrationStrategy")
+            }
         }
     }
 
@@ -393,6 +398,15 @@ abstract class BaseTransactionViewModel(
 
                             // Handle special cases (like MortgageCertificateStrategy)
                             if (strategy is com.informatique.mtcit.business.transactions.MortgageCertificateStrategy) {
+                                val apiError = strategy.getLastApiError()
+                                if (apiError != null) {
+                                    _showToastEvent.value = apiError
+                                    strategy.clearLastApiError()
+                                }
+                            }
+
+                            // Handle CancelRegistrationStrategy
+                            if (strategy is com.informatique.mtcit.business.transactions.CancelRegistrationStrategy) {
                                 val apiError = strategy.getLastApiError()
                                 if (apiError != null) {
                                     _showToastEvent.value = apiError

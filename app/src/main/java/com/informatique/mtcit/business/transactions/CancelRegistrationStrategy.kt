@@ -1,11 +1,13 @@
 package com.informatique.mtcit.business.transactions
 
+//Imports
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
-import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -31,7 +33,8 @@ class CancelRegistrationStrategy @Inject constructor(
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
     private val marineUnitRepository: MarineUnitRepository,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy {
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -41,7 +44,19 @@ class CancelRegistrationStrategy @Inject constructor(
     private var marineUnits: List<MarineUnit> = emptyList()
     private var deletionReasonOptions: List<String> = emptyList() // ✅ NEW: Dynamic deletion reasons
     private var deletionReasonMap: Map<String, Int> = emptyMap() // ✅ NEW: Map name to ID
-    private var accumulatedFormData: MutableMap<String, String> = mutableMapOf() // ✅ Track form data
+    private var accumulatedFormData: MutableMap<String, String> = mutableMapOf() // ✅ Track form data// Store API error to prevent navigation and show error dialog
+    private var lastApiError: String? = null
+    private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList() // ✅ NEW: Store required documents from API
+    private var deletionRequestId: Int? = null // ✅ NEW: Store created deletion request ID
+
+    var context: android.content.Context? = null // ✅ Store Android context reference (will be set by ViewModel)
+        set(value) {
+            field = value
+            androidContext = value
+            println("✅ Context set in CancelRegistrationStrategy")
+        }
+
+    private var androidContext: android.content.Context? = null // ✅ Store Android context reference
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // Load all dropdown options from API
@@ -79,37 +94,26 @@ class CancelRegistrationStrategy @Inject constructor(
             }.onFailure { error ->
                 println("❌ Error fetching deletion reasons: ${error.message}")
                 error.printStackTrace()
-                // Fallback to hardcoded options if API fails
-                deletionReasonOptions = listOf(
-                    "بيع السفينة",
-                    "تفكيك السفينة",
-                    "فقدان السفينة",
-                    "نقل التسجيل لدولة أخرى",
-                    "غرق السفينة",
-                    "أخرى"
-                )
-                // Create dummy IDs for fallback
-                deletionReasonMap = deletionReasonOptions.withIndex().associate { (index, name) ->
-                    name to (index + 1)
-                }
-                println("🗑️ Using fallback deletion reasons")
             }
         } catch (e: Exception) {
             println("❌ Exception fetching deletion reasons: ${e.message}")
             e.printStackTrace()
-            // Fallback to hardcoded options
-            deletionReasonOptions = listOf(
-                "بيع السفينة",
-                "تفكيك السفينة",
-                "فقدان السفينة",
-                "نقل التسجيل لدولة أخرى",
-                "غرق السفينة",
-                "أخرى"
-            )
-            deletionReasonMap = deletionReasonOptions.withIndex().associate { (index, name) ->
-                name to (index + 1)
+        }
+
+        // ✅ Fetch required documents من الـ API
+        println("📄 CancelRegistration - Fetching required documents from API...")
+        val requestTypeId = TransactionType.CANCEL_PERMANENT_REGISTRATION.toRequestTypeId()
+        val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId)
+            .getOrElse { error ->
+                println("❌ ERROR fetching required documents: ${error.message}")
+                error.printStackTrace()
+                emptyList()
             }
-            println("🗑️ Using fallback deletion reasons due to exception")
+
+        println("✅ Fetched ${requiredDocumentsList.size} required documents:")
+        requiredDocumentsList.forEach { docItem ->
+            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            println("   - ${docItem.document.nameAr} ($mandatoryText)")
         }
 
         // Cache the options for use in getSteps()
@@ -118,6 +122,7 @@ class CancelRegistrationStrategy @Inject constructor(
         shipTypeOptions = shipTypes
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
+        requiredDocuments = requiredDocumentsList // ✅ Store documents for later use
 
         println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
 
@@ -128,7 +133,8 @@ class CancelRegistrationStrategy @Inject constructor(
             "ownerCountry" to countries,
             "registrationCountry" to countries,
             "unitType" to shipTypes,
-            "deletionReasons" to deletionReasonOptions // ✅ NEW: Return deletion reasons
+            "deletionReasons" to deletionReasonOptions, // ✅ NEW: Return deletion reasons
+            "requiredDocuments" to requiredDocumentsList
         )
     }
 
@@ -196,8 +202,8 @@ class CancelRegistrationStrategy @Inject constructor(
             )
         )
 
-        // Step 4: Cancellation Reason
-        steps.add(
+        // OLD Step 4: Cancellation Reason
+        /*steps.add(
             StepData(
                 titleRes = R.string.cancellation_reason,
                 descriptionRes = R.string.cancellation_reason_desc,
@@ -217,6 +223,14 @@ class CancelRegistrationStrategy @Inject constructor(
                     )
                 )
             )
+        )*/
+
+        // ✅ Step 4: Cancellation Reason + Documents (dynamic)
+        steps.add(
+            SharedSteps.createCancellationReasonStep(
+                deletionReasons = deletionReasonOptions,
+                requiredDocuments = requiredDocuments
+            )
         )
 
         // Step 5: Review
@@ -232,12 +246,165 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
-        println("🔄 processStepData called with: $data")
+        println("📄 processStepData called with: $data")
 
-        // ✅ Accumulate form data for dynamic step logic
+        // ✅ Accumulate form data
         accumulatedFormData.putAll(data)
         println("📦 CancelRegistration - Accumulated data: $accumulatedFormData")
+
+        // Clear previous error
+        lastApiError = null
+
+        // Check if we just completed the Cancellation Reason step
+        val currentSteps = getSteps()
+        val currentStepData = currentSteps.getOrNull(step)
+
+        println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
+        println("🔍 R.string.cancellation_reason value: ${R.string.cancellation_reason}")
+
+        // ✅ The cancellation reason step has titleRes = R.string.cancellation_reason
+        if (currentStepData?.titleRes == R.string.cancellation_reason) {
+            println("🗑️ ✅ Cancellation Reason step completed - calling API...")
+
+            var apiCallSucceeded = false
+            try {
+                // ✅ Collect all uploaded documents from dynamic fields
+                val uploadedDocuments = collectUploadedDocuments(accumulatedFormData)
+
+                println("📋 Total documents to upload: ${uploadedDocuments.size}")
+
+                // ✅ Call the API with documents
+                val result = submitDeletionWithFiles(accumulatedFormData, uploadedDocuments)
+
+                result.fold(
+                    onSuccess = { response ->
+                        println("✅ Deletion request created successfully!")
+                        println("   Deletion Request ID: ${response.data?.id}")
+                        println("   Response: ${response.message}")
+
+                        // ✅ CRITICAL: Store the deletion request ID in the member variable
+                        deletionRequestId = response.data?.id
+                        println("💾 STORED deletionRequestId = $deletionRequestId")
+
+                        // Store success flag
+                        accumulatedFormData["submissionSuccess"] = "true"
+                        lastApiError = null
+                        apiCallSucceeded = true
+                    },
+                    onFailure = { error ->
+                        println("❌ Failed to create deletion request: ${error.message}")
+                        error.printStackTrace()
+
+                        // Store error for display
+                        lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الشطب"
+                        apiCallSucceeded = false
+                    }
+                )
+            } catch (e: Exception) {
+                println("❌ Exception while creating deletion request: ${e.message}")
+                e.printStackTrace()
+
+                lastApiError = e.message ?: "حدث خطأ غير متوقع"
+                apiCallSucceeded = false
+            }
+
+            // ✅ Return -1 to prevent navigation if API call failed
+            if (!apiCallSucceeded) {
+                println("⚠️ API call failed - returning -1 to prevent navigation")
+                return -1
+            }
+        } else {
+            println("ℹ️ This is not the cancellation reason step, skipping API call")
+        }
+
         return step
+    }
+
+    /**
+     * Get the last API error message if any
+     * Used by UI to display error dialogs
+     */
+    fun getLastApiError(): String? = lastApiError
+
+    /**
+     * Clear the last API error
+     */
+    fun clearLastApiError() {
+        lastApiError = null
+    }
+
+    // ✅ NEW: Collect uploaded documents from form data
+    private suspend fun collectUploadedDocuments(
+        formData: Map<String, String>
+    ): List<DeletionFileUpload> {
+        val uploadedDocuments = mutableListOf<DeletionFileUpload>()
+
+        // ✅ Use the context set by ViewModel (not appContext)
+        val ctx = androidContext ?: context ?: appContext
+
+        if (ctx == null) {
+            println("❌ CRITICAL: No context available!")
+            return emptyList()
+        }
+
+        println("✅ Using context: ${ctx.javaClass.simpleName}")
+
+        // Get all document fields (document_43, document_44, etc.)
+        requiredDocuments
+            .filter { it.document.isActive == 1 }
+            .forEach { docItem ->
+                val fieldId = "document_${docItem.document.id}"
+                val documentUri = formData[fieldId]
+
+                if (!documentUri.isNullOrBlank() && documentUri.startsWith("content://")) {
+                    try {
+                        val uri = android.net.Uri.parse(documentUri)
+
+                        val bytes = ctx.contentResolver.openInputStream(uri)?.use {
+                            it.readBytes()
+                        } ?: throw Exception("Unable to read file")
+
+                        val fileName = getFileNameFromUri(ctx, uri)
+                            ?: "document_${docItem.document.id}_${System.currentTimeMillis()}"
+
+                        val mimeType = ctx.contentResolver.getType(uri)
+                            ?: "application/octet-stream"
+
+                        val deletionFile = DeletionFileUpload(
+                            fileName = fileName,
+                            fileBytes = bytes,
+                            mimeType = mimeType,
+                            fileUri = uri.toString(),
+                            docOwnerId = "document_${docItem.document.id}",
+                            docId = docItem.document.id
+                        )
+
+                        uploadedDocuments.add(deletionFile)
+                        println("📎 Added document: ${docItem.document.nameAr} (id=${docItem.document.id}, file=$fileName, size=${bytes.size} bytes)")
+
+                    } catch (e: Exception) {
+                        println("⚠️ Failed to process document ${docItem.document.nameAr}: ${e.message}")
+                        e.printStackTrace()
+                    }
+                } else {
+                    println("⚠️ Skipping document ${docItem.document.nameAr}: invalid URI '$documentUri'")
+                }
+            }
+
+        return uploadedDocuments
+    }
+
+    // Helper function to get filename from URI
+    private fun getFileNameFromUri(context: Context, uri: android.net.Uri): String? {
+        return try {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                cursor.moveToFirst()
+                cursor.getString(nameIndex)
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     suspend fun submitDeletionWithFiles(
@@ -246,27 +413,62 @@ class CancelRegistrationStrategy @Inject constructor(
     ): Result<DeletionSubmitResponse> {
         return try {
             println("📤 ========== submitDeletionWithFiles ==========")
+            println("📤 Form data keys: ${data.keys}")
 
-            //Static values for testing ( deletionReasonId, shipInfoId )
-//            val deletionReasonId = 2 // For testing
-//            println("📤 Deletion Reason ID: $deletionReasonId")
-//
-//            val shipInfoId = 162 // For testing
-//            println("📤 Ship Info ID: $shipInfoId")
-
-            //Dynamic values for production ip to get ( deletionReasonId, shipInfoId )
+            // Extract deletion reason ID
             val deletionReasonName = data["cancellationReason"]
                 ?: return Result.failure(Exception("سبب الشطب مطلوب"))
 
             val deletionReasonId = deletionReasonMap[deletionReasonName]
                 ?: return Result.failure(Exception("سبب الشطب غير صحيح"))
 
-            // Extract ship info ID
-            val selectedMarineUnitId = data["selectedMarineUnit"]
+            // ✅ FIX: Extract ship info ID from correct field
+            // The marine unit selection field stores data in "selectedMarineUnits" (JSON array)
+            val selectedUnitsJson = data["selectedMarineUnits"]
                 ?: return Result.failure(Exception("السفينة مطلوبة"))
 
-            val shipInfoId = selectedMarineUnitId.toIntOrNull()
-                ?: return Result.failure(Exception("معرف السفينة غير صحيح"))
+            println("🔍 Selected units JSON: $selectedUnitsJson")
+
+            // Parse the JSON array to get the first marine unit ID
+            val shipInfoId = try {
+                // Remove brackets and quotes, split by comma, take first
+                val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                val firstShipId = shipIds.firstOrNull()
+
+                if (firstShipId.isNullOrBlank()) {
+                    println("❌ Failed to parse maritime ID from: $selectedUnitsJson")
+                    return Result.failure(Exception("Invalid marine unit selection format"))
+                }
+
+                println("📍 Extracted ship ID: $firstShipId")
+
+                // ✅ FIXED: The JSON contains shipInfoId directly, not maritimeId
+                // Try to convert to Int directly
+                val actualShipId = firstShipId.toIntOrNull()
+                if (actualShipId == null) {
+                    println("❌ Ship ID is not a valid integer: $firstShipId")
+                    return Result.failure(Exception("Invalid ship ID format"))
+                }
+
+                // ✅ Optional: Find the MarineUnit for logging (not required for API call)
+                val selectedUnit = marineUnits.firstOrNull { it.id == firstShipId }
+                if (selectedUnit != null) {
+                    println("✅ Found matching MarineUnit:")
+                    println("   Ship ID: $actualShipId")
+                    println("   Ship Name: ${selectedUnit.shipName}")
+                    println("   Maritime ID (MMSI): ${selectedUnit.maritimeId}")
+                    println("   IMO Number: ${selectedUnit.imoNumber}")
+                } else {
+                    println("⚠️ MarineUnit not found in cache, but using shipId: $actualShipId")
+                }
+
+                actualShipId
+            } catch (e: Exception) {
+                println("❌ Exception parsing selected units: ${e.message}")
+                e.printStackTrace()
+                return Result.failure(Exception("Failed to parse selected marine unit: ${e.message}"))
+            }
 
             println("📤 Files received: ${files.size}")
 
@@ -281,10 +483,9 @@ class CancelRegistrationStrategy @Inject constructor(
 
             println("📤 Submitting: reasonId=$deletionReasonId, shipId=$shipInfoId, files=${files.size}")
 
-            // ✅ Call repository directly - no .fold() here
+            // ✅ Call repository
             val result = repository.submitDeletionRequest(deletionReasonId, shipInfoId, files)
 
-            // ✅ Return the Result as-is to ViewModel
             result
         } catch (e: Exception) {
             println("❌ Exception: ${e.message}")
@@ -370,6 +571,23 @@ class CancelRegistrationStrategy @Inject constructor(
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
         }
+    }
+
+    fun getDeletionRequestId(): Int? {
+        println("🔍 getDeletionRequestId called")
+        println("   deletionRequestId = $deletionRequestId")
+        println("   accumulatedFormData['deletionRequestId'] = ${accumulatedFormData["deletionRequestId"]}")
+
+        // ✅ Fallback: Try to get from accumulated form data if member variable is null
+        if (deletionRequestId == null) {
+            val idFromFormData = accumulatedFormData["deletionRequestId"]?.toIntOrNull()
+            if (idFromFormData != null) {
+                println("⚠️ deletionRequestId was null, using value from formData: $idFromFormData")
+                deletionRequestId = idFromFormData
+            }
+        }
+
+        return deletionRequestId
     }
 
 }

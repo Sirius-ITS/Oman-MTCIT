@@ -503,6 +503,61 @@ object SharedSteps {
         )
     }
 
+    // ✅ Create Cancellation Reason Step
+    fun createCancellationReasonStep(
+        deletionReasons: List<String>,
+        requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Cancellation Reason Dropdown
+        fields.add(
+            FormField.DropDown(
+                id = "cancellationReason",
+                labelRes = R.string.reason_for_cancellation,
+                mandatory = true,
+                options = deletionReasons
+            )
+        )
+
+        // ✅ Add dynamic document file pickers based on API response
+        if (requiredDocuments.isNotEmpty()) {
+            println("📄 Adding ${requiredDocuments.size} document file pickers")
+
+            // Filter only active documents and sort by order
+            val activeDocuments = requiredDocuments
+                .filter { it.document.isActive == 1 }
+                .sortedBy { it.document.docOrder }
+
+            println("📄 After filtering (isActive == 1): ${activeDocuments.size} active documents")
+
+            // Add a file upload field for each active document
+            activeDocuments.forEachIndexed { index, docItem ->
+                val document = docItem.document
+                val isMandatory = document.isMandatory == 1
+
+                println("   File Picker #${index + 1}: ${document.nameAr} - ${if (isMandatory) "إلزامي" else "اختياري"} (id=${document.id})")
+
+                fields.add(
+                    FormField.FileUpload(
+                        id = "document_${document.id}",
+                        label = document.nameAr,
+                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+                        maxSizeMB = 5,
+                        mandatory = isMandatory
+                    )
+                )
+            }
+        }
+
+        return StepData(
+            stepType = StepType.CUSTOM,
+            titleRes = R.string.cancellation_reason,
+            descriptionRes = R.string.cancellation_reason_desc,
+            fields = fields
+        )
+    }
+
 
     /**
      * Upload Documents Step (رفع المستندات)
