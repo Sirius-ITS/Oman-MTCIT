@@ -53,8 +53,8 @@ class MarineRegistrationViewModel @Inject constructor(
     resourceProvider: ResourceProvider,
     navigationUseCase: StepNavigationUseCase,
     private val strategyFactory: TransactionStrategyFactory,
-    private val requestRepository: RequestRepository,  // ✅ Inject request repository
-    private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService  // ✅ NEW: Inject mortgage API service
+    private val requestRepository: RequestRepository,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService  // ✅ Use generic API service
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
     // NEW: Validation state for marine unit selection
@@ -984,45 +984,6 @@ class MarineRegistrationViewModel @Inject constructor(
     val navigateToMainCategory: StateFlow<Boolean> = _navigateToMainCategory.asStateFlow()
 
     /**
-     * ✅ Submit mortgage status update
-     * Called when user checks the review checkbox and proceeds
-     *
-     * @param requestId The mortgage request ID returned from createMortgageRequest
-     * @param statusId The status ID to update to
-     */
-    fun submitMortgageStatus(requestId: Int, statusId: Int) {
-        viewModelScope.launch {
-            println("🔄 submitMortgageStatus called - requestId: $requestId, statusId: $statusId")
-
-            // Reset states
-            _mortgageStatusUpdateSuccess.value = false
-            _navigateToMainCategory.value = false
-
-            val result = updateTransactionStatus(requestId, statusId) { reqId, statId ->
-                mortgageApiService.updateMortgageStatus(reqId, statId)
-            }
-
-            result.onSuccess {
-                println("✅ Mortgage status updated successfully!")
-                _mortgageStatusUpdateSuccess.value = true
-                _showToastEvent.value = "✅ تم تقديم طلب الرهن بنجاح!"
-
-                // Trigger navigation to main category after short delay
-                kotlinx.coroutines.delay(1500)
-                _navigateToMainCategory.value = true
-            }
-
-            result.onFailure { error ->
-                println("❌ Failed to update mortgage status: ${error.message}")
-                _showToastEvent.value = "❌ فشل تحديث حالة الرهن: ${error.message}"
-                _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                    "فشل تحديث حالة الرهن: ${error.message}"
-                )
-            }
-        }
-    }
-
-    /**
      * Clear navigation flags after navigation is complete
      */
     fun clearNavigationFlags() {
@@ -1031,98 +992,31 @@ class MarineRegistrationViewModel @Inject constructor(
     }
 
     /**
-     * ✅ Handle review step submission for mortgage transactions
-     * Automatically detects if current strategy is MortgageCertificateStrategy
-     * and calls submitMortgageStatus with the stored request ID
+     * ✅ Submit transaction - Direct API call
+     * Called when user clicks "Accept & Send" on review page
      */
-    fun submitMortgageOnReview() {
+    fun submitOnReview() {
         viewModelScope.launch {
-            println("📝 submitMortgageOnReview called")
+            val strategy = currentStrategy ?: return@launch
+            val context = strategy.getContext()
+            val requestId = strategy.getCreatedRequestId() ?: return@launch
 
-            // ✅ Use the new generic interface methods
-            val strategy = currentStrategy
+            val endpoint = context.sendRequestEndpoint.substringBefore("/{requestId}")
 
-            if (strategy != null) {
-                // Get the request ID from strategy
-                val requestId = strategy.getCreatedRequestId()
-
-                if (requestId != null) {
-                    // Get the endpoint from strategy
-                    val endpoint = strategy.getStatusUpdateEndpoint(requestId)
-
-                    if (endpoint != null) {
-                        println("✅ Request ID found: $requestId")
-                        println("✅ Endpoint: $endpoint")
-                        println("🚀 Calling generic status update with statusId = 2 (Under Review)")
-
-                        // Call the generic API to update status
-                        submitTransactionStatus(
-                            endpoint = endpoint,
-                            requestId = requestId,
-                            statusId = 2,  // Under Review
-                            transactionTypeName = strategy.getTransactionTypeName()
-                        )
-                    } else {
-                        println("⚠️ Strategy does not support status update")
-                        _showToastEvent.value = "❌ هذه المعاملة لا تدعم تحديث الحالة"
-                    }
-                } else {
-                    println("❌ Request ID is null")
-                    _showToastEvent.value = "❌ خطأ: لم يتم العثور على رقم الطلب"
-                }
-            } else {
-                println("⚠️ Current strategy is null")
-            }
-        }
-    }
-
-    /**
-     * ✅ Generic function to submit transaction status update
-     * Can be used by any transaction type
-     */
-    private fun submitTransactionStatus(
-        endpoint: String,
-        requestId: Int,
-        statusId: Int,
-        transactionTypeName: String
-    ) {
-        viewModelScope.launch {
-            println("🔄 submitTransactionStatus called")
-            println("   Transaction: $transactionTypeName")
-            println("   Request ID: $requestId")
-            println("   Status ID: $statusId")
-            println("   Endpoint: $endpoint")
-
-            // Reset states
-            _mortgageStatusUpdateSuccess.value = false
-            _navigateToMainCategory.value = false
-
-            val result = updateTransactionStatus(requestId, statusId) { _, _ ->
-                // Use the generic API with custom endpoint
-                mortgageApiService.updateTransactionStatus(
-                    endpoint = endpoint,
-                    statusId = statusId,
-                    transactionType = transactionTypeName
-                )
-            }
+            val result = marineUnitsApiService.sendTransactionRequest(endpoint, requestId, context.displayName)
 
             result.onSuccess {
-                println("✅ $transactionTypeName status updated successfully!")
-                _mortgageStatusUpdateSuccess.value = true
-                _showToastEvent.value = "✅ تم تقديم طلب $transactionTypeName بنجاح!"
-
-                // Trigger navigation to main category after short delay
-                kotlinx.coroutines.delay(1500)
+                strategy.storeApiResponse("sendRequest", true)
+                _showToastEvent.value = "✅ تم إرسال ${context.displayName} بنجاح!"
+                delay(1500)
                 _navigateToMainCategory.value = true
             }
 
             result.onFailure { error ->
-                println("❌ Failed to update $transactionTypeName status: ${error.message}")
-                _showToastEvent.value = "❌ فشل تحديث حالة $transactionTypeName: ${error.message}"
-                _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                    "فشل تحديث حالة $transactionTypeName: ${error.message}"
-                )
+                strategy.storeApiResponse("sendRequest", false)
+                _showToastEvent.value = "❌ ${error.message}"
             }
         }
     }
+
 }

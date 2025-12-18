@@ -109,6 +109,10 @@ class CaptainNameChangeStrategy @Inject constructor(
         println("📦 CancelRegistration - Updated accumulated data: $accumulatedFormData")
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     override fun getSteps(): List<StepData> {
 
         val steps = mutableListOf<StepData>()

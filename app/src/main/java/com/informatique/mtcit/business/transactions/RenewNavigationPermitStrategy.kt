@@ -104,6 +104,10 @@ class RenewNavigationPermitStrategy @Inject constructor(
         onStepsNeedRebuild?.invoke()
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     /**
      * ✅ Load existing navigation areas from previous license
      */

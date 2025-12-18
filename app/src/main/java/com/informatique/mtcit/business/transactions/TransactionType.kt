@@ -2,30 +2,153 @@ package com.informatique.mtcit.business.transactions
 
 /**
  * Enum representing different types of transactions in the system
+ * Each transaction now has its own TransactionContext with API endpoints
  */
-enum class TransactionType {
+enum class TransactionType(
+    /**
+     * Transaction context containing all API endpoints and configuration
+     */
+    val context: TransactionContext
+) {
     // Marine Unit Registration Category (6 transactions)
-    TEMPORARY_REGISTRATION_CERTIFICATE,
-    PERMANENT_REGISTRATION_CERTIFICATE,
-    SUSPEND_PERMANENT_REGISTRATION,
-    CANCEL_PERMANENT_REGISTRATION,
-    MORTGAGE_CERTIFICATE,
-    RELEASE_MORTGAGE,
-    REQUEST_FOR_INSPECTION,
-
+    TEMPORARY_REGISTRATION_CERTIFICATE(
+        context = TransactionContext(
+            displayName = "شهادة تسجيل مؤقتة",
+            createEndpoint = "api/v1/registration-requests",
+            updateStatusEndpoint = "api/v1/registration-requests/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/registration-requests/{requestId}/send-request",
+            getRequestEndpoint = "api/v1/registration-requests/{requestId}",
+            deleteRequestEndpoint = "api/v1/registration-requests/{requestId}/delete"
+        )
+    ),
+    PERMANENT_REGISTRATION_CERTIFICATE(
+        context = TransactionContext(
+            displayName = "شهادة تسجيل دائمة",
+            createEndpoint = "api/v1/registration/create-permanent",
+            updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+        )
+    ),
+    SUSPEND_PERMANENT_REGISTRATION(
+        context = TransactionContext(
+            displayName = "تعليق تسجيل دائم",
+            createEndpoint = "api/v1/registration/suspend",
+            updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+        )
+    ),
+    CANCEL_PERMANENT_REGISTRATION(
+        context = TransactionContext(
+            displayName = "إلغاء تسجيل دائم",
+            createEndpoint = "api/v1/registration/cancel",
+            updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+        )
+    ),
+    MORTGAGE_CERTIFICATE(
+        context = TransactionContext(
+            displayName = "طلب شهادة رهن",
+            createEndpoint = "api/v1/mortgage-request/create-mortgage-request",
+            updateStatusEndpoint = "api/v1/mortgage-request/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/mortgage-request/{requestId}/send-request",
+            getRequestEndpoint = "api/v1/mortgage-request/{requestId}",
+            deleteRequestEndpoint = "api/v1/mortgage-request/{requestId}/delete"
+        )
+    ),
+    RELEASE_MORTGAGE(
+        context = TransactionContext(
+            displayName = "طلب فك رهن",
+            createEndpoint = "api/v1/mortgage-redemption-request/create-mortgage-redemption-request",
+            updateStatusEndpoint = "api/v1/mortgage-redemption-request/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/send-request",
+            getRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}",
+            deleteRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/delete"
+        )
+    ),
+    REQUEST_FOR_INSPECTION(
+        context = TransactionContext(
+            displayName = "طلب معاينة",
+            createEndpoint = "api/v1/inspection/create",
+            updateStatusEndpoint = "api/v1/inspection/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/inspection/{requestId}/send-request"
+        )
+    ),
 
     // Ship Data Modifications Category
-    SHIP_NAME_CHANGE,
-    CAPTAIN_NAME_CHANGE,
-    SHIP_ACTIVITY_CHANGE,
-    SHIP_DIMENSIONS_CHANGE,
-    SHIP_ENGINE_CHANGE,
-    SHIP_PORT_CHANGE,
-    SHIP_OWNERSHIP_CHANGE,
+    SHIP_NAME_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير اسم السفينة",
+            createEndpoint = "api/v1/ship-modifications/name-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
+    CAPTAIN_NAME_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير اسم الربان",
+            createEndpoint = "api/v1/ship-modifications/captain-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
+    SHIP_ACTIVITY_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير نشاط السفينة",
+            createEndpoint = "api/v1/ship-modifications/activity-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
+    SHIP_DIMENSIONS_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير أبعاد السفينة",
+            createEndpoint = "api/v1/ship-modifications/dimensions-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
+    SHIP_ENGINE_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير محرك السفينة",
+            createEndpoint = "api/v1/ship-modifications/engine-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
+    SHIP_PORT_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير ميناء السفينة",
+            createEndpoint = "api/v1/ship-modifications/port-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
+    SHIP_OWNERSHIP_CHANGE(
+        context = TransactionContext(
+            displayName = "تغيير ملكية السفينة",
+            createEndpoint = "api/v1/ship-modifications/ownership-change",
+            updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+        )
+    ),
 
     // Navigation permits
-    ISSUE_NAVIGATION_PERMIT,
-    RENEW_NAVIGATION_PERMIT,
+    ISSUE_NAVIGATION_PERMIT(
+        context = TransactionContext(
+            displayName = "إصدار تصريح إبحار",
+            createEndpoint = "api/v1/navigation-permit/issue",
+            updateStatusEndpoint = "api/v1/navigation-permit/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request"
+        )
+    ),
+    RENEW_NAVIGATION_PERMIT(
+        context = TransactionContext(
+            displayName = "تجديد تصريح إبحار",
+            createEndpoint = "api/v1/navigation-permit/renew",
+            updateStatusEndpoint = "api/v1/navigation-permit/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request"
+        )
+    );
 }
 
 /**

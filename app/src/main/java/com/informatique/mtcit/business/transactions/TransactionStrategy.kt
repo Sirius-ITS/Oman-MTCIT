@@ -155,6 +155,23 @@ interface TransactionStrategy {
     }
 
     /**
+     * ✅ NEW: Get the send-request endpoint for this transaction
+     * This is called when user clicks "Accept and Send" on review page
+     *
+     * @param requestId The request ID for this transaction
+     * @return The API endpoint for sending the request, or null if not supported
+     *
+     * Example implementations:
+     * - Mortgage: "api/v1/mortgage-request/$requestId/send-request"
+     * - Redemption: "api/v1/mortgage-redemption-request/$requestId/send-request"
+     * - Registration: "api/v1/registration-requests/$requestId/send-request"
+     */
+    fun getSendRequestEndpoint(requestId: Int): String? {
+        // Default: no send-request supported
+        return null
+    }
+
+    /**
      * ✅ NEW: Get the created request ID for this transaction
      * Used in review step to get the ID for status update
      *
@@ -171,6 +188,34 @@ interface TransactionStrategy {
      */
     fun getTransactionTypeName(): String {
         return "Transaction"
+    }
+
+    /**
+     * ✅ NEW: Get the transaction context with all API endpoints
+     * This makes submitOnReview() completely generic across all transactions
+     * @return The TransactionContext for this transaction
+     */
+    fun getContext(): TransactionContext
+
+    /**
+     * ✅ NEW: Store API response for future actions
+     * Used to store response from sendTransactionRequest or other APIs
+     * @param apiName Name of the API (e.g., "sendRequest", "createRequest")
+     * @param response The response data (can be Boolean, String, or custom object)
+     */
+    fun storeApiResponse(apiName: String, response: Any) {
+        // Default implementation - do nothing
+        // Strategies can override to store response in their own state
+    }
+
+    /**
+     * ✅ NEW: Get stored API response
+     * @param apiName Name of the API
+     * @return The stored response, or null if not found
+     */
+    fun getApiResponse(apiName: String): Any? {
+        // Default implementation - return null
+        return null
     }
 }
 

@@ -124,4 +124,8 @@ class LoginStrategy @Inject constructor(
 
         return Result.success(true)
     }
+
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
 }

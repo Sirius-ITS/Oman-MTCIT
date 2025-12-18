@@ -83,6 +83,10 @@ class ShipNameChangeStrategy @Inject constructor(
         return Result.success(true)
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     // ✅ Custom step for ship identification (not shared - specific to name change)
     private fun createShipIdentificationStep(): StepData = StepData(
         titleRes = R.string.unit_data,

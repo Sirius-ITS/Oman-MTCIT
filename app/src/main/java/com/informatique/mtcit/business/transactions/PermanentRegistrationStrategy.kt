@@ -136,6 +136,10 @@ class PermanentRegistrationStrategy @Inject constructor(
         return accumulatedFormData.toMap()
     }
 
+    override fun getContext(): TransactionContext {
+        TODO("Not yet implemented")
+    }
+
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 
@@ -345,7 +349,7 @@ class PermanentRegistrationStrategy @Inject constructor(
             val result = registrationRequestManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 1, // 1 = Temporary Registration
+                requestTypeId = 2, // 1 = Temporary Registration
                 context = context
             )
 

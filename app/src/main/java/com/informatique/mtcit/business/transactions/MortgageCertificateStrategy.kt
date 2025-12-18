@@ -70,6 +70,12 @@ class MortgageCertificateStrategy @Inject constructor(
     // ✅ NEW: Store created mortgage request ID for status update
     private var createdMortgageRequestId: Int? = null
 
+    // ✅ NEW: Store API responses for future actions
+    private val apiResponses: MutableMap<String, Any> = mutableMapOf()
+
+    // ✅ Transaction context with all API endpoints
+    private val context: TransactionContext = TransactionType.MORTGAGE_CERTIFICATE.context
+
     // Helper: normalize different input date formats into ISO yyyy-MM-dd
     private fun normalizeDateToIso(input: String?): String? {
         if (input == null) return null
@@ -587,41 +593,39 @@ class MortgageCertificateStrategy @Inject constructor(
             return Result.failure(Exception("Start date is required"))
         }
 
-        // Parse the selected units JSON (it's an array like ["987654321"] - these are maritimeIds/MMSI numbers)
-        // We need to find the actual ship ID from the MarineUnit objects
+        // Parse the selected units JSON (it's an array like ["321"] - these are shipInfoIds)
         val shipId = try {
             // Remove brackets and quotes, split by comma, take first
             val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
-            val maritimeIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
-            val firstMaritimeId = maritimeIds.firstOrNull()
+            val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+            val firstShipId = shipIds.firstOrNull()
 
-            if (firstMaritimeId.isNullOrBlank()) {
-                println("❌ Failed to parse maritime ID from: $selectedUnitsJson")
+            if (firstShipId.isNullOrBlank()) {
+                println("❌ Failed to parse ship ID from: $selectedUnitsJson")
                 return Result.failure(Exception("Invalid marine unit selection format"))
             }
 
-            println("📍 Extracted maritime ID (MMSI): $firstMaritimeId")
+            println("📍 Extracted ship ID: $firstShipId")
 
-            // Find the MarineUnit object that matches this maritimeId
-            val selectedUnit = marineUnits.firstOrNull { it.maritimeId == firstMaritimeId }
-            if (selectedUnit == null) {
-                println("❌ Could not find MarineUnit with maritimeId: $firstMaritimeId")
-                println("   Available units: ${marineUnits.map { "maritimeId=${it.maritimeId}, id=${it.id}" }}")
-                return Result.failure(Exception("Selected marine unit not found in available units"))
-            }
-
-            // Convert the actual ship ID (from database) to Int
-            val actualShipId = selectedUnit.id.toIntOrNull()
+            // ✅ FIXED: The JSON contains shipInfoId directly, not maritimeId
+            // Try to convert to Int directly
+            val actualShipId = firstShipId.toIntOrNull()
             if (actualShipId == null) {
-                println("❌ Ship ID is not a valid integer: ${selectedUnit.id}")
+                println("❌ Ship ID is not a valid integer: $firstShipId")
                 return Result.failure(Exception("Invalid ship ID format"))
             }
 
-            println("✅ Found matching MarineUnit:")
-            println("   Maritime ID (MMSI): ${selectedUnit.maritimeId}")
-            println("   Actual Ship ID (database): $actualShipId")
-            println("   Ship Name: ${selectedUnit.shipName}")
-            println("   IMO Number: ${selectedUnit.imoNumber}")
+            // ✅ Optional: Find the MarineUnit for logging (not required for API call)
+            val selectedUnit = marineUnits.firstOrNull { it.id == firstShipId }
+            if (selectedUnit != null) {
+                println("✅ Found matching MarineUnit:")
+                println("   Ship ID: $actualShipId")
+                println("   Ship Name: ${selectedUnit.shipName}")
+                println("   Maritime ID (MMSI): ${selectedUnit.maritimeId}")
+                println("   IMO Number: ${selectedUnit.imoNumber}")
+            } else {
+                println("⚠️ MarineUnit not found in cache, but using shipId: $actualShipId")
+            }
 
             actualShipId
         } catch (e: Exception) {
@@ -757,8 +761,13 @@ class MortgageCertificateStrategy @Inject constructor(
         return result
     }
 
+    /**
+     * ⚠️ DEPRECATED: This method is no longer used in the simplified flow
+     * The review submission now goes directly through submitOnReview() in ViewModel
+     * Kept only for interface compliance with TransactionStrategy
+     */
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        return repository.submitRegistration(data)
+        return Result.success(true)
     }
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
@@ -846,7 +855,11 @@ class MortgageCertificateStrategy @Inject constructor(
     // ✅ Implement TransactionStrategy interface methods for dynamic status update
 
     override fun getStatusUpdateEndpoint(requestId: Int): String {
-        return "api/v1/mortgage-request/$requestId/update-status"
+        return context.buildUpdateStatusUrl(requestId)
+    }
+
+    override fun getSendRequestEndpoint(requestId: Int): String {
+        return context.buildSendRequestUrl(requestId)
     }
 
     override fun getCreatedRequestId(): Int? {
@@ -855,5 +868,27 @@ class MortgageCertificateStrategy @Inject constructor(
 
     override fun getTransactionTypeName(): String {
         return "Mortgage"
+    }
+
+    /**
+     * ✅ Get the transaction context with all API endpoints
+     */
+    override fun getContext(): TransactionContext {
+        return TransactionType.MORTGAGE_CERTIFICATE.context
+    }
+
+    /**
+     * ✅ Store API response for future actions
+     */
+    override fun storeApiResponse(apiName: String, response: Any) {
+        println("💾 Storing API response for '$apiName': $response")
+        apiResponses[apiName] = response
+    }
+
+    /**
+     * ✅ Get stored API response
+     */
+    override fun getApiResponse(apiName: String): Any? {
+        return apiResponses[apiName]
     }
 }
