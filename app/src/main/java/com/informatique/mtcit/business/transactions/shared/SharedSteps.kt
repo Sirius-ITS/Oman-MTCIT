@@ -1098,33 +1098,64 @@ object SharedSteps {
 
     /**
      * Payment Details Step (الدفع - التفاصيل)
-     * First payment step - displays payment breakdown using PaymentDetailsScreen UI
+     * First payment step - displays payment breakdown from API response
      * Shows total cost, tax, line items, and "Pay" button
      *
      * Note: Payment data is fetched dynamically when step is opened
+     *
+     * @param formData Accumulated form data containing payment details from API
      */
-    fun paymentDetailsStep(): StepData {
+    fun paymentDetailsStep(formData: Map<String, String>): StepData {
         val fields = mutableListOf<FormField>()
 
-        // Add info card to display payment instructions
+        // Extract payment data from formData (populated by PaymentManager)
+        val arabicValue = formData["paymentArabicValue"] ?: ""
+        val totalCost = formData["paymentTotalCost"]?.toDoubleOrNull() ?: 0.0
+        val totalTax = formData["paymentTotalTax"]?.toDoubleOrNull() ?: 0.0
+        val finalTotal = formData["paymentFinalTotal"]?.toDoubleOrNull() ?: 0.0
+
+        // Parse line items from stored JSON
+        val lineItems = try {
+            val receiptJson = formData["paymentReceiptJson"]
+            if (receiptJson != null) {
+                val receipt = kotlinx.serialization.json.Json.decodeFromString(
+                    com.informatique.mtcit.data.model.PaymentReceipt.serializer(),
+                    receiptJson
+                )
+                receipt.paymentReceiptDetailsList.map { detail ->
+                    FormField.PaymentLineItem(
+                        name = detail.name,
+                        amount = detail.finalTotal
+                    )
+                }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            println("❌ Error parsing payment line items: ${e.message}")
+            emptyList()
+        }
+
+        // ✅ REMOVED: InfoCard that was causing duplicate text
+        // The step header already shows "استعراض تفاصيل الدفع"
+
+        // Add payment details component
         fields.add(
-            FormField.InfoCard(
-                id = "paymentDetailsInfo",
-                labelRes = R.string.review, // Will use review for now, can add specific string later
-                items = listOf(
-                    R.string.review, // Reusing existing strings temporarily
-                    R.string.review,
-                    R.string.review
-                ),
-                showCheckmarks = false,
+            FormField.PaymentDetails(
+                id = "paymentDetails",
+                arabicValue = arabicValue,
+                lineItems = lineItems,
+                totalCost = totalCost,
+                totalTax = totalTax,
+                finalTotal = finalTotal,
                 mandatory = false
             )
         )
 
         return StepData(
             stepType = StepType.PAYMENT,
-            titleRes = R.string.review, // Will be replaced with payment-specific title
-            descriptionRes = R.string.step_placeholder_content,
+            titleRes = R.string.review_payment_details, // ✅ "استعراض تفاصيل الدفع"
+            descriptionRes = R.string.payment_info_message, // ✅ Changed to use payment_info_message instead of generic placeholder
             fields = fields
         )
     }

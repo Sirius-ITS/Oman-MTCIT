@@ -1,8 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
-import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
-import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
@@ -76,6 +74,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
+    private val requestTypeId = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.toRequestTypeId()
 
     // ✅ Override the callback property from TransactionStrategy interface
     override var onStepsNeedRebuild: (() -> Unit)? = null
@@ -103,7 +102,6 @@ class TemporaryRegistrationStrategy @Inject constructor(
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
         println("📄 RegistrationRequests - Fetching required documents from API...")
-        val requestTypeId = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.toRequestTypeId()
         val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
             println("❌ ERROR fetching required documents: ${error.message}")
             error.printStackTrace()
@@ -164,7 +162,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
             commercialRegNumber = commercialRegNumber,
             // **********************************************************************************************************
             //Request Type Id
-            requestTypeId = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.toRequestTypeId() // ✅ Temporary Registration Certificate ID
+            requestTypeId = requestTypeId
         )
 
         println("✅ Loaded ${marineUnits.size} ships")
@@ -267,40 +265,40 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 )
             )
 
-//            steps.add(
-//                SharedSteps.marineUnitDimensionsStep(
-//                    includeHeight = true,
-//                    includeDecksCount = true
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.marineUnitWeightsStep(
-//                    includeMaxPermittedLoad = true
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.engineInfoStep(
-//                    manufacturers = listOf(
-//                        "Manufacturer 1",
-//                        "Manufacturer 2",
-//                        "Manufacturer 3"
-//                    ),
-//                    enginesTypes = engineTypeOptions,
-//                    countries = countryOptions,
-//                    fuelTypes = engineFuelTypeOptions,
-//                    engineConditions = engineStatusOptions,
-//                )
-//            )
-//
-//            steps.add(
-//                SharedSteps.ownerInfoStep(
-//                    nationalities = countryOptions,
-//                    countries = countryOptions,
-//                    includeCompanyFields = true,
-//                )
-//            )
+            steps.add(
+                SharedSteps.marineUnitDimensionsStep(
+                    includeHeight = true,
+                    includeDecksCount = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.marineUnitWeightsStep(
+                    includeMaxPermittedLoad = true
+                )
+            )
+
+            steps.add(
+                SharedSteps.engineInfoStep(
+                    manufacturers = listOf(
+                        "Manufacturer 1",
+                        "Manufacturer 2",
+                        "Manufacturer 3"
+                    ),
+                    enginesTypes = engineTypeOptions,
+                    countries = countryOptions,
+                    fuelTypes = engineFuelTypeOptions,
+                    engineConditions = engineStatusOptions,
+                )
+            )
+
+            steps.add(
+                SharedSteps.ownerInfoStep(
+                    nationalities = countryOptions,
+                    countries = countryOptions,
+                    includeCompanyFields = true,
+                )
+            )
 
             // ✅ Check overallLength to determine if inspection documents are mandatory
             val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
@@ -310,11 +308,11 @@ class TemporaryRegistrationStrategy @Inject constructor(
             println("🔍 DEBUG - isInspectionDocMandatory: $isInspectionDocMandatory")
 
             println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
-//            steps.add(
-//                SharedSteps.dynamicDocumentsStep(
-//                    documents = requiredDocuments  // ✅ Pass documents from API
-//                )
-//            )
+            steps.add(
+                SharedSteps.dynamicDocumentsStep(
+                    documents = requiredDocuments  // ✅ Pass documents from API
+                )
+            )
         }
 
         // ✅ Review Step - ALWAYS show for BOTH new and existing ships
@@ -340,7 +338,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         if (hasRequestId) {
             // Payment Details Step - Shows payment breakdown
-            steps.add(SharedSteps.paymentDetailsStep())
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
 
             // Payment Success Step - Only show if payment was successful
             val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
@@ -470,7 +468,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
             val registrationResult = registrationRequestManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 1, // 1 = Temporary Registration
+                requestTypeId = requestTypeId, // 1 = Temporary Registration
                 context = context
             )
 
@@ -580,7 +578,8 @@ class TemporaryRegistrationStrategy @Inject constructor(
             val paymentResult = paymentManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 1 // 1 = Temporary Registration
+                requestTypeId = 1, // 1 = Temporary Registration
+                context = transactionContext // ✅ Pass TransactionContext
             )
 
             when (paymentResult) {
@@ -1019,9 +1018,38 @@ class TemporaryRegistrationStrategy @Inject constructor(
     /**
      * Called when a step is opened - loads only the required lookups for that step
      * ✅ NEW: Loads lookups in PARALLEL with per-field loading indicators
+     * ✅ ALSO: Triggers payment API call when payment step is opened
      */
     override suspend fun onStepOpened(stepIndex: Int) {
         val step = getSteps().getOrNull(stepIndex) ?: return
+
+        // ✅ NEW: If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            // Call PaymentManager to load payment receipt
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+            return // Don't process lookups for payment step
+        }
 
         if (step.requiredLookups.isEmpty()) {
             println("ℹ️ Step $stepIndex has no required lookups")

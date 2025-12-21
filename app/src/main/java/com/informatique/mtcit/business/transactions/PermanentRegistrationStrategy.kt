@@ -63,6 +63,8 @@ class PermanentRegistrationStrategy @Inject constructor(
     // ✅ الحل: اعمل cache للـ form data
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    private val requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.toRequestTypeId()
+
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
@@ -115,7 +117,7 @@ class PermanentRegistrationStrategy @Inject constructor(
             commercialRegNumber = commercialRegNumber,
             // **********************************************************************************************************
             //Request Type Id
-            requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.toRequestTypeId() // ✅ Permanent Registration Certificate ID
+            requestTypeId = requestTypeId
         )
         println("✅ Loaded ${marineUnits.size} ships")
 
@@ -352,7 +354,7 @@ class PermanentRegistrationStrategy @Inject constructor(
             val result = registrationRequestManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 2, // 2 = Permanent Registration
+                requestTypeId = requestTypeId, // 2 = Permanent Registration
                 context = context
             )
 

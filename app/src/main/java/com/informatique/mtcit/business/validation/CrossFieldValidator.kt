@@ -176,7 +176,7 @@ class CrossFieldValidator @Inject constructor() {
             is FormField.OTPField -> field.copy(error = error)
             is FormField.SailorList -> field.copy(error = error)
             is FormField.MultiSelectDropDown -> field.copy(error = error)
-
+            is FormField.PaymentDetails -> field.copy(value = error)
         }
     }
 }

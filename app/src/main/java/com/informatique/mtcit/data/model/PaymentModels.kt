@@ -48,7 +48,7 @@ data class PaymentReceiptDetail(
     val taxValue: Double,
     val value: Double,
     val finalTotal: Double,
-    val taxRate: String,
+    val taxRate: String? = null,  // ✅ Make optional - API doesn't always return this
     val tariffItem: TariffItem,
     val tariffRate: TariffRate,
     val tariffIncremental: TariffIncremental? = null,
@@ -227,4 +227,15 @@ data class PaymentResponse<T>(
     val success: Boolean,
     val timestamp: String,
     val data: T
+)
+
+/**
+ * ✅ NEW: Simple payment submission request for addPayment API
+ * Used when user clicks Pay button on payment details step
+ */
+@Serializable
+data class SimplePaymentRequest(
+    val requestType: Int,
+    val requestId: Int,
+    val coreShipsInfoId: String
 )

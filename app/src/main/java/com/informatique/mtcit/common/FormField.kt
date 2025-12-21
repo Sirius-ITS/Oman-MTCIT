@@ -343,4 +343,37 @@ sealed class FormField(
         HORIZONTAL  // خيارات أفقية
     }
 
+    /**
+     * Payment Details Field - Displays payment breakdown from API response
+     * Shows Arabic value, line items, and total amount
+     */
+    data class PaymentDetails(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        val arabicValue: String = "", // e.g., "مائةوعشرون ريالاًعمانى فقط لا غير"
+        val lineItems: List<PaymentLineItem> = emptyList(), // List of payment items
+        val totalCost: Double = 0.0,
+        val totalTax: Double = 0.0,
+        val finalTotal: Double = 0.0,
+        override val value: String = "",
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) =
+            copy(value = newValue, error = null)
+
+        override fun copyWithError(newError: String?) =
+            copy(error = newError)
+    }
+
+    /**
+     * Represents a single line item in the payment breakdown
+     */
+    data class PaymentLineItem(
+        val name: String,
+        val amount: Double
+    )
+
 }

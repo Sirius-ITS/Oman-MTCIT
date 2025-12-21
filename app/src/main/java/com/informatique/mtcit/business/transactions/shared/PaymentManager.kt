@@ -1,7 +1,5 @@
 package com.informatique.mtcit.business.transactions.shared
 
-import com.informatique.mtcit.business.transactions.TransactionType
-import com.informatique.mtcit.business.transactions.toRequestTypeId
 import com.informatique.mtcit.data.model.*
 import com.informatique.mtcit.data.repository.PaymentRepository
 import kotlinx.coroutines.Dispatchers
@@ -25,12 +23,14 @@ class PaymentManager @Inject constructor(
      * @param stepType The type of the current step
      * @param formData All accumulated form data
      * @param requestTypeId Transaction type ID (e.g., 1 for temporary registration)
+     * @param context Transaction context containing API endpoints
      * @return Result indicating success or error
      */
     suspend fun processStepIfNeeded(
         stepType: StepType,
         formData: MutableMap<String, String>,
-        requestTypeId: Int
+        requestTypeId: Int,
+        context: com.informatique.mtcit.business.transactions.TransactionContext
     ): StepProcessResult {
         println("🔍 PaymentManager.processStepIfNeeded called")
         println("   - stepType: $stepType")
@@ -44,136 +44,121 @@ class PaymentManager @Inject constructor(
                 StepProcessResult.NoAction
             }
 
-            // ✅ Payment Details Step - Load payment receipt
+            // ✅ Payment Details Step - Load payment receipt OR submit payment
             StepType.PAYMENT -> {
-                println("💰 Payment Details step detected - loading payment receipt...")
+                println("💰 Payment step detected...")
 
-                // Extract coreShipsInfoId from formData
-                val coreShipsInfoId = formData["shipInfoId"] ?: formData["requestId"]
-
-                if (coreShipsInfoId == null) {
-                    println("❌ Missing coreShipsInfoId for payment receipt")
-                    return StepProcessResult.Error("Missing ship info ID for payment")
+                // ✅ Get payment endpoint from context
+                val paymentEndpoint = context.paymentReceiptEndpoint
+                if (paymentEndpoint == null) {
+                    println("❌ No payment receipt endpoint configured for this transaction")
+                    return StepProcessResult.Error("Payment endpoint not configured")
                 }
 
-                println("📍 Using coreShipsInfoId: $coreShipsInfoId")
+                // Extract requestId and coreShipsInfoId from formData
+                val requestId = formData["requestId"]
+                val coreShipsInfoId = formData["shipInfoId"] ?: formData["coreShipsInfoId"]
 
-                try {
-                    val result = getPaymentReceipt(requestTypeId, coreShipsInfoId)
+                if (requestId == null || coreShipsInfoId == null) {
+                    println("❌ Missing requestId or coreShipsInfoId for payment")
+                    println("   requestId: $requestId")
+                    println("   coreShipsInfoId: $coreShipsInfoId")
+                    return StepProcessResult.Error("Missing required payment data")
+                }
 
-                    result.fold(
-                        onSuccess = { receipt ->
-                            println("✅ Payment receipt loaded successfully")
+                println("📍 Using requestId: $requestId, coreShipsInfoId: $coreShipsInfoId")
 
-                            // Store receipt data in formData
-                            formData["paymentReceiptSerial"] = receipt.receiptSerial.toString()
-                            formData["paymentReceiptYear"] = receipt.receiptYear.toString()
-                            formData["paymentTotalCost"] = receipt.totalCost.toString()
-                            formData["paymentTotalTax"] = receipt.totalTax.toString()
-                            formData["paymentFinalTotal"] = receipt.finalTotal.toString()
-                            formData["paymentArabicValue"] = receipt.arabicValue
-                            formData["paymentInvoiceTypeId"] = receipt.invoiceType.id.toString()
+                // ✅ Smart detection: If payment details are already loaded, this is a SUBMIT action
+                // Otherwise, this is the initial LOAD action
+                val isPaymentAlreadyLoaded = formData["paymentFinalTotal"] != null
 
-                            // Store full receipt as JSON for later submission
-                            val receiptJson = kotlinx.serialization.json.Json.encodeToString(
-                                PaymentReceipt.serializer(),
-                                receipt
+                return if (isPaymentAlreadyLoaded) {
+                    println("💳 Payment details already loaded - User clicked Pay button - submitting payment...")
+
+                    // Get payment submit endpoint
+                    val paymentSubmitEndpoint = context.paymentSubmitEndpoint
+                    if (paymentSubmitEndpoint == null) {
+                        println("❌ No payment submit endpoint configured")
+                        StepProcessResult.Error("Payment submit endpoint not configured")
+                    } else {
+                        try {
+                            val result = submitPayment(
+                                endpoint = paymentSubmitEndpoint,
+                                requestTypeId = requestTypeId,
+                                requestId = requestId.toInt(),
+                                coreShipsInfoId = coreShipsInfoId
                             )
-                            formData["paymentReceiptJson"] = receiptJson
 
-                            StepProcessResult.Success("Payment details loaded successfully")
-                        },
-                        onFailure = { error ->
-                            println("❌ Failed to load payment receipt: ${error.message}")
-                            StepProcessResult.Error(error.message ?: "Failed to load payment details")
+                            result.fold(
+                                onSuccess = { paymentResponse ->
+                                    println("✅ Payment submitted successfully!")
+                                    println("   Receipt ID: ${paymentResponse.data}")
+                                    println("   Message: ${paymentResponse.message}")
+                                    println("   Timestamp: ${paymentResponse.timestamp}")
+
+                                    // Store payment success data in formData
+                                    formData["paymentReceiptId"] = paymentResponse.data.toString()
+                                    formData["paymentSuccessMessage"] = paymentResponse.message
+                                    formData["paymentTimestamp"] = paymentResponse.timestamp
+                                    formData["showPaymentSuccessDialog"] = "true"
+
+                                    StepProcessResult.Success("Payment submitted successfully")
+                                },
+                                onFailure = { error ->
+                                    println("❌ Failed to submit payment: ${error.message}")
+                                    StepProcessResult.Error(error.message ?: "Failed to submit payment")
+                                }
+                            )
+                        } catch (e: Exception) {
+                            println("❌ Exception submitting payment: ${e.message}")
+                            e.printStackTrace()
+                            StepProcessResult.Error("Failed to submit payment: ${e.message}")
                         }
-                    )
-                } catch (e: Exception) {
-                    println("❌ Exception loading payment receipt: ${e.message}")
-                    e.printStackTrace()
-                    StepProcessResult.Error("Failed to load payment details: ${e.message}")
-                }
-            }
+                    }
+                } else {
+                    println("📄 Loading payment details for the first time...")
 
-            // ✅ Payment Confirmation Step - Submit payment
-            StepType.PAYMENT_CONFIRMATION -> {
-                println("💳 Payment Confirmation step detected - submitting payment...")
+                    // Load payment receipt (initial step entry)
+                    try {
+                        val result = getPaymentReceipt(
+                            endpoint = paymentEndpoint,
+                            requestTypeId = requestTypeId,
+                            requestId = requestId,
+                            coreShipsInfoId = coreShipsInfoId
+                        )
 
-                val receiptJson = formData["paymentReceiptJson"]
+                        result.fold(
+                            onSuccess = { receipt ->
+                                println("✅ Payment receipt loaded successfully")
 
-                if (receiptJson == null) {
-                    println("❌ Missing payment receipt data for submission")
-                    return StepProcessResult.Error("Missing payment receipt data")
-                }
+                                // Store receipt data in formData
+                                formData["paymentReceiptSerial"] = receipt.receiptSerial.toString()
+                                formData["paymentReceiptYear"] = receipt.receiptYear.toString()
+                                formData["paymentTotalCost"] = receipt.totalCost.toString()
+                                formData["paymentTotalTax"] = receipt.totalTax.toString()
+                                formData["paymentFinalTotal"] = receipt.finalTotal.toString()
+                                formData["paymentArabicValue"] = receipt.arabicValue
+                                formData["paymentInvoiceTypeId"] = receipt.invoiceType.id.toString()
 
-                try {
-                    // Parse the stored receipt
-                    val receipt = kotlinx.serialization.json.Json.decodeFromString(
-                        PaymentReceipt.serializer(),
-                        receiptJson
-                    )
-
-                    // Build payment submission request
-                    val paymentData = PaymentSubmissionRequest(
-                        id = null,
-                        receiptSerial = receipt.receiptSerial,
-                        receiptYear = receipt.receiptYear,
-                        requestId = null, // ✅ NEW: No requestId field in new API
-                        requestTypeId = requestTypeId.toString(),
-                        penalties = emptyList(),
-                        invoiceType = InvoiceTypeIdOnly(id = receipt.invoiceType.id),
-                        receiptNo = 0,
-                        comments = "",
-                        description = "",
-                        isPaid = 0,
-                        arabicValue = receipt.arabicValue,
-                        totalCost = receipt.totalCost,
-                        totalTax = receipt.totalTax,
-                        finalTotal = receipt.finalTotal,
-                        approximateFinalTotal = receipt.approximateFinalTotal,
-                        paymentReceiptDetailsList = receipt.paymentReceiptDetailsList.map { detail ->
-                            PaymentReceiptDetailSubmission(
-                                name = detail.name,
-                                value = detail.value,
-                                taxValue = detail.taxValue,
-                                finalTotal = detail.finalTotal,
-                                approximateFinalTotal = detail.approximateFinalTotal,
-                                tariffItem = TariffItemIdOnly(
-                                    id = detail.tariffItem.id,
-                                    name = detail.name
-                                ),
-                                tariffRate = TariffRateSubmission(
-                                    id = detail.tariffRate.id,
-                                    tariffItemId = detail.tariffRate.tariffItemId ?: detail.tariffItem.id,
-                                    expressionCode = detail.tariffRate.expressionCode,
-                                    expressionText = detail.tariffRate.expressionText
+                                // Store full receipt as JSON for later submission
+                                val receiptJson = kotlinx.serialization.json.Json.encodeToString(
+                                    PaymentReceipt.serializer(),
+                                    receipt
                                 )
-                            )
-                        }
-                    )
+                                formData["paymentReceiptJson"] = receiptJson
 
-                    val result = submitPayment(requestTypeId.toString(), paymentData)
-
-                    result.fold(
-                        onSuccess = { receiptId ->
-                            println("✅ Payment submitted successfully! Receipt ID: $receiptId")
-                            formData["paymentReceiptId"] = receiptId.toString()
-                            formData["paymentSuccessful"] = "true"
-                            StepProcessResult.Success("Payment submitted successfully")
-                        },
-                        onFailure = { error ->
-                            println("❌ Failed to submit payment: ${error.message}")
-                            formData["paymentSuccessful"] = "false"
-                            formData["paymentError"] = error.message ?: "Unknown error"
-                            StepProcessResult.Error(error.message ?: "Failed to submit payment")
-                        }
-                    )
-                } catch (e: Exception) {
-                    println("❌ Exception submitting payment: ${e.message}")
-                    e.printStackTrace()
-                    formData["paymentSuccessful"] = "false"
-                    formData["paymentError"] = e.message ?: "Unknown error"
-                    StepProcessResult.Error("Failed to submit payment: ${e.message}")
+                                StepProcessResult.Success("Payment details loaded successfully")
+                            },
+                            onFailure = { error ->
+                                println("❌ Failed to load payment receipt: ${error.message}")
+                                StepProcessResult.Error(error.message ?: "Failed to load payment details")
+                            }
+                        )
+                    } catch (e: Exception) {
+                        println("❌ Exception loading payment receipt: ${e.message}")
+                        e.printStackTrace()
+                        StepProcessResult.Error("Failed to load payment details: ${e.message}")
+                    }
                 }
             }
 
@@ -185,18 +170,21 @@ class PaymentManager @Inject constructor(
     }
 
     /**
-     * Get payment receipt with coreShipsInfoId
+     * Get payment receipt with endpoint, requestType, requestId, and coreShipsInfoId
      */
     private suspend fun getPaymentReceipt(
+        endpoint: String,
         requestTypeId: Int,
+        requestId: String,
         coreShipsInfoId: String
     ): Result<PaymentReceipt> {
         return try {
             println("🚀 PaymentManager: Getting payment receipt...")
-            println("   RequestType: $requestTypeId, CoreShipsInfoId: $coreShipsInfoId")
+            println("   Endpoint: $endpoint")
+            println("   RequestType: $requestTypeId, RequestId: $requestId, CoreShipsInfoId: $coreShipsInfoId")
 
             val result = withContext(Dispatchers.IO) {
-                paymentRepository.getPaymentReceipt(requestTypeId, coreShipsInfoId)
+                paymentRepository.getPaymentReceipt(endpoint, requestTypeId, requestId, coreShipsInfoId)
             }
 
             result.fold(
@@ -221,33 +209,38 @@ class PaymentManager @Inject constructor(
     }
 
     /**
-     * Submit payment
+     * Submit payment using the simple payment submission API
      */
     private suspend fun submitPayment(
-        requestTypeId: String,
-        paymentData: PaymentSubmissionRequest
-    ): Result<Long> {
+        endpoint: String,
+        requestTypeId: Int,
+        requestId: Int,
+        coreShipsInfoId: String
+    ): Result<PaymentResponse<Long>> {
         return try {
-            println("🚀 PaymentManager: Submitting payment for requestType=$requestTypeId...")
-            println("   Final Total: ${paymentData.finalTotal}")
+            println("🚀 PaymentManager: Submitting payment (simple API)...")
+            println("   Endpoint: $endpoint")
+            println("   RequestTypeId: $requestTypeId")
+            println("   RequestId: $requestId")
+            println("   CoreShipsInfoId: $coreShipsInfoId")
 
             val result = withContext(Dispatchers.IO) {
-                paymentRepository.submitPayment(requestTypeId, paymentData)
+                paymentRepository.submitPayment(endpoint, requestTypeId, requestId, coreShipsInfoId)
             }
 
             result.fold(
-                onSuccess = { paymentReceiptId ->
-                    println("✅ Payment submitted successfully! Receipt ID: $paymentReceiptId")
-                    Result.success(paymentReceiptId)
+                onSuccess = { paymentResponse ->
+                    println("✅ Payment submitted successfully (simple API)!")
+                    Result.success(paymentResponse)
                 },
                 onFailure = { exception ->
-                    println("❌ Failed to submit payment: ${exception.message}")
+                    println("❌ Failed to submit payment (simple API): ${exception.message}")
                     exception.printStackTrace()
                     Result.failure(exception)
                 }
             )
         } catch (e: Exception) {
-            println("❌ Exception in submitPayment: ${e.message}")
+            println("❌ Exception in submitSimplePayment: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
         }

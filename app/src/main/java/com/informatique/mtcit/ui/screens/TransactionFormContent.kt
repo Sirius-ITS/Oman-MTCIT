@@ -78,6 +78,13 @@ fun TransactionFormContent(
     val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
     val inspectionMessage = uiState.formData["inspectionMessage"] ?: ""
 
+    // ✅ NEW: Check if payment success dialog should be shown
+    val showPaymentSuccessDialog = uiState.formData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+    val paymentSuccessMessage = uiState.formData["paymentSuccessMessage"] ?: "تم الدفع بنجاح"
+    val paymentReceiptId = uiState.formData["paymentReceiptId"] ?: ""
+    val paymentTimestamp = uiState.formData["paymentTimestamp"] ?: ""
+    val paymentFinalTotal = uiState.formData["paymentFinalTotal"] ?: "0.0"
+
     // ✅ NEW: Extract error code and message for 406 banner
     val apiErrorCode = uiState.formData["apiErrorCode"]
     val apiErrorMessage = uiState.formData["apiErrorMessage"]
@@ -106,6 +113,22 @@ fun TransactionFormContent(
                 // Clear the dialog flag
                 onFieldValueChange("showInspectionDialog", "false")
                 // Navigate back to home or request detail screen
+                navController.popBackStack()
+            }
+        )
+    }
+
+    // ✅ NEW: Show payment success dialog when needed
+    if (showPaymentSuccessDialog) {
+        PaymentSuccessDialog(
+            message = paymentSuccessMessage,
+            receiptNumber = paymentReceiptId,
+            paidAmount = "$paymentFinalTotal ريال عماني ",
+            timestamp = paymentTimestamp,
+            onDismiss = {
+                // Clear the dialog flag
+                onFieldValueChange("showPaymentSuccessDialog", "false")
+                // Navigate back to home
                 navController.popBackStack()
             }
         )
@@ -243,8 +266,9 @@ fun TransactionFormContent(
                 },
                 // Use viewModel processing flag to disable next button when heavy processing is running
                 isSubmitting = submissionState is UIState.Loading || isProcessingNext,
-                isReviewStep = isReviewStep, // Pass the review step flag
-                isProcessingStep = uiState.isProcessingStep // ✅ FIXED: Pass the actual processing state from uiState
+                isReviewStep = isReviewStep,
+                isProcessingStep = uiState.isProcessingStep,
+                currentStepType = uiState.steps.getOrNull(uiState.currentStep)?.stepType // ✅ Pass current step type
             )
         }
     ) { paddingValues ->
@@ -416,7 +440,8 @@ fun GenericNavigationBottomBar(
     canProceed: Boolean,
     isSubmitting: Boolean = false,
     isReviewStep: Boolean = false, // Add parameter to detect review step
-    isProcessingStep: Boolean = false // ✅ NEW: Loading state for Next button
+    isProcessingStep: Boolean = false, // ✅ NEW: Loading state for Next button
+    currentStepType: com.informatique.mtcit.business.transactions.shared.StepType? = null // ✅ NEW: Current step type
 ) {
     val extraColors = LocalExtraColors.current
     Card(
@@ -481,20 +506,29 @@ fun GenericNavigationBottomBar(
                         Text(localizedApp(R.string.loading))
                     }
                 } else {
-                    // Show "Accept & Send" on review step OR last step
-                    if (isReviewStep || currentStep >= totalSteps - 1) {
-                        Text(localizedApp(R.string.accept_and_send))
-                    } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(localizedApp(R.string.next_button))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Default.NavigateNext,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                    // Show "Pay" on PAYMENT step, "Accept & Send" on review step, or "Next" otherwise
+                    when {
+                        currentStepType == com.informatique.mtcit.business.transactions.shared.StepType.PAYMENT -> {
+                            // Show "Pay" button for payment step
+                            Text(localizedApp(R.string.pay_button))
+                        }
+                        isReviewStep || currentStep >= totalSteps - 1 -> {
+                            // Show "Accept & Send" on review step or last step
+                            Text(localizedApp(R.string.accept_and_send))
+                        }
+                        else -> {
+                            // Show "Next" button for regular steps
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(localizedApp(R.string.next_button))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Default.NavigateNext,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -571,6 +605,11 @@ private fun updateFieldWithFormData(
         )
         is FormField.InfoCard -> field.copy(
             label = localizedLabel,
+            value = value,
+            error = error
+        )
+        is FormField.PaymentDetails -> field.copy(
+            // Payment details are populated from formData, just pass through
             value = value,
             error = error
         )

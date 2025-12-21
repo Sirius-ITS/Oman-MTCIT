@@ -18,7 +18,9 @@ enum class TransactionType(
             updateStatusEndpoint = "api/v1/registration-requests/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/registration-requests/{requestId}/send-request",
             getRequestEndpoint = "api/v1/registration-requests/{requestId}",
-            deleteRequestEndpoint = "api/v1/registration-requests/{requestId}/delete"
+            deleteRequestEndpoint = "api/v1/registration-requests/{requestId}/delete",
+            paymentReceiptEndpoint = "api/v1/registration-requests/payment",
+            paymentSubmitEndpoint = "api/v1/registration-requests/add-payment"
         )
     ),
     PERMANENT_REGISTRATION_CERTIFICATE(
@@ -26,7 +28,9 @@ enum class TransactionType(
             displayName = "شهادة تسجيل دائمة",
             createEndpoint = "api/v1/registration/create-permanent",
             updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/registration/payment",
+            paymentSubmitEndpoint = "api/v1/registration/add-payment"
         )
     ),
     SUSPEND_PERMANENT_REGISTRATION(
@@ -34,15 +38,19 @@ enum class TransactionType(
             displayName = "تعليق تسجيل دائم",
             createEndpoint = "api/v1/registration/suspend",
             updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/registration/payment",
+            paymentSubmitEndpoint = "api/v1/registration/add-payment"
         )
     ),
     CANCEL_PERMANENT_REGISTRATION(
         context = TransactionContext(
             displayName = "إلغاء تسجيل دائم",
-            createEndpoint = "api/v1/registration/cancel",
-            updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+            createEndpoint = "api/v1/deletion-requests/cancel",
+            updateStatusEndpoint = "api/v1/deletion-requests/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/deletion-requests/{requestId}/send",
+            paymentReceiptEndpoint = "api/v1/deletion-requests/payment",
+            paymentSubmitEndpoint = "api/v1/deletion-requests/add-payment"
         )
     ),
     MORTGAGE_CERTIFICATE(
@@ -52,7 +60,9 @@ enum class TransactionType(
             updateStatusEndpoint = "api/v1/mortgage-request/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/mortgage-request/{requestId}/send-request",
             getRequestEndpoint = "api/v1/mortgage-request/{requestId}",
-            deleteRequestEndpoint = "api/v1/mortgage-request/{requestId}/delete"
+            deleteRequestEndpoint = "api/v1/mortgage-request/{requestId}/delete",
+            paymentReceiptEndpoint = "api/v1/mortgage-request/payment",
+            paymentSubmitEndpoint = "api/v1/mortgage-request/add-payment"
         )
     ),
     RELEASE_MORTGAGE(
@@ -62,7 +72,9 @@ enum class TransactionType(
             updateStatusEndpoint = "api/v1/mortgage-redemption-request/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/send-request",
             getRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}",
-            deleteRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/delete"
+            deleteRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/delete",
+            paymentReceiptEndpoint = "api/v1/mortgage-redemption-request/payment",
+            paymentSubmitEndpoint = "api/v1/mortgage-redemption-request/add-payment"
         )
     ),
     REQUEST_FOR_INSPECTION(
@@ -70,7 +82,9 @@ enum class TransactionType(
             displayName = "طلب معاينة",
             createEndpoint = "api/v1/inspection/create",
             updateStatusEndpoint = "api/v1/inspection/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/inspection/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/inspection/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/inspection/payment",
+            paymentSubmitEndpoint = "api/v1/inspection/add-payment"
         )
     ),
 
@@ -80,7 +94,9 @@ enum class TransactionType(
             displayName = "تغيير اسم السفينة",
             createEndpoint = "api/v1/ship-modifications/name-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
     CAPTAIN_NAME_CHANGE(
@@ -88,7 +104,9 @@ enum class TransactionType(
             displayName = "تغيير اسم الربان",
             createEndpoint = "api/v1/ship-modifications/captain-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
     SHIP_ACTIVITY_CHANGE(
@@ -96,7 +114,9 @@ enum class TransactionType(
             displayName = "تغيير نشاط السفينة",
             createEndpoint = "api/v1/ship-modifications/activity-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
     SHIP_DIMENSIONS_CHANGE(
@@ -104,7 +124,9 @@ enum class TransactionType(
             displayName = "تغيير أبعاد السفينة",
             createEndpoint = "api/v1/ship-modifications/dimensions-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
     SHIP_ENGINE_CHANGE(
@@ -112,7 +134,9 @@ enum class TransactionType(
             displayName = "تغيير محرك السفينة",
             createEndpoint = "api/v1/ship-modifications/engine-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
     SHIP_PORT_CHANGE(
@@ -120,7 +144,9 @@ enum class TransactionType(
             displayName = "تغيير ميناء السفينة",
             createEndpoint = "api/v1/ship-modifications/port-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
     SHIP_OWNERSHIP_CHANGE(
@@ -128,7 +154,9 @@ enum class TransactionType(
             displayName = "تغيير ملكية السفينة",
             createEndpoint = "api/v1/ship-modifications/ownership-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
+            paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
     ),
 
@@ -138,7 +166,9 @@ enum class TransactionType(
             displayName = "إصدار تصريح إبحار",
             createEndpoint = "api/v1/navigation-permit/issue",
             updateStatusEndpoint = "api/v1/navigation-permit/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/navigation-permit/payment",
+            paymentSubmitEndpoint = "api/v1/navigation-permit/add-payment"
         )
     ),
     RENEW_NAVIGATION_PERMIT(
@@ -146,7 +176,9 @@ enum class TransactionType(
             displayName = "تجديد تصريح إبحار",
             createEndpoint = "api/v1/navigation-permit/renew",
             updateStatusEndpoint = "api/v1/navigation-permit/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request"
+            sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request",
+            paymentReceiptEndpoint = "api/v1/navigation-permit/payment",
+            paymentSubmitEndpoint = "api/v1/navigation-permit/add-payment"
         )
     );
 }
@@ -176,4 +208,3 @@ fun TransactionType.toRequestTypeId(): String {
         TransactionType.SHIP_OWNERSHIP_CHANGE -> "0"
     }
 }
-

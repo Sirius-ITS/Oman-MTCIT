@@ -670,7 +670,7 @@ class RegistrationRequestManager @Inject constructor(
     suspend fun processStepIfNeeded(
         stepType: StepType,
         formData: MutableMap<String, String>,
-        requestTypeId: Int,
+        requestTypeId: String,
         context: Context? = null
     ): StepProcessResult {
 
@@ -750,26 +750,26 @@ class RegistrationRequestManager @Inject constructor(
                     if (isAddingNewUnit || selectedUnitsJson == "[]") {
                         println("🔍 Creating registration request for NEW ship...")
 
-//                        val result = createOrUpdateRegistrationRequest(formData, requestTypeId)
-//
-//                        when (result) {
-//                            is RegistrationRequestResult.Success -> {
-//                                println("✅ Registration request created/updated successfully")
-//                                formData["requestId"] = result.requestId
-//                                result.shipInfoId?.let { formData["shipInfoId"] = it }
-//                                result.shipId?.let { formData["shipId"] = it }
-//                                StepProcessResult.Success("Registration request created: ${result.requestId}")
-//                            }
-//                            is RegistrationRequestResult.Error -> {
-//                                println("❌ Failed to create registration request: ${result.message}")
-//                                StepProcessResult.Error(result.message)
-//                            }
-//                        }
+                        val result = createOrUpdateRegistrationRequest(formData, requestTypeId.toInt())
 
-                        formData["requestId"] = "1026"
+                        when (result) {
+                            is RegistrationRequestResult.Success -> {
+                                println("✅ Registration request created/updated successfully")
+                                formData["requestId"] = result.requestId
+                                result.shipInfoId?.let { formData["shipInfoId"] = it }
+                                result.shipId?.let { formData["shipId"] = it }
+                                StepProcessResult.Success("Registration request created: ${result.requestId}")
+                            }
+                            is RegistrationRequestResult.Error -> {
+                                println("❌ Failed to create registration request: ${result.message}")
+                                StepProcessResult.Error(result.message)
+                            }
+                        }
+                        // For testing without API, uncomment below:
+                        /*formData["requestId"] = "1026"
                         formData["shipInfoId"] = "1184"
                         formData["shipId"] = "1265"
-                        StepProcessResult.Success("Registration request created: ${requestId}")
+                        StepProcessResult.Success("Registration request created: ${requestId}")*/
 
                     } else {
                         StepProcessResult.NoAction

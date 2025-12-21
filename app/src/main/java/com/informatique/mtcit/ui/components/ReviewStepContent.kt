@@ -70,6 +70,14 @@ fun ReviewStepContent(
     val extraColors = LocalExtraColors.current
     var declarationAccepted by remember { mutableStateOf(false) }
 
+    // ✅ Get payment amount from formData
+    val paymentAmount = formData["paymentFinalTotal"]?.toDoubleOrNull() ?: 0.0
+    val formattedAmount = if (paymentAmount > 0) {
+        "%.3f ريال عماني".format(paymentAmount)
+    } else {
+        localizedApp(R.string.amount_value) // Fallback to default
+    }
+
     // Check if there's any data
     if (formData.isEmpty()) {
         Text(
@@ -84,6 +92,7 @@ fun ReviewStepContent(
             modifier = modifier.fillMaxWidth(),
         ) {
 
+            // ✅ Payment Amount Card with proper RTL layout
             Card(
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = extraColors.blue2.copy(alpha = 0.05f)),
@@ -94,25 +103,34 @@ fun ReviewStepContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Left side: Icon + Label
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Payment,
+                            contentDescription = null,
+                            tint = extraColors.whiteInDarkMode
+                        )
+                        Text(
+                            text = localizedApp(R.string.amount_due),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = extraColors.whiteInDarkMode
+                        )
+                    }
+
+                    // Right side: Amount
                     Text(
-                        modifier = Modifier.weight(1f),
-                        text = localizedApp(R.string.amount_due),
+                        text = formattedAmount,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium ,
+                        fontWeight = FontWeight.Bold,
                         color = extraColors.whiteInDarkMode
                     )
-
-                    Text(
-                        modifier = Modifier.weight(1f),
-                        text = localizedApp(R.string.amount_value),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = extraColors.whiteInDarkMode,
-                        textAlign = TextAlign.End
-                    )
-                    Spacer(modifier.width(4.dp))
-                    Icon(imageVector = Icons.Default.Payment, contentDescription = null, tint = extraColors.whiteInDarkMode)
                 }
             }
 

@@ -386,6 +386,15 @@ fun DynamicStepForm(
                                 showCheckmarks = field.showCheckmarks
                             )
                         }
+                        is FormField.PaymentDetails -> {
+                            PaymentDetailsComponent(
+                                arabicValue = field.arabicValue,
+                                lineItems = field.lineItems,
+                                totalCost = field.totalCost,
+                                totalTax = field.totalTax,
+                                finalTotal = field.finalTotal
+                            )
+                        }
                         is FormField.PhoneNumberField -> {
                             // Get current country code from formData or use default
                             val currentCountryCode = formData["${field.id}_countryCode"] ?: field.selectedCountryCode

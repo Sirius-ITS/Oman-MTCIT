@@ -46,6 +46,18 @@ data class TransactionContext(
     val deleteRequestEndpoint: String? = null,
 
     /**
+     * ✅ NEW: API endpoint for getting payment receipt
+     * Example: "api/v1/registration-requests/payment"
+     */
+    val paymentReceiptEndpoint: String? = null,
+
+    /**
+     * ✅ NEW: API endpoint for submitting payment
+     * Example: "api/v1/registration-requests/add-payment"
+     */
+    val paymentSubmitEndpoint: String? = null,
+
+    /**
      * Additional transaction-specific configuration
      */
     val config: Map<String, Any> = emptyMap()
@@ -69,4 +81,3 @@ data class TransactionContext(
         return deleteRequestEndpoint?.replace("{requestId}", requestId.toString())
     }
 }
-

@@ -160,6 +160,11 @@ class FormValidator @Inject constructor(
                 }
                 field.copy(error = error)
             }
+
+            is FormField.PaymentDetails -> {
+                // Payment details are read-only, no validation needed
+                field
+            }
         }
     }
     /**

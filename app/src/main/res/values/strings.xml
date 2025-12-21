@@ -132,6 +132,7 @@
     <string name="qatar">Qatar</string>
     <string name="oman">Oman</string>
     <string name="next_button">Next</string>
+    <string name="pay_button">Pay</string>
     <string name="back_button">Back</string>
     <string name="process_to_payment_button">Proceed to payment</string>
     <string name="submit_button">Submit</string>
@@ -762,6 +763,19 @@
 
     <string name="amount_due">Amount due</string>
     <string name="amount_value">50 OMR</string>
+
+    <!-- Payment Details Strings -->
+    <string name="review_payment_details">Review Payment Details</string>
+    <string name="payment_info_message">Please review the selected service and total amount due carefully, then proceed by choosing your preferred payment method.</string>
+    <string name="payment_breakdown_title">Payment Breakdown</string>
+    <string name="total_amount">Total Amount</string>
+
+    <!-- Payment Success Dialog -->
+    <string name="payment_success_title">Payment Successful</string>
+    <string name="receipt_number">Receipt Number</string>
+    <string name="paid_amount">Paid Amount</string>
+    <string name="payment_date_time">Date &amp; Time</string>
+
     <string name="ship_year_validation">The manufacturing year cannot be later than 2025, and the vessel must be at least 25 years old.</string>
 
     <!-- Profile Screen -->

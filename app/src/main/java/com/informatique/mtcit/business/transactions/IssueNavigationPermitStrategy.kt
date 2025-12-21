@@ -174,7 +174,9 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
-        steps.add(SharedSteps.paymentDetailsStep()) // Add payment step here
+
+        // Payment Details Step - pass accumulated form data
+        // steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
 
         println("📋 Total steps count: ${steps.size}")
         return steps
