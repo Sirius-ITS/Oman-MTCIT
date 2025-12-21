@@ -975,48 +975,42 @@ class MarineRegistrationViewModel @Inject constructor(
         }
     }
 
-    // ✅ NEW: Success state for mortgage status update
-    private val _mortgageStatusUpdateSuccess = MutableStateFlow(false)
-    val mortgageStatusUpdateSuccess: StateFlow<Boolean> = _mortgageStatusUpdateSuccess.asStateFlow()
+    // ✅ NEW: Success state for transaction submission
+    private val _transactionSubmitSuccess = MutableStateFlow(false)
+    val transactionSubmitSuccess: StateFlow<Boolean> = _transactionSubmitSuccess.asStateFlow()
 
-    // ✅ NEW: Navigate to main category after success
-    private val _navigateToMainCategory = MutableStateFlow(false)
-    val navigateToMainCategory: StateFlow<Boolean> = _navigateToMainCategory.asStateFlow()
+    /**
+     * Clear success flag after it's been handled by UI
+     */
+    fun clearTransactionSuccessFlag() {
+        _transactionSubmitSuccess.value = false
+    }
 
     /**
      * Clear navigation flags after navigation is complete
      */
     fun clearNavigationFlags() {
-        _navigateToMainCategory.value = false
-        _mortgageStatusUpdateSuccess.value = false
+        _transactionSubmitSuccess.value = false
     }
 
     /**
-     * ✅ Submit transaction - Direct API call
-     * Called when user clicks "Accept & Send" on review page
+     * ✅ Hook called after successful form submission (review step complete)
+     * This is called by BaseTransactionViewModel.submitForm() after strategy.submit() succeeds
+     *
+     * Sets a success flag that can be observed by UI or strategies.
+     *
+     * IMPORTANT: This does NOT navigate anywhere. Each strategy decides navigation by:
+     * - Returning a specific step index from processStepData()
+     * - Navigating to a conditional step
+     * - Or letting the base flow handle it
      */
-    fun submitOnReview() {
-        viewModelScope.launch {
-            val strategy = currentStrategy ?: return@launch
-            val context = strategy.getContext()
-            val requestId = strategy.getCreatedRequestId() ?: return@launch
+    override fun onFormSubmitSuccess() {
+        println("✅ onFormSubmitSuccess called - transaction submitted successfully")
 
-            val endpoint = context.sendRequestEndpoint.substringBefore("/{requestId}")
+        // Set success flag (strategies can check this if needed)
+        _transactionSubmitSuccess.value = true
 
-            val result = marineUnitsApiService.sendTransactionRequest(endpoint, requestId, context.displayName)
-
-            result.onSuccess {
-                strategy.storeApiResponse("sendRequest", true)
-                _showToastEvent.value = "✅ تم إرسال ${context.displayName} بنجاح!"
-                delay(1500)
-                _navigateToMainCategory.value = true
-            }
-
-            result.onFailure { error ->
-                strategy.storeApiResponse("sendRequest", false)
-                _showToastEvent.value = "❌ ${error.message}"
-            }
-        }
+        // No navigation here - let strategies control where to go next
     }
 
 }

@@ -6,7 +6,9 @@ import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
+import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
 import com.informatique.mtcit.business.validation.rules.ValidationRule
@@ -33,7 +35,8 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
-    private val registrationRequestManager: RegistrationRequestManager
+    private val registrationRequestManager: RegistrationRequestManager,
+    private val reviewManager: ReviewManager
 ) : TransactionStrategy {
 
     // ✅ Context for file operations (set from UI layer)
@@ -349,36 +352,106 @@ class PermanentRegistrationStrategy @Inject constructor(
             val result = registrationRequestManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 2, // 1 = Temporary Registration
+                requestTypeId = 2, // 2 = Permanent Registration
                 context = context
             )
 
             when (result) {
                 is StepProcessResult.Success -> {
                     println("✅ ${result.message}")
-
-                    // ✅ NEW: Check if we just completed Review Step and need inspection
-                    val needInspection = accumulatedFormData["needInspection"]?.toBoolean() ?: false
-                    val sendRequestMessage = accumulatedFormData["sendRequestMessage"]
-
-                    if (needInspection) {
-                        println("🔍 Inspection required for this request")
-                        // Store flag to show dialog in UI
-                        accumulatedFormData["showInspectionDialog"] = "true"
-                        accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: "في إنتظار نتيجه الفحص الفني"
-                        // Stay on current step to show dialog
-                        return step
-                    }
                 }
                 is StepProcessResult.Error -> {
                     println("❌ Error: ${result.message}")
-                    // ✅ TODO: Uncomment after backend integration is complete
-                    // This would forward to RequestDetailScreen when errors occur
-                    // return -1
-                    // ✅ For now, continue normal flow despite errors
+                    accumulatedFormData["apiError"] = result.message
+                    return -1 // Block navigation on error
                 }
                 is StepProcessResult.NoAction -> {
-                    println("ℹ️ No API call needed for this step")
+                    println("ℹ️ No registration action needed for this step")
+
+                    // ✅ HANDLE REVIEW STEP - Use ReviewManager
+                    if (stepType == StepType.REVIEW) {
+                        println("📋 Handling Review Step using ReviewManager")
+
+                        val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
+                        if (requestIdInt == null) {
+                            println("❌ No requestId available for review step")
+                            accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                            return -1
+                        }
+
+                        try {
+                            // ✅ Get endpoint and context from transactionContext
+                            val transactionContext = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
+                            val endpoint = transactionContext.sendRequestEndpoint.replace("{requestId}", requestIdInt.toString())
+                            val contextName = transactionContext.displayName
+
+                            println("🚀 Calling ReviewManager.processReviewStep:")
+                            println("   Endpoint: $endpoint")
+                            println("   RequestId: $requestIdInt")
+                            println("   Context: $contextName")
+
+                            // ✅ Call ReviewManager which internally uses marineUnitsApiService via repository
+                            val reviewResult = reviewManager.processReviewStep(
+                                endpoint = endpoint,
+                                requestId = requestIdInt,
+                                transactionName = contextName
+                            )
+
+                            when (reviewResult) {
+                                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                                    println("✅ Review step processed successfully!")
+                                    println("   Message: ${reviewResult.message}")
+                                    println("   Need Inspection: ${reviewResult.needInspection}")
+
+                                    // ✅ Store response in formData
+                                    accumulatedFormData["sendRequestMessage"] = reviewResult.message
+
+                                    // ✅ PERMANENT REGISTRATION: Different response handling than temporary
+                                    // For permanent registration, we might check for different fields
+                                    // e.g., approvalStatus, documentVerification, etc.
+
+                                    // Check additionalData for permanent-specific fields
+                                    val approvalRequired = reviewResult.additionalData?.get("approvalRequired") as? Boolean
+                                    val documentVerification = reviewResult.additionalData?.get("documentVerification") as? String
+
+                                    if (approvalRequired == true) {
+                                        println("⚠️ Approval required for permanent registration")
+                                        accumulatedFormData["showApprovalDialog"] = "true"
+                                        accumulatedFormData["approvalMessage"] = reviewResult.message
+                                        return step // Stay on current step
+                                    }
+
+                                    if (documentVerification == "pending") {
+                                        println("📄 Document verification pending")
+                                        accumulatedFormData["showDocVerificationDialog"] = "true"
+                                        accumulatedFormData["verificationMessage"] = reviewResult.message
+                                        return step // Stay on current step
+                                    }
+
+                                    // ✅ Also support needInspection (common field)
+                                    if (reviewResult.needInspection) {
+                                        println("🔍 Inspection required - showing dialog")
+                                        accumulatedFormData["showInspectionDialog"] = "true"
+                                        accumulatedFormData["inspectionMessage"] = reviewResult.message
+                                        return step // Stay on current step
+                                    }
+
+                                    // Proceed to next step
+                                    println("✅ No blocking conditions - proceeding to next step")
+                                }
+                                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                                    println("❌ Review step failed: ${reviewResult.message}")
+                                    accumulatedFormData["apiError"] = reviewResult.message
+                                    return -1 // Block navigation
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("❌ Exception in review step: ${e.message}")
+                            e.printStackTrace()
+                            accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                            return -1
+                        }
+                    }
                 }
             }
         }

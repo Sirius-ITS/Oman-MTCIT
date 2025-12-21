@@ -5,6 +5,7 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.ui.components.PersonType
@@ -49,6 +50,7 @@ class MortgageCertificateStrategy @Inject constructor(
     private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
     private val marineUnitRepository: MarineUnitRepository,
     private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService,
+    private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
@@ -484,7 +486,7 @@ class MortgageCertificateStrategy @Inject constructor(
         val currentStepData = currentSteps.getOrNull(step)
 
         println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
-        println("🔍 R.string.mortgage_data mortgageValue: ${R.string.mortgage_data}")
+        println("🔍 Current step stepType: ${currentStepData?.stepType}")
 
         // The mortgage data step has titleRes = R.string.mortgage_data
         if (currentStepData?.titleRes == R.string.mortgage_data) {
@@ -532,8 +534,98 @@ class MortgageCertificateStrategy @Inject constructor(
                 println("⚠️ API call failed - returning -1 to prevent navigation")
                 return -1
             }
-        } else {
-            println("ℹ️ This is not the mortgage data step, skipping API call")
+        }
+
+        // ✅ HANDLE REVIEW STEP - Use ReviewManager
+        if (currentStepData?.stepType == StepType.REVIEW) {
+            println("📋 Handling Review Step using ReviewManager for Mortgage Certificate")
+
+            val requestIdInt = createdMortgageRequestId ?: accumulatedFormData["mortgageRequestId"]?.toIntOrNull()
+            if (requestIdInt == null) {
+                println("❌ No mortgageRequestId available for review step")
+                lastApiError = "لم يتم العثور على رقم طلب الرهن"
+                return -1
+            }
+
+            try {
+                // ✅ Get endpoint and context from transactionContext
+                val transactionContext = TransactionType.MORTGAGE_CERTIFICATE.context
+                val endpoint = transactionContext.sendRequestEndpoint.replace("{requestId}", requestIdInt.toString())
+                val contextName = transactionContext.displayName
+
+                println("🚀 Calling ReviewManager.processReviewStep:")
+                println("   Endpoint: $endpoint")
+                println("   RequestId: $requestIdInt")
+                println("   Context: $contextName")
+
+                // ✅ Call ReviewManager which internally uses marineUnitsApiService via repository
+                val reviewResult = reviewManager.processReviewStep(
+                    endpoint = endpoint,
+                    requestId = requestIdInt,
+                    transactionName = contextName
+                )
+
+                when (reviewResult) {
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                        println("✅ Review step processed successfully!")
+                        println("   Message: ${reviewResult.message}")
+                        println("   Need Inspection: ${reviewResult.needInspection}")
+
+                        // ✅ Store response in formData
+                        accumulatedFormData["sendRequestMessage"] = reviewResult.message
+
+                        // ✅ MORTGAGE CERTIFICATE: Different response handling than temporary registration
+                        // For mortgage, we check for bankVerification, approvalStatus, etc.
+
+                        // Check additionalData for mortgage-specific fields
+                        val bankVerification = reviewResult.additionalData?.get("bankVerification") as? String
+                        val approvalStatus = reviewResult.additionalData?.get("approvalStatus") as? String
+                        val documentReview = reviewResult.additionalData?.get("documentReview") as? String
+
+                        if (bankVerification == "pending") {
+                            println("🏦 Bank verification pending")
+                            accumulatedFormData["showBankVerificationDialog"] = "true"
+                            accumulatedFormData["verificationMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        if (approvalStatus == "pending") {
+                            println("⏳ Approval pending")
+                            accumulatedFormData["showApprovalPendingDialog"] = "true"
+                            accumulatedFormData["approvalMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        if (documentReview == "required") {
+                            println("📄 Document review required")
+                            accumulatedFormData["showDocumentReviewDialog"] = "true"
+                            accumulatedFormData["reviewMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        // ✅ Also support needInspection (common field)
+                        if (reviewResult.needInspection) {
+                            println("🔍 Inspection required - showing dialog")
+                            accumulatedFormData["showInspectionDialog"] = "true"
+                            accumulatedFormData["inspectionMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        // Proceed - request submitted successfully
+                        println("✅ No blocking conditions - mortgage request submitted successfully")
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                        println("❌ Review step failed: ${reviewResult.message}")
+                        lastApiError = reviewResult.message
+                        return -1 // Block navigation
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ Exception in review step: ${e.message}")
+                e.printStackTrace()
+                lastApiError = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                return -1
+            }
         }
 
         return step

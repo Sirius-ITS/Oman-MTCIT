@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
+import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.data.model.RequiredDocumentItem
 import kotlinx.coroutines.launch
@@ -41,7 +42,8 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules,
     private val registrationRequestManager: RegistrationRequestManager,
-    private val paymentManager: PaymentManager
+    private val paymentManager: PaymentManager,
+    private val reviewManager: ReviewManager
 ) : TransactionStrategy, MarineUnitValidatable {
 
     // ✅ Context for file operations (set from UI layer)
@@ -503,9 +505,74 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 }
                 is StepProcessResult.Error -> {
                     println("❌ Registration error: ${registrationResult.message}")
+                    // ✅ Block navigation on error
+                    return -1
                 }
                 is StepProcessResult.NoAction -> {
                     println("ℹ️ No registration action needed for this step")
+
+                    // ✅ HANDLE REVIEW STEP - Use ReviewManager
+                    if (stepType == StepType.REVIEW) {
+                        println("📋 Handling Review Step using ReviewManager")
+
+                        val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
+                        if (requestIdInt == null) {
+                            println("❌ No requestId available for review step")
+                            accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                            return -1
+                        }
+
+                        try {
+                            // ✅ Get endpoint and context from transactionContext
+                            val endpoint = transactionContext.sendRequestEndpoint
+                            val contextName = transactionContext.displayName
+
+                            println("🚀 Calling ReviewManager.processReviewStep:")
+                            println("   Endpoint: $endpoint")
+                            println("   RequestId: $requestIdInt")
+                            println("   Context: $contextName")
+
+                            // ✅ Call ReviewManager which internally uses marineUnitsApiService via repository
+                            val result = reviewManager.processReviewStep(
+                                endpoint = endpoint,
+                                requestId = requestIdInt,
+                                transactionName = contextName
+                            )
+
+                            when (result) {
+                                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                                    println("✅ Review step processed successfully!")
+                                    println("   Message: ${result.message}")
+                                    println("   Need Inspection: ${result.needInspection}")
+
+                                    // ✅ Store response in formData - strategy decides what to do
+                                    accumulatedFormData["needInspection"] = result.needInspection.toString()
+                                    accumulatedFormData["sendRequestMessage"] = result.message
+
+                                    // ✅ Strategy decides: show inspection dialog or proceed
+                                    if (result.needInspection) {
+                                        println("🔍 Inspection required - showing dialog")
+                                        accumulatedFormData["showInspectionDialog"] = "true"
+                                        accumulatedFormData["inspectionMessage"] = result.message
+                                        return step // Stay on current step
+                                    }
+
+                                    // Proceed to next step (could be payment, marine name, etc.)
+                                    println("✅ No inspection needed - proceeding to next step")
+                                }
+                                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                                    println("❌ Review step failed: ${result.message}")
+                                    accumulatedFormData["apiError"] = result.message
+                                    return -1 // Block navigation
+                                }
+                            }
+                        } catch (e: Exception) {
+                            println("❌ Exception in review step: ${e.message}")
+                            e.printStackTrace()
+                            accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                            return -1
+                        }
+                    }
                 }
             }
 

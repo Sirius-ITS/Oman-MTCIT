@@ -925,50 +925,13 @@ class RegistrationRequestManager @Inject constructor(
                 )
             }
 
-            // ✅ Review Step - Send request (only for NEW ships)
+            // ✅ Review Step - NO LONGER HANDLED HERE
+            // Each strategy should handle review in their own processStepData()
+            // by calling marineUnitsApiService.sendTransactionRequest() with their specific endpoint
             StepType.REVIEW -> {
-                println("📋 Review step detected")
-
-                if (requestId == null) {
-                    println("❌ No requestId - cannot send request")
-                    return StepProcessResult.Error("No request ID available")
-                }
-
-                // Check if user selected existing ship
-                val selectedUnitsJson = formData["selectedMarineUnits"]
-                val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
-                val hasSelectedExistingUnit = !selectedUnitsJson.isNullOrEmpty() &&
-                                              selectedUnitsJson != "[]" &&
-                                              !isAddingNewUnit
-
-                if (hasSelectedExistingUnit) {
-                    println("✅ User selected EXISTING ship - SKIPPING send-request API")
-                    return StepProcessResult.NoAction
-                }
-
-                // User is adding NEW ship - call send-request API
-                println("🔍 User is adding NEW ship - sending request...")
-
-                try {
-                    val result = sendRequest(requestId.toInt())
-
-                    when (result) {
-                        is SendRequestResult.Success -> {
-                            println("✅ Request sent successfully!")
-                            formData["needInspection"] = result.needInspection.toString()
-                            formData["sendRequestMessage"] = result.message
-                            StepProcessResult.Success(result.message)
-                        }
-                        is SendRequestResult.Error -> {
-                            println("❌ Send request error: ${result.message}")
-                            StepProcessResult.Error(result.message)
-                        }
-                    }
-                } catch (e: Exception) {
-                    println("❌ Error sending request: ${e.message}")
-                    e.printStackTrace()
-                    StepProcessResult.Error("Failed to send request: ${e.message}")
-                }
+                println("📋 Review step detected - but NOT handled by RegistrationRequestManager")
+                println("💡 Each strategy should handle review step in their processStepData()")
+                StepProcessResult.NoAction
             }
 
             // ✅ Marine Unit Name Selection Step - Reserve ship name

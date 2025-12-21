@@ -5,6 +5,7 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.ui.components.PersonType
@@ -39,6 +40,7 @@ class ReleaseMortgageStrategy @Inject constructor(
     private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
     private val marineUnitRepository: MarineUnitRepository,
     private val mortgageApiService: MortgageApiService,
+    private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
@@ -253,6 +255,9 @@ class ReleaseMortgageStrategy @Inject constructor(
                         // ✅ Store the request ID for later status update in review step
                         createdRedemptionRequestId = response.data.id
                         println("💾 STORED REDEMPTION REQUEST ID: $createdRedemptionRequestId")
+
+                        // Store in formData as well
+                        accumulatedFormData["redemptionRequestId"] = response.data.id.toString()
                     }
 
                     result.onFailure { error ->
@@ -289,6 +294,98 @@ class ReleaseMortgageStrategy @Inject constructor(
                     // Re-throw with user-friendly message
                     throw Exception(userMessage)
                 }
+            }
+        }
+
+        // ✅ HANDLE REVIEW STEP - Use ReviewManager
+        if (currentStepData?.stepType == StepType.REVIEW) {
+            println("📋 Handling Review Step using ReviewManager for Release Mortgage")
+
+            val requestIdInt = createdRedemptionRequestId ?: accumulatedFormData["redemptionRequestId"]?.toIntOrNull()
+            if (requestIdInt == null) {
+                println("❌ No redemptionRequestId available for review step")
+                accumulatedFormData["apiError"] = "لم يتم العثور على رقم طلب فك الرهن"
+                return -1
+            }
+
+            try {
+                // ✅ Get endpoint and context from transactionContext
+                val transactionContext = TransactionType.RELEASE_MORTGAGE.context
+                val endpoint = transactionContext.sendRequestEndpoint.replace("{requestId}", requestIdInt.toString())
+                val contextName = transactionContext.displayName
+
+                println("🚀 Calling ReviewManager.processReviewStep:")
+                println("   Endpoint: $endpoint")
+                println("   RequestId: $requestIdInt")
+                println("   Context: $contextName")
+
+                // ✅ Call ReviewManager which internally uses marineUnitsApiService via repository
+                val reviewResult = reviewManager.processReviewStep(
+                    endpoint = endpoint,
+                    requestId = requestIdInt,
+                    transactionName = contextName
+                )
+
+                when (reviewResult) {
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                        println("✅ Review step processed successfully!")
+                        println("   Message: ${reviewResult.message}")
+                        println("   Need Inspection: ${reviewResult.needInspection}")
+
+                        // ✅ Store response in formData
+                        accumulatedFormData["sendRequestMessage"] = reviewResult.message
+
+                        // ✅ RELEASE MORTGAGE: Different response handling than other transactions
+                        // For release mortgage, we check for documentVerification, releaseApproval, etc.
+
+                        // Check additionalData for release-mortgage-specific fields
+                        val documentVerification = reviewResult.additionalData?.get("documentVerification") as? String
+                        val releaseApproval = reviewResult.additionalData?.get("releaseApproval") as? String
+                        val bankConfirmation = reviewResult.additionalData?.get("bankConfirmation") as? String
+
+                        if (documentVerification == "pending") {
+                            println("📄 Document verification pending")
+                            accumulatedFormData["showDocVerificationDialog"] = "true"
+                            accumulatedFormData["verificationMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        if (releaseApproval == "pending") {
+                            println("⏳ Release approval pending")
+                            accumulatedFormData["showReleaseApprovalDialog"] = "true"
+                            accumulatedFormData["approvalMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        if (bankConfirmation == "required") {
+                            println("🏦 Bank confirmation required")
+                            accumulatedFormData["showBankConfirmationDialog"] = "true"
+                            accumulatedFormData["confirmationMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        // ✅ Also support needInspection (common field)
+                        if (reviewResult.needInspection) {
+                            println("🔍 Inspection required - showing dialog")
+                            accumulatedFormData["showInspectionDialog"] = "true"
+                            accumulatedFormData["inspectionMessage"] = reviewResult.message
+                            return step // Stay on current step
+                        }
+
+                        // Proceed - request submitted successfully
+                        println("✅ No blocking conditions - release mortgage request submitted successfully")
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                        println("❌ Review step failed: ${reviewResult.message}")
+                        accumulatedFormData["apiError"] = reviewResult.message
+                        return -1 // Block navigation
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ Exception in review step: ${e.message}")
+                e.printStackTrace()
+                accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                return -1
             }
         }
 

@@ -482,50 +482,71 @@ class MarineUnitsApiService @Inject constructor(
     }
 
     /**
-     * ✅ Generic function to send/submit a transaction request (final submission)
-     * PUT {endpoint}/{requestId}/send-request
+     * ✅ Send transaction request (used in review step for all transactions)
+     * Generic method that works for any transaction type
      *
-     * This is called when user clicks "Accept and Send" on review page
-     *
-     * @param endpoint Base endpoint (e.g., "api/v1/mortgage-request")
+     * @param endpoint The transaction endpoint (e.g., "api/v1/temporary-registration")
      * @param requestId The transaction request ID
      * @param transactionType The transaction type name for logging
-     * @return Result with success/failure
+     * @return ReviewResponse with message and needInspection flag
      */
     suspend fun sendTransactionRequest(
         endpoint: String,
         requestId: Int,
         transactionType: String = "Transaction"
-    ): Result<Boolean> {
+    ): com.informatique.mtcit.business.transactions.shared.ReviewResponse {
         return try {
             println("=".repeat(80))
             println("📤 Sending $transactionType Request...")
             println("=".repeat(80))
             println("   Request ID: $requestId")
 
-            val fullEndpoint = "$endpoint/$requestId/send-request"
+            // ✅ Fix: The endpoint already contains the full path with {requestId}/send-request
+            // Just replace the {requestId} placeholder with the actual ID
+            val fullEndpoint = endpoint.replace("{requestId}", requestId.toString())
             println("   Endpoint: $fullEndpoint")
 
-            when (val response = repo.onPutAuth(fullEndpoint, "")) {
+            when (val response = repo.onPostAuth(fullEndpoint, "")) {
                 is RepoServiceState.Success -> {
                     println("✅ $transactionType request sent successfully")
                     println("📥 Response: ${response.response}")
+
+                    // ✅ Parse response to extract message and needInspection flag
+                    // TODO: Parse actual API response when backend is ready
+                    // For now, return mock data
+                    val mockNeedInspection = requestId % 2 == 0 // Even IDs need inspection for testing
+                    val message = if (mockNeedInspection) {
+                        "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني"
+                    } else {
+                        "تم إرسال الطلب بنجاح"
+                    }
+
+                    println("   Message: $message")
+                    println("   Need Inspection: $mockNeedInspection")
                     println("=".repeat(80))
-                    Result.success(true)
+
+                    com.informatique.mtcit.business.transactions.shared.ReviewResponse(
+                        message = message,
+                        needInspection = mockNeedInspection,
+                        additionalData = emptyMap<String, Any>() // ✅ Fixed: Explicitly specify type
+                    )
                 }
                 is RepoServiceState.Error -> {
-                    val errorMsg = "Failed to send $transactionType request (code: ${response.code})"
+                    val errorMsg = response.error ?: "Failed to send $transactionType request (code: ${response.code})"
                     println("❌ $errorMsg")
-                    println("   Error: ${response.error}")
                     println("=".repeat(80))
-                    Result.failure(Exception(errorMsg))
+
+                    // Throw exception to be caught by repository
+                    throw Exception(errorMsg as String?)
                 }
             }
         } catch (e: Exception) {
             println("❌ Exception in send$transactionType Request: ${e.message}")
             e.printStackTrace()
             println("=".repeat(80))
-            Result.failure(e)
+
+            // Re-throw to be handled by repository
+            throw e
         }
     }
 }

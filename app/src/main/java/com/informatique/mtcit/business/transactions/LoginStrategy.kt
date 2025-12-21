@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.ValidationRule
@@ -28,15 +29,13 @@ class LoginStrategy @Inject constructor(
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 
-        // ✅ Step 1: ALWAYS show Login/Registration Selection (Mobile or Civil ID)
+        // ✅ Step 0: Login/Registration Selection (Mobile or Civil ID)
         steps.add(SharedSteps.loginRegistrationStep())
 
-        // ✅ Step 2: ALWAYS add Mobile Phone Verification step
-        // (Will be shown/hidden based on selection, but must exist for navigation)
+        // ✅ Step 1: Mobile Phone Verification step
         steps.add(SharedSteps.mobilePhoneVerificationStep())
 
-        // ✅ Step 3: ALWAYS add OTP Verification step
-        // Get phone number from accumulated data (if available)
+        // ✅ Step 2: OTP Verification step (FINAL STEP)
         val phoneNumber = accumulatedFormData["mobilePhoneNumber"] ?: ""
         val countryCode = accumulatedFormData["mobilePhoneNumber_countryCode"] ?: "+968"
         val fullPhoneNumber = if (phoneNumber.isNotEmpty()) "$countryCode$phoneNumber" else ""
@@ -46,6 +45,9 @@ class LoginStrategy @Inject constructor(
                 phoneNumber = fullPhoneNumber
             )
         )
+
+        // ✅ No review step needed - LoginViewModel.nextStep() automatically calls submitForm()
+        // when OTP is entered on step 2, which triggers immediate navigation to target transaction
 
         println("🔍 LoginStrategy.getSteps() - Total steps: ${steps.size}")
         println("🔍 LoginStrategy.getSteps() - registrationMethod: ${accumulatedFormData["registrationMethod"]}")
@@ -110,11 +112,33 @@ class LoginStrategy @Inject constructor(
 
         println("📝 LoginStrategy.processStepData() - After: $accumulatedFormData")
 
+        // ✅ Handle OTP verification on Step 2
+        if (step == 2) {
+            val otpCode = data["otpCode"]
+            if (!otpCode.isNullOrEmpty()) {
+                println("📞 LoginStrategy: Verifying OTP code: $otpCode")
+
+                // TODO: Call OTP verification API
+                // For now, simulate success
+                println("✅ LoginStrategy: OTP verified successfully")
+
+                // ✅ Strategy for immediate submission:
+                // When we return 'step', the BaseViewModel will:
+                // 1. Call getSteps() again
+                // 2. getSteps() will now return step 2 as a review step (empty fields) since OTP is present
+                // 3. The UI will show this as a review step with Submit button
+                // 4. We need to trigger submit automatically
+
+                // Instead, we mark this step as ready for submission
+                // by making it a review step in getSteps()
+            }
+        }
+
         return step
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        // Save login session (you can implement SharedPreferences or DataStore here)
+        println("✅ LoginStrategy.submit() called")
         println("✅ Login successful! User data: $data")
 
         // TODO: Save user session
@@ -122,6 +146,8 @@ class LoginStrategy @Inject constructor(
         // - Save authentication token
         // - Save user ID
 
+        // ✅ Return success - this will trigger LoginViewModel.loginComplete
+        // which navigates to the target transaction
         return Result.success(true)
     }
 

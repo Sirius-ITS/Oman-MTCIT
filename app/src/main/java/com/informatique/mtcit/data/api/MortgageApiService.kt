@@ -529,15 +529,12 @@ class MortgageApiService @Inject constructor(
     }
 
     /**
-     * ✅ Send/Submit redemption request (final submission after review)
-     * PUT /api/v1/mortgage-redemption-request/{requestId}/send-request
-     *
-     * This is called when user clicks "Accept and Send" on review page
+     * Send redemption (release mortgage) request to review step
      *
      * @param requestId The redemption request ID (obtained from createRedemptionRequestWithDocuments)
-     * @return Result with success/failure
+     * @return ReviewResponse with message and needInspection flag
      */
-    suspend fun sendRedemptionRequest(requestId: Int): Result<Boolean> {
+    suspend fun sendRedemptionRequest(requestId: Int): com.informatique.mtcit.business.transactions.shared.ReviewResponse {
         return marineUnitsApiService.sendTransactionRequest(
             endpoint = "api/v1/mortgage-redemption-request",
             requestId = requestId,

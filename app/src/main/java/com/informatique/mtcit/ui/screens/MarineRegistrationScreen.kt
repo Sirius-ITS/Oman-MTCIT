@@ -49,7 +49,6 @@ fun MarineRegistrationScreen(
     val navigationToComplianceDetail by viewModel.navigationToComplianceDetail.collectAsStateWithLifecycle()
     val isResuming by viewModel.isResuming.collectAsStateWithLifecycle()  // ✅ NEW: Observe resuming state
     val showToast by viewModel.showToastEvent.collectAsStateWithLifecycle()  // ✅ NEW: Toast messages
-    val navigateToMainCategory by viewModel.navigateToMainCategory.collectAsStateWithLifecycle()  // ✅ NEW: Navigation flag
     val context = LocalContext.current
 
     // ✅ NEW: Show Toast messages
@@ -57,23 +56,6 @@ fun MarineRegistrationScreen(
         showToast?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             viewModel.clearToastEvent()
-        }
-    }
-
-    // ✅ NEW: Navigate to MainCategory after successful mortgage submission
-    LaunchedEffect(navigateToMainCategory) {
-        if (navigateToMainCategory) {
-            println("🎯 Navigating to MainCategory screen...")
-            viewModel.clearNavigationFlags()
-
-            // Navigate back to main categories screen
-            navController.navigate(NavRoutes.MainCategoriesRouteWithoutID.route) {
-                // Clear back stack to avoid coming back
-                popUpTo(NavRoutes.HomeRoute.route) {
-                    saveState = false
-                }
-                launchSingleTop = true
-            }
         }
     }
 
@@ -283,7 +265,6 @@ fun MarineRegistrationScreen(
         previousStep = viewModel::previousStep,
         nextStep = viewModel::nextStep,
         submitForm = viewModel::submitForm,
-        submitOnReview = viewModel::submitOnReview, // ✅ NEW: Direct review submission
         viewModel = viewModel
     )
 }

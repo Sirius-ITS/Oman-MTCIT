@@ -63,6 +63,21 @@ interface MarineUnitRepository {
      * Returns complete fishing boat data for auto-filling form
      */
     suspend fun getFishingBoatData(requestNumber: String): Result<FishingBoatData>
+
+    /**
+     * ✅ NEW: Send transaction request (for review step)
+     * Calls marineUnitsApiService.sendTransactionRequest internally
+     *
+     * @param endpoint The API endpoint (e.g., "api/v1/temporary-registration")
+     * @param requestId The registration request ID
+     * @param transactionType The transaction type name for logging
+     * @return Result with ReviewResponse containing message and needInspection flag
+     */
+    suspend fun sendTransactionRequest(
+        endpoint: String,
+        requestId: Int,
+        transactionType: String
+    ): Result<com.informatique.mtcit.business.transactions.shared.ReviewResponse>
 }
 
 
@@ -538,6 +553,35 @@ class MarineUnitRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             println("❌ Exception occurred: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * ✅ NEW: Send transaction request (for review step)
+     * Calls marineUnitsApiService.sendTransactionRequest internally
+     *
+     * @param endpoint The API endpoint (e.g., "api/v1/temporary-registration")
+     * @param requestId The registration request ID
+     * @param transactionType The transaction type name for logging
+     * @return Result with ReviewResponse containing message and needInspection flag
+     */
+    override suspend fun sendTransactionRequest(
+        endpoint: String,
+        requestId: Int,
+        transactionType: String
+    ): Result<com.informatique.mtcit.business.transactions.shared.ReviewResponse> {
+        return try {
+            // Simulate API call
+            val response = apiService.sendTransactionRequest(endpoint, requestId, transactionType)
+
+            // Log the transaction request
+            println("📤 Transaction request sent: $transactionType (ID: $requestId)")
+
+            // Return the response
+            Result.success(response)
+        } catch (e: Exception) {
+            println("❌ Error sending transaction request: ${e.message}")
             Result.failure(e)
         }
     }

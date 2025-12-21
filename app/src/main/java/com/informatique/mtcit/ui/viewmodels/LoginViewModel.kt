@@ -54,5 +54,27 @@ class LoginViewModel @Inject constructor(
             }
         }
     }
-}
 
+    /**
+     * ✅ Override nextStep to automatically submit when OTP is verified
+     * This makes the login flow seamless - one click on OTP screen forwards directly to target transaction
+     */
+    override fun nextStep() {
+        val currentState = uiState.value
+        val currentStepIndex = currentState.currentStep
+
+        // Check if we're on step 2 (OTP step) and OTP has been entered
+        if (currentStepIndex == 2) {
+            val otpCode = currentState.formData["otpCode"]
+            if (!otpCode.isNullOrEmpty()) {
+                println("🚀 LoginViewModel: OTP entered, automatically submitting...")
+                // Automatically submit instead of going to next step
+                submitForm()
+                return
+            }
+        }
+
+        // For other steps, use normal flow
+        super.nextStep()
+    }
+}
