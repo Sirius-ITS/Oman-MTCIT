@@ -258,7 +258,11 @@ fun MarineRegistrationScreen(
         onFieldValueChange = viewModel::onFieldValueChange,
         onFieldFocusLost = viewModel::onFieldFocusLost,
         isFieldLoading = viewModel::isFieldLoading,
-        onOpenFilePicker = viewModel::openFilePicker,
+        onOpenFilePicker = { fieldId, allowedTypes ->
+            currentFilePickerField = fieldId
+            currentFilePickerTypes = allowedTypes
+            filePickerLauncher.launch(arrayOf("*/*"))
+        },
         onViewFile = viewModel::viewFile,
         onRemoveFile = viewModel::removeFile,
         goToStep = viewModel::goToStep,

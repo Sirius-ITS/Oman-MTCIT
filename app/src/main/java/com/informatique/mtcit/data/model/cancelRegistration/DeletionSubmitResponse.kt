@@ -14,7 +14,10 @@ data class DeletionSubmitResponse(
 
 @Serializable
 data class DeletionRequestData(
-    val id: Int? = null,
-    val requestSerial: Int? = null,
-    val requestYear: Int? = null
+    val id: Int,
+    val deletionReasonId: Int,
+    val shipInfoId: Int,
+    val statusId: Int,
+    val createdAt: String?,
+    val updatedAt: String?
 )
