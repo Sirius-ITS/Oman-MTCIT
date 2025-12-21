@@ -23,6 +23,7 @@ import com.informatique.mtcit.business.transactions.marineunit.usecases.Validate
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import android.content.Context
+import com.informatique.mtcit.data.api.MarineUnitsApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,9 +49,11 @@ class MortgageCertificateStrategy @Inject constructor(
     private val mortgageRules: MortgageCertificateRules,
     private val validateMarineUnitUseCase: ValidateMarineUnitUseCase,
     private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
+    private val marineUnitsApiService: MarineUnitsApiService,
     private val marineUnitRepository: MarineUnitRepository,
     private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService,
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
@@ -327,24 +330,14 @@ class MortgageCertificateStrategy @Inject constructor(
         val unit = marineUnits.find { it.id.toString() == unitId }
             ?: return ValidationResult.Error("الوحدة البحرية غير موجودة")
 
-        // SIMULATION: استدعاء بيانات السفينة ومراجعة سجل الالتزام
-        // Simulate API call to retrieve ship data and review compliance record
-        val complianceCheckResult = simulateComplianceRecordCheck(unit, userId)
+        println("=".repeat(80))
+        println("🚢 validateMarineUnitSelection: Validating ship selection (no API call here)")
+        println("   Unit ID: $unitId")
+        println("   Ship Name: ${unit.shipName}")
+        println("   Note: proceed-request API will be called when user clicks Next")
+        println("=".repeat(80))
 
-        // If compliance check finds blocking issues, return ShowComplianceDetailScreen
-        if (complianceCheckResult.hasBlockingIssues()) {
-            return ValidationResult.Success(
-                validationResult = complianceCheckResult.validationResult,
-                navigationAction = com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen(
-                    marineUnit = unit,
-                    complianceIssues = complianceCheckResult.issues,
-                    rejectionReason = complianceCheckResult.rejectionReason,
-                    rejectionTitle = "تم رفض الطلب - مشاكل في سجل الالتزام"
-                )
-            )
-        }
-
-        // Otherwise, proceed with normal validation
+        // ✅ Just do the business rules validation - API call happens in processStepData
         val (validationResult, navigationAction) = validateMarineUnitUseCase.executeAndGetAction(
             unit = unit,
             userId = userId,
@@ -481,12 +474,48 @@ class MortgageCertificateStrategy @Inject constructor(
         // Clear previous error
         lastApiError = null
 
-        // Check if we just completed the Mortgage Data step
+        // Check if we just completed a step
         val currentSteps = getSteps()
         val currentStepData = currentSteps.getOrNull(step)
 
         println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
         println("🔍 Current step stepType: ${currentStepData?.stepType}")
+
+        // ✅ NEW: Check if we just completed the Marine Unit Selection step (owned_ships)
+        if (currentStepData?.titleRes == R.string.owned_ships) {
+            println("🚢 ✅ Marine Unit Selection step completed - calling proceed-request API...")
+
+            // Get the selected ship ID from the form data
+            val selectedShipId = data["selectedMarineUnits"]
+
+            // ✅ Use ShipSelectionManager to handle proceed-request API
+            val result = shipSelectionManager.handleShipSelection(
+                shipId = selectedShipId,
+                context = context
+            )
+
+            when (result) {
+                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                    println("✅ Ship selection successful via Manager!")
+                    println("   Request ID: ${result.requestId}")
+
+                    // ✅ Store the created request ID
+                    createdMortgageRequestId = result.requestId
+                    apiResponses["proceedRequest"] = result.response
+
+                    println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
+                }
+                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                    println("❌ Ship selection failed: ${result.message}")
+                    lastApiError = result.message
+
+                    if (result.shouldBlockNavigation) {
+                        println("⚠️ Blocking navigation due to API failure")
+                        return -1
+                    }
+                }
+            }
+        }
 
         // The mortgage data step has titleRes = R.string.mortgage_data
         if (currentStepData?.titleRes == R.string.mortgage_data) {

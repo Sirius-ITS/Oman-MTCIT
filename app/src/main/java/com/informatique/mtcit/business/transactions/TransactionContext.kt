@@ -58,6 +58,14 @@ data class TransactionContext(
     val paymentSubmitEndpoint: String? = null,
 
     /**
+     * API endpoint for proceeding with a request based on shipInfoId
+     * Uses {shipInfoId} as placeholder
+     * Example: "api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request"
+     * This is called when user selects a ship to validate and proceed
+     */
+    val proceedRequestEndpoint: String? = null,
+
+    /**
      * Additional transaction-specific configuration
      */
     val config: Map<String, Any> = emptyMap()

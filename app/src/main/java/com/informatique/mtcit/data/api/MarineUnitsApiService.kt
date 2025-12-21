@@ -9,10 +9,12 @@ import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.business.transactions.shared.ProofType
 import com.informatique.mtcit.business.transactions.shared.ShipCategory
 import com.informatique.mtcit.business.transactions.shared.ShipType
+import com.informatique.mtcit.data.model.ProceedRequestResponse
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -119,8 +121,31 @@ class MarineUnitsApiService @Inject constructor(
             println("🔍 Fetching ships with filter: $filterJson")
             println("📋 Base64 encoded filter: $base64Filter")
 
-            val endpoint = "api/v1/mortgage-request/get-my-ships$filterParam"
+            // ✅ FIXED: Make endpoint dynamic based on requestTypeId
+            // Different endpoints for different transaction types:
+            // 1 = Temporary Registration → api/v1/registration-requests/get-my-ships
+            // 2 = Permanent Registration → api/v1/perm-registration-requests/get-my-ships
+            // 3 = Deletion → api/v1/deletion-requests/get-my-ships
+            // 4 = Mortgage → api/v1/mortgage-request/get-my-ships
+            // 5 = Release Mortgage → api/v1/mortgage-redemption-request/get-my-ships
+            val baseEndpoint = when (requestTypeInt) {
+                1 -> "api/v1/registration-requests/get-my-ships"
+                2 -> "api/v1/perm-registration-requests/get-my-ships"
+                7 -> "api/v1/deletion-requests/get-my-ships"
+                4 -> "api/v1/mortgage-request/get-my-ships"
+                5 -> "api/v1/mortgage-redemption-request/get-my-ships"
+                3 -> "api/v1/ship-navigation-license-request/get-my-ships"
+                6 -> "api/v1/navigation-license-renewal-request/get-my-ships"
+                8 -> "api/v1/inspection-requests/get-my-ships"
+                else -> {
+                    println("⚠️ Unknown requestTypeId: $requestTypeInt, using mortgage endpoint as fallback")
+                    "api/v1/mortgage-request/get-my-ships"
+                }
+            }
+
+            val endpoint = "$baseEndpoint$filterParam"
             println("📡 Full API Call: $endpoint")
+            println("   Request Type: $requestTypeInt → $baseEndpoint")
 
             when (val response = repo.onGet(endpoint)) {
                 is RepoServiceState.Success -> {
@@ -547,6 +572,130 @@ class MarineUnitsApiService @Inject constructor(
 
             // Re-throw to be handled by repository
             throw e
+        }
+    }
+
+    /**
+     * ✅ GENERIC: Proceed with request for a selected ship (works for ALL transactions)
+     * POST {endpoint}/ship-info/{shipInfoId}/proceed-request
+     *
+     * This API is called when user selects a ship to validate and create initial request context.
+     * If successful (statusCode 200), the flow continues to next step.
+     * If error, the flow stops and shows error message.
+     *
+     * Usage Examples:
+     * - Mortgage: /api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request
+     * - Deletion: /api/v1/deletion-requests/ship-info/{shipInfoId}/proceed-request
+     * - Registration: /api/v1/registration-requests/ship-info/{shipInfoId}/proceed-request
+     * - Permanent: /api/v1/perm-registration-requests/ship-info/{shipInfoId}/proceed-request
+     * - Redemption: /api/v1/mortgage-redemption-request/ship-info/{shipInfoId}/proceed-request
+     *
+     * Response example:
+     * {
+     *   "message": "Add Successfully",
+     *   "statusCode": 200,
+     *   "success": true,
+     *   "timestamp": "2025-12-21 12:58:10",
+     *   "data": {
+     *     "id": 1148,
+     *     "shipInfo": { ... },
+     *     "requestSerial": 862,
+     *     "requestYear": 2025,
+     *     "requestType": { "id": 1, ... },
+     *     "status": { "id": 1, ... }
+     *   }
+     * }
+     *
+     * @param endpoint The base endpoint (will append /ship-info/{shipInfoId}/proceed-request)
+     * @param shipInfoId The selected ship info ID
+     * @param transactionType The transaction type name for logging (e.g., "Mortgage", "Deletion")
+     * @return Result with the created request data (contains request ID)
+     */
+    suspend fun proceedWithRequest(
+        endpoint: String,
+        shipInfoId: String,
+        transactionType: String = "Transaction"
+    ): Result<ProceedRequestResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🚢 MarineUnitsApiService: Proceeding with $transactionType request for ship...")
+            println("=".repeat(80))
+            println("   Ship Info ID (raw): $shipInfoId")
+            println("   Base Endpoint: $endpoint")
+
+            // ✅ Clean the shipInfoId - remove quotes, brackets, and whitespace
+            // Convert to pure integer string (e.g., "64", "[64]", "\"64\"" all become "64")
+            val cleanShipId = shipInfoId
+                .trim()
+                .removeSurrounding("\"")  // Remove quotes if present
+                .removeSurrounding("[", "]")  // Remove brackets if present
+                .trim()
+
+            println("   Ship Info ID (cleaned): $cleanShipId")
+
+            // ✅ Build the full endpoint by replacing {shipInfoId} placeholder
+            // If endpoint already contains the pattern, just replace the placeholder
+            // Otherwise, append /ship-info/{shipInfoId}/proceed-request
+            val fullEndpoint = if (endpoint.contains("ship-info/{shipInfoId}/proceed-request")) {
+                endpoint.replace("{shipInfoId}", cleanShipId)
+            } else {
+                "$endpoint/ship-info/$cleanShipId/proceed-request"
+            }
+
+            println("   Full Endpoint: $fullEndpoint")
+            println("=".repeat(80))
+
+            when (val response = repo.onPostAuth(fullEndpoint, "")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received")
+                    println("📄 Response JSON: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        val success = responseJson.jsonObject["success"]?.jsonPrimitive?.content == "true"
+
+                        println("📊 Status Code: $statusCode, Success: $success")
+
+                        if (statusCode == 200 && success) {
+                            // Parse the response
+                            val proceedResponse = json.decodeFromJsonElement<ProceedRequestResponse>(responseJson)
+
+                            println("✅ Proceed request successful!")
+                            println("   Transaction Type: $transactionType")
+                            println("   Request ID: ${proceedResponse.data.id}")
+                            println("   Request Serial: ${proceedResponse.data.requestSerial}")
+                            println("   Request Year: ${proceedResponse.data.requestYear}")
+                            println("   Ship Info ID: ${proceedResponse.data.shipInfo?.id}")
+                            println("=".repeat(80))
+
+                            Result.success(proceedResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "فشل في متابعة طلب $transactionType"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMsg = "فشل في متابعة طلب $transactionType (code: ${response.code})"
+                    println("❌ $errorMsg")
+                    println("   Error: ${response.error}")
+                    println("=".repeat(80))
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in proceedWithRequest ($transactionType): ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to proceed with $transactionType request: ${e.message}"))
         }
     }
 }

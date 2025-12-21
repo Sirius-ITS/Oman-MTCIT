@@ -186,3 +186,71 @@ data class Pageable(
     val unpaged: Boolean,
     val paged: Boolean
 )
+
+/**
+ * Response from proceed-request API
+ * POST /api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request
+ */
+@Serializable
+data class ProceedRequestResponse(
+    val message: String,
+    val statusCode: Int,
+    val success: Boolean,
+    val timestamp: String,
+    val data: ProceedRequestData
+)
+
+/**
+ * Data returned from proceed-request
+ */
+@Serializable
+data class ProceedRequestData(
+    val id: Int,
+    val shipInfo: ShipInfoRef? = null,
+    val requestSerial: Int? = null,
+    val requestYear: Int? = null,
+    val requestType: RequestTypeRef? = null,
+    val status: StatusRef? = null
+)
+
+/**
+ * Ship info reference in proceed-request response
+ */
+@Serializable
+data class ShipInfoRef(
+    val id: Int,
+    val ship: ShipRef? = null,
+    val isCurrent: Int? = null
+)
+
+/**
+ * Ship reference in proceed-request response
+ */
+@Serializable
+data class ShipRef(
+    val id: Int,
+    val shipName: String? = null,
+    val imoNumber: Int? = null,
+    val callSign: String? = null
+)
+
+/**
+ * Request type reference in proceed-request response
+ */
+@Serializable
+data class RequestTypeRef(
+    val id: Int,
+    val nameAr: String? = null,
+    val nameEn: String? = null
+)
+
+/**
+ * Status reference in proceed-request response
+ */
+@Serializable
+data class StatusRef(
+    val id: Int,
+    val nameAr: String? = null,
+    val nameEn: String? = null
+)
+

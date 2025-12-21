@@ -35,12 +35,17 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val registrationRequestManager: RegistrationRequestManager,
-    private val reviewManager: ReviewManager
+    private val reviewManager: ReviewManager,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager
 ) : TransactionStrategy {
 
     // ✅ Context for file operations (set from UI layer)
     var context: android.content.Context? = null
+
+    // ✅ Transaction context with all API endpoints
+    private val transactionContext: TransactionContext = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
 
     // Cache for loaded dropdown options
     private var portOptions: List<String> = emptyList()
@@ -349,6 +354,28 @@ class PermanentRegistrationStrategy @Inject constructor(
 
             println("🔍 DEBUG - Step $step type: $stepType")
             println("🔍 DEBUG - Data keys: ${data.keys}")
+
+            // ✅ NEW: Check if we just completed the Marine Unit Selection step
+            if (currentStepData.titleRes == R.string.owned_ships) {
+                println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+
+                // ✅ Use ShipSelectionManager
+                val result = shipSelectionManager.handleShipSelection(
+                    shipId = data["selectedMarineUnits"],
+                    context = transactionContext
+                )
+
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                        println("✅ Ship selection successful!")
+                        accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                        println("❌ Ship selection failed: ${result.message}")
+                        return -1
+                    }
+                }
+            }
 
             // ✅ Call RegistrationRequestManager to process registration-related steps
             val result = registrationRequestManager.processStepIfNeeded(

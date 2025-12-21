@@ -38,10 +38,12 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val temporaryRegistrationRules: TemporaryRegistrationRules,
     private val registrationRequestManager: RegistrationRequestManager,
     private val paymentManager: PaymentManager,
-    private val reviewManager: ReviewManager
+    private val reviewManager: ReviewManager,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager
 ) : TransactionStrategy, MarineUnitValidatable {
 
     // ✅ Context for file operations (set from UI layer)
@@ -463,6 +465,31 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             println("🔍 DEBUG - Step $step type: $stepType")
             println("🔍 DEBUG - Data keys: ${data.keys}")
+
+            // ✅ NEW: Check if we just completed the Marine Unit Selection step
+            if (currentStepData.titleRes == R.string.owned_ships) {
+                println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+
+                // ✅ Use ShipSelectionManager to handle proceed-request API
+                val result = shipSelectionManager.handleShipSelection(
+                    shipId = data["selectedMarineUnits"],
+                    context = transactionContext
+                )
+
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                        println("✅ Ship selection successful via Manager!")
+                        accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                        println("❌ Ship selection failed: ${result.message}")
+                        // Let RegistrationRequestManager handle this - it will show error
+                        if (result.shouldBlockNavigation) {
+                            return -1
+                        }
+                    }
+                }
+            }
 
             // ✅ Call RegistrationRequestManager to process registration-related steps
             val registrationResult = registrationRequestManager.processStepIfNeeded(
