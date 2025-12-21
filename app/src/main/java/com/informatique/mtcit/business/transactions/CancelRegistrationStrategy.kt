@@ -34,8 +34,14 @@ class CancelRegistrationStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val marineUnitRepository: MarineUnitRepository,
     private val lookupRepository: LookupRepository,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy {
+
+    // ✅ Transaction context with all API endpoints
+    private val transactionContext: TransactionContext = TransactionType.CANCEL_PERMANENT_REGISTRATION.context
+
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
@@ -259,12 +265,35 @@ class CancelRegistrationStrategy @Inject constructor(
         // Clear previous error
         lastApiError = null
 
-        // Check if we just completed the Cancellation Reason step
+        // Check current step
         val currentSteps = getSteps()
         val currentStepData = currentSteps.getOrNull(step)
 
         println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
-        println("🔍 R.string.cancellation_reason value: ${R.string.cancellation_reason}")
+
+        // ✅ NEW: Check if we just completed the Marine Unit Selection step
+        if (currentStepData?.titleRes == R.string.owned_ships) {
+            println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+
+            // ✅ Use ShipSelectionManager
+            val result = shipSelectionManager.handleShipSelection(
+                shipId = data["selectedMarineUnits"],
+                context = transactionContext
+            )
+
+            when (result) {
+                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                    println("✅ Ship selection successful!")
+                    deletionRequestId = result.requestId
+                    accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                }
+                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                    println("❌ Ship selection failed: ${result.message}")
+                    lastApiError = result.message
+                    return -1
+                }
+            }
+        }
 
         // ✅ The cancellation reason step has titleRes = R.string.cancellation_reason
         if (currentStepData?.titleRes == R.string.cancellation_reason) {

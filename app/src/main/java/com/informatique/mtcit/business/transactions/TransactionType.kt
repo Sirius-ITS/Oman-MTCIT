@@ -18,15 +18,19 @@ enum class TransactionType(
             updateStatusEndpoint = "api/v1/registration-requests/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/registration-requests/{requestId}/send-request",
             getRequestEndpoint = "api/v1/registration-requests/{requestId}",
-            deleteRequestEndpoint = "api/v1/registration-requests/{requestId}/delete"
+            deleteRequestEndpoint = "api/v1/registration-requests/{requestId}/delete",
+            proceedRequestEndpoint = "api/v1/registration-requests/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     PERMANENT_REGISTRATION_CERTIFICATE(
         context = TransactionContext(
             displayName = "شهادة تسجيل دائمة",
-            createEndpoint = "api/v1/registration/create-permanent",
-            updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+            createEndpoint = "api/v1/perm-registration-requests/create-permanent",
+            updateStatusEndpoint = "api/v1/perm-registration-requests/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/perm-registration-requests/{requestId}/send-request",
+            getRequestEndpoint = "api/v1/perm-registration-requests/{requestId}",
+            deleteRequestEndpoint = "api/v1/perm-registration-requests/{requestId}/delete",
+            proceedRequestEndpoint = "api/v1/perm-registration-requests/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     SUSPEND_PERMANENT_REGISTRATION(
@@ -40,9 +44,12 @@ enum class TransactionType(
     CANCEL_PERMANENT_REGISTRATION(
         context = TransactionContext(
             displayName = "إلغاء تسجيل دائم",
-            createEndpoint = "api/v1/registration/cancel",
-            updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
-            sendRequestEndpoint = "api/v1/registration/{requestId}/send-request"
+            createEndpoint = "api/v1/deletion-requests/cancel",
+            updateStatusEndpoint = "api/v1/deletion-requests/{requestId}/update-status",
+            sendRequestEndpoint = "api/v1/deletion-requests/{requestId}/send-request",
+            getRequestEndpoint = "api/v1/deletion-requests/{requestId}",
+            deleteRequestEndpoint = "api/v1/deletion-requests/{requestId}/delete",
+            proceedRequestEndpoint = "api/v1/deletion-requests/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     MORTGAGE_CERTIFICATE(
@@ -52,7 +59,8 @@ enum class TransactionType(
             updateStatusEndpoint = "api/v1/mortgage-request/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/mortgage-request/{requestId}/send-request",
             getRequestEndpoint = "api/v1/mortgage-request/{requestId}",
-            deleteRequestEndpoint = "api/v1/mortgage-request/{requestId}/delete"
+            deleteRequestEndpoint = "api/v1/mortgage-request/{requestId}/delete",
+            proceedRequestEndpoint = "api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     RELEASE_MORTGAGE(
@@ -62,7 +70,8 @@ enum class TransactionType(
             updateStatusEndpoint = "api/v1/mortgage-redemption-request/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/send-request",
             getRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}",
-            deleteRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/delete"
+            deleteRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/delete",
+            proceedRequestEndpoint = "api/v1/mortgage-redemption-request/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     REQUEST_FOR_INSPECTION(

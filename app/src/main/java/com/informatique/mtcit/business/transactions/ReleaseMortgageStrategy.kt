@@ -39,10 +39,15 @@ class ReleaseMortgageStrategy @Inject constructor(
     private val validateMarineUnitUseCase: ValidateMarineUnitUseCase,
     private val getEligibleUnitsUseCase: GetEligibleMarineUnitsUseCase,
     private val marineUnitRepository: MarineUnitRepository,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val mortgageApiService: MortgageApiService,
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
+
+    // ✅ Transaction context with all API endpoints
+    private val transactionContext: TransactionContext = TransactionType.RELEASE_MORTGAGE.context
 
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -228,9 +233,32 @@ class ReleaseMortgageStrategy @Inject constructor(
         accumulatedFormData.putAll(data)
         println("📦 ReleaseMortgage - Accumulated data: $accumulatedFormData")
 
-        // ✅ Check if this is the file upload step (step after marine unit selection)
+        // ✅ Check current step
         val steps = getSteps()
         val currentStepData = steps.getOrNull(step)
+
+        // ✅ NEW: Check if we just completed the Marine Unit Selection step
+        if (currentStepData?.titleRes == R.string.owned_ships) {
+            println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+
+            // ✅ Use ShipSelectionManager
+            val result = shipSelectionManager.handleShipSelection(
+                shipId = data["selectedMarineUnits"],
+                context = transactionContext
+            )
+
+            when (result) {
+                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                    println("✅ Ship selection successful!")
+                    createdRedemptionRequestId = result.requestId
+                    accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                }
+                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                    println("❌ Ship selection failed: ${result.message}")
+                    return -1
+                }
+            }
+        }
 
         // Check if the current step has any document upload fields
         val hasFileUpload = currentStepData?.fields?.any { field ->
