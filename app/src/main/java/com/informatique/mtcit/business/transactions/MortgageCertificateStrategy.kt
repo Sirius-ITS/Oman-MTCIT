@@ -591,7 +591,8 @@ class MortgageCertificateStrategy @Inject constructor(
                 val reviewResult = reviewManager.processReviewStep(
                     endpoint = endpoint,
                     requestId = requestIdInt,
-                    transactionName = contextName
+                    transactionName = contextName,
+                    sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
                 )
 
                 when (reviewResult) {

@@ -76,7 +76,8 @@ interface MarineUnitRepository {
     suspend fun sendTransactionRequest(
         endpoint: String,
         requestId: Int,
-        transactionType: String
+        transactionType: String,
+        sendRequestPostOrPut: String
     ): Result<com.informatique.mtcit.business.transactions.shared.ReviewResponse>
 }
 
@@ -569,11 +570,12 @@ class MarineUnitRepositoryImpl @Inject constructor(
     override suspend fun sendTransactionRequest(
         endpoint: String,
         requestId: Int,
-        transactionType: String
+        transactionType: String,
+        sendRequestPostOrPut: String
     ): Result<com.informatique.mtcit.business.transactions.shared.ReviewResponse> {
         return try {
             // Simulate API call
-            val response = apiService.sendTransactionRequest(endpoint, requestId, transactionType)
+            val response = apiService.sendTransactionRequest(endpoint, requestId, transactionType, sendRequestPostOrPut)
 
             // Log the transaction request
             println("📤 Transaction request sent: $transactionType (ID: $requestId)")

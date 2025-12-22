@@ -243,20 +243,27 @@ class TemporaryRegistrationStrategy @Inject constructor(
         if (isAddingNewUnit && !hasSelectedExistingUnit) {
             println("✅ Adding new unit steps")
 
-            // Use filtered ship types if available, otherwise use empty list
-            val shipTypesToUse = if (isShipTypeFiltered) filteredShipTypeOptions else emptyList()
+            // ✅ FIX: Pass empty lists initially - onStepOpened() will load the data via requiredLookups
+            // The step declares requiredLookups = ["shipTypes", "shipCategories", "ports", "countries", ...]
+            // so when the step is opened, onStepOpened() will load all the data and trigger a rebuild
+            // This prevents crash when clicking "add_ship" before data is loaded
+            val shipTypesToUse = if (isShipTypeFiltered && filteredShipTypeOptions.isNotEmpty()) {
+                filteredShipTypeOptions
+            } else {
+                shipTypeOptions.ifEmpty { emptyList() }
+            }
 
-            println("🔧 getSteps - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}")
+            println("🔧 getSteps - Using shipTypes: ${shipTypesToUse.size} types")
 
             steps.add(
                 SharedSteps.unitSelectionStep(
-                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
-                    shipCategories = shipCategoryOptions,
-                    ports = portOptions,
-                    countries = countryOptions,
-                    marineActivities = marineActivityOptions,
-                    proofTypes = proofTypeOptions,
-                    buildingMaterials = buildMaterialOptions, // ✅ Now uses loaded options
+                    shipTypes = shipTypesToUse,
+                    shipCategories = shipCategoryOptions.ifEmpty { emptyList() },
+                    ports = portOptions.ifEmpty { emptyList() },
+                    countries = countryOptions.ifEmpty { emptyList() },
+                    marineActivities = marineActivityOptions.ifEmpty { emptyList() },
+                    proofTypes = proofTypeOptions.ifEmpty { emptyList() },
+                    buildingMaterials = buildMaterialOptions.ifEmpty { emptyList() },
                     includeIMO = true,
                     includeMMSI = true,
                     includeManufacturer = true,
@@ -469,26 +476,45 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
             // ✅ NEW: Check if we just completed the Marine Unit Selection step
             if (currentStepData.titleRes == R.string.owned_ships) {
-                println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+                println("🚢 ✅ Marine Unit Selection step completed")
 
-                // ✅ Use ShipSelectionManager to handle proceed-request API
-                val result = shipSelectionManager.handleShipSelection(
-                    shipId = data["selectedMarineUnits"],
-                    context = transactionContext
-                )
+                // ✅ FIX: Only call ShipSelectionManager if user selected an EXISTING ship
+                // If user clicked "add_ship", skip the API call and continue to next step
+                val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
+                val selectedUnitsJson = data["selectedMarineUnits"]
+                val hasSelectedExistingShip = !selectedUnitsJson.isNullOrEmpty() &&
+                                               selectedUnitsJson != "[]" &&
+                                               !isAddingNew
 
-                when (result) {
-                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                        println("✅ Ship selection successful via Manager!")
-                        accumulatedFormData["createdRequestId"] = result.requestId.toString()
-                    }
-                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                        println("❌ Ship selection failed: ${result.message}")
-                        // Let RegistrationRequestManager handle this - it will show error
-                        if (result.shouldBlockNavigation) {
-                            return -1
+                println("🔍 isAddingNew: $isAddingNew")
+                println("🔍 selectedUnitsJson: $selectedUnitsJson")
+                println("🔍 hasSelectedExistingShip: $hasSelectedExistingShip")
+
+                if (hasSelectedExistingShip) {
+                    println("🚢 User selected EXISTING ship - calling ShipSelectionManager...")
+
+                    // ✅ Use ShipSelectionManager to handle proceed-request API
+                    val result = shipSelectionManager.handleShipSelection(
+                        shipId = data["selectedMarineUnits"],
+                        context = transactionContext
+                    )
+
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                            println("✅ Ship selection successful via Manager!")
+                            accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                            println("❌ Ship selection failed: ${result.message}")
+                            // Block navigation on error
+                            if (result.shouldBlockNavigation) {
+                                return -1
+                            }
                         }
                     }
+                } else {
+                    println("✅ User is adding NEW ship - skipping ShipSelectionManager, continuing to next step")
+                    // User is adding a new ship - don't call the API, just continue to unit data step
                 }
             }
 
@@ -562,7 +588,8 @@ class TemporaryRegistrationStrategy @Inject constructor(
                             val result = reviewManager.processReviewStep(
                                 endpoint = endpoint,
                                 requestId = requestIdInt,
-                                transactionName = contextName
+                                transactionName = contextName,
+                                sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
                             )
 
                             when (result) {

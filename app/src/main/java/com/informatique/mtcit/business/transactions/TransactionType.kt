@@ -17,6 +17,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/registration-requests",
             updateStatusEndpoint = "api/v1/registration-requests/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/registration-requests/{requestId}/send-request",
+            sendRequestPostOrPut = "POST",
             getRequestEndpoint = "api/v1/registration-requests/{requestId}",
             deleteRequestEndpoint = "api/v1/registration-requests/{requestId}/delete",
             paymentReceiptEndpoint = "api/v1/registration-requests/payment",
@@ -30,6 +31,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/perm-registration-requests/create-permanent",
             updateStatusEndpoint = "api/v1/perm-registration-requests/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/perm-registration-requests/{requestId}/send-request",
+            sendRequestPostOrPut = "POST",
             getRequestEndpoint = "api/v1/perm-registration-requests/{requestId}",
             deleteRequestEndpoint = "api/v1/perm-registration-requests/{requestId}/delete",
             paymentReceiptEndpoint = "api/v1/perm-registration-requests/payment",
@@ -42,6 +44,7 @@ enum class TransactionType(
             displayName = "تعليق تسجيل دائم",
             createEndpoint = "api/v1/registration/suspend",
             updateStatusEndpoint = "api/v1/registration/{requestId}/update-status",
+            sendRequestPostOrPut = "POST",
             sendRequestEndpoint = "api/v1/registration/{requestId}/send-request",
             paymentReceiptEndpoint = "api/v1/registration/payment",
             paymentSubmitEndpoint = "api/v1/registration/add-payment"
@@ -53,6 +56,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/deletion-requests/cancel",
             updateStatusEndpoint = "api/v1/deletion-requests/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/deletion-requests/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             getRequestEndpoint = "api/v1/deletion-requests/{requestId}",
             deleteRequestEndpoint = "api/v1/deletion-requests/{requestId}/delete",
             paymentReceiptEndpoint = "api/v1/deletion-requests/payment",
@@ -66,6 +70,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/mortgage-request/create-mortgage-request",
             updateStatusEndpoint = "api/v1/mortgage-request/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/mortgage-request/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             getRequestEndpoint = "api/v1/mortgage-request/{requestId}",
             deleteRequestEndpoint = "api/v1/mortgage-request/{requestId}/delete",
             paymentReceiptEndpoint = "api/v1/mortgage-request/payment",
@@ -79,6 +84,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/mortgage-redemption-request/create-mortgage-redemption-request",
             updateStatusEndpoint = "api/v1/mortgage-redemption-request/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             getRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}",
             deleteRequestEndpoint = "api/v1/mortgage-redemption-request/{requestId}/delete",
             paymentReceiptEndpoint = "api/v1/mortgage-redemption-request/payment",
@@ -92,6 +98,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/inspection/create",
             updateStatusEndpoint = "api/v1/inspection/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/inspection/{requestId}/send-request",
+            sendRequestPostOrPut = "POST",
             paymentReceiptEndpoint = "api/v1/inspection/payment",
             paymentSubmitEndpoint = "api/v1/inspection/add-payment"
         )
@@ -104,6 +111,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/name-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -114,6 +122,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/captain-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -124,6 +133,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/activity-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -134,6 +144,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/dimensions-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -144,6 +155,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/engine-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -154,6 +166,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/port-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -164,6 +177,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/ship-modifications/ownership-change",
             updateStatusEndpoint = "api/v1/ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/ship-modifications/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/ship-modifications/payment",
             paymentSubmitEndpoint = "api/v1/ship-modifications/add-payment"
         )
@@ -176,6 +190,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/navigation-permit/issue",
             updateStatusEndpoint = "api/v1/navigation-permit/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/navigation-permit/payment",
             paymentSubmitEndpoint = "api/v1/navigation-permit/add-payment"
         )
@@ -186,6 +201,7 @@ enum class TransactionType(
             createEndpoint = "api/v1/navigation-permit/renew",
             updateStatusEndpoint = "api/v1/navigation-permit/{requestId}/update-status",
             sendRequestEndpoint = "api/v1/navigation-permit/{requestId}/send-request",
+            sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "api/v1/navigation-permit/payment",
             paymentSubmitEndpoint = "api/v1/navigation-permit/add-payment"
         )

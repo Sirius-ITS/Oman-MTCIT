@@ -529,20 +529,6 @@ class MortgageApiService @Inject constructor(
     }
 
     /**
-     * Send redemption (release mortgage) request to review step
-     *
-     * @param requestId The redemption request ID (obtained from createRedemptionRequestWithDocuments)
-     * @return ReviewResponse with message and needInspection flag
-     */
-    suspend fun sendRedemptionRequest(requestId: Int): com.informatique.mtcit.business.transactions.shared.ReviewResponse {
-        return marineUnitsApiService.sendTransactionRequest(
-            endpoint = "api/v1/mortgage-redemption-request",
-            requestId = requestId,
-            transactionType = "Redemption"
-        )
-    }
-
-    /**
      * Create a mortgage redemption (release) request with file attachment
      * POST api/v1/mortgage-redemption-request
      * Content-Type: multipart/form-data

@@ -41,7 +41,8 @@ class ReviewManager @Inject constructor(
     suspend fun processReviewStep(
         endpoint: String,
         requestId: Int,
-        transactionName: String
+        transactionName: String,
+        sendRequestPostOrPut: String,
     ): ReviewResult {
         return try {
             println("=" .repeat(80))
@@ -55,7 +56,8 @@ class ReviewManager @Inject constructor(
             val result = marineUnitRepository.sendTransactionRequest(
                 endpoint = endpoint,
                 requestId = requestId,
-                transactionType = transactionName
+                transactionType = transactionName,
+                sendRequestPostOrPut = sendRequestPostOrPut
             )
 
             if (result.isSuccess) {

@@ -402,7 +402,8 @@ class CancelRegistrationStrategy @Inject constructor(
                 val result = reviewManager.processReviewStep(
                     endpoint = endpoint,
                     requestId = requestIdInt,
-                    transactionName = contextName
+                    transactionName = contextName,
+                    sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
                 )
 
                 when (result) {

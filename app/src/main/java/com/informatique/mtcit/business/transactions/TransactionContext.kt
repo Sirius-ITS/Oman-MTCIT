@@ -12,6 +12,11 @@ data class TransactionContext(
     val displayName: String,
 
     /**
+     * Transaction display name (e.g., "طلب رهن سفينة", "طلب فك رهن")
+     */
+    val sendRequestPostOrPut: String,
+
+    /**
      * API endpoint for creating the initial request
      * Example: "api/v1/mortgage-request/create-mortgage-request"
      */

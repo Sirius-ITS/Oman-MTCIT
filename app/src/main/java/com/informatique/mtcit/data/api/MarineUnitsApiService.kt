@@ -518,20 +518,38 @@ class MarineUnitsApiService @Inject constructor(
     suspend fun sendTransactionRequest(
         endpoint: String,
         requestId: Int,
-        transactionType: String = "Transaction"
+        transactionType: String = "Transaction",
+        sendRequestPostOrPut: String
     ): com.informatique.mtcit.business.transactions.shared.ReviewResponse {
         return try {
             println("=".repeat(80))
             println("📤 Sending $transactionType Request...")
             println("=".repeat(80))
             println("   Request ID: $requestId")
+            println("   HTTP Method: $sendRequestPostOrPut")
 
             // ✅ Fix: The endpoint already contains the full path with {requestId}/send-request
             // Just replace the {requestId} placeholder with the actual ID
             val fullEndpoint = endpoint.replace("{requestId}", requestId.toString())
             println("   Endpoint: $fullEndpoint")
 
-            when (val response = repo.onPostAuth(fullEndpoint, "")) {
+            // ✅ Check sendRequestPostOrPut to determine which HTTP method to use
+            val response = when (sendRequestPostOrPut.uppercase()) {
+                "POST" -> {
+                    println("   Using POST method")
+                    repo.onPostAuth(fullEndpoint, "")
+                }
+                "PUT" -> {
+                    println("   Using PUT method")
+                    repo.onPutAuth(fullEndpoint, "")
+                }
+                else -> {
+                    println("⚠️ Unknown HTTP method: $sendRequestPostOrPut, defaulting to POST")
+                    repo.onPostAuth(fullEndpoint, "")
+                }
+            }
+
+            when (response) {
                 is RepoServiceState.Success -> {
                     println("✅ $transactionType request sent successfully")
                     println("📥 Response: ${response.response}")
@@ -699,3 +717,4 @@ class MarineUnitsApiService @Inject constructor(
         }
     }
 }
+

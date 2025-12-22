@@ -29,7 +29,7 @@ interface PaymentRepository {
         endpoint: String,
         requestType: Int,
         requestId: Int,
-        coreShipsInfoId: String
+        coreShipsInfoId: String,
     ): Result<PaymentResponse<Long>>
 }
 
