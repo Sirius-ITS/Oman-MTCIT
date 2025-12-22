@@ -7,7 +7,10 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.business.transactions.shared.PaymentManager
+import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -36,12 +39,14 @@ class CancelRegistrationStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    private val reviewManager: ReviewManager,
+    private val paymentManager: PaymentManager,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy {
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.CANCEL_PERMANENT_REGISTRATION.context
-
+    private val requestTypeId = TransactionType.CANCEL_PERMANENT_REGISTRATION.toRequestTypeId()
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
@@ -108,7 +113,6 @@ class CancelRegistrationStrategy @Inject constructor(
 
         // ✅ Fetch required documents من الـ API
         println("📄 CancelRegistration - Fetching required documents from API...")
-        val requestTypeId = TransactionType.CANCEL_PERMANENT_REGISTRATION.toRequestTypeId()
         val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId)
             .getOrElse { error ->
                 println("❌ ERROR fetching required documents: ${error.message}")
@@ -171,7 +175,7 @@ class CancelRegistrationStrategy @Inject constructor(
             commercialRegNumber = commercialRegNumber,
             // **********************************************************************************************************
             //Request Type Id
-            requestTypeId = TransactionType.CANCEL_PERMANENT_REGISTRATION.toRequestTypeId() // ✅ Cancel Registration ID
+            requestTypeId = requestTypeId
         )
         println("✅ Loaded ${marineUnits.size} ships")
         return marineUnits
@@ -246,6 +250,13 @@ class CancelRegistrationStrategy @Inject constructor(
         // Step 5: Review
         steps.add(SharedSteps.reviewStep())
 
+        val hasRequestId = accumulatedFormData["requestId"] != null
+
+        if (hasRequestId) {
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+        }
+
         return steps
     }
 
@@ -268,8 +279,10 @@ class CancelRegistrationStrategy @Inject constructor(
         // Check current step
         val currentSteps = getSteps()
         val currentStepData = currentSteps.getOrNull(step)
+        val stepType = currentStepData?.stepType
 
         println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
+        println("🔍 Current step type: $stepType")
 
         // ✅ NEW: Check if we just completed the Marine Unit Selection step
         if (currentStepData?.titleRes == R.string.owned_ships) {
@@ -285,7 +298,25 @@ class CancelRegistrationStrategy @Inject constructor(
                 is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
                     println("✅ Ship selection successful!")
                     deletionRequestId = result.requestId
+                    accumulatedFormData["requestId"] = result.requestId.toString()
                     accumulatedFormData["createdRequestId"] = result.requestId.toString()
+
+                    // ✅ Extract and store shipInfoId for payment
+                    val selectedUnitsJson = data["selectedMarineUnits"]
+                    if (selectedUnitsJson != null) {
+                        try {
+                            val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                            val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                            val firstShipId = shipIds.firstOrNull()
+                            if (firstShipId != null) {
+                                accumulatedFormData["shipInfoId"] = firstShipId
+                                accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                println("✅ Stored shipInfoId: $firstShipId")
+                            }
+                        } catch (e: Exception) {
+                            println("⚠️ Failed to extract shipInfoId: ${e.message}")
+                        }
+                    }
                 }
                 is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                     println("❌ Ship selection failed: ${result.message}")
@@ -346,8 +377,97 @@ class CancelRegistrationStrategy @Inject constructor(
                 println("⚠️ API call failed - returning -1 to prevent navigation")
                 return -1
             }
-        } else {
-            println("ℹ️ This is not the cancellation reason step, skipping API call")
+        }
+
+        // ✅ NEW: Handle REVIEW step using ReviewManager
+        if (stepType == StepType.REVIEW) {
+            println("📋 Handling Review Step using ReviewManager")
+
+            val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
+            if (requestIdInt == null) {
+                println("❌ No requestId available for review step")
+                lastApiError = "لم يتم العثور على رقم الطلب"
+                return -1
+            }
+
+            try {
+                val endpoint = transactionContext.sendRequestEndpoint
+                val contextName = transactionContext.displayName
+
+                println("🚀 Calling ReviewManager.processReviewStep:")
+                println("   Endpoint: $endpoint")
+                println("   RequestId: $requestIdInt")
+                println("   Context: $contextName")
+
+                val result = reviewManager.processReviewStep(
+                    endpoint = endpoint,
+                    requestId = requestIdInt,
+                    transactionName = contextName
+                )
+
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                        println("✅ Review step processed successfully!")
+                        println("   Message: ${result.message}")
+                        println("   Need Inspection: ${result.needInspection}")
+
+                        // Store response in formData
+                        accumulatedFormData["needInspection"] = result.needInspection.toString()
+                        accumulatedFormData["sendRequestMessage"] = result.message
+
+                        // Check if inspection is required
+                        if (result.needInspection) {
+                            println("🔍 Inspection required for this request")
+                            accumulatedFormData["showInspectionDialog"] = "true"
+                            accumulatedFormData["inspectionMessage"] = result.message
+                            return step
+                        }
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                        println("❌ Review step failed: ${result.message}")
+                        lastApiError = result.message
+                        return -1
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ Exception in review step: ${e.message}")
+                e.printStackTrace()
+                lastApiError = e.message ?: "حدث خطأ أثناء مراجعة الطلب"
+                return -1
+            }
+        }
+
+        // ✅ NEW: Handle PAYMENT step using PaymentManager
+        if (stepType == StepType.PAYMENT) {
+            println("💰 Handling Payment Step using PaymentManager")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = stepType,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Success -> {
+                    println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Check if payment was submitted successfully
+                    val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+                    if (showPaymentSuccessDialog) {
+                        println("✅ Payment submitted successfully - dialog will be shown")
+                        return step
+                    }
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Error -> {
+                    println("❌ Payment step failed: ${paymentResult.message}")
+                    lastApiError = paymentResult.message
+                    return -1
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
         }
 
         return step
@@ -624,3 +744,4 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
 }
+

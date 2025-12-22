@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
