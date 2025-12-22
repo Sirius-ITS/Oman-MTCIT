@@ -759,8 +759,8 @@ class MortgageApiService @Inject constructor(
                         "documentId" to JsonPrimitive(file.docId)
                     ))
                 }
-                objMap["documents"] = kotlinx.serialization.json.JsonArray(documentsArray)
-                println("📄 Added ${files.size} documents to dto: ${documentsArray.joinToString { "{fileName:${it.jsonObject["fileName"]}, documentId:${it.jsonObject["documentId"]}}" }}")
+//                objMap["documents"] = kotlinx.serialization.json.JsonArray(documentsArray)
+//                println("📄 Added ${files.size} documents to dto: ${documentsArray.joinToString { "{fileName:${it.jsonObject["fileName"]}, documentId:${it.jsonObject["documentId"]}}" }}")
             }
 
             val dtoJson = json.encodeToString(JsonObject.serializer(), JsonObject(objMap))
@@ -782,7 +782,7 @@ class MortgageApiService @Inject constructor(
 
             // ✅ 2. Add files (binary uploads)
             files.forEach { fileUpload ->
-                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes) - documentId=${fileUpload.docId}")
+//                println("📎 Adding file: ${fileUpload.fileName} (${fileUpload.fileBytes.size} bytes) - documentId=${fileUpload.docId}")
 
                 formData.add(
                     PartData.BinaryItem(
@@ -804,13 +804,14 @@ class MortgageApiService @Inject constructor(
                 when (part) {
                     is PartData.FormItem -> {
                         val cd = part.headers[HttpHeaders.ContentDisposition] ?: ""
-                        println("   - FormItem header=$cd value='${part.value}'")
+//                        println("   - FormItem header=$cd value='${part.value}'")
                     }
                     is PartData.BinaryItem -> {
                         val cd = part.headers[HttpHeaders.ContentDisposition] ?: ""
-                        println("   - BinaryItem header=$cd")
+//                        println("   - BinaryItem header=$cd")
                     }
-                    else -> println("   - Unknown part type: $part")
+                    else ->
+                        println("   - Unknown part type: $part")
                 }
             }
 

@@ -42,6 +42,7 @@ class ReleaseMortgageStrategy @Inject constructor(
     private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val mortgageApiService: MortgageApiService,
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
+    private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
@@ -67,6 +68,8 @@ class ReleaseMortgageStrategy @Inject constructor(
 
     // ✅ Transaction context with all API endpoints
     private val context: TransactionContext = TransactionType.RELEASE_MORTGAGE.context
+    private var lastApiError: String? = null
+    private val requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId()
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -200,6 +203,13 @@ class ReleaseMortgageStrategy @Inject constructor(
         // Step 5: Review
         steps.add(SharedSteps.reviewStep())
 
+        val hasRequestId = accumulatedFormData["requestId"] != null
+
+        if (hasRequestId) {
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+        }
+
         return steps
     }
 
@@ -236,6 +246,7 @@ class ReleaseMortgageStrategy @Inject constructor(
         // ✅ Check current step
         val steps = getSteps()
         val currentStepData = steps.getOrNull(step)
+        val stepType = currentStepData?.stepType
 
         // ✅ NEW: Check if we just completed the Marine Unit Selection step
         if (currentStepData?.titleRes == R.string.owned_ships) {
@@ -285,7 +296,7 @@ class ReleaseMortgageStrategy @Inject constructor(
                         println("💾 STORED REDEMPTION REQUEST ID: $createdRedemptionRequestId")
 
                         // Store in formData as well
-                        accumulatedFormData["redemptionRequestId"] = response.data.id.toString()
+                        accumulatedFormData["requestId"] = response.data.id.toString()
                     }
 
                     result.onFailure { error ->
@@ -364,43 +375,7 @@ class ReleaseMortgageStrategy @Inject constructor(
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
 
-                        // ✅ RELEASE MORTGAGE: Different response handling than other transactions
-                        // For release mortgage, we check for documentVerification, releaseApproval, etc.
-
-                        // Check additionalData for release-mortgage-specific fields
-                        val documentVerification = reviewResult.additionalData?.get("documentVerification") as? String
-                        val releaseApproval = reviewResult.additionalData?.get("releaseApproval") as? String
-                        val bankConfirmation = reviewResult.additionalData?.get("bankConfirmation") as? String
-
-                        if (documentVerification == "pending") {
-                            println("📄 Document verification pending")
-                            accumulatedFormData["showDocVerificationDialog"] = "true"
-                            accumulatedFormData["verificationMessage"] = reviewResult.message
-                            return step // Stay on current step
-                        }
-
-                        if (releaseApproval == "pending") {
-                            println("⏳ Release approval pending")
-                            accumulatedFormData["showReleaseApprovalDialog"] = "true"
-                            accumulatedFormData["approvalMessage"] = reviewResult.message
-                            return step // Stay on current step
-                        }
-
-                        if (bankConfirmation == "required") {
-                            println("🏦 Bank confirmation required")
-                            accumulatedFormData["showBankConfirmationDialog"] = "true"
-                            accumulatedFormData["confirmationMessage"] = reviewResult.message
-                            return step // Stay on current step
-                        }
-
-                        // ✅ Also support needInspection (common field)
-                        if (reviewResult.needInspection) {
-                            println("🔍 Inspection required - showing dialog")
-                            accumulatedFormData["showInspectionDialog"] = "true"
-                            accumulatedFormData["inspectionMessage"] = reviewResult.message
-                            return step // Stay on current step
-                        }
-
+                       
                         // Proceed - request submitted successfully
                         println("✅ No blocking conditions - release mortgage request submitted successfully")
                     }
@@ -415,6 +390,38 @@ class ReleaseMortgageStrategy @Inject constructor(
                 e.printStackTrace()
                 accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
                 return -1
+            }
+        }
+
+        if (stepType == StepType.PAYMENT) {
+            println("💰 Handling Payment Step using PaymentManager")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = stepType,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Success -> {
+                    println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Check if payment was submitted successfully
+                    val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+                    if (showPaymentSuccessDialog) {
+                        println("✅ Payment submitted successfully - dialog will be shown")
+                        return step
+                    }
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Error -> {
+                    println("❌ Payment step failed: ${paymentResult.message}")
+                    lastApiError = paymentResult.message
+                    return -1
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
             }
         }
 

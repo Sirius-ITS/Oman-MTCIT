@@ -410,19 +410,11 @@ class CancelRegistrationStrategy @Inject constructor(
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
                         println("✅ Review step processed successfully!")
                         println("   Message: ${result.message}")
-                        println("   Need Inspection: ${result.needInspection}")
 
                         // Store response in formData
-                        accumulatedFormData["needInspection"] = result.needInspection.toString()
-                        accumulatedFormData["sendRequestMessage"] = result.message
+                        accumulatedFormData["requestId"] = result.message
 
-                        // Check if inspection is required
-                        if (result.needInspection) {
-                            println("🔍 Inspection required for this request")
-                            accumulatedFormData["showInspectionDialog"] = "true"
-                            accumulatedFormData["inspectionMessage"] = result.message
-                            return step
-                        }
+
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${result.message}")

@@ -663,7 +663,7 @@ class MarineUnitsApiService @Inject constructor(
             println("   Full Endpoint: $fullEndpoint")
             println("=".repeat(80))
 
-            when (val response = repo.onPostAuth(fullEndpoint, "")) {
+            when (val response = repo.onPutAuth(fullEndpoint, "")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received")

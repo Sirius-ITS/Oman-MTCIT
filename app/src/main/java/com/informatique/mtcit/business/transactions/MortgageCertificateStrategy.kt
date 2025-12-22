@@ -53,6 +53,7 @@ class MortgageCertificateStrategy @Inject constructor(
     private val marineUnitRepository: MarineUnitRepository,
     private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService,
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
+    private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
@@ -68,6 +69,8 @@ class MortgageCertificateStrategy @Inject constructor(
 
     // ✅ NEW: Store required documents from API
     private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
+    private val requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId()
+    private val transactionContext: TransactionContext = TransactionType.MORTGAGE_CERTIFICATE.context
 
     // Store API error to prevent navigation and show error dialog
     private var lastApiError: String? = null
@@ -322,6 +325,13 @@ class MortgageCertificateStrategy @Inject constructor(
         // Step 5: Review
         steps.add(SharedSteps.reviewStep())
 
+        val hasRequestId = accumulatedFormData["requestId"] != null
+
+        if (hasRequestId) {
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+        }
+
         return steps
     }
 
@@ -477,6 +487,8 @@ class MortgageCertificateStrategy @Inject constructor(
         // Check if we just completed a step
         val currentSteps = getSteps()
         val currentStepData = currentSteps.getOrNull(step)
+        val stepType = currentStepData?.stepType
+
 
         println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
         println("🔍 Current step stepType: ${currentStepData?.stepType}")
@@ -655,6 +667,38 @@ class MortgageCertificateStrategy @Inject constructor(
                 e.printStackTrace()
                 lastApiError = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
                 return -1
+            }
+        }
+
+        if (currentStepData?.stepType == StepType.PAYMENT) {
+            println("💰 Handling Payment Step using PaymentManager")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = stepType,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Success -> {
+                    println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Check if payment was submitted successfully
+                    val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+                    if (showPaymentSuccessDialog) {
+                        println("✅ Payment submitted successfully - dialog will be shown")
+                        return step
+                    }
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Error -> {
+                    println("❌ Payment step failed: ${paymentResult.message}")
+                    lastApiError = paymentResult.message
+                    return -1
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
             }
         }
 
