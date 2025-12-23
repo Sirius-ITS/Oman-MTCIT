@@ -1,5 +1,7 @@
 package com.informatique.mtcit.data.api
 
+import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.CreateNavigationResponse
 import com.informatique.mtcit.data.model.CreateRegistrationRequest
 import com.informatique.mtcit.data.model.CreateRegistrationResponse
@@ -86,22 +88,26 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to create registration request"
                             println("❌ API returned error: $message (Status: $statusCode)")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("📝 Extracted error message: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e // Re-throw ApiException
         } catch (e: Exception) {
             println("❌ Exception in createRegistrationRequest: ${e.message}")
             e.printStackTrace()
-            Result.failure(Exception("Failed to create registration request: ${e.message}"))
+            Result.failure(ApiException(500, "Failed to create registration request: ${e.message}"))
         }
     }
 
@@ -140,19 +146,23 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Unknown error"
                             println("❌ API Error: $message")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        Result.failure(Exception("Empty response"))
+                        Result.failure(ApiException(500, "Empty response"))
                     }
                 }
 
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception(response.error.toString()))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("📝 Extracted error message: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in updateRegistrationRequest: ${e.message}")
             e.printStackTrace()
@@ -186,17 +196,20 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to update dimensions"
                             println("❌ API returned error: $message")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in updateDimensions: ${e.message}")
             e.printStackTrace()
@@ -230,17 +243,20 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to update weights"
                             println("❌ API returned error: $message")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in updateWeights: ${e.message}")
             e.printStackTrace()
@@ -273,17 +289,20 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to submit engines"
                             println("❌ API returned error: $message")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in updateEngines: ${e.message}")
             e.printStackTrace()
@@ -315,17 +334,20 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to update owners"
                             println("❌ API returned error: $message")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in updateOwners: ${e.message}")
             e.printStackTrace()
@@ -411,22 +433,25 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to submit engines"
                             println("❌ API returned error: $message (Status: $statusCode)")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in submitEngines: ${e.message}")
             e.printStackTrace()
-            return Result.failure(Exception("Failed to submit engines: ${e.message}"))
+            return Result.failure(ApiException(500, "Failed to submit engines: ${e.message}"))
         }
     }
 
@@ -488,24 +513,27 @@ class RegistrationApiService @Inject constructor(
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to submit owners"
                             println("❌ API returned error: $message (Status: $statusCode)")
-                            return Result.failure(Exception(message))
+                            return Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        return Result.failure(Exception("Empty response from server"))
+                        return Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    return Result.failure(Exception(response.error?.toString() ?: "API error"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    return Result.failure(ApiException(response.code, errorMessage))
                 }
             }
 
-            return Result.failure(Exception("Unknown error submitting owners"))
+            return Result.failure(ApiException(500, "Unknown error submitting owners"))
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in submitOwners: ${e.message}")
             e.printStackTrace()
-            return Result.failure(Exception("Failed to submit owners: ${e.message}"))
+            return Result.failure(ApiException(500, "Failed to submit owners: ${e.message}"))
         }
     }
 
@@ -569,19 +597,21 @@ class RegistrationApiService @Inject constructor(
                             return Result.success(validationResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to validate documents"
-                            return Result.failure(Exception(message))
+                            return Result.failure(ApiException(statusCode, message))
                         }
                     } else {
-                        return Result.failure(Exception("Empty response from server"))
+                        return Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
-                is RepoServiceState.Error -> return Result.failure(Exception(response.error?.toString() ?: "API error"))
+                is RepoServiceState.Error -> return Result.failure(ApiException(response.code, response.error?.toString() ?: "API error"))
             }
 
-            return Result.failure(Exception("Unknown error validating documents"))
+            return Result.failure(ApiException(500, "Unknown error validating documents"))
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             e.printStackTrace()
-            return Result.failure(Exception("Failed to validate build status: ${e.message}"))
+            return Result.failure(ApiException(500, "Failed to validate build status: ${e.message}"))
         }
     }
 
@@ -724,22 +754,22 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to send request"
                             println("❌ API returned error: $message (Status: $statusCode)")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    Result.failure(ApiException(response.code, response.error.toString()))
                 }
             }
         } catch (e: Exception) {
             println("❌ Exception in sendRequest: ${e.message}")
             e.printStackTrace()
-            Result.failure(Exception("Failed to send request: ${e.message}"))
+            Result.failure(ApiException(500, "Failed to send request: ${e.message}"))
         }
     }
 
@@ -768,22 +798,22 @@ class RegistrationApiService @Inject constructor(
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                 ?: "Failed to reserve marine name"
                             println("❌ API returned error: $message (Status: $statusCode)")
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error: ${response.error}"))
+                    Result.failure(ApiException(response.code, response.error.toString()))
                 }
             }
         } catch (e: Exception) {
             println("❌ Exception in shipNameReservation: ${e.message}")
             e.printStackTrace()
-            Result.failure(Exception("Failed to reserve marine name: ${e.message}"))
+            Result.failure(ApiException(500, "Failed to reserve marine name: ${e.message}"))
         }
     }
 
@@ -809,21 +839,21 @@ class RegistrationApiService @Inject constructor(
                             Result.success(deletionReasonResponse)
                         } else {
                             val message = responseJson.jsonObject.getValue("message").jsonPrimitive.content
-                            Result.failure(Exception("Service failed: $message"))
+                            Result.failure(ApiException(statusCode, "Service failed: $message"))
                         }
                     } else {
-                        Result.failure(Exception("Empty deletion reasons response"))
+                        Result.failure(ApiException(500, "Empty deletion reasons response"))
                     }
                 }
 
                 is RepoServiceState.Error -> {
-                    Result.failure(Exception("Failed to get deletion reasons: ${response.error}"))
+                    Result.failure(ApiException(response.code, "Failed to get deletion reasons: ${response.error}"))
                 }
             }
 
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure(Exception("Failed to get deletion reasons: ${e.message}"))
+            Result.failure(ApiException(500, "Failed to get deletion reasons: ${e.message}"))
         }
     }
 
@@ -989,33 +1019,35 @@ class RegistrationApiService @Inject constructor(
 
                                     } catch (fallbackEx: Exception) {
                                         println("❌ Failed to build fallback response: ${fallbackEx.message}")
-                                        return Result.failure(Exception("Failed to parse server response: ${fallbackEx.message}"))
+                                        return Result.failure(ApiException(500, "Failed to parse server response: ${fallbackEx.message}"))
                                     }
                                 }
                             } else {
                                 val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
                                     ?: "Failed to create deletion request"
                                 println("❌ API returned error: $message (Status: $statusCode)")
-                                return Result.failure(Exception(message))
+                                return Result.failure(ApiException(statusCode, message))
                             }
                         } catch (e: Exception) {
                             println("❌ Error reading statusCode from response: ${e.message}")
-                            return Result.failure(Exception("Invalid response from server: ${e.message}"))
+                            return Result.failure(ApiException(500, "Invalid response from server: ${e.message}"))
                         }
                     } else {
                         println("❌ Empty response from API")
-                        return Result.failure(Exception("Empty response from server"))
+                        return Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    return Result.failure(Exception("API Error: ${response.error}"))
+                    return Result.failure(ApiException(response.code, "API Error: ${response.error}"))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in submitDeletionRequest: ${e.message}")
             e.printStackTrace()
-            return Result.failure(Exception("Failed to submit deletion request: ${e.message}"))
+            return Result.failure(ApiException(500, "Failed to submit deletion request: ${e.message}"))
         }
     }
 
@@ -1142,49 +1174,30 @@ class RegistrationApiService @Inject constructor(
                             println("❌ API returned error: $message (Status: $statusCode)")
                             println("   Full response: $responseJson")
                             println("=".repeat(80))
-                            Result.failure(Exception(message))
+                            Result.failure(ApiException(statusCode, message))
                         }
                     } else {
                         println("❌ Empty response from API")
                         println("=".repeat(80))
-                        Result.failure(Exception("Empty response from server"))
+                        Result.failure(ApiException(500, "Empty response from server"))
                     }
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error Response:")
-                    println("   Status Code: ${response.code}")
-                    println("   Error Data: ${response.error}")
-                    println("=".repeat(80))
-
-                    val errorDetails = try {
-                        when (val error = response.error) {
-                            is String -> error
-                            is kotlinx.serialization.json.JsonElement -> {
-                                val errorJson = error.jsonObject
-                                val message = errorJson["message"]?.jsonPrimitive?.content
-                                val error_desc = errorJson["error"]?.jsonPrimitive?.content
-                                message ?: error_desc ?: error.toString()
-                            }
-                            else -> response.error?.toString() ?: "No error details"
-                        }
-                    } catch (e: Exception) {
-                        response.error?.toString() ?: "Could not parse error details"
-                    }
-
                     val errorMsg = if (response.code == 400) {
-                        "خطأ في البيانات المرسلة (400): $errorDetails"
+                        "خطأ في البيانات المرسلة (400)"
                     } else {
-                        "API Error: ${response.code} - $errorDetails"
+                        "API Error: ${response.code}"
                     }
-
-                    Result.failure(Exception(errorMsg))
+                    Result.failure(ApiException(response.code, errorMsg))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in validateBuildStatusWithDocuments: ${e.message}")
             e.printStackTrace()
-            println("=".repeat(80))
-            Result.failure(e)
+            Result.failure(ApiException(500, e.message ?: "Failed to validate documents"))
         }
     }
 

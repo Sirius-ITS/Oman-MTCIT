@@ -10,5 +10,6 @@ sealed class AppError {
     data class CompanyLookup(val message: String) : AppError()
     data class Submission(val message: String) : AppError()
     data class Initialization(val message: String) : AppError() // For transaction initialization errors
+    data class ApiError(val code: Int, val message: String) : AppError() // ✅ NEW: For API errors (including 406)
     data class Unknown(val message: String) : AppError()
 }

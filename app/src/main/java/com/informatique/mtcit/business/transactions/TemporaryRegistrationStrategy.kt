@@ -27,6 +27,7 @@ import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.model.RequiredDocumentItem
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -493,24 +494,33 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 if (hasSelectedExistingShip) {
                     println("🚢 User selected EXISTING ship - calling ShipSelectionManager...")
 
-                    // ✅ Use ShipSelectionManager to handle proceed-request API
-                    val result = shipSelectionManager.handleShipSelection(
-                        shipId = data["selectedMarineUnits"],
-                        context = transactionContext
-                    )
+                    try {
+                        val result = shipSelectionManager.handleShipSelection(
+                            shipId = data["selectedMarineUnits"],
+                            context = transactionContext
+                        )
 
-                    when (result) {
-                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                            println("✅ Ship selection successful via Manager!")
-                            accumulatedFormData["createdRequestId"] = result.requestId.toString()
-                        }
-                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                            println("❌ Ship selection failed: ${result.message}")
-                            // Block navigation on error
-                            if (result.shouldBlockNavigation) {
-                                return -1
+                        when (result) {
+                            is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                                println("✅ Ship selection successful via Manager!")
+                                accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                            }
+                            is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                                println("❌ Ship selection failed: ${result.message}")
+                                accumulatedFormData["apiError"] = result.message
+                                // ✅ Throw exception to trigger error banner display
+                                throw ApiException(500, result.message)
                             }
                         }
+                    } catch (e: ApiException) {
+                        println("❌ ApiException in ship selection: ${e.message}")
+                        accumulatedFormData["apiError"] = e.message ?: "Unknown error"
+                        throw e // Re-throw to show error banner
+                    } catch (e: Exception) {
+                        println("❌ Exception in ship selection: ${e.message}")
+                        val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                        accumulatedFormData["apiError"] = errorMsg
+                        throw ApiException(500, errorMsg)
                     }
                 } else {
                     println("✅ User is adding NEW ship - skipping ShipSelectionManager, continuing to next step")

@@ -65,6 +65,10 @@ fun TransactionFormContent(
 ) {
     val extraColors = LocalExtraColors.current
 
+    // ✅ NEW: ScrollState for auto-scrolling to error banner
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
     // Track declaration acceptance state for review step
     var declarationAccepted by remember { mutableStateOf(false) }
 
@@ -73,6 +77,17 @@ fun TransactionFormContent(
 
     // Collect processing state from viewModel (to disable Next button and show loader)
     val isProcessingNext by viewModel.isProcessingNext.collectAsState()
+
+    // ✅ NEW: Observe error state from ViewModel
+    val errorState by viewModel.error.collectAsState()
+
+    // ✅ NEW: Auto-scroll to top when error appears to show banner
+    LaunchedEffect(errorState) {
+        if (errorState != null) {
+            // Scroll to top to show the error banner
+            scrollState.animateScrollTo(0)
+        }
+    }
 
     // ✅ NEW: Check if inspection dialog should be shown
     val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
@@ -84,24 +99,6 @@ fun TransactionFormContent(
     val paymentReceiptId = uiState.formData["paymentReceiptId"] ?: ""
     val paymentTimestamp = uiState.formData["paymentTimestamp"] ?: ""
     val paymentFinalTotal = uiState.formData["paymentFinalTotal"] ?: "0.0"
-
-    // ✅ NEW: Extract error code and message for 406 banner
-    val apiErrorCode = uiState.formData["apiErrorCode"]
-    val apiErrorMessage = uiState.formData["apiErrorMessage"]
-    val shouldShowErrorBanner = apiErrorCode == "406" && !apiErrorMessage.isNullOrBlank()
-
-    // ✅ Debug logs - CRITICAL for troubleshooting
-    println("=" .repeat(80))
-    println("🔍 TransactionFormContent RENDER - Error Banner Check")
-    println("=" .repeat(80))
-    println("📊 uiState.formData.size = ${uiState.formData.size}")
-    println("📊 uiState.formData.keys = ${uiState.formData.keys.joinToString()}")
-    println("🔴 apiErrorCode = '$apiErrorCode'")
-    println("📝 apiErrorMessage = '$apiErrorMessage'")
-    println("🎯 shouldShowErrorBanner = $shouldShowErrorBanner")
-    println("=" .repeat(80))
-
-
 
     // ✅ NEW: Show inspection dialog when needed
     if (showInspectionDialog) {
@@ -134,41 +131,19 @@ fun TransactionFormContent(
         )
     }
 
-    // ✅ NEW: Show API error dialog when errors occur
-    // ✅ Show API error dialog for non-406 errors only
-    uiState.apiError?.let { errorMessage ->
-        if (apiErrorCode != "406") {
-            AlertDialog(
-                onDismissRequest = {
-                    // Clear apiError from state
-                    onFieldValueChange("apiError", "")
-                },
-                title = {
-                    Text(
-                        text = localizedApp(R.string.error),
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                text = {
-                    Text(text = errorMessage)
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            // Clear apiError from state
-                            onFieldValueChange("apiError", "")
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = extraColors.startServiceButton
-                        )
-                    ) {
-                        Text(localizedApp(R.string.ok))
-                    }
-                },
-                containerColor = extraColors.cardBackground,
-                titleContentColor = extraColors.whiteInDarkMode,
-                textContentColor = extraColors.textSubTitle
-            )
+    // ✅ NEW: Handle API errors from centralized error state
+    errorState?.let { error ->
+        when (error) {
+            is com.informatique.mtcit.common.AppError.ApiError -> {
+                // ✅ Show ALL API errors as banner (not just 406)
+                // Banner will be displayed below stepper in the layout
+            }
+            is com.informatique.mtcit.common.AppError.Unknown -> {
+                // ✅ Show unknown errors as banner too
+            }
+            else -> {
+                // Handle other error types if needed
+            }
         }
     }
 
@@ -277,7 +252,7 @@ fun TransactionFormContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
         ) {
             // Show stepper only if not hiding first step, or if we're past the first step
             // AND ensure we have enough steps to display
@@ -332,15 +307,29 @@ fun TransactionFormContent(
                     modifier = Modifier.padding(horizontal = 16.dp).padding(top = 10.dp, bottom = 4.dp)
                 )
 
-                // ✅ Show ErrorBanner ONLY for 406 errors (below stepper, above content)
-                if (shouldShowErrorBanner) {
-                    ErrorBanner(
-                        message = apiErrorMessage ?: "",
-                        onDismiss = {
-                            onFieldValueChange("apiErrorCode", "")
-                            onFieldValueChange("apiErrorMessage", "")
+                // ✅ Show ErrorBanner for ALL API errors (not just 406)
+                errorState?.let { error ->
+                    when (error) {
+                        is com.informatique.mtcit.common.AppError.ApiError -> {
+                            ErrorBanner(
+                                message = error.message,
+                                onDismiss = {
+                                    viewModel.clearError()
+                                }
+                            )
                         }
-                    )
+                        is com.informatique.mtcit.common.AppError.Unknown -> {
+                            ErrorBanner(
+                                message = error.message,
+                                onDismiss = {
+                                    viewModel.clearError()
+                                }
+                            )
+                        }
+                        else -> {
+                            // Other error types can be added here if needed
+                        }
+                    }
                 }
             }
 

@@ -11,6 +11,7 @@ import com.informatique.mtcit.business.transactions.shared.PaymentManager
 import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -287,42 +288,56 @@ class CancelRegistrationStrategy @Inject constructor(
         // ✅ NEW: Check if we just completed the Marine Unit Selection step
         if (currentStepData?.titleRes == R.string.owned_ships) {
             println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+            try {
+                // ✅ Use ShipSelectionManager
+                val result = shipSelectionManager.handleShipSelection(
+                    shipId = data["selectedMarineUnits"],
+                    context = transactionContext
+                )
 
-            // ✅ Use ShipSelectionManager
-            val result = shipSelectionManager.handleShipSelection(
-                shipId = data["selectedMarineUnits"],
-                context = transactionContext
-            )
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                        println("✅ Ship selection successful!")
+                        deletionRequestId = result.requestId
+                        accumulatedFormData["requestId"] = result.requestId.toString()
+                        accumulatedFormData["createdRequestId"] = result.requestId.toString()
 
-            when (result) {
-                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                    println("✅ Ship selection successful!")
-                    deletionRequestId = result.requestId
-                    accumulatedFormData["requestId"] = result.requestId.toString()
-                    accumulatedFormData["createdRequestId"] = result.requestId.toString()
-
-                    // ✅ Extract and store shipInfoId for payment
-                    val selectedUnitsJson = data["selectedMarineUnits"]
-                    if (selectedUnitsJson != null) {
-                        try {
-                            val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
-                            val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
-                            val firstShipId = shipIds.firstOrNull()
-                            if (firstShipId != null) {
-                                accumulatedFormData["shipInfoId"] = firstShipId
-                                accumulatedFormData["coreShipsInfoId"] = firstShipId
-                                println("✅ Stored shipInfoId: $firstShipId")
+                        // ✅ Extract and store shipInfoId for payment
+                        val selectedUnitsJson = data["selectedMarineUnits"]
+                        if (selectedUnitsJson != null) {
+                            try {
+                                val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                                val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                val firstShipId = shipIds.firstOrNull()
+                                if (firstShipId != null) {
+                                    accumulatedFormData["shipInfoId"] = firstShipId
+                                    accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                    println("✅ Stored shipInfoId: $firstShipId")
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ Failed to extract shipInfoId: ${e.message}")
                             }
-                        } catch (e: Exception) {
-                            println("⚠️ Failed to extract shipInfoId: ${e.message}")
                         }
                     }
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                        println("❌ Ship selection failed: ${result.message}")
+                        lastApiError = result.message
+                        accumulatedFormData["apiError"] = result.message
+                        // ✅ Throw exception to trigger error banner display
+                        throw ApiException(500, result.message)
+                    }
                 }
-                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                    println("❌ Ship selection failed: ${result.message}")
-                    lastApiError = result.message
-                    return -1
-                }
+            } catch (e: ApiException) {
+                println("❌ ApiException in ship selection: ${e.message}")
+                lastApiError = e.message ?: "Unknown error"
+                accumulatedFormData["apiError"] = e.message ?: "Unknown error"
+                throw e // Re-throw to show error banner
+            } catch (e: Exception) {
+                println("❌ Exception in ship selection: ${e.message}")
+                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                lastApiError = errorMsg
+                accumulatedFormData["apiError"] = errorMsg
+                throw ApiException(500, errorMsg)
             }
         }
 
@@ -737,4 +752,3 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
 }
-

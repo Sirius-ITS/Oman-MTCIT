@@ -1,5 +1,7 @@
 package com.informatique.mtcit.data.api
 
+import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.dto.CrewReqDto
 import com.informatique.mtcit.data.dto.CrewResDto
 import com.informatique.mtcit.data.dto.NavigationAreaResDto
@@ -50,7 +52,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error creating issue request: ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -80,7 +83,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error adding navigation areas (Issue): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -113,7 +117,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error adding crew bulk (Issue): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -142,7 +147,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error uploading crew Excel (Issue): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -168,7 +174,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error getting crew (Issue): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -199,7 +206,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error updating crew member (Issue): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -251,7 +259,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error creating renewal request: ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -277,7 +286,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error getting navigation areas (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -307,7 +317,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error adding navigation areas (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -337,7 +348,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error updating navigation areas (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -363,7 +375,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error getting crew (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -396,7 +409,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error adding crew bulk (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -427,7 +441,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error updating crew member (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {
@@ -471,7 +486,8 @@ class NavigationLicenseApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ Error uploading crew Excel (Renew): ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {

@@ -1,5 +1,7 @@
 package com.informatique.mtcit.data.api
 
+import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.*
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
@@ -90,13 +92,16 @@ class PaymentApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in getPaymentReceipt: ${e.message}")
             e.printStackTrace()
-            Result.failure(Exception("Failed to get payment receipt: ${e.message}"))
+            Result.failure(ApiException(500, "Failed to get payment receipt: ${e.message}"))
         }
     }
 
@@ -145,13 +150,16 @@ class PaymentApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
+        } catch (e: ApiException) {
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in submitPayment: ${e.message}")
             e.printStackTrace()
-            Result.failure(Exception("Failed to submit payment: ${e.message}"))
+            Result.failure(ApiException(500, "Failed to submit payment: ${e.message}"))
         }
     }
 
@@ -216,7 +224,8 @@ class PaymentApiService @Inject constructor(
                 }
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
                 }
             }
         } catch (e: Exception) {

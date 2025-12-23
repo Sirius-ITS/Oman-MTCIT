@@ -241,8 +241,6 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         if (selectedAreaIds.isEmpty()) {
             println("⚠️ No navigation areas selected or no matching IDs found")
-            println("⚠️ Selected names: $selectedNames")
-            println("⚠️ Available regions: ${sailingRegionsOptions.map { it.nameAr }}")
             return false
         }
 
@@ -251,65 +249,14 @@ class IssueNavigationPermitStrategy @Inject constructor(
         // Ensure we have a request ID (create request if needed)
         val requestId = ensureRequestCreated()
 
-        // ✅ Check if request creation failed
+        // ✅ If request creation failed, throw exception (will be caught by ViewModel)
         if (requestId == null) {
-            println("❌ Failed to create/get navigation request - blocking navigation")
-            // Error details are already stored in accumulatedFormData by ensureRequestCreated()
-            return true // ✅ Return error to block navigation
+            throw Exception("Failed to create navigation request")
         }
 
-        // ✅ Call API and check result before continuing
-        val result = navigationLicenseManager.addNavigationAreasIssue(requestId, selectedAreaIds)
+        // ✅ Call API - let exceptions propagate to ViewModel
+        navigationLicenseManager.addNavigationAreasIssue(requestId, selectedAreaIds).getOrThrow()
 
-        if (result.isFailure) {
-            // ✅ Handle error and prevent navigation
-            val error = result.exceptionOrNull()
-            println("❌ Failed to add navigation areas: ${error?.message}")
-
-            // ✅ Parse error from message format: "API Error 406: {json}"
-            val errorMessage = error?.message ?: ""
-
-            // Try to extract error code and message from "API Error XXX: {json}" format
-            val errorCodeRegex = """API Error (\d+):\s*(.*)""".toRegex()
-            val match = errorCodeRegex.find(errorMessage)
-
-            if (match != null) {
-                val code = match.groupValues[1] // e.g., "406"
-                val jsonPart = match.groupValues[2] // e.g., {"timestamp":"...","message":"..."}
-
-                // Try to parse JSON to extract the message
-                val messageFromJson = try {
-                    // Simple extraction of "message" field from JSON
-                    val messageRegex = """"message"\s*:\s*"([^"]*)"""".toRegex()
-                    val messageMatch = messageRegex.find(jsonPart)
-                    messageMatch?.groupValues?.get(1) ?: jsonPart
-                } catch (e: Exception) {
-                    jsonPart
-                }
-
-                // Store in formData for UI to display
-                accumulatedFormData["apiErrorCode"] = code
-                accumulatedFormData["apiErrorMessage"] = messageFromJson
-
-                println("🔍 Extracted error code: $code, message: $messageFromJson")
-
-                // If it's not a 406 error, show generic dialog instead
-                if (code != "406") {
-                    accumulatedFormData["apiError"] = errorMessage
-                } else {
-                    // For 406 errors, also set apiError to trigger the dialog
-                    accumulatedFormData["apiError"] = messageFromJson
-                }
-            } else {
-                // Fallback: store the raw error message
-                accumulatedFormData["apiError"] = errorMessage
-            }
-
-            // ✅ Return true to indicate error occurred
-            return true
-        }
-
-        // ✅ Success case
         println("✅ Navigation areas added successfully")
         return false
     }
@@ -321,10 +268,9 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private suspend fun handleCrewSubmission(data: Map<String, String>): Boolean {
         val requestId = ensureRequestCreated()
 
-        // If request creation failed, return error
+        // If request creation failed, throw exception
         if (requestId == null) {
-            println("❌ Cannot add crew - no request ID available")
-            return true
+            throw Exception("Cannot add crew - no request ID available")
         }
 
         // Check if user chose Excel upload
@@ -338,54 +284,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
             val crewData = navigationLicenseManager.parseCrewFromFormData(data)
 
             if (crewData.isNotEmpty()) {
-                val result = navigationLicenseManager.addCrewBulkIssue(requestId, crewData)
-
-                if (result.isFailure) {
-                    val error = result.exceptionOrNull()
-                    println("❌ Failed to add crew: ${error?.message}")
-
-                    // ✅ Parse error from message format: "API Error 406: {json}"
-                    val errorMessage = error?.message ?: ""
-
-                    // Try to extract error code and message from "API Error XXX: {json}" format
-                    val errorCodeRegex = """API Error (\d+):\s*(.*)""".toRegex()
-                    val match = errorCodeRegex.find(errorMessage)
-
-                    if (match != null) {
-                        val code = match.groupValues[1] // e.g., "406"
-                        val jsonPart = match.groupValues[2] // e.g., {"timestamp":"...","message":"..."}
-
-                        // Try to parse JSON to extract the message
-                        val messageFromJson = try {
-                            // Simple extraction of "message" field from JSON
-                            val messageRegex = """"message"\s*:\s*"([^"]*)"""".toRegex()
-                            val messageMatch = messageRegex.find(jsonPart)
-                            messageMatch?.groupValues?.get(1) ?: jsonPart
-                        } catch (e: Exception) {
-                            jsonPart
-                        }
-
-                        // Store in formData for UI to display
-                        accumulatedFormData["apiErrorCode"] = code
-                        accumulatedFormData["apiErrorMessage"] = messageFromJson
-
-                        println("🔍 Extracted error code: $code, message: $messageFromJson")
-
-                        // If it's not a 406 error, show generic dialog instead
-                        if (code != "406") {
-                            accumulatedFormData["apiError"] = errorMessage
-                        } else {
-                            // For 406 errors, also set apiError to trigger the dialog
-                            accumulatedFormData["apiError"] = messageFromJson
-                        }
-                    } else {
-                        // Fallback: store the raw error message
-                        accumulatedFormData["apiError"] = errorMessage
-                    }
-
-                    // ✅ Return true to indicate error occurred
-                    return true
-                }
+                // ✅ Call API - let exceptions propagate to ViewModel
+                navigationLicenseManager.addCrewBulkIssue(requestId, crewData).getOrThrow()
 
                 println("✅ Added ${crewData.size} crew members successfully")
             }
@@ -396,7 +296,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
     /**
      * Ensure navigation request is created before submitting data
-     * @return Request ID if successful
+     * @return Request ID if successful, null if failed
      */
     private suspend fun ensureRequestCreated(): Long? {
         if (navigationRequestId != null) {
@@ -441,57 +341,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         println("✅ Extracted shipInfoId: $shipInfoId from JSON: $selectedUnitsJson")
 
-        // Create the request
-        val result = navigationLicenseManager.createIssueRequest(shipInfoId)
-
-        if (result.isFailure) {
-            val error = result.exceptionOrNull()
-            println("❌ Failed to create navigation license request: ${error?.message}")
-
-            // ✅ Parse error from message format: "API Error 406: {json}"
-            val errorMessage = error?.message ?: ""
-
-            // Try to extract error code and message from "API Error XXX: {json}" format
-            val errorCodeRegex = """API Error (\d+):\s*(.*)""".toRegex()
-            val match = errorCodeRegex.find(errorMessage)
-
-            if (match != null) {
-                val code = match.groupValues[1] // e.g., "406"
-                val jsonPart = match.groupValues[2] // e.g., {"timestamp":"...","message":"..."}
-
-                // Try to parse JSON to extract the message
-                val messageFromJson = try {
-                    // Simple extraction of "message" field from JSON
-                    val messageRegex = """"message"\s*:\s*"([^"]*)"""".toRegex()
-                    val messageMatch = messageRegex.find(jsonPart)
-                    messageMatch?.groupValues?.get(1) ?: jsonPart
-                } catch (e: Exception) {
-                    jsonPart
-                }
-
-                // Store in formData for UI to display
-                accumulatedFormData["apiErrorCode"] = code
-                accumulatedFormData["apiErrorMessage"] = messageFromJson
-
-                println("🔍 Extracted error code: $code, message: $messageFromJson")
-
-                // If it's not a 406 error, show generic dialog instead
-                if (code != "406") {
-                    accumulatedFormData["apiError"] = errorMessage
-                } else {
-                    // For 406 errors, also set apiError to trigger the dialog
-                    accumulatedFormData["apiError"] = messageFromJson
-                }
-            } else {
-                // Fallback: store the raw error message
-                accumulatedFormData["apiError"] = errorMessage
-            }
-
-            return null
-        }
-
-        // Success case
-        navigationRequestId = result.getOrNull()
+        // ✅ Create the request - let exceptions propagate to ViewModel
+        navigationRequestId = navigationLicenseManager.createIssueRequest(shipInfoId).getOrThrow()
         println("✅ Navigation license request created with ID: $navigationRequestId")
 
         return navigationRequestId

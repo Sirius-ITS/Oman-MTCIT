@@ -1,5 +1,6 @@
 package com.informatique.mtcit.data.api
 
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.category.SubCategory
 import com.informatique.mtcit.data.model.category.TransactionDetail
 import com.informatique.mtcit.di.module.AppRepository
@@ -45,8 +46,8 @@ class CategoriesApiService @Inject constructor(
                 }
 
                 is RepoServiceState.Error -> {
-                    Result.failure(Exception("Failed to get sub categories: ${response.error.toString()}"))
-
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(Exception(errorMessage))
                 }
             }
 
@@ -81,8 +82,8 @@ class CategoriesApiService @Inject constructor(
                 }
 
                 is RepoServiceState.Error -> {
-                    Result.failure(Exception("Failed to get transaction detail: ${response.error.toString()}"))
-
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(Exception(errorMessage))
                 }
             }
 

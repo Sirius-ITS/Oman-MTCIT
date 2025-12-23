@@ -16,6 +16,7 @@ import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.ReleaseMortgageRules
 import com.informatique.mtcit.business.transactions.marineunit.usecases.ValidateMarineUnitUseCase
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.api.MortgageApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
@@ -251,23 +252,35 @@ class ReleaseMortgageStrategy @Inject constructor(
         // ✅ NEW: Check if we just completed the Marine Unit Selection step
         if (currentStepData?.titleRes == R.string.owned_ships) {
             println("🚢 ✅ Marine Unit Selection step completed - using ShipSelectionManager...")
+            try {
+                // ✅ Use ShipSelectionManager
+                val result = shipSelectionManager.handleShipSelection(
+                    shipId = data["selectedMarineUnits"],
+                    context = transactionContext
+                )
 
-            // ✅ Use ShipSelectionManager
-            val result = shipSelectionManager.handleShipSelection(
-                shipId = data["selectedMarineUnits"],
-                context = transactionContext
-            )
-
-            when (result) {
-                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                    println("✅ Ship selection successful!")
-                    createdRedemptionRequestId = result.requestId
-                    accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                        println("✅ Ship selection successful!")
+                        createdRedemptionRequestId = result.requestId
+                        accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                        println("❌ Ship selection failed: ${result.message}")
+                        accumulatedFormData["apiError"] = result.message
+                        // ✅ Throw exception to trigger error banner display
+                        throw ApiException(500, result.message)
+                    }
                 }
-                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                    println("❌ Ship selection failed: ${result.message}")
-                    return -1
-                }
+            } catch (e: ApiException) {
+                println("❌ ApiException in ship selection: ${e.message}")
+                accumulatedFormData["apiError"] = e.message ?: "Unknown error"
+                throw e // Re-throw to show error banner
+            } catch (e: Exception) {
+                println("❌ Exception in ship selection: ${e.message}")
+                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                accumulatedFormData["apiError"] = errorMsg
+                throw ApiException(500, errorMsg)
             }
         }
 

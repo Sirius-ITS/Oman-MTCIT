@@ -9,6 +9,8 @@ import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.business.transactions.shared.ProofType
 import com.informatique.mtcit.business.transactions.shared.ShipCategory
 import com.informatique.mtcit.business.transactions.shared.ShipType
+import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.ProceedRequestResponse
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
@@ -663,7 +665,7 @@ class MarineUnitsApiService @Inject constructor(
             println("   Full Endpoint: $fullEndpoint")
             println("=".repeat(80))
 
-            when (val response = repo.onPutAuth(fullEndpoint, "")) {
+            when (val response = repo.onPostAuth(fullEndpoint, "")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received")
@@ -702,9 +704,17 @@ class MarineUnitsApiService @Inject constructor(
                     }
                 }
                 is RepoServiceState.Error -> {
-                    val errorMsg = "فشل في متابعة طلب $transactionType (code: ${response.code})"
+                    // ✅ Extract error message from response body if available
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    val errorMsg = if (errorMessage.isNotBlank() && errorMessage != "Unknown error") {
+                        errorMessage
+                    } else {
+                        "فشل في متابعة طلب $transactionType (code: ${response.code})"
+                    }
+
                     println("❌ $errorMsg")
-                    println("   Error: ${response.error}")
+                    println("   HTTP Code: ${response.code}")
+                    println("   Error Body: ${response.error}")
                     println("=".repeat(80))
                     Result.failure(Exception(errorMsg))
                 }
@@ -717,4 +727,3 @@ class MarineUnitsApiService @Inject constructor(
         }
     }
 }
-

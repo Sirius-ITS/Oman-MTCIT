@@ -2,6 +2,7 @@ package com.informatique.mtcit.business.transactions.shared
 
 import android.content.Context
 import com.informatique.mtcit.business.transactions.mapper.RegistrationRequestMapper
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.model.EngineFileUpload
 import com.informatique.mtcit.data.model.EngineSubmissionRequest
 import com.informatique.mtcit.data.model.OwnerFileUpload
@@ -44,111 +45,117 @@ class RegistrationRequestManager @Inject constructor(
         formData: Map<String, String>,
         requestTypeId: Int
     ): RegistrationRequestResult {
-        return try {
-            val existingRequestId = formData["requestId"]?.toIntOrNull()
+        val existingRequestId = formData["requestId"]?.toIntOrNull()
 
-            if (existingRequestId == null) {
-                // ✅ First time - POST to create new request
-                println("🚀 RegistrationRequestManager: Creating NEW registration request (type=$requestTypeId)...")
+        if (existingRequestId == null) {
+            // ✅ First time - POST to create new request
+            println("🚀 RegistrationRequestManager: Creating NEW registration request (type=$requestTypeId)...")
 
-                // Map form data to API request (without id)
-                val request = mapper
-                    .mapToCreateRegistrationRequest(
-                        formData = formData,
-                        requestTypeId = requestTypeId
-                    )
-
-                println("📤 Sending POST to /api/v1/registration-requests...")
-
-                // Call POST API
-                val result = repository.createRegistrationRequest(request)
-
-                result.fold(
-                    onSuccess = { response ->
-                        if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
-                            // Extract all important IDs
-                            val requestId = response.data.id.toString()
-                            val shipInfoId = response.data.shipInfo?.id?.toString()
-                            val shipId = response.data.shipInfo?.ship?.id?.toString()
-                            val requestSerial = response.data.requestSerial
-                            val requestYear = response.data.requestYear
-
-                            println("✅ Registration request created successfully!")
-                            println("   Request ID: $requestId")
-                            println("   Ship Info ID: $shipInfoId")
-                            println("   Ship ID: $shipId")
-                            println("   Request Serial: $requestSerial/$requestYear")
-
-                            RegistrationRequestResult.Success(
-                                requestId = requestId,
-                                shipInfoId = shipInfoId,
-                                shipId = shipId,
-                                requestNumber = if (requestSerial != null && requestYear != null)
-                                    "$requestSerial/$requestYear" else null
-                            )
-                        } else {
-                            println("❌ API returned error: ${response.message}")
-                            RegistrationRequestResult.Error(response.message)
-                        }
-                    },
-                    onFailure = { exception ->
-                        println("❌ Failed to create registration request: ${exception.message}")
-                        exception.printStackTrace()
-                        RegistrationRequestResult.Error(exception.message ?: "Unknown error")
-                    }
+            // Map form data to API request (without id)
+            val request = mapper
+                .mapToCreateRegistrationRequest(
+                    formData = formData,
+                    requestTypeId = requestTypeId
                 )
-            } else {
-                // ✅ User went back - PUT to update existing request
-                println("🔄 RegistrationRequestManager: UPDATING existing registration request (id=$existingRequestId, type=$requestTypeId)...")
 
-                // Map form data to API request (WITH id this time)
-                val request = mapper
-                    .mapToCreateRegistrationRequest(
-                        formData = formData,
-                        requestTypeId = requestTypeId,
-                        requestId = existingRequestId // ✅ Include the existing request ID
-                    )
+            println("📤 Sending POST to /api/v1/registration-requests...")
 
-                println("📤 Sending PUT to /api/v1/registration-requests/update with requestId=$existingRequestId...")
+            // Call POST API
+            val result = repository.createRegistrationRequest(request)
 
-                // Call PUT API
-                val result = repository.updateRegistrationRequest(request)
+            return result.fold(
+                onSuccess = { response ->
+                    if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                        // Extract all important IDs
+                        val requestId = response.data.id.toString()
+                        val shipInfoId = response.data.shipInfo?.id?.toString()
+                        val shipId = response.data.shipInfo?.ship?.id?.toString()
+                        val requestSerial = response.data.requestSerial
+                        val requestYear = response.data.requestYear
 
-                result.fold(
-                    onSuccess = { response ->
-                        if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
-                            val requestId = response.data.id.toString()
-                            val shipInfoId = response.data.shipInfo?.id?.toString()
-                            val shipId = response.data.shipInfo?.ship?.id?.toString()
-                            val requestSerial = response.data.requestSerial
-                            val requestYear = response.data.requestYear
+                        println("✅ Registration request created successfully!")
+                        println("   Request ID: $requestId")
+                        println("   Ship Info ID: $shipInfoId")
+                        println("   Ship ID: $shipId")
+                        println("   Request Serial: $requestSerial/$requestYear")
 
-                            println("✅ Registration request updated successfully!")
-                            println("   Request ID: $requestId (unchanged)")
-
-                            RegistrationRequestResult.Success(
-                                requestId = requestId,
-                                shipInfoId = shipInfoId,
-                                shipId = shipId,
-                                requestNumber = if (requestSerial != null && requestYear != null)
-                                    "$requestSerial/$requestYear" else null
-                            )
-                        } else {
-                            println("❌ API returned error: ${response.message}")
-                            RegistrationRequestResult.Error(response.message)
-                        }
-                    },
-                    onFailure = { exception ->
-                        println("❌ Failed to update registration request: ${exception.message}")
-                        exception.printStackTrace()
-                        RegistrationRequestResult.Error(exception.message ?: "Unknown error")
+                        RegistrationRequestResult.Success(
+                            requestId = requestId,
+                            shipInfoId = shipInfoId,
+                            shipId = shipId,
+                            requestNumber = if (requestSerial != null && requestYear != null)
+                                "$requestSerial/$requestYear" else null
+                        )
+                    } else {
+                        println("❌ API returned error: ${response.message}")
+                        RegistrationRequestResult.Error(response.message)
                     }
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to create registration request: ${exception.message}")
+                    exception.printStackTrace()
+
+                    // ✅ FIX: Re-throw ApiException to preserve error code for banner display
+                    if (exception is ApiException) {
+                        throw exception
+                    }
+
+                    RegistrationRequestResult.Error(exception.message ?: "Unknown error")
+                }
+            )
+        } else {
+            // ✅ User went back - PUT to update existing request
+            println("🔄 RegistrationRequestManager: UPDATING existing registration request (id=$existingRequestId, type=$requestTypeId)...")
+
+            // Map form data to API request (WITH id this time)
+            val request = mapper
+                .mapToCreateRegistrationRequest(
+                    formData = formData,
+                    requestTypeId = requestTypeId,
+                    requestId = existingRequestId // ✅ Include the existing request ID
                 )
-            }
-        } catch (e: Exception) {
-            println("❌ Exception in createOrUpdateRegistrationRequest: ${e.message}")
-            e.printStackTrace()
-            RegistrationRequestResult.Error(e.message ?: "Unknown error")
+
+            println("📤 Sending PUT to /api/v1/registration-requests/update with requestId=$existingRequestId...")
+
+            // Call PUT API
+            val result = repository.updateRegistrationRequest(request)
+
+            return result.fold(
+                onSuccess = { response ->
+                    if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                        val requestId = response.data.id.toString()
+                        val shipInfoId = response.data.shipInfo?.id?.toString()
+                        val shipId = response.data.shipInfo?.ship?.id?.toString()
+                        val requestSerial = response.data.requestSerial
+                        val requestYear = response.data.requestYear
+
+                        println("✅ Registration request updated successfully!")
+                        println("   Request ID: $requestId (unchanged)")
+
+                        RegistrationRequestResult.Success(
+                            requestId = requestId,
+                            shipInfoId = shipInfoId,
+                            shipId = shipId,
+                            requestNumber = if (requestSerial != null && requestYear != null)
+                                "$requestSerial/$requestYear" else null
+                        )
+                    } else {
+                        println("❌ API returned error: ${response.message}")
+                        RegistrationRequestResult.Error(response.message)
+                    }
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to update registration request: ${exception.message}")
+                    exception.printStackTrace()
+
+                    // ✅ FIX: Re-throw ApiException to preserve error code for banner display
+                    if (exception is ApiException) {
+                        throw exception
+                    }
+
+                    RegistrationRequestResult.Error(exception.message ?: "Unknown error")
+                }
+            )
         }
     }
 

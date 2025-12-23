@@ -1,5 +1,6 @@
 package com.informatique.mtcit.data.api
 
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.*
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState

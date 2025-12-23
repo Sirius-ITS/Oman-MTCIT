@@ -23,6 +23,7 @@ import com.informatique.mtcit.business.transactions.marineunit.usecases.Validate
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import android.content.Context
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.api.MarineUnitsApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
@@ -497,35 +498,40 @@ class MortgageCertificateStrategy @Inject constructor(
         if (currentStepData?.titleRes == R.string.owned_ships) {
             println("🚢 ✅ Marine Unit Selection step completed - calling proceed-request API...")
 
-            // Get the selected ship ID from the form data
-            val selectedShipId = data["selectedMarineUnits"]
+            try {
+                // Get the selected ship ID from the form data
+                val selectedShipId = data["selectedMarineUnits"]
+                // ✅ Use ShipSelectionManager to handle proceed-request API
+                val result = shipSelectionManager.handleShipSelection(
+                    shipId = selectedShipId,
+                    context = transactionContext
+                )
 
-            // ✅ Use ShipSelectionManager to handle proceed-request API
-            val result = shipSelectionManager.handleShipSelection(
-                shipId = selectedShipId,
-                context = context
-            )
-
-            when (result) {
-                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                    println("✅ Ship selection successful via Manager!")
-                    println("   Request ID: ${result.requestId}")
-
-                    // ✅ Store the created request ID
-                    createdMortgageRequestId = result.requestId
-                    apiResponses["proceedRequest"] = result.response
-
-                    println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
-                }
-                is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                    println("❌ Ship selection failed: ${result.message}")
-                    lastApiError = result.message
-
-                    if (result.shouldBlockNavigation) {
-                        println("⚠️ Blocking navigation due to API failure")
-                        return -1
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                        println("✅ Ship selection successful via Manager!")
+                        println("   Request ID: ${result.requestId}")
+                        // ✅ Store the created request ID
+                        createdMortgageRequestId = result.requestId
+                        apiResponses["proceedRequest"] = result.response
+                        println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
+                    }
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                        println("❌ Ship selection failed: ${result.message}")
+                        lastApiError = result.message
+                        // ✅ Throw exception to trigger error banner display
+                        throw ApiException(500, result.message)
                     }
                 }
+            } catch (e: ApiException) {
+                println("❌ ApiException in ship selection: ${e.message}")
+                lastApiError = e.message ?: "Unknown error"
+                throw e // Re-throw to show error banner
+            } catch (e: Exception) {
+                println("❌ Exception in ship selection: ${e.message}")
+                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                lastApiError = errorMsg
+                throw ApiException(500, errorMsg)
             }
         }
 
@@ -1057,6 +1063,6 @@ class MortgageCertificateStrategy @Inject constructor(
     override fun getApiResponse(apiName: String): Any? {
         return apiResponses[apiName]
     }
+
+
 }
-
-

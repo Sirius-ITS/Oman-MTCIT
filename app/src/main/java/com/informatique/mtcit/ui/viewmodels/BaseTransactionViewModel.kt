@@ -8,6 +8,7 @@ import com.informatique.mtcit.business.transactions.TransactionState
 import com.informatique.mtcit.business.transactions.TransactionStrategy
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.business.usecases.StepNavigationUseCase
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.AppError
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.common.ResourceProvider
@@ -353,13 +354,23 @@ abstract class BaseTransactionViewModel(
                             withContext(Dispatchers.IO) {
                                 strategy.processStepData(currentStepIndex, currentStepData)
                             }
+                        } catch (e: ApiException) {
+                            // ✅ Handle API errors with proper error code and message
+                            println("❌ API Error in processStepData: ${e.code} - ${e.message}")
+                            _error.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+
+                            // ✅ Only show banner, no toast
+                            // Toast removed - banner is sufficient for error display
+
+                            // Don't proceed to next step
+                            return@launch
                         } catch (e: Exception) {
                             println("❌ Exception in processStepData: ${e.message}")
                             e.printStackTrace()
 
-                            // Show error to user
+                            // Show error to user - banner only, no toast
                             _error.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء معالجة البيانات")
-                            _showToastEvent.value = "❌ ${e.message ?: "حدث خطأ أثناء معالجة البيانات"}"
+                            // Toast removed - banner is sufficient for error display
 
                             // Don't proceed to next step
                             return@launch
@@ -371,48 +382,15 @@ abstract class BaseTransactionViewModel(
                             println("⛔⛔⛔ processStepData returned -1 (BLOCKING NAVIGATION)")
                             println("=" .repeat(80))
 
-                            // ✅ Still need to refresh steps and merge formData to show error banner
+                            // ✅ Refresh steps to show any UI changes (no longer need error banner in formData)
                             val updatedSteps = strategy.getSteps()
-                            val strategyFormData = strategy.getFormData()
 
-                            println("   Strategy formData keys: ${strategyFormData.keys}")
-                            println("   apiErrorCode = ${strategyFormData["apiErrorCode"]}")
-                            println("   apiErrorMessage = ${strategyFormData["apiErrorMessage"]}")
-
-                            val mergedFormData = currentState.formData.toMutableMap().apply {
-                                putAll(strategyFormData)
-                            }
-
-                            val updatedState = currentState.copy(
-                                steps = updatedSteps,
-                                formData = mergedFormData
+                            _uiState.value = currentState.copy(
+                                steps = updatedSteps
                             )
 
-                            _uiState.value = updatedState
-
-                            println("✅ UI State updated with error data:")
-                            println("   formData.size = ${_uiState.value.formData.size}")
-                            println("   apiErrorCode in UI = ${_uiState.value.formData["apiErrorCode"]}")
-                            println("   apiErrorMessage in UI = ${_uiState.value.formData["apiErrorMessage"]}")
+                            println("✅ UI State updated after error")
                             println("=" .repeat(80))
-
-                            // Handle special cases (like MortgageCertificateStrategy)
-                            if (strategy is com.informatique.mtcit.business.transactions.MortgageCertificateStrategy) {
-                                val apiError = strategy.getLastApiError()
-                                if (apiError != null) {
-                                    _showToastEvent.value = apiError
-                                    strategy.clearLastApiError()
-                                }
-                            }
-
-                            // Handle CancelRegistrationStrategy
-                            if (strategy is com.informatique.mtcit.business.transactions.CancelRegistrationStrategy) {
-                                val apiError = strategy.getLastApiError()
-                                if (apiError != null) {
-                                    _showToastEvent.value = apiError
-                                    strategy.clearLastApiError()
-                                }
-                            }
 
                             return@launch
                         }
@@ -760,8 +738,8 @@ abstract class BaseTransactionViewModel(
     /**
      * ✅ NEW: Clear API error dialog
      */
-    fun clearApiError() {
-        _uiState.value = _uiState.value.copy(apiError = null)
+    fun clearError() {
+        _error.value = null
     }
 
     /**
