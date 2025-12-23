@@ -513,14 +513,16 @@ fun CategoryCard(
                         }
 
                         // Category Title and Description
-                        Column {
+                        Column(
+                            verticalArrangement = Arrangement.Center
+                        ) {
                             Text(
                                 text = if (locale.language == "ar") category.nameAr else category.nameEn,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = extraColors.whiteInDarkMode
                             )
-                            if (category.descAr == null || category.descEn == null) {
+                            if (category.descAr != null || category.descEn != null) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = if (locale.language == "ar") (category.descAr ?: "")
@@ -605,7 +607,7 @@ fun SubCategoryItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
