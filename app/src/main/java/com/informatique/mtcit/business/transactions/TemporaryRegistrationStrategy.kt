@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
 import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -45,11 +47,9 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val registrationRequestManager: RegistrationRequestManager,
     private val paymentManager: PaymentManager,
     private val reviewManager: ReviewManager,
-    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy, MarineUnitValidatable {
-
-    // ✅ Context for file operations (set from UI layer)
-    var context: android.content.Context? = null
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.context
@@ -533,7 +533,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                 stepType = stepType,
                 formData = accumulatedFormData,
                 requestTypeId = requestTypeId, // 1 = Temporary Registration
-                context = context
+                context = appContext
             )
 
             when (registrationResult) {

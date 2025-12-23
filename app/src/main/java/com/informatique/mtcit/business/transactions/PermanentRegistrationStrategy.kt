@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
+import android.content.Context
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.DocumentConfig
@@ -20,6 +21,7 @@ import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
 import com.informatique.mtcit.ui.viewmodels.StepData
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -39,11 +41,9 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val registrationRequestManager: RegistrationRequestManager,
     private val reviewManager: ReviewManager,
-    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy {
-
-    // ✅ Context for file operations (set from UI layer)
-    var context: android.content.Context? = null
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
@@ -395,7 +395,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                 stepType = stepType,
                 formData = accumulatedFormData,
                 requestTypeId = requestTypeId, // 2 = Permanent Registration
-                context = context
+                context = appContext
             )
 
             when (result) {

@@ -61,15 +61,6 @@ class CancelRegistrationStrategy @Inject constructor(
     private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList() // ✅ NEW: Store required documents from API
     private var deletionRequestId: Int? = null // ✅ NEW: Store created deletion request ID
 
-    var context: android.content.Context? = null // ✅ Store Android context reference (will be set by ViewModel)
-        set(value) {
-            field = value
-            androidContext = value
-            println("✅ Context set in CancelRegistrationStrategy")
-        }
-
-    private var androidContext: android.content.Context? = null // ✅ Store Android context reference
-
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // Load all dropdown options from API
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -500,15 +491,8 @@ class CancelRegistrationStrategy @Inject constructor(
     ): List<DeletionFileUpload> {
         val uploadedDocuments = mutableListOf<DeletionFileUpload>()
 
-        // ✅ Use the context set by ViewModel (not appContext)
-        val ctx = androidContext ?: context ?: appContext
-
-        if (ctx == null) {
-            println("❌ CRITICAL: No context available!")
-            return emptyList()
-        }
-
-        println("✅ Using context: ${ctx.javaClass.simpleName}")
+        // ✅ Use the injected appContext (guaranteed non-null via Hilt)
+        println("✅ Using context: ${appContext.javaClass.simpleName}")
 
         // Get all document fields (document_43, document_44, etc.)
         requiredDocuments
@@ -521,14 +505,14 @@ class CancelRegistrationStrategy @Inject constructor(
                     try {
                         val uri = android.net.Uri.parse(documentUri)
 
-                        val bytes = ctx.contentResolver.openInputStream(uri)?.use {
+                        val bytes = appContext.contentResolver.openInputStream(uri)?.use {
                             it.readBytes()
                         } ?: throw Exception("Unable to read file")
 
-                        val fileName = getFileNameFromUri(ctx, uri)
+                        val fileName = getFileNameFromUri(appContext, uri)
                             ?: "document_${docItem.document.id}_${System.currentTimeMillis()}"
 
-                        val mimeType = ctx.contentResolver.getType(uri)
+                        val mimeType = appContext.contentResolver.getType(uri)
                             ?: "application/octet-stream"
 
                         val deletionFile = DeletionFileUpload(
