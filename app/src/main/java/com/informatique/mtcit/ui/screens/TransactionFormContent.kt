@@ -437,7 +437,7 @@ fun GenericNavigationBottomBar(
         modifier = Modifier.fillMaxWidth()
             .padding(  bottom = WindowInsets.navigationBars
                 .asPaddingValues()
-                .calculateBottomPadding() + 4.dp
+                .calculateBottomPadding() + 12.dp
             ),
         shape = RoundedCornerShape(
             topStart = 16.dp,
@@ -467,7 +467,10 @@ fun GenericNavigationBottomBar(
                     ),
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Text(localizedApp(R.string.back_button))
+                    Text(
+                        text = localizedApp(R.string.back_button),
+                        fontSize = 18.sp
+                    )
                 }
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -510,13 +513,16 @@ fun GenericNavigationBottomBar(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(localizedApp(R.string.next_button))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Default.NavigateNext,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                Text(
+                                    text = localizedApp(R.string.next_button),
+                                    fontSize = 18.sp
                                 )
+//                                Spacer(modifier = Modifier.width(8.dp))
+//                                Icon(
+//                                    imageVector = Icons.AutoMirrored.Default.NavigateNext,
+//                                    contentDescription = null,
+//                                    modifier = Modifier.size(18.dp)
+//                                )
                             }
                         }
                     }

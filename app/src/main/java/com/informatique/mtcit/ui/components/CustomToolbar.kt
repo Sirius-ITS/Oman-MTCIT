@@ -36,14 +36,14 @@ fun CustomToolbar(
     Column(
         modifier = Modifier
             .width(320.dp)
-            .widthIn( max = 380.dp)
+            .widthIn( max = 400.dp)
             .background(Color.Transparent)
     ) {
         // الشريط السفلي
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp),
+                .height(65.dp),
             shape = RoundedCornerShape(35.dp),
             color = LocalExtraColors.current.cardBackground,
             shadowElevation = 0.dp
@@ -123,12 +123,12 @@ fun TabItem(
                 imageVector = icon,
                 contentDescription = label,
                 tint = iconColor,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
 //            if (isSelected) {
                 Text(
                     text = label,
-                    fontSize = 10.sp,
+                    fontSize = 13.sp,
                     color = textColor,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
