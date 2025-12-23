@@ -8,11 +8,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -124,14 +126,17 @@ fun CustomFileUpload(
                         ),
                     shape = RoundedCornerShape(8.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.background
+                        containerColor = if (error != null)
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                        else
+                            Color(0x3300C853) // light green background when a file is present
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         width = 1.dp,
                         color = if (error != null)
                             MaterialTheme.colorScheme.error
                         else
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.5f)
+                            Color(0xFF4CAF50) // green border to highlight success
                     )
                 ) {
                     Row(
@@ -141,6 +146,14 @@ fun CustomFileUpload(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // Status icon
+                        Icon(
+                            imageVector = Icons.Rounded.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(24.dp)
+                        )
+
                         // File icon
                         Icon(
                             imageVector = Icons.Default.Description,

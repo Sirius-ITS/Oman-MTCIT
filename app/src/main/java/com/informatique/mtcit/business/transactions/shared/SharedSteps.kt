@@ -3,6 +3,7 @@ package com.informatique.mtcit.business.transactions.shared
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.model.RequiredDocumentItem
+import com.informatique.mtcit.ui.components.DropdownSection
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.viewmodels.StepData
@@ -1194,7 +1195,7 @@ object SharedSteps {
         units: List<MarineUnit>,
         allowMultipleSelection: Boolean = false,
         showOwnedUnitsWarning: Boolean = true,
-        showAddNewButton: Boolean = true, // ✅ أضف الـ parameter ده
+        showAddNewButton: Boolean = false, // ✅ أضف الـ parameter ده
     ): StepData {
         return StepData(
             titleRes = R.string.owned_ships,
@@ -1470,6 +1471,71 @@ object SharedSteps {
         )
     }
 
+
+    /**
+     * Inspection Purpose and Authority Step (الغرض من طلب و جهة المعاينة)
+     * Used in inspection request transactions
+     *
+     * Contains 3 dropdown menus:
+     * 1. Inspection Purpose (الغرض المعاينة) - Simple dropdown
+     * 2. Inspection Recording Entity (ميناء تسجيل المعاينة) - Simple dropdown
+     * 3. Authority and Approved Entity (اختيار جهة و الهيئة المعتمدة للمعاينة) - Sectioned dropdown
+     *
+     * @param inspectionPurposes List of inspection purposes
+     * @param recordingPorts List of ports for inspection recording
+     * @param authoritySections List of sections containing authorities and classification societies
+     */
+    fun inspectionPurposeAndAuthorityStep(
+        inspectionPurposes: List<String>,
+        recordingPorts: List<String>,
+        authoritySections: List<DropdownSection>
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // 1️⃣ Inspection Purpose Dropdown (الغرض المعاينة)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionPurpose",
+                labelRes = R.string.inspection_purpose_selection, // "الغرض المعاينة"
+                options = inspectionPurposes,
+                mandatory = true,
+                placeholder = R.string.select_inspection_purpose_placeholder.toString() // "تحديد الغرض من المعاينة"
+            )
+        )
+
+        // 2️⃣ Inspection Recording Port Dropdown (ميناء تسجيل المعاينة)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionRecordingPort",
+                labelRes = R.string.inspection_recording_port_selection, // "ميناء تسجيل المعاينة"
+                options = recordingPorts,
+                mandatory = true,
+                placeholder = R.string.select_inspection_recording_port_placeholder.toString() // "تحديد ميناء تسجيل المعاينة"
+            )
+        )
+
+        // 3️⃣ Authority & Approved Entity Dropdown with Sections (اختيار جهة و الهيئة المعتمدة للمعاينة)
+        // ✅ This dropdown uses SECTIONS (enableSections = true)
+        fields.add(
+            FormField.DropDown(
+                id = "inspectionAuthorityAndEntity",
+                labelRes = R.string.inspection_authority_and_entity_selection, // "اختيار جهة و الهيئة المعتمدة للمعاينة"
+                options = emptyList(), // ✅ Options will be in sections
+                mandatory = true,
+                placeholder = R.string.select_inspection_authority_and_entity_placeholder.toString(), // "تحديد الجهة المسؤولة و الهيئة المعتمدة عن تنفيذ المعاينة"
+                enableSections = true, // ✅ Enable sections mode
+                sections = authoritySections // ✅ Pass the sections here
+            )
+        )
+
+        return StepData(
+            stepType = StepType.CUSTOM,
+            titleRes = R.string.inspection_purpose_and_authority_title, // "الغرض من طلب و جهة المعاينة"
+            descriptionRes = R.string.inspection_purpose_and_authority_description, // "يرجى اختيار الجهة والغرض من المعاينة لضمان توجيه الطلب للإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية."
+            fields = fields
+        )
+    }
+
 }
 
 data class MarineUnit(
@@ -1521,7 +1587,8 @@ data class MarineUnit(
     val isMortgaged: Boolean = false,               // هل مرهونة؟
     val isInspected: Boolean = false,               // هل تم الفحص؟
     val inspectionStatus: String? = null,           // حالة الفحص
-    val inspectionRemarks: String? = null           // ملاحظات الفحص
+    val inspectionRemarks: String? = null,           // ملاحظات الفحص
+    val isActive: Boolean = true                    // حالة تفعيل السفينة (نشطة/غير نشطة)
 ) {
      // Computed properties for UI compatibility
      val maritimeId: String get() = mmsiNumber  // Use MMSI as maritimeId

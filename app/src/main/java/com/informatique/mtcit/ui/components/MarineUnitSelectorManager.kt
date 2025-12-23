@@ -45,9 +45,9 @@ fun MarineUnitSelectorManager(
     var selectedUnitForDetails by remember { mutableStateOf<MarineUnit?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // فصل السفن حسب الملكية
-    val nonOwnedUnits = units.filter { !it.isOwned }
-    val ownedUnits = units.filter { it.isOwned }
+    // فصل السفن حسب حالة التفعيل
+    val activeUnits = units.filter { it.isActive }
+    val nonActiveUnits = units.filter { !it.isActive }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -105,55 +105,50 @@ fun MarineUnitSelectorManager(
         }
 
         // عرض عدد السفن المختارة
-        if (selectedUnitIds.isNotEmpty()) {
-            Text(
-                text = localizedApp(R.string.num_of_ships) + ": ${selectedUnitIds.size}",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
-                color = extraColors.whiteInDarkMode
-            )
-        }
+//        if (selectedUnitIds.isNotEmpty()) {
+//            Text(
+//                text = localizedApp(R.string.num_of_ships) + ": ${selectedUnitIds.size}",
+//                style = MaterialTheme.typography.titleMedium,
+//                fontWeight = FontWeight.Medium,
+//                color = extraColors.whiteInDarkMode
+//            )
+//        }
 
-        // السفن غير المملوكة
-        nonOwnedUnits.forEach { unit ->
+        // السفن النشطة (قابلة للاختيار)
+        activeUnits.forEach { unit ->
             MarineUnitSelectionCard(
                 unit = unit,
-                isSelected = selectedUnitIds.contains(unit.id), // ✅ Fixed: Use unit.id instead of unit.maritimeId
-                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id), // ✅ Fixed
+                isSelected = selectedUnitIds.contains(unit.id),
+                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id),
                 onToggleSelection = {
-                    // Check if validation is needed
                     if (onMarineUnitSelected != null) {
-                        // Update selection state immediately for UI feedback
                         val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
-                                selectedUnitIds - unit.id // ✅ Fixed
+                            if (selectedUnitIds.contains(unit.id)) {
+                                selectedUnitIds - unit.id
                             } else {
-                                selectedUnitIds + unit.id // ✅ Fixed
+                                selectedUnitIds + unit.id
                             }
                         } else {
-                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
+                            if (selectedUnitIds.contains(unit.id)) {
                                 emptyList()
                             } else {
-                                listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
+                                listOf(unit.id)
                             }
                         }
                         onSelectionChange(newSelection)
-
-                        // Trigger validation - pass unit.id for backend validation
-                        onMarineUnitSelected(unit.id.toString())
+                        onMarineUnitSelected(unit.id)
                     } else {
-                        // Regular selection without validation
                         val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
-                                selectedUnitIds - unit.id // ✅ Fixed
+                            if (selectedUnitIds.contains(unit.id)) {
+                                selectedUnitIds - unit.id
                             } else {
-                                selectedUnitIds + unit.id // ✅ Fixed
+                                selectedUnitIds + unit.id
                             }
                         } else {
-                            if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
+                            if (selectedUnitIds.contains(unit.id)) {
                                 emptyList()
                             } else {
-                                listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
+                                listOf(unit.id)
                             }
                         }
                         onSelectionChange(newSelection)
@@ -162,66 +157,31 @@ fun MarineUnitSelectorManager(
                 onShowDetails = {
                     selectedUnitForDetails = unit
                     showBottomSheet = true
-                }
+                },
+                isSelectable = true
             )
         }
 
-        // Warning Card للسفن المملوكة
-//        if (showOwnedUnitsWarning && ownedUnits.isNotEmpty()) {
-//            WarningCard()
-
-            ownedUnits.forEach { unit ->
-                MarineUnitSelectionCard(
-                    unit = unit,
-                    isSelected = selectedUnitIds.contains(unit.id), // ✅ Fixed: Use unit.id instead of unit.maritimeId
-                    isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id), // ✅ Fixed
-                    onToggleSelection = {
-                        // Check if validation is needed
-                        if (onMarineUnitSelected != null) {
-                            // Update selection state immediately for UI feedback
-                            val newSelection = if (allowMultipleSelection) {
-                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
-                                    selectedUnitIds - unit.id // ✅ Fixed
-                                } else {
-                                    selectedUnitIds + unit.id // ✅ Fixed
-                                }
-                            } else {
-                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
-                                    emptyList()
-                                } else {
-                                    listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
-                                }
-                            }
-                            onSelectionChange(newSelection)
-
-                            // Trigger validation - will handle navigation on Next button
-                            onMarineUnitSelected(unit.id.toString())
-                        } else {
-                            // Regular selection
-                            val newSelection = if (allowMultipleSelection) {
-                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
-                                    selectedUnitIds - unit.id // ✅ Fixed
-                                } else {
-                                    selectedUnitIds + unit.id // ✅ Fixed
-                                }
-                            } else {
-                                if (selectedUnitIds.contains(unit.id)) { // ✅ Fixed
-                                    emptyList()
-                                } else {
-                                    listOf(unit.id) // ✅ Fixed: Store unit.id instead of unit.maritimeId
-                                }
-                            }
-                            onSelectionChange(newSelection)
-                        }
-                    },
-                    onShowDetails = {
-                        selectedUnitForDetails = unit
-                        showBottomSheet = true
-                    }
-                )
-            }
+        // رسالة تحذير عند وجود سفن غير نشطة
+        if (nonActiveUnits.isNotEmpty()) {
+            NonActiveWarningCard()
         }
-//    }
+
+        // السفن غير النشطة (عرض فقط بدون اختيار)
+        nonActiveUnits.forEach { unit ->
+            MarineUnitSelectionCard(
+                unit = unit,
+                isSelected = false,
+                isValidating = false,
+                onToggleSelection = {},
+                onShowDetails = {
+                    selectedUnitForDetails = unit
+                    showBottomSheet = true
+                },
+                isSelectable = false
+            )
+        }
+    }
 
     // Bottom Sheet للتفاصيل الكاملة
     if (showBottomSheet && selectedUnitForDetails != null) {
@@ -243,13 +203,23 @@ private fun MarineUnitSelectionCard(
     isSelected: Boolean,
     isValidating: Boolean = false,
     onToggleSelection: () -> Unit,
-    onShowDetails: () -> Unit
+    onShowDetails: () -> Unit,
+    isSelectable: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         label = "rotation"
     )
+    val extraColors = LocalExtraColors.current
+    val cardBg = if (isSelectable) extraColors.cardBackground else extraColors.cardBackground.copy(alpha = 0.6f)
+    val titleColor = if (isSelectable) extraColors.whiteInDarkMode else extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+    val checkboxBorder = if (isSelectable) {
+        if (isSelected) Color(0xFF1E3A5F) else Color(0xFFD1D5DB)
+    } else {
+        extraColors.textSubTitle.copy(alpha = 0.4f)
+    }
+    val checkboxFill = if (isSelectable && isSelected) Color(0xFF1E3A5F) else Color.Transparent
 
     Card(
         modifier = Modifier
@@ -263,7 +233,7 @@ private fun MarineUnitSelectionCard(
                 }
             ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(LocalExtraColors.current.cardBackground),
+        colors = CardDefaults.cardColors(cardBg),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -283,7 +253,11 @@ private fun MarineUnitSelectionCard(
                     Box(
                         modifier = Modifier
                             .size(40.dp)
-                            .background(LocalExtraColors.current.iconGreyBackground, CircleShape),
+                            .background(
+                                if (isSelectable) extraColors.iconGreyBackground
+                                else extraColors.iconGreyBackground.copy(alpha = 0.5f),
+                                CircleShape
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = "🚢", fontSize = 20.sp)
@@ -293,7 +267,7 @@ private fun MarineUnitSelectionCard(
                         text = unit.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
-                        color = LocalExtraColors.current.whiteInDarkMode,
+                        color = titleColor,
                         fontSize = 16.sp
                     )
                 }
@@ -317,20 +291,19 @@ private fun MarineUnitSelectionCard(
                             color = Color(0xFF1E3A5F)
                         )
                     } else {
-                        // Checkbox
                         Box(
                             modifier = Modifier
                                 .size(24.dp)
                                 .border(
                                     width = 2.dp,
-                                    color = if (isSelected) Color(0xFF1E3A5F) else Color(0xFFD1D5DB),
+                                    color = checkboxBorder,
                                     shape = CircleShape
                                 )
                                 .background(
-                                    color = if (isSelected) Color(0xFF1E3A5F) else Color.Transparent,
-                                    shape = CircleShape
-                                )
-                                .clickable(onClick = onToggleSelection),
+                                    color = checkboxFill,
+                                     shape = CircleShape
+                                 )
+                                .clickable(enabled = isSelectable, onClick = onToggleSelection),
                             contentAlignment = Alignment.Center
                         ) {
                             if (isSelected) {
@@ -368,6 +341,7 @@ private fun MarineUnitSelectionCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
+                        enabled = true,
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = LocalExtraColors.current.startServiceButton
@@ -459,6 +433,47 @@ private fun WarningCard() {
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NonActiveWarningCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4E5))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color(0xFFFFA726), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("!", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "هناك سفن غير نشطة لا يمكن اختيارها",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF6B5D00)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B5D00)
                 )
             }
         }
