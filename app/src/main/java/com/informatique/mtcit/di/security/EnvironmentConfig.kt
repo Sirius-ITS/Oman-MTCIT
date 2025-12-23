@@ -61,7 +61,7 @@ data class Environment(
         fun createDefault(): Environment = Environment(
             id = EnvironmentType.DEVELOPMENT,
             name = "Development",
-            baseUrl = "http://10.0.40.10:8080/",
+            baseUrl = "https://omanapi.isfpegypt.com/",
             apiKey = "dev_default_key_secure_123",
             features = FeatureFlags(
                 enableExperimentalFeatures = true,

@@ -2,7 +2,6 @@ package com.informatique.mtcit.di.module
 
 import com.abanoub.myapp.di.security.Environment
 import com.abanoub.myapp.di.security.EnvironmentConfig
-import com.informatique.mtcit.di.security.SSLPinning
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,6 +24,12 @@ import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.HostnameVerifier
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.X509TrustManager
 
 @Module
 @InstallIn(value = [SingletonComponent::class])
@@ -54,11 +59,29 @@ class NetworkModule {
         return HttpClient(Android) {
             // Engine configuration
             engine {
+                connectTimeout = 15_000
+                socketTimeout = 30_000
 
-                // SSL Pinning
-                if (environment.security.enableSSLPinning)
-                    this.sslManager = { SSLPinning.provideCertificatePinner() }
+                // ✅ DEVELOPMENT ONLY: Disable SSL certificate validation
+                // This creates a trust manager that accepts ALL certificates
+                val trustAllCerts = object : X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                    override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+                }
 
+                val sslContext = SSLContext.getInstance("TLS")
+                sslContext.init(null, arrayOf(trustAllCerts), SecureRandom())
+
+                // Set the SSL socket factory and hostname verifier
+                sslManager = { httpsURLConnection ->
+                    httpsURLConnection.sslSocketFactory = sslContext.socketFactory
+                    httpsURLConnection.hostnameVerifier = HostnameVerifier { _, _ -> true }
+                }
+
+                // ⚠️ PRODUCTION: Use SSL Pinning (commented out for development)
+                // if (environment.security.enableSSLPinning)
+                //     this.sslManager = { SSLPinning.provideCertificatePinner() }
             }
 
             // Default request configuration

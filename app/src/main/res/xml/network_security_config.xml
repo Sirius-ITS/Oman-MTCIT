@@ -1,7 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- ✅ AGGRESSIVE: Trust ALL certificates in base config for development -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- ✅ Explicitly trust the problematic HTTPS domain -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">omanapi.isfpegypt.com</domain>
+        <trust-anchors>
+            <!-- Accept ANY certificate for this domain -->
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- ✅ Local development server -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.1.9</domain>
         <domain includeSubdomains="true">10.0.40.10</domain>
     </domain-config>
 </network-security-config>
