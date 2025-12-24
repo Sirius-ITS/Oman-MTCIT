@@ -59,6 +59,10 @@ fun DynamicStepForm(
             "bankName" -> "bankName"
             "mortgagePurpose" -> "mortgagePurpose"
             "sailingRegions" -> "sailingRegions"
+            // ✅ NEW: Inspection request fields
+            "inspectionPurpose" -> "inspectionPurposes"
+            "inspectionRecordingPort" -> "inspectionPorts"
+            "inspectionAuthorityAndEntity" -> "inspectionAuthorities"
             else -> null
         }
     }
