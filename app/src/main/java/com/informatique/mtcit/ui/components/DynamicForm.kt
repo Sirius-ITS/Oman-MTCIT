@@ -170,7 +170,9 @@ fun DynamicStepForm(
                                 placeholder = field.label,
                                 isLoading = isShimmerLoading, // Pass loading state to dropdown
                                 maxLength = field.maxLength, // ✅ Pass maxLength
-                                minLength = field.minLength // ✅ Pass minLength
+                                minLength = field.minLength, // ✅ Pass minLength
+                                enableSections = field.enableSections,
+                                sections = if (isShimmerLoading) emptyList() else field.sections
                             )
                         }
 

@@ -16,6 +16,7 @@ import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -183,9 +184,9 @@ class MarineUnitsApiService @Inject constructor(
 
                                     // ✅ Override the ship.id with the outer activeCoreShips[].id
                                     if (outerShipId != null) {
-                                        marineUnit.copy(id = outerShipId)
+                                        marineUnit.copy(id = outerShipId, isActive = true)
                                     } else {
-                                        marineUnit
+                                        marineUnit.copy(isActive = true)
                                     }
                                 } catch (e: Exception) {
                                     println("⚠ Failed to parse active ship: ${e.message}")
@@ -206,9 +207,9 @@ class MarineUnitsApiService @Inject constructor(
 
                                     // ✅ Override the ship.id with the outer nonActiveCoreShip[].id
                                     if (outerShipId != null) {
-                                        marineUnit.copy(id = outerShipId)
+                                        marineUnit.copy(id = outerShipId, isActive = false)
                                     } else {
-                                        marineUnit
+                                        marineUnit.copy(isActive = false)
                                     }
                                 } catch (e: Exception) {
                                     println("⚠ Failed to parse non-active ship: ${e.message}")
@@ -313,6 +314,9 @@ class MarineUnitsApiService @Inject constructor(
             netTonnage = shipJson["netTonnage"]?.jsonPrimitive?.content ?: "",
             deadweightTonnage = shipJson["deadweightTonnage"]?.jsonPrimitive?.content ?: "",
             maxLoadCapacity = shipJson["maxLoadCapacity"]?.jsonPrimitive?.content ?: "",
+
+            // Activity status (default to active when field missing)
+            isActive = shipJson["isActive"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()?.let { it == 1 } ?: true
         )
     }
 

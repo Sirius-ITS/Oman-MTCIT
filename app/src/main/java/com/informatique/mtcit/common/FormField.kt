@@ -53,7 +53,9 @@ sealed class FormField(
         override val error: String? = null ,
         override val mandatory: Boolean = false,
         val maxLength: Int? = null, // ✅ NEW: Maximum character length for selected option
-        val minLength: Int? = null // ✅ NEW: Minimum character length for selected option
+        val minLength: Int? = null, // ✅ NEW: Minimum character length for selected option
+        val enableSections: Boolean = false, // ✅ NEW: allow grouped sections
+        val sections: List<com.informatique.mtcit.ui.components.DropdownSection> = emptyList()
 
     ) : FormField(id, label, labelRes, value, error, mandatory){
 
