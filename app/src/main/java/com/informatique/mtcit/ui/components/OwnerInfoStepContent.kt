@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.util.UriCache
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -94,6 +95,8 @@ fun OwnerFormBottomSheet(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
+            // ✅ CRITICAL: Cache the URI with its permissions before storing as string
+            UriCache.cacheUri(context, it)
             documentUri = it.toString()
         }
     }
