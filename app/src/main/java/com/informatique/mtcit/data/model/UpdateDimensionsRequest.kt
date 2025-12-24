@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Request body for updating ship dimensions
- * PUT api/v1/registration-requests/{requestId}/dimensions
+ * PUT registration-requests/{requestId}/dimensions
  */
 @Serializable
 data class UpdateDimensionsRequest(
@@ -17,7 +17,7 @@ data class UpdateDimensionsRequest(
 
 /**
  * Request body for updating ship weights
- * PUT api/v1/registration-requests/{requestId}/weights
+ * PUT registration-requests/{requestId}/weights
  */
 @Serializable
 data class UpdateWeightsRequest(

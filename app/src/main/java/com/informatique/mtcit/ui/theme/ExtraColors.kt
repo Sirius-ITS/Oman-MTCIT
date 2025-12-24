@@ -26,6 +26,7 @@ data class ExtraColors(
     val iconGreyBackground : Color,
     val iconBlueGrey : Color,
     val buttonLightBlue : Color,
+    val requirementsCardBackground: Color,
 
 
 
@@ -67,7 +68,7 @@ val LightExtraColors = ExtraColors(
     iconGreyBackground = IconGreyBackgroundLight,
     iconBlueGrey = IconBlueGreyLight,
     buttonLightBlue = ButtonLightBlueLight,
-
+    requirementsCardBackground = RequirementsCardBackgroundLight,
 
 
     success = SuccessLight,
@@ -107,6 +108,7 @@ val DarkExtraColors = ExtraColors(
     iconGreyBackground = IconGreyBackgroundDark,
     iconBlueGrey = IconBlueGreyDark,
     buttonLightBlue = ButtonLightBlueDark,
+    requirementsCardBackground = RequirementsCardBackgroundDark,
 
 
     success = SuccessDark,

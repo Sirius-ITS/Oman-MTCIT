@@ -126,23 +126,23 @@ class MarineUnitsApiService @Inject constructor(
 
             // ✅ FIXED: Make endpoint dynamic based on requestTypeId
             // Different endpoints for different transaction types:
-            // 1 = Temporary Registration → api/v1/registration-requests/get-my-ships
-            // 2 = Permanent Registration → api/v1/perm-registration-requests/get-my-ships
-            // 3 = Deletion → api/v1/deletion-requests/get-my-ships
-            // 4 = Mortgage → api/v1/mortgage-request/get-my-ships
-            // 5 = Release Mortgage → api/v1/mortgage-redemption-request/get-my-ships
+            // 1 = Temporary Registration → registration-requests/get-my-ships
+            // 2 = Permanent Registration → perm-registration-requests/get-my-ships
+            // 3 = Deletion → deletion-requests/get-my-ships
+            // 4 = Mortgage → mortgage-request/get-my-ships
+            // 5 = Release Mortgage → mortgage-redemption-request/get-my-ships
             val baseEndpoint = when (requestTypeInt) {
-                1 -> "api/v1/registration-requests/get-my-ships"
-                2 -> "api/v1/perm-registration-requests/get-my-ships"
-                7 -> "api/v1/deletion-requests/get-my-ships"
-                4 -> "api/v1/mortgage-request/get-my-ships"
-                5 -> "api/v1/mortgage-redemption-request/get-my-ships"
-                3 -> "api/v1/ship-navigation-license-request/get-my-ships"
-                6 -> "api/v1/navigation-license-renewal-request/get-my-ships"
-                8 -> "api/v1/inspection-requests/get-my-ships"
+                1 -> "registration-requests/get-my-ships"
+                2 -> "perm-registration-requests/get-my-ships"
+                7 -> "deletion-requests/get-my-ships"
+                4 -> "mortgage-request/get-my-ships"
+                5 -> "mortgage-redemption-request/get-my-ships"
+                3 -> "ship-navigation-license-request/get-my-ships"
+                6 -> "navigation-license-renewal-request/get-my-ships"
+                8 -> "inspection-requests/get-my-ships"
                 else -> {
                     println("⚠️ Unknown requestTypeId: $requestTypeInt, using mortgage endpoint as fallback")
-                    "api/v1/mortgage-request/get-my-ships"
+                    "mortgage-request/get-my-ships"
                 }
             }
 
@@ -323,7 +323,7 @@ class MarineUnitsApiService @Inject constructor(
     /**
      * 🔒 Get mortgaged ships for owner (Mortgage Release Transaction)
      *
-     * API: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     * API: GET /ship/{ownerId}/owner-mortgaged-ships
      *
      * Response structure:
      * {
@@ -341,7 +341,7 @@ class MarineUnitsApiService @Inject constructor(
         return try {
             println("🔒 Fetching mortgaged ships for owner: $ownerId")
 
-            val endpoint = "api/v1/ship/$ownerId/owner-mortgaged-ships"
+            val endpoint = "ship/$ownerId/owner-mortgaged-ships"
             println("📡 API Endpoint: $endpoint")
 
             when (val response = repo.onGet(endpoint)) {
@@ -401,7 +401,7 @@ class MarineUnitsApiService @Inject constructor(
      */
     suspend fun getShipById(shipId: String): Result<MarineUnit> {
         return try {
-            when (val response = repo.onGet("api/v1/user-profile/ships/$shipId")) {
+            when (val response = repo.onGet("user-profile/ships/$shipId")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
 
@@ -439,7 +439,7 @@ class MarineUnitsApiService @Inject constructor(
      * ✅ Generic function to update any transaction status
      * PUT {endpoint}/{requestId}/update-status
      *
-     * @param endpoint Base endpoint (e.g., "api/v1/mortgage-request")
+     * @param endpoint Base endpoint (e.g., "mortgage-request")
      * @param requestId The transaction request ID
      * @param statusId The new status ID
      * @param transactionType The transaction type name for logging
@@ -516,7 +516,7 @@ class MarineUnitsApiService @Inject constructor(
      * ✅ Send transaction request (used in review step for all transactions)
      * Generic method that works for any transaction type
      *
-     * @param endpoint The transaction endpoint (e.g., "api/v1/temporary-registration")
+     * @param endpoint The transaction endpoint (e.g., "temporary-registration")
      * @param requestId The transaction request ID
      * @param transactionType The transaction type name for logging
      * @return ReviewResponse with message and needInspection flag
@@ -608,11 +608,11 @@ class MarineUnitsApiService @Inject constructor(
      * If error, the flow stops and shows error message.
      *
      * Usage Examples:
-     * - Mortgage: /api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request
-     * - Deletion: /api/v1/deletion-requests/ship-info/{shipInfoId}/proceed-request
-     * - Registration: /api/v1/registration-requests/ship-info/{shipInfoId}/proceed-request
-     * - Permanent: /api/v1/perm-registration-requests/ship-info/{shipInfoId}/proceed-request
-     * - Redemption: /api/v1/mortgage-redemption-request/ship-info/{shipInfoId}/proceed-request
+     * - Mortgage: /mortgage-request/ship-info/{shipInfoId}/proceed-request
+     * - Deletion: /deletion-requests/ship-info/{shipInfoId}/proceed-request
+     * - Registration: /registration-requests/ship-info/{shipInfoId}/proceed-request
+     * - Permanent: /perm-registration-requests/ship-info/{shipInfoId}/proceed-request
+     * - Redemption: /mortgage-redemption-request/ship-info/{shipInfoId}/proceed-request
      *
      * Response example:
      * {

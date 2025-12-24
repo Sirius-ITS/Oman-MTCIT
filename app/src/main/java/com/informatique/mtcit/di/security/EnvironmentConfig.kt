@@ -61,7 +61,7 @@ data class Environment(
         fun createDefault(): Environment = Environment(
             id = EnvironmentType.DEVELOPMENT,
             name = "Development",
-            baseUrl = "https://omanapi.isfpegypt.com/",
+            baseUrl = "https://omanapi.isfpegypt.com/api/v1/",
             apiKey = "dev_default_key_secure_123",
             features = FeatureFlags(
                 enableExperimentalFeatures = true,
@@ -79,7 +79,7 @@ data class Environment(
         fun createStage(): Environment = Environment(
             id = EnvironmentType.STAGE,
             name = "Staging",
-            baseUrl = "https://api-stage.example.com",
+            baseUrl = "https://api-stage.example.com/",
             apiKey = "dev_default_key_secure_123",
             features = FeatureFlags(
                 enableExperimentalFeatures = true,
@@ -97,7 +97,7 @@ data class Environment(
         fun createProduction(): Environment = Environment(
             id = EnvironmentType.PRODUCTION,
             name = "Production",
-            baseUrl = "https://api-production.example.com",
+            baseUrl = "https://api-production.example.com/",
             apiKey = "dev_default_key_secure_123",
             features = FeatureFlags(
                 enableExperimentalFeatures = false,

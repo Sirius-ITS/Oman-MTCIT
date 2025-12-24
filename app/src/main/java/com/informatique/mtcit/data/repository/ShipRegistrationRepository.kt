@@ -83,7 +83,7 @@ interface ShipRegistrationRepository {
 
     /**
      * Validate build status documents (old version - kept for backward compatibility)
-     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     * POST registration-requests/{requestId}/validate-build-status
      */
     suspend fun validateBuildStatus(
         requestId: Int,
@@ -95,7 +95,7 @@ interface ShipRegistrationRepository {
 
     /**
      * Validate build status with dynamic documents
-     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     * POST registration-requests/{requestId}/validate-build-status
      */
     suspend fun validateBuildStatusWithDocuments(
         requestId: Int,
@@ -104,13 +104,13 @@ interface ShipRegistrationRepository {
 
     /**
      * Send registration request and check if inspection is needed
-     * POST api/v1/registration-requests/{request-id}/send-request
+     * POST registration-requests/{request-id}/send-request
      */
     suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse>
 
     /**
      * Reserve ship/marine name
-     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     * POST registration-requests/{id}/{name}/shipNameReservtion
      */
     suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit>
 

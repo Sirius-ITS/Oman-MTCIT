@@ -33,7 +33,7 @@ class ReviewManager @Inject constructor(
      * - Check for documentVerification (release mortgage)
      * - Or any other field returned by the API
      *
-     * @param endpoint The API endpoint (e.g., "api/v1/temporary-registration")
+     * @param endpoint The API endpoint (e.g., "temporary-registration")
      * @param requestId The registration request ID
      * @param transactionName The transaction display name for logging
      * @return ReviewResult with success/error and response data

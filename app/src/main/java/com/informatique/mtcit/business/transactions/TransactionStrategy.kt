@@ -145,9 +145,9 @@ interface TransactionStrategy {
      * @return The API endpoint for updating status, or null if not supported
      *
      * Example implementations:
-     * - Mortgage: "api/v1/mortgage-request/$requestId/update-status"
-     * - Registration: "api/v1/ship-registration/$requestId/update-status"
-     * - Inspection: "api/v1/inspection-request/$requestId/update-status"
+     * - Mortgage: "mortgage-request/$requestId/update-status"
+     * - Registration: "ship-registration/$requestId/update-status"
+     * - Inspection: "inspection-request/$requestId/update-status"
      */
     fun getStatusUpdateEndpoint(requestId: Int): String? {
         // Default: no status update supported
@@ -162,9 +162,9 @@ interface TransactionStrategy {
      * @return The API endpoint for sending the request, or null if not supported
      *
      * Example implementations:
-     * - Mortgage: "api/v1/mortgage-request/$requestId/send-request"
-     * - Redemption: "api/v1/mortgage-redemption-request/$requestId/send-request"
-     * - Registration: "api/v1/registration-requests/$requestId/send-request"
+     * - Mortgage: "mortgage-request/$requestId/send-request"
+     * - Redemption: "mortgage-redemption-request/$requestId/send-request"
+     * - Registration: "registration-requests/$requestId/send-request"
      */
     fun getSendRequestEndpoint(requestId: Int): String? {
         // Default: no send-request supported

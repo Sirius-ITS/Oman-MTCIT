@@ -104,8 +104,36 @@ fun TransactionRequirementsScreen(
     val uiState by viewModel.transactionDetail.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = viewModel.requirementsTabList.collectAsStateWithLifecycle()
-    var selectedStep by remember{ mutableStateOf("") }
+
+    // ✅ Get localized strings
+    val termsTitle = localizedApp(R.string.requirements_terms_title)
+    val stepsTitle = localizedApp(R.string.requirements_steps_title)
+    val feesTitle = localizedApp(R.string.requirements_fees_title)
+
+    // ✅ Build tabs list directly from uiState with proper localization
+    val tabs = remember(uiState, termsTitle, stepsTitle, feesTitle) {
+        if (uiState is TransactionDetailUiState.Success) {
+            val detail = (uiState as TransactionDetailUiState.Success).detail
+            buildList {
+                if (detail.terms.isNotEmpty()) add(termsTitle)
+                if (detail.steps.isNotEmpty()) add(stepsTitle)
+                if (detail.fees != null) add(feesTitle)
+            }
+        } else {
+            emptyList()
+        }
+    }
+
+    // ✅ Debug logging
+    LaunchedEffect(tabs) {
+        android.util.Log.d("TransactionReq", "UI built tabs: $tabs (size: ${tabs.size})")
+        tabs.forEachIndexed { index, tab ->
+            android.util.Log.d("TransactionReq", "Tab[$index]: '$tab'")
+        }
+    }
+
+    // ✅ Derive selectedStep directly from tabs
+    val selectedStep = if (tabs.isNotEmpty()) tabs[selectedTab] else ""
 
     // Prepare simple derived data from Transaction model
 //    val steps = transaction.steps.ifEmpty { List(transaction.stepCount.coerceAtLeast(0)) { index -> "خطوة ${index + 1}" } }
@@ -362,7 +390,7 @@ fun TransactionRequirementsScreen(
                     Spacer(Modifier.height(16.dp))
 
                     // Tabs
-                    if (tabs.value.isNotEmpty()) {
+                    if (tabs.isNotEmpty()) {
                         Column {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
@@ -378,13 +406,13 @@ fun TransactionRequirementsScreen(
                                         .padding(4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    tabs.value.forEachIndexed { index, tab ->
+                                    tabs.forEachIndexed { index, tab ->
                                         CustomTab(
                                             title = tab,
                                             selected = selectedTab == index,
                                             onClick = {
                                                 selectedTab = index
-                                                selectedStep = tab
+                                                // selectedStep = tab // No longer needed
                                             },
                                             modifier = Modifier.weight(1f)
                                         )
@@ -395,7 +423,7 @@ fun TransactionRequirementsScreen(
                             Spacer(Modifier.height(16.dp))
 
                             when (selectedStep) {
-                                localizedApp(R.string.requirements_terms_title) -> {
+                                termsTitle -> {
 
                                     Text(
                                         text = localizedApp(R.string.requirements_terms_title),
@@ -418,7 +446,7 @@ fun TransactionRequirementsScreen(
                                     }
                                 }
 
-                                localizedApp(R.string.requirements_steps_title) -> {
+                                stepsTitle -> {
                                     Text(
                                         text = localizedApp(R.string.requirements_steps_heading),
                                         style = MaterialTheme.typography.titleLarge.copy(
@@ -441,7 +469,7 @@ fun TransactionRequirementsScreen(
                                     }
                                 }
 
-                                localizedApp(R.string.requirements_fees_title) -> {
+                                feesTitle -> {
                                     Text(
                                         text = localizedApp(R.string.requirements_fees_heading),
                                         style = MaterialTheme.typography.titleLarge.copy(
@@ -611,33 +639,35 @@ private fun StepItem(
     step: Step
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Number circle on the right
         Box(
             modifier = Modifier
-                .size(26.dp)
-                .background(extraColors.iconLightBlue, CircleShape),
+                .size(20.dp)
+                .background(extraColors.iconBlueGrey, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = number.toString(),
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
+                fontSize = 16.sp
             )
         }
+
         Spacer(Modifier.width(12.dp))
-        // Step text (takes remaining space) - align to right for Arabic
+
         Text(
             text = if (locale.language == "ar") step.stepNameAr else step.stepNameEn,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
             textAlign = TextAlign.Start,
-            color = extraColors.whiteInDarkMode
+            color = extraColors.whiteInDarkMode,
+            modifier = Modifier.weight(1f)
         )
-
     }
 }
 
@@ -650,20 +680,24 @@ private fun ServiceTerms(
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(extraColors.iconLightBlue.copy(alpha = 0.03f) )
+        border = androidx.compose.foundation.BorderStroke(
+            width = 2.dp,
+            color = Color(0xFFE9EAEC)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(extraColors.requirementsCardBackground)
     ) {
         Row(
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Number circle on the right
             Box(
                 modifier = Modifier
-                    .size(45.dp)
+                    .size(40.dp)
                     .background(
-                        extraColors.iconLightBlue.copy(alpha = 0.10f),
-                        RoundedCornerShape(12.dp)
+                        extraColors.iconLightBlueBackground,
+                        CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -671,18 +705,19 @@ private fun ServiceTerms(
                     imageVector = Icons.Outlined.Info,
                     contentDescription = null,
                     tint = extraColors.iconLightBlue,
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
+
             Spacer(Modifier.width(12.dp))
-            // Step text (takes remaining space) - align to right for Arabic
+
             Text(
                 text = if (locale.language == "ar") term.nameAr else term.nameEn,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Right,
-                color = extraColors.whiteInDarkMode
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                textAlign = TextAlign.Start,
+                color = extraColors.whiteInDarkMode,
+                modifier = Modifier.weight(1f)
             )
-
         }
     }
 }

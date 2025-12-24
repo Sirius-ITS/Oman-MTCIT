@@ -68,6 +68,11 @@ enum class StepType {
     DOCUMENTS,
 
     /**
+     * Inspection purposes and authorities step
+     */
+    INSPECTION_PURPOSES_AND_AUTHORITIES,
+
+    /**
      * Documents upload step
      */
     MORTGAGE_DATA,

@@ -28,7 +28,7 @@ interface MarineUnitRepository {
 
     /**
      * 🔒 NEW: Load ONLY mortgaged ships for owner (for Release Mortgage transaction)
-     * Uses dedicated API endpoint: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     * Uses dedicated API endpoint: GET /ship/{ownerId}/owner-mortgaged-ships
      * @param ownerId The owner ID (civil ID or commercial registration number)
      */
     suspend fun loadMortgagedShipsForOwner(ownerId: String): List<MarineUnit>
@@ -68,7 +68,7 @@ interface MarineUnitRepository {
      * ✅ NEW: Send transaction request (for review step)
      * Calls marineUnitsApiService.sendTransactionRequest internally
      *
-     * @param endpoint The API endpoint (e.g., "api/v1/temporary-registration")
+     * @param endpoint The API endpoint (e.g., "temporary-registration")
      * @param requestId The registration request ID
      * @param transactionType The transaction type name for logging
      * @return Result with ReviewResponse containing message and needInspection flag
@@ -264,7 +264,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
 
     /**
      * 🔒 NEW: Load ONLY mortgaged ships for Release Mortgage transaction
-     * Uses dedicated API: GET /api/v1/ship/{ownerId}/owner-mortgaged-ships
+     * Uses dedicated API: GET /ship/{ownerId}/owner-mortgaged-ships
      */
     override suspend fun loadMortgagedShipsForOwner(ownerId: String): List<MarineUnit> {
         println("🔒 loadMortgagedShipsForOwner called with ownerId=$ownerId")
@@ -562,7 +562,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
      * ✅ NEW: Send transaction request (for review step)
      * Calls marineUnitsApiService.sendTransactionRequest internally
      *
-     * @param endpoint The API endpoint (e.g., "api/v1/temporary-registration")
+     * @param endpoint The API endpoint (e.g., "temporary-registration")
      * @param requestId The registration request ID
      * @param transactionType The transaction type name for logging
      * @return Result with ReviewResponse containing message and needInspection flag

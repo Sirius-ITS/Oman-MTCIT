@@ -114,6 +114,32 @@ data class CrewJobTitle(
     val nameEn: String
 )
 
+// ✅ NEW: Inspection-specific models
+@Serializable
+data class InspectionPurpose(
+    val id: Int,
+    val nameAr: String,
+    val nameEn: String,
+    val name: String
+)
+
+@Serializable
+data class InspectionAuthority(
+    val id: Int,
+    val nameAr: String,
+    val nameEn: String,
+    val name: String,
+    val type: InspectionAuthorityType
+)
+
+@Serializable
+data class InspectionAuthorityType(
+    val id: Int,
+    val nameAr: String,
+    val nameEn: String,
+    val name: String
+)
+
 /**
  * Reference types for API requests
  * These are used when sending data to the API (only ID is needed)
@@ -189,7 +215,7 @@ data class Pageable(
 
 /**
  * Response from proceed-request API
- * POST /api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request
+ * POST /mortgage-request/ship-info/{shipInfoId}/proceed-request
  */
 @Serializable
 data class ProceedRequestResponse(
@@ -253,4 +279,3 @@ data class StatusRef(
     val nameAr: String? = null,
     val nameEn: String? = null
 )
-

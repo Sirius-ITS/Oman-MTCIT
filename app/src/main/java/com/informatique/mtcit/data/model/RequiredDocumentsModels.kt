@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Response model for fetching required documents by request type
- * GET api/v1/reqtype/{requestTypeId}/documents
+ * GET reqtype/{requestTypeId}/documents
  *
  * ✅ UPDATED: API returns documents directly in data array, not nested
  * Example response:

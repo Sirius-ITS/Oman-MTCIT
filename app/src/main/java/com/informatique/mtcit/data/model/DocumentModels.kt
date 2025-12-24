@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Document validation response models
- * Used for POST api/v1/registration-requests/{requestId}/validate-build-status
+ * Used for POST registration-requests/{requestId}/validate-build-status
  */
 
 @Serializable

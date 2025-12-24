@@ -186,7 +186,7 @@ data class StatusResponse(
 
 /**
  * Response model for send-request API
- * POST api/v1/registration-requests/{request-id}/send-request
+ * POST registration-requests/{request-id}/send-request
  */
 @Serializable
 data class SendRequestResponse(

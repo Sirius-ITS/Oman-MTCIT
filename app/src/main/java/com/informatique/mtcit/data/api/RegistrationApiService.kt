@@ -52,7 +52,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Create a new registration request
-     * POST api/v1/registration-requests
+     * POST registration-requests
      */
     suspend fun createRegistrationRequest(request: CreateRegistrationRequest): Result<CreateRegistrationResponse> {
         return try {
@@ -62,7 +62,7 @@ class RegistrationApiService @Inject constructor(
             // Convert request to JSON string
             val requestBody = json.encodeToString(request)
 
-            when (val response = repo.onPostAuth("api/v1/registration-requests", requestBody)) {
+            when (val response = repo.onPostAuth("registration-requests", requestBody)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received: $responseJson")
@@ -113,7 +113,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Update an existing registration request
-     * PUT api/v1/registration-requests/update
+     * PUT registration-requests/update
      *
      * Used when user goes back and changes unit selection data
      */
@@ -125,7 +125,7 @@ class RegistrationApiService @Inject constructor(
             // Convert request to JSON string
             val requestBody = json.encodeToString(request)
 
-            when (val response = repo.onPutAuth("api/v1/registration-requests/update", requestBody)) {
+            when (val response = repo.onPutAuth("registration-requests/update", requestBody)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received: $responseJson")
@@ -172,7 +172,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Update ship dimensions
-     * PUT api/v1/registration-requests/{requestId}/dimensions
+     * PUT registration-requests/{requestId}/dimensions
      */
     suspend fun updateDimensions(requestId: String, dimensionsData: UpdateDimensionsRequest): Result<Unit> {
         return try {
@@ -181,7 +181,7 @@ class RegistrationApiService @Inject constructor(
 
             val requestBody = json.encodeToString(dimensionsData)
 
-            when (val response = repo.onPutAuth("api/v1/registration-requests/$requestId/dimensions", requestBody)) {
+            when (val response = repo.onPutAuth("registration-requests/$requestId/dimensions", requestBody)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Dimensions API Response: $responseJson")
@@ -219,7 +219,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Update ship weights
-     * PUT api/v1/registration-requests/{requestId}/weights
+     * PUT registration-requests/{requestId}/weights
      */
     suspend fun updateWeights(requestId: String, weightsData: UpdateWeightsRequest): Result<Unit> {
         return try {
@@ -228,7 +228,7 @@ class RegistrationApiService @Inject constructor(
 
             val requestBody = json.encodeToString(weightsData)
 
-            when (val response = repo.onPutAuth("api/v1/registration-requests/$requestId/weights", requestBody)) {
+            when (val response = repo.onPutAuth("registration-requests/$requestId/weights", requestBody)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Weights API Response: $responseJson")
@@ -266,7 +266,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Update ship engines
-     * PUT api/v1/registration-requests/{requestId}/engines
+     * PUT registration-requests/{requestId}/engines
      */
     suspend fun updateEngines(requestId: String, enginesJson: String): Result<Unit> {
         return try {
@@ -274,7 +274,7 @@ class RegistrationApiService @Inject constructor(
             println("📤 Request Body: $enginesJson")
 
             // ✅ FIXED: Changed from onPutAuth to onPostAuth because backend only supports POST
-            when (val response = repo.onPostAuth("api/v1/registration-requests/$requestId/engines", enginesJson)) {
+            when (val response = repo.onPostAuth("registration-requests/$requestId/engines", enginesJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Engines API Response: $responseJson")
@@ -312,14 +312,14 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Update ship owners
-     * PUT api/v1/registration-requests/{requestId}/owners
+     * PUT registration-requests/{requestId}/owners
      */
     suspend fun updateOwners(requestId: String, ownersJson: String): Result<Unit> {
         return try {
             println("🚀 RegistrationApiService: Updating owners for requestId=$requestId...")
             println("📤 Request Body: $ownersJson")
 
-            when (val response = repo.onPutAuth("api/v1/registration-requests/$requestId/owners", ownersJson)) {
+            when (val response = repo.onPutAuth("registration-requests/$requestId/owners", ownersJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Owners API Response: $responseJson")
@@ -357,7 +357,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Submit engines with documents (multipart/form-data)
-     * POST api/v1/registration-requests/{requestId}/engines
+     * POST registration-requests/{requestId}/engines
      *
      * This API consumes form-data with:
      * - dto: JSON array of engines
@@ -412,7 +412,7 @@ class RegistrationApiService @Inject constructor(
             }
 
             // 3. Send the multipart request
-            val url = "api/v1/registration-requests/$requestId/engines"
+            val url = "registration-requests/$requestId/engines"
             when (val response = repo.onPostMultipart(url, formData)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
@@ -457,7 +457,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Submit owners with documents (multipart/form-data)
-     * POST api/v1/registration-requests/{requestId}/owners
+     * POST registration-requests/{requestId}/owners
      */
     suspend fun submitOwners(
         requestId: Int,
@@ -498,7 +498,7 @@ class RegistrationApiService @Inject constructor(
                 )
             }
 
-            val url = "api/v1/registration-requests/$requestId/owners"
+            val url = "registration-requests/$requestId/owners"
             when (val response = repo.onPostMultipart(url, formData)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
@@ -586,7 +586,7 @@ class RegistrationApiService @Inject constructor(
                 )
             }
 
-            val url = "api/v1/registration-requests/$requestId/validate-build-status"
+            val url = "registration-requests/$requestId/validate-build-status"
             when (val response = repo.onPostMultipart(url, formData)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
@@ -617,7 +617,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Create navigation license request for a selected ship
-     * POST api/v1/ship-navigation-license-request
+     * POST ship-navigation-license-request
      * Body: { "shipInfo": <shipInfoId> }
      */
     suspend fun createNavigationLicense(shipInfoId: Int): Result<CreateNavigationResponse> {
@@ -625,7 +625,7 @@ class RegistrationApiService @Inject constructor(
             val requestBody = json.encodeToString(mapOf("shipInfo" to shipInfoId))
             println("🚀 RegistrationApiService: Creating navigation license - body: $requestBody")
 
-            when (val response = repo.onPostAuth("api/v1/ship-navigation-license-request", requestBody)) {
+            when (val response = repo.onPostAuth("ship-navigation-license-request", requestBody)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received: $responseJson")
@@ -651,7 +651,7 @@ class RegistrationApiService @Inject constructor(
                                 // 1) Try shipInfoId key
                                 val alt1 = json.encodeToString(mapOf("shipInfoId" to shipInfoId))
                                 println("📤 Trying payload: $alt1")
-                                when (val r2 = repo.onPostAuth("api/v1/ship-navigation-license-request", alt1)) {
+                                when (val r2 = repo.onPostAuth("ship-navigation-license-request", alt1)) {
                                     is RepoServiceState.Success -> {
                                         val r2json = r2.response
                                         println("📥 Response for alt1: $r2json")
@@ -671,7 +671,7 @@ class RegistrationApiService @Inject constructor(
                                 val alt2map = mapOf("shipInfo" to mapOf("id" to shipInfoId))
                                 val alt2 = json.encodeToString(alt2map)
                                 println("📤 Trying payload: $alt2")
-                                when (val r3 = repo.onPostAuth("api/v1/ship-navigation-license-request", alt2)) {
+                                when (val r3 = repo.onPostAuth("ship-navigation-license-request", alt2)) {
                                     is RepoServiceState.Success -> {
                                         val r3json = r3.response
                                         println("📥 Response for alt2: $r3json")
@@ -726,13 +726,13 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Send registration request and check if inspection is needed
-     * POST api/v1/registration-requests/{request-id}/send-request
+     * POST registration-requests/{request-id}/send-request
      */
     suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {
         return try {
             println("🚀 RegistrationApiService: Sending request for requestId=$requestId...")
 
-            when (val response = repo.onPostAuth("api/v1/registration-requests/$requestId/send-request", "")) {
+            when (val response = repo.onPostAuth("registration-requests/$requestId/send-request", "")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Send Request API Response received: $responseJson")
@@ -775,14 +775,14 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Reserve ship/marine name
-     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     * POST registration-requests/{id}/{name}/shipNameReservtion
      */
     suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit> {
         return try {
             println("🚀 RegistrationApiService: Reserving marine name for requestId=$requestId...")
             println("📤 Marine Name: $marineName")
 
-            val url = "api/v1/registration-requests/$requestId/$marineName/shipNameReservation"
+            val url = "registration-requests/$requestId/$marineName/shipNameReservation"
             when (val response = repo.onPostAuth(url, "")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
@@ -820,11 +820,11 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Get deletion reasons
-     * GET api/v1/deletionmdreason
+     * GET deletionmdreason
      */
     suspend fun getDeletionReasons(): Result<DeletionReasonResponse> {
         return try {
-            val apiUrl = "api/v1/deletionmdreason" // Replace with your actual endpoint
+            val apiUrl = "deletionmdreason" // Replace with your actual endpoint
 
             when (val response = repo.onGet(apiUrl)) {
                 is RepoServiceState.Success -> {
@@ -859,7 +859,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * submit deletion request with files (multipart/form-data)
-     * POST api/v1/deletion-requests
+     * POST deletion-requests
      *
      * This API consumes form-data with:
      * - dto: JSON object with deletionReasonId and shipInfoId
@@ -947,7 +947,7 @@ class RegistrationApiService @Inject constructor(
                 }
             }
 
-            val apiUrl = "api/v1/deletion-requests"
+            val apiUrl = "deletion-requests"
 
             when (val response = repo.onPostMultipart(apiUrl, formData)) {
                 is RepoServiceState.Success -> {
@@ -1053,7 +1053,7 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Validate build status with dynamic documents
-     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     * POST registration-requests/{requestId}/validate-build-status
      *
      * Similar to Release Mortgage redemption request, but ONLY files (no other data)
      *
@@ -1078,7 +1078,7 @@ class RegistrationApiService @Inject constructor(
             }
             println("=".repeat(80))
 
-            val url = "api/v1/registration-requests/$requestId/validate-build-status"
+            val url = "registration-requests/$requestId/validate-build-status"
 
             // Build multipart form data
             val formParts = mutableListOf<PartData>()

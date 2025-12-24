@@ -28,11 +28,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of ship types
-     * API: api/v1/coremdshiptype
+     * API: coremdshiptype
      */
 //    suspend fun getShipTypes(): Result<LookupResponse<ShipType>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-ship-type/ddl")) {
+//            when (val response = repo.onGet("core-md-ship-type/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -64,7 +64,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getShipTypes(): Result<LookupResponse<ShipType>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-ship-type/ddl")) {
+            when (val response = repo.onGet("core-md-ship-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -94,11 +94,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get ship types by category ID
-     * API: api/v1/coremdshiptype/category/{categoryId}
+     * API: coremdshiptype/category/{categoryId}
      */
 //    suspend fun getShipTypesByCategory(categoryId: Int): Result<LookupResponse<ShipType>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-ship-type/category/$categoryId")) {
+//            when (val response = repo.onGet("core-md-ship-type/category/$categoryId")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -131,7 +131,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getShipTypesByCategory(categoryId: Int): Result<LookupResponse<ShipType>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-ship-type/category/$categoryId")) {
+            when (val response = repo.onGet("core-md-ship-type/category/$categoryId")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -161,11 +161,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of ship categories
-     * API: api/v1/coremdshipcategory
+     * API: coremdshipcategory
      */
 //    suspend fun getShipCategories(): Result<LookupResponse<ShipCategory>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-ship-category/ddl")) {
+//            when (val response = repo.onGet("core-md-ship-category/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -198,7 +198,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getShipCategories(): Result<LookupResponse<ShipCategory>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-ship-category/ddl")) {
+            when (val response = repo.onGet("core-md-ship-category/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -228,11 +228,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of engine types
-     * API: api/v1/coremdshipenginetypes
+     * API: coremdshipenginetypes
      */
 //    suspend fun getEngineTypes(): Result<LookupResponse<EngineType>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-ship-engine-type/ddl")) {
+//            when (val response = repo.onGet("core-md-ship-engine-type/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -265,7 +265,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getEngineTypes(): Result<LookupResponse<EngineType>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-ship-engine-type/ddl")) {
+            when (val response = repo.onGet("core-md-ship-engine-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -298,11 +298,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of engine statuses
-     * API: api/v1/coremdshipenginestatus
+     * API: coremdshipenginestatus
      */
 //    suspend fun getEngineStatuses(): Result<LookupResponse<EngineStatus>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-ship-engine-status/ddl")) {
+//            when (val response = repo.onGet("core-md-ship-engine-status/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -335,7 +335,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getEngineStatuses(): Result<LookupResponse<EngineStatus>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-ship-engine-status/ddl")) {
+            when (val response = repo.onGet("core-md-ship-engine-status/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -366,11 +366,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of engine fuel type
-     * API: api/v1/coremdshipenginefueltype
+     * API: coremdshipenginefueltype
      */
 //    suspend fun getEngineFuelTypes(): Result<LookupResponse<FuelType>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-ship-engine-fuel-type/ddl")) {
+//            when (val response = repo.onGet("core-md-ship-engine-fuel-type/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -403,7 +403,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getEngineFuelTypes(): Result<LookupResponse<FuelType>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-ship-engine-fuel-type/ddl")) {
+            when (val response = repo.onGet("core-md-ship-engine-fuel-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -433,11 +433,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of proof types
-     * API: api/v1/coremdprooftype
+     * API: coremdprooftype
      */
 //    suspend fun getProofTypes(): Result<LookupResponse<ProofType>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-proof-type/ddl")) {
+//            when (val response = repo.onGet("core-md-proof-type/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -470,7 +470,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getProofTypes(): Result<LookupResponse<ProofType>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-proof-type/ddl")) {
+            when (val response = repo.onGet("core-md-proof-type/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -500,11 +500,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of ports
-     * API: api/v1/coremdportofregistry
+     * API: coremdportofregistry
      */
 //    suspend fun getPorts(): Result<LookupResponse<Port>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-port-of-registry/ddl")) {
+//            when (val response = repo.onGet("core-md-port-of-registry/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -537,7 +537,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getPorts(): Result<LookupResponse<Port>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-port-of-registry/ddl")) {
+            when (val response = repo.onGet("core-md-port-of-registry/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -567,11 +567,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of marine activities
-     * API: api/v1/coremdmarineactivity
+     * API: coremdmarineactivity
      */
 //    suspend fun getMarineActivities(): Result<LookupResponse<MarineActivity>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-marine-activity/ddl")) {
+//            when (val response = repo.onGet("core-md-marine-activity/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -605,7 +605,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getMarineActivities(): Result<LookupResponse<MarineActivity>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-marine-activity/ddl")) {
+            when (val response = repo.onGet("core-md-marine-activity/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -635,11 +635,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of building materials
-     * API: api/v1/coremdbuildmaterial
+     * API: coremdbuildmaterial
      */
 //    suspend fun getBuildMaterials(): Result<LookupResponse<BuildMaterial>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-build-material/ddl")) {
+//            when (val response = repo.onGet("core-md-build-material/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -672,7 +672,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getBuildMaterials(): Result<LookupResponse<BuildMaterial>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-build-material/ddl")) {
+            when (val response = repo.onGet("core-md-build-material/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -702,11 +702,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of countries
-     * API: api/v1/coremdcountry
+     * API: coremdcountry
      */
 //    suspend fun getCountries(): Result<LookupResponse<Country>> {
 //        return try {
-//            when (val response = repo.onGet("api/v1/core-md-country/ddl")) {
+//            when (val response = repo.onGet("core-md-country/ddl")) {
 //                is RepoServiceState.Success -> {
 //                    val responseJson = response.response
 //                    if (!responseJson.jsonObject.isEmpty()) {
@@ -739,7 +739,7 @@ class LookupApiService @Inject constructor(
 //    }
     suspend fun getCountries(): Result<LookupResponse<Country>> {
         return try {
-            when (val response = repo.onGet("api/v1/core-md-country/ddl")) {
+            when (val response = repo.onGet("core-md-country/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -777,14 +777,14 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of commercial registrations for a civil ID
-     * API: GET api/v1/core-simulation-companies/ddl/{civilId}
+     * API: GET core-simulation-companies/ddl/{civilId}
      * @param civilId The civil ID to get companies for (e.g., "12345678901234")
      */
     suspend fun getCommercialRegistrations(civilId: String): Result<LookupResponse<SelectableItem>> {
         return try {
-            println("🔍 Calling API: api/v1/core-simulation-companies/ddl/$civilId")
+            println("🔍 Calling API: core-simulation-companies/ddl/$civilId")
 
-            when (val response = repo.onGet("api/v1/core-simulation-companies/ddl/$civilId")) {
+            when (val response = repo.onGet("core-simulation-companies/ddl/$civilId")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received")
@@ -881,12 +881,12 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of mortgage reasons
-     * API: api/v1/mortgage-reason
+     * API: mortgage-reason
      */
     suspend fun getMortgageReasons(): Result<LookupResponse<MortgageReason>> {
         return try {
-            println("🔍 Calling API: api/v1/mortgage-reason")
-            when (val response = repo.onGet("api/v1/mortgage-reason")) {
+            println("🔍 Calling API: mortgage-reason")
+            when (val response = repo.onGet("mortgage-reason")) {
                 is RepoServiceState.Success -> {
                     val raw = response.response
                     println("📥 mortgage-reason raw element type: ${raw::class.simpleName}")
@@ -963,12 +963,12 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of banks
-     * API: api/v1/banks
+     * API: banks
      */
     suspend fun getBanks(): Result<LookupResponse<Bank>> {
         return try {
-            println("🔍 Calling API: api/v1/banks")
-            when (val response = repo.onGet("api/v1/banks")) {
+            println("🔍 Calling API: banks")
+            when (val response = repo.onGet("banks")) {
                 is RepoServiceState.Success -> {
                     val raw = response.response
                     println("📥 banks raw type: ${raw::class.qualifiedName}")
@@ -1134,11 +1134,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of navigation areas (sailing regions)
-     * API: api/v1/ship-navigation-license-request/navigation-areas
+     * API: ship-navigation-license-request/navigation-areas
      */
     suspend fun getNavigationAreas(): Result<LookupResponse<NavigationArea>> {
         return try {
-            when (val response = repo.onGet("api/v1/ship-navigation-license-request/navigation-areas")) {
+            when (val response = repo.onGet("ship-navigation-license-request/navigation-areas")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -1170,11 +1170,11 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get list of crew job titles
-     * API: api/v1/crew-job-title
+     * API: crew-job-title
      */
     suspend fun getCrewJobTitles(): Result<LookupResponse<CrewJobTitle>> {
         return try {
-            when (val response = repo.onGet("api/v1/crew-job-title")) {
+            when (val response = repo.onGet("crew-job-title")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {
@@ -1228,14 +1228,14 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get required documents for a specific request type
-     * API: api/v1/reqtype/{requestTypeId}/documents
+     * API: reqtype/{requestTypeId}/documents
      *
      * @param requestTypeId The ID of the request type
      * @return Result containing list of required documents
      */
     suspend fun getRequiredDocumentsByRequestType(requestTypeId: String): Result<RequiredDocumentsResponse> {
         return try {
-            when (val response = repo.onGet("api/v1/reqtype/$requestTypeId/documents")) {
+            when (val response = repo.onGet("reqtype/$requestTypeId/documents")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
 
@@ -1271,6 +1271,66 @@ class LookupApiService @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(Exception("Failed to get required documents: ${e.message}"))
+        }
+    }
+
+    // ✅ NEW: Get inspection purposes
+    suspend fun getInspectionPurposes(): Result<LookupResponse<InspectionPurpose>> {
+        return try {
+            when (val response = repo.onGet("inspection-requests/purposes")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val purposes: List<InspectionPurpose> = json.decodeFromJsonElement(dataArray)
+                            Result.success(LookupResponse(true, purposes))
+                        } else {
+                            Result.failure(Exception("Failed to fetch inspection purposes"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty inspection purposes response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get inspection purposes: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get inspection purposes: ${e.message}"))
+        }
+    }
+
+    // ✅ NEW: Get inspection authorities by ship info ID
+    suspend fun getInspectionAuthorities(shipInfoId: Int): Result<LookupResponse<InspectionAuthority>> {
+        return try {
+            when (val response = repo.onGet("inspection-requests/authorities/$shipInfoId")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val authorities: List<InspectionAuthority> = json.decodeFromJsonElement(dataArray)
+                            Result.success(LookupResponse(true, authorities))
+                        } else {
+                            Result.failure(Exception("Failed to fetch inspection authorities"))
+                        }
+                    } else {
+                        Result.failure(Exception("Empty inspection authorities response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("Failed to get inspection authorities: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get inspection authorities: ${e.message}"))
         }
     }
 }

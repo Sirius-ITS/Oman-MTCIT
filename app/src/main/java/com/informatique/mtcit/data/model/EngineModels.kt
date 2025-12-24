@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Engine submission request models
- * Used for POST api/v1/registration-requests/{requestId}/engines
+ * Used for POST registration-requests/{requestId}/engines
  */
 
 @Serializable

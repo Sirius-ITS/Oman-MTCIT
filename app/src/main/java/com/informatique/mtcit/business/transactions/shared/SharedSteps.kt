@@ -1529,10 +1529,11 @@ object SharedSteps {
         )
 
         return StepData(
-            stepType = StepType.CUSTOM,
+            stepType = StepType.INSPECTION_PURPOSES_AND_AUTHORITIES,
             titleRes = R.string.inspection_purpose_and_authority_title, // "الغرض من طلب و جهة المعاينة"
             descriptionRes = R.string.inspection_purpose_and_authority_description, // "يرجى اختيار الجهة والغرض من المعاينة لضمان توجيه الطلب للإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية."
-            fields = fields
+            fields = fields,
+            requiredLookups = listOf("inspectionPurposes", "inspectionPorts", "inspectionAuthorities") // ✅ Load via onStepOpened
         )
     }
 

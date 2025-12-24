@@ -63,6 +63,12 @@ interface LookupRepository {
     // Get required documents by request type ID
     suspend fun getRequiredDocumentsByRequestType(requestTypeId: String): Result<List<RequiredDocumentItem>>
 
+    // ✅ NEW: Inspection request lookups
+    suspend fun getInspectionPurposes(): Result<List<String>>
+    suspend fun getInspectionAuthorities(shipInfoId: Int): Result<Map<String, List<String>>>
+    fun getInspectionPurposeId(purposeName: String): Int?
+    fun getInspectionAuthorityId(authorityName: String): Int?
+
     fun clearCache()
 }
 
@@ -90,6 +96,10 @@ class LookupRepositoryImpl @Inject constructor(
     private var cachedCommercialRegistrations: List<SelectableItem>? = null
     private var cachedPersonTypes: List<PersonType>? = null
     private var cachedCrewJobTitles: List<CrewJobTitle>? = null
+
+    // ✅ NEW: Inspection lookups cache
+    private var cachedInspectionPurposes: List<InspectionPurpose>? = null
+    private val cachedInspectionAuthorities = mutableMapOf<Int, List<InspectionAuthority>>()
 
     override suspend fun getPorts(): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
@@ -715,6 +725,8 @@ class LookupRepositoryImpl @Inject constructor(
         cachedCommercialRegistrations = null
         cachedPersonTypes = null
         cachedCrewJobTitles = null
+        cachedInspectionPurposes = null
+        cachedInspectionAuthorities.clear()
     }
 
     /**
@@ -965,4 +977,103 @@ class LookupRepositoryImpl @Inject constructor(
                 Result.failure(e)
             }
         }
+
+    override suspend fun getInspectionPurposes(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            // ✅ Check cache first
+            if (cachedInspectionPurposes != null) {
+                return@withContext Result.success(cachedInspectionPurposes!!.map {
+                    getLocalizedName(it.nameAr, it.nameEn)
+                })
+            }
+
+            // ✅ Fetch from API
+            println("🔍 Fetching inspection purposes from API")
+            val result = apiService.getInspectionPurposes()
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success) {
+                        cachedInspectionPurposes = response.data
+                        println("✅ Successfully cached ${response.data.size} inspection purposes")
+                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                    } else {
+                        Result.failure(Exception(response.message ?: "Failed to fetch inspection purposes"))
+                    }
+                },
+                onFailure = { exception ->
+                    Result.failure(exception)
+                }
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getInspectionAuthorities(shipInfoId: Int): Result<Map<String, List<String>>> =
+        withContext(Dispatchers.IO) {
+            try {
+                // ✅ Check cache first
+                if (cachedInspectionAuthorities.containsKey(shipInfoId)) {
+                    println("📦 Using cached inspection authorities for shipInfoId: $shipInfoId")
+                    val authorities = cachedInspectionAuthorities[shipInfoId]!!
+
+                    // ✅ Group authorities by their type (for grouped dropdown display)
+                    val grouped = authorities.groupBy {
+                        getLocalizedName(it.type.nameAr, it.type.nameEn)
+                    }.mapValues { (_, authoritiesList) ->
+                        authoritiesList.map { getLocalizedName(it.nameAr, it.nameEn) }
+                    }
+
+                    return@withContext Result.success(grouped)
+                }
+
+                // ✅ Fetch from API
+                println("🔍 Fetching inspection authorities for shipInfoId: $shipInfoId")
+                val result = apiService.getInspectionAuthorities(shipInfoId)
+                result.fold(
+                    onSuccess = { response ->
+                        if (response.success) {
+                            cachedInspectionAuthorities[shipInfoId] = response.data
+                            println("✅ Successfully cached ${response.data.size} inspection authorities")
+
+                            // ✅ Group authorities by their type (for grouped dropdown display)
+                            // Example: { "وزارة النقل" -> ["Option 1", "Option 2"], "مكتب تصنيف" -> ["Option 1", "Option 2"] }
+                            val grouped = response.data.groupBy {
+                                getLocalizedName(it.type.nameAr, it.type.nameEn)
+                            }.mapValues { (_, authoritiesList) ->
+                                authoritiesList.map { getLocalizedName(it.nameAr, it.nameEn) }
+                            }
+
+                            println("✅ Grouped authorities into ${grouped.size} categories")
+                            Result.success(grouped)
+                        } else {
+                            Result.failure(Exception(response.message ?: "Failed to fetch inspection authorities"))
+                        }
+                    },
+                    onFailure = { exception ->
+                        Result.failure(exception)
+                    }
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Result.failure(e)
+            }
+        }
+
+    override fun getInspectionPurposeId(purposeName: String): Int? {
+        return cachedInspectionPurposes?.find {
+            getLocalizedName(it.nameAr, it.nameEn) == purposeName
+        }?.id
+    }
+
+    override fun getInspectionAuthorityId(authorityName: String): Int? {
+        // Search through all cached authorities (from all shipInfoIds)
+        cachedInspectionAuthorities.values.forEach { authorities ->
+            authorities.find {
+                getLocalizedName(it.nameAr, it.nameEn) == authorityName
+            }?.let { return it.id }
+        }
+        return null
+    }
 }

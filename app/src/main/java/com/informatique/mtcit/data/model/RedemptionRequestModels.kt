@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Request body for creating a new mortgage redemption request
- * POST /api/v1/mortgage-redemption-request
+ * POST /mortgage-redemption-request
  *
  * Example:
  * {

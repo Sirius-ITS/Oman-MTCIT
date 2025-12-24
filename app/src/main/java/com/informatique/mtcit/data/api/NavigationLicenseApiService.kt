@@ -34,14 +34,14 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Create a new ship navigation license request
-     * POST /api/v1/ship-navigation-license-request
+     * POST /ship-navigation-license-request
      */
     suspend fun createIssueRequest(shipInfoId: Long): Result<NavigationRequestResDto> {
         return try {
             val requestJson = """{"shipInfo":$shipInfoId}"""
             println("📤 Creating issue request with body: $requestJson")
 
-            when (val response = repo.onPostAuthJson("api/v1/ship-navigation-license-request", requestJson)) {
+            when (val response = repo.onPostAuthJson("ship-navigation-license-request", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Create issue request response: $responseJson")
@@ -64,7 +64,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Add navigation areas in bulk (Issue)
-     * POST /api/v1/ship-navigation-license-request/{requestId}/navigation-areas
+     * POST /ship-navigation-license-request/{requestId}/navigation-areas
      */
     suspend fun addNavigationAreasIssue(
         requestId: Long,
@@ -74,7 +74,7 @@ class NavigationLicenseApiService @Inject constructor(
             val requestJson = """{"areaIds":${json.encodeToString(areaIds)}}"""
             println("📤 Adding navigation areas (Issue): $requestJson")
 
-            when (val response = repo.onPostAuthJson("api/v1/ship-navigation-license-request/$requestId/navigation-areas", requestJson)) {
+            when (val response = repo.onPostAuthJson("ship-navigation-license-request/$requestId/navigation-areas", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonObject
@@ -95,7 +95,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Add crew members in bulk (Issue)
-     * POST /api/v1/ship-navigation-license-request/{requestId}/crew-list
+     * POST /ship-navigation-license-request/{requestId}/crew-list
      */
     suspend fun addCrewBulkIssue(
         requestId: Long,
@@ -108,7 +108,7 @@ class NavigationLicenseApiService @Inject constructor(
             )
             println("📤 Adding crew bulk (Issue): $requestJson")
 
-            when (val response = repo.onPostAuthJson("api/v1/ship-navigation-license-request/$requestId/crew-list", requestJson)) {
+            when (val response = repo.onPostAuthJson("ship-navigation-license-request/$requestId/crew-list", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
@@ -129,7 +129,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Upload crew Excel file (Issue)
-     * POST /api/v1/ship-navigation-license-request/{requestId}/crew/upload-excel
+     * POST /ship-navigation-license-request/{requestId}/crew/upload-excel
      */
     suspend fun uploadCrewExcelIssue(
         requestId: Long,
@@ -138,7 +138,7 @@ class NavigationLicenseApiService @Inject constructor(
         return try {
             println("📤 Uploading crew Excel (Issue)")
 
-            when (val response = repo.onPostMultipart("api/v1/ship-navigation-license-request/$requestId/crew/upload-excel", fileParts)) {
+            when (val response = repo.onPostMultipart("ship-navigation-license-request/$requestId/crew/upload-excel", fileParts)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
@@ -159,13 +159,13 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Get crew members (Issue)
-     * GET /api/v1/ship-navigation-license-request/{requestId}/crew
+     * GET /ship-navigation-license-request/{requestId}/crew
      */
     suspend fun getCrewIssue(requestId: Long): Result<List<CrewResDto>> {
         return try {
             println("📥 Getting crew list (Issue)")
 
-            when (val response = repo.onGet("api/v1/ship-navigation-license-request/$requestId/crew")) {
+            when (val response = repo.onGet("ship-navigation-license-request/$requestId/crew")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
@@ -186,7 +186,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Update crew member (Issue)
-     * PUT /api/v1/ship-navigation-license-request/{requestId}/crew/{crewId}
+     * PUT /ship-navigation-license-request/{requestId}/crew/{crewId}
      */
     suspend fun updateCrewMemberIssue(
         requestId: Long,
@@ -197,7 +197,7 @@ class NavigationLicenseApiService @Inject constructor(
             val requestJson = json.encodeToString(CrewReqDto.serializer(), crew)
             println("📤 Updating crew member (Issue): $requestJson")
 
-            when (val response = repo.onPutAuth("api/v1/ship-navigation-license-request/$requestId/crew/$crewId", requestJson)) {
+            when (val response = repo.onPutAuth("ship-navigation-license-request/$requestId/crew/$crewId", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonObject
@@ -218,7 +218,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Delete crew member (Issue)
-     * DELETE /api/v1/ship-navigation-license-request/{requestId}/crew/{crewId}
+     * DELETE /ship-navigation-license-request/{requestId}/crew/{crewId}
      * Note: AppRepository doesn't have delete method, so we'll use onPutAuth or handle differently
      */
     suspend fun deleteCrewMemberIssue(requestId: Long, crewId: Long): Result<Unit> {
@@ -238,7 +238,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Create a new navigation license renewal request
-     * POST /api/v1/navigation-license-renewal-request
+     * POST /navigation-license-renewal-request
      */
     suspend fun createRenewalRequest(
         shipInfoId: Long,
@@ -248,7 +248,7 @@ class NavigationLicenseApiService @Inject constructor(
             val requestJson = """{"shipInfo":$shipInfoId,"lastNavLicId":$lastNavLicId}"""
             println("📤 Creating renewal request with body: $requestJson")
 
-            when (val response = repo.onPostAuthJson("api/v1/navigation-license-renewal-request", requestJson)) {
+            when (val response = repo.onPostAuthJson("navigation-license-renewal-request", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Create renewal request response: $responseJson")
@@ -271,13 +271,13 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Get existing navigation areas (Renew)
-     * GET /api/v1/navigation-license-renewal-request/{requestId}/navigation-areas
+     * GET /navigation-license-renewal-request/{requestId}/navigation-areas
      */
     suspend fun getNavigationAreasRenew(requestId: Long): Result<List<NavigationAreaResDto>> {
         return try {
             println("📥 Getting navigation areas (Renew)")
 
-            when (val response = repo.onGet("api/v1/navigation-license-renewal-request/$requestId/navigation-areas")) {
+            when (val response = repo.onGet("navigation-license-renewal-request/$requestId/navigation-areas")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
@@ -298,7 +298,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Add navigation areas in bulk (Renew)
-     * POST /api/v1/navigation-license-renewal-request/{requestId}/navigation-areas
+     * POST /navigation-license-renewal-request/{requestId}/navigation-areas
      */
     suspend fun addNavigationAreasRenew(
         requestId: Long,
@@ -308,7 +308,7 @@ class NavigationLicenseApiService @Inject constructor(
             val requestJson = """{"areaIds":${json.encodeToString(areaIds)}}"""
             println("📤 Adding navigation areas (Renew): $requestJson")
 
-            when (val response = repo.onPostAuthJson("api/v1/navigation-license-renewal-request/$requestId/navigation-areas", requestJson)) {
+            when (val response = repo.onPostAuthJson("navigation-license-renewal-request/$requestId/navigation-areas", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonObject
@@ -329,7 +329,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Update navigation areas (Renew)
-     * PUT /api/v1/navigation-license-renewal-request/{requestId}/navigation-areas
+     * PUT /navigation-license-renewal-request/{requestId}/navigation-areas
      */
     suspend fun updateNavigationAreasRenew(
         requestId: Long,
@@ -339,7 +339,7 @@ class NavigationLicenseApiService @Inject constructor(
             val requestJson = """{"areaIds":${json.encodeToString(areaIds)}}"""
             println("📤 Updating navigation areas (Renew): $requestJson")
 
-            when (val response = repo.onPutAuth("api/v1/navigation-license-renewal-request/$requestId/navigation-areas", requestJson)) {
+            when (val response = repo.onPutAuth("navigation-license-renewal-request/$requestId/navigation-areas", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonObject
@@ -360,13 +360,13 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Get existing crew members (Renew)
-     * GET /api/v1/navigation-license-renewal-request/{lastNavLicId}/crew
+     * GET /navigation-license-renewal-request/{lastNavLicId}/crew
      */
     suspend fun getCrewRenew(lastNavLicId: Long): Result<List<CrewResDto>> {
         return try {
             println("📥 Getting crew list (Renew)")
 
-            when (val response = repo.onGet("api/v1/navigation-license-renewal-request/$lastNavLicId/crew")) {
+            when (val response = repo.onGet("navigation-license-renewal-request/$lastNavLicId/crew")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
@@ -387,7 +387,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Add crew members in bulk (Renew)
-     * POST /api/v1/navigation-license-renewal-request/{requestId}/crew-list
+     * POST /navigation-license-renewal-request/{requestId}/crew-list
      */
     suspend fun addCrewBulkRenew(
         requestId: Long,
@@ -400,7 +400,7 @@ class NavigationLicenseApiService @Inject constructor(
             )
             println("📤 Adding crew bulk (Renew): $requestJson")
 
-            when (val response = repo.onPostAuthJson("api/v1/navigation-license-renewal-request/$requestId/crew-list", requestJson)) {
+            when (val response = repo.onPostAuthJson("navigation-license-renewal-request/$requestId/crew-list", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
@@ -421,7 +421,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Update crew member (Renew)
-     * PUT /api/v1/navigation-license-renewal-request/{requestId}/crew/{crewId}
+     * PUT /navigation-license-renewal-request/{requestId}/crew/{crewId}
      */
     suspend fun updateCrewMemberRenew(
         requestId: Long,
@@ -432,7 +432,7 @@ class NavigationLicenseApiService @Inject constructor(
             val requestJson = json.encodeToString(CrewReqDto.serializer(), crew)
             println("📤 Updating crew member (Renew): $requestJson")
 
-            when (val response = repo.onPutAuth("api/v1/navigation-license-renewal-request/$requestId/crew/$crewId", requestJson)) {
+            when (val response = repo.onPutAuth("navigation-license-renewal-request/$requestId/crew/$crewId", requestJson)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonObject
@@ -453,7 +453,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Delete crew member (Renew)
-     * DELETE /api/v1/navigation-license-renewal-request/{requestId}/crew/{crewId}
+     * DELETE /navigation-license-renewal-request/{requestId}/crew/{crewId}
      */
     suspend fun deleteCrewMemberRenew(requestId: Long, crewId: Long): Result<Unit> {
         return try {
@@ -468,7 +468,7 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Upload crew Excel file (Renew)
-     * POST /api/v1/navigation-license-renewal-request/{requestId}/crew/upload-excel
+     * POST /navigation-license-renewal-request/{requestId}/crew/upload-excel
      */
     suspend fun uploadCrewExcelRenew(
         requestId: Long,
@@ -477,7 +477,7 @@ class NavigationLicenseApiService @Inject constructor(
         return try {
             println("📤 Uploading crew Excel (Renew)")
 
-            when (val response = repo.onPostMultipart("api/v1/navigation-license-renewal-request/$requestId/crew/upload-excel", fileParts)) {
+            when (val response = repo.onPostMultipart("navigation-license-renewal-request/$requestId/crew/upload-excel", fileParts)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray

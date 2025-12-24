@@ -18,54 +18,54 @@ data class TransactionContext(
 
     /**
      * API endpoint for creating the initial request
-     * Example: "api/v1/mortgage-request/create-mortgage-request"
+     * Example: "mortgage-request/create-mortgage-request"
      */
     val createEndpoint: String,
 
     /**
      * API endpoint for updating request status
      * Uses {requestId} as placeholder
-     * Example: "api/v1/mortgage-request/{requestId}/update-status"
+     * Example: "mortgage-request/{requestId}/update-status"
      */
     val updateStatusEndpoint: String,
 
     /**
      * API endpoint for final submission (send-request)
      * Uses {requestId} as placeholder
-     * Example: "api/v1/mortgage-request/{requestId}/send-request"
+     * Example: "mortgage-request/{requestId}/send-request"
      */
     val sendRequestEndpoint: String,
 
     /**
      * API endpoint for getting request details
      * Uses {requestId} as placeholder
-     * Example: "api/v1/mortgage-request/{requestId}"
+     * Example: "mortgage-request/{requestId}"
      */
     val getRequestEndpoint: String? = null,
 
     /**
      * API endpoint for deleting/canceling request
      * Uses {requestId} as placeholder
-     * Example: "api/v1/mortgage-request/{requestId}/delete"
+     * Example: "mortgage-request/{requestId}/delete"
      */
     val deleteRequestEndpoint: String? = null,
 
     /**
      * ✅ NEW: API endpoint for getting payment receipt
-     * Example: "api/v1/registration-requests/payment"
+     * Example: "registration-requests/payment"
      */
     val paymentReceiptEndpoint: String? = null,
 
     /**
      * ✅ NEW: API endpoint for submitting payment
-     * Example: "api/v1/registration-requests/add-payment"
+     * Example: "registration-requests/add-payment"
      */
     val paymentSubmitEndpoint: String? = null,
 
     /**
      * API endpoint for proceeding with a request based on shipInfoId
      * Uses {shipInfoId} as placeholder
-     * Example: "api/v1/mortgage-request/ship-info/{shipInfoId}/proceed-request"
+     * Example: "mortgage-request/ship-info/{shipInfoId}/proceed-request"
      * This is called when user selects a ship to validate and proceed
      */
     val proceedRequestEndpoint: String? = null,

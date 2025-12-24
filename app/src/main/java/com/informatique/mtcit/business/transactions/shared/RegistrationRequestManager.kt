@@ -58,7 +58,7 @@ class RegistrationRequestManager @Inject constructor(
                     requestTypeId = requestTypeId
                 )
 
-            println("📤 Sending POST to /api/v1/registration-requests...")
+            println("📤 Sending POST to /registration-requests...")
 
             // Call POST API
             val result = repository.createRegistrationRequest(request)
@@ -115,7 +115,7 @@ class RegistrationRequestManager @Inject constructor(
                     requestId = existingRequestId // ✅ Include the existing request ID
                 )
 
-            println("📤 Sending PUT to /api/v1/registration-requests/update with requestId=$existingRequestId...")
+            println("📤 Sending PUT to /registration-requests/update with requestId=$existingRequestId...")
 
             // Call PUT API
             val result = repository.updateRegistrationRequest(request)
@@ -492,7 +492,7 @@ class RegistrationRequestManager @Inject constructor(
      * Validate build status documents (NEW - multipart/form-data with files)
      * Called after documents step when user has uploaded shipbuilding certificate and/or inspection documents
      *
-     * POST api/v1/registration-requests/{requestId}/validate-build-status
+     * POST registration-requests/{requestId}/validate-build-status
      *
      * @param context Android context for file operations
      * @param requestId The registration request ID
@@ -583,7 +583,7 @@ class RegistrationRequestManager @Inject constructor(
      * Send registration request and check if inspection is needed
      * Called when user reaches Review Step
      *
-     * POST api/v1/registration-requests/{request-id}/send-request
+     * POST registration-requests/{request-id}/send-request
      *
      * @param requestId The registration request ID
      * @return SendRequestResult with inspection status
@@ -627,7 +627,7 @@ class RegistrationRequestManager @Inject constructor(
      * Reserve marine/ship name
      * Called when user enters marine name and clicks "Proceed to Payment"
      *
-     * POST api/v1/registration-requests/{id}/{name}/shipNameReservtion
+     * POST registration-requests/{id}/{name}/shipNameReservtion
      *
      * @param requestId The registration request ID
      * @param marineName The marine/ship name entered by user

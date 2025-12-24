@@ -23,7 +23,7 @@ class CategoriesApiService @Inject constructor(
 
     suspend fun getSubCategories(): Result<List<SubCategory>> {
         return try {
-            when (val response = repo.onGet("api/v1/metadata-service-categories")) {
+            when (val response = repo.onGet("metadata-service-categories")) {
                 is RepoServiceState.Success -> {
                     val response = response.response
                     if (!response.jsonObject.isEmpty()) {
@@ -59,7 +59,7 @@ class CategoriesApiService @Inject constructor(
 
     suspend fun getTransactionInfo(serviceId: Int): Result<TransactionDetail> {
         return try {
-            when (val response = repo.onGet("api/v1/metadata-service-categories/services/${serviceId}")) {
+            when (val response = repo.onGet("metadata-service-categories/services/${serviceId}")) {
                 is RepoServiceState.Success -> {
                     val response = response.response
                     if (!response.jsonObject.isEmpty()) {

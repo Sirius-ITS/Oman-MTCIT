@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Owner submission request models
- * Used for POST api/v1/registration-requests/{requestId}/owners
+ * Used for POST registration-requests/{requestId}/owners
  */
 
 @Serializable

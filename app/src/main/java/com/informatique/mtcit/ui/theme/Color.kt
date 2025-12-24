@@ -51,6 +51,7 @@ val IconGreyBackgroundLight = Color(0xFFEDF0F5)
 
 val IconBlueGreyLight = Color(0xFF44678C)
 val ButtonLightBlueLight = Color(0xFF273951)
+val RequirementsCardBackgroundLight = Color(0xFFF2F3F5)
 
 
 
@@ -93,6 +94,7 @@ val IconGreyBackgroundDark = Color(0xFFEDF0F5)
 
 val IconBlueGreyDark = Color(0xFF44678C)
 val ButtonLightBlueDark = Color(0xFF273951)
+val RequirementsCardBackgroundDark = Color(0xFF1E293B)
 
 
 

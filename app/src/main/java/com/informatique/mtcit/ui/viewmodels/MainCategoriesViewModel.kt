@@ -2,7 +2,6 @@ package com.informatique.mtcit.ui.viewmodels
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
-import com.informatique.mtcit.R
 import com.informatique.mtcit.business.home.MainCategoriesStrategyInterface
 import com.informatique.mtcit.business.home.MainCategoriesStrategyFactory
 import com.informatique.mtcit.ui.models.MainCategory
@@ -45,8 +44,8 @@ class MainCategoriesViewModel @Inject constructor(
     private val _selectedOrganization = MutableStateFlow<String?>(null)
     val selectedOrganization: StateFlow<String?> = _selectedOrganization.asStateFlow()
 
-    private val _requirementsTabList = MutableStateFlow(listOf<String>().toMutableList())
-    val requirementsTabList: StateFlow<MutableList<String>> = _requirementsTabList.asStateFlow()
+    private val _requirementsTabList = MutableStateFlow<List<String>>(emptyList())
+    val requirementsTabList: StateFlow<List<String>> = _requirementsTabList.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -144,18 +143,8 @@ class MainCategoriesViewModel @Inject constructor(
                 .onSuccess {
                     _transactionDetail.value = TransactionDetailUiState.Success(it)
 
-                    if (_transactionDetail.value is TransactionDetailUiState.Success){
-                        val requirements = (_transactionDetail.value as TransactionDetailUiState.Success).detail
-                        if (requirements.fees != null){
-                            _requirementsTabList.value.add(context.getString(R.string.requirements_fees_title))
-                        }
-                        if (requirements.steps.isNotEmpty()){
-                            _requirementsTabList.value.add(context.getString(R.string.requirements_steps_title))
-                        }
-                        if (requirements.terms.isNotEmpty()){
-                            _requirementsTabList.value.add(context.getString(R.string.requirements_terms_title))
-                        }
-                    }
+                    // ✅ FIX: Don't populate tabs here - let the UI handle localization
+                    // The Application Context doesn't respect runtime locale changes
                 }
                 .onFailure { error ->
                     _transactionDetail.value = TransactionDetailUiState.Error(

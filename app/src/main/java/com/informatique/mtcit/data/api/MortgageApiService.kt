@@ -44,7 +44,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * Create a new mortgage request
-     * POST api/v1/mortgage-request
+     * POST mortgage-request
      */
     suspend fun createMortgageRequest(request: CreateMortgageRequest): Result<CreateMortgageResponse> {
         return try {
@@ -74,7 +74,7 @@ class MortgageApiService @Inject constructor(
             println(requestBody)
             println("=".repeat(80))
 
-            when (val response = repo.onPostAuthJson("api/v1/mortgage-request", requestBody)) {
+            when (val response = repo.onPostAuthJson("mortgage-request", requestBody)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ API Response received: $responseJson")
@@ -153,7 +153,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * Submit mortgage-related documents (multipart/form-data)
-     * POST api/v1/mortgage-request/{requestId}/documents
+     * POST mortgage-request/{requestId}/documents
      *
      * Expects form-data with:
      * - dto: JSON (string)
@@ -202,7 +202,7 @@ class MortgageApiService @Inject constructor(
                 )
             }
 
-            val url = "api/v1/mortgage-request/$requestId/documents"
+            val url = "mortgage-request/$requestId/documents"
 
             // Debug: print form parts before sending
             println("📤 Debug FormData parts for submitMortgageDocuments:")
@@ -258,7 +258,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * Create a new mortgage request but also upload files in the same multipart request.
-     * POST api/v1/mortgage-request (multipart/form-data with dto + files[])
+     * POST mortgage-request (multipart/form-data with dto + files[])
      */
     suspend fun createMortgageRequestWithDocuments(
         request: CreateMortgageRequest,
@@ -321,7 +321,7 @@ class MortgageApiService @Inject constructor(
                 )
             }
 
-            val url = "api/v1/mortgage-request"
+            val url = "mortgage-request"
 
             // Debug: print form parts before sending (createMortgageRequestWithDocuments)
             println("📤 Debug FormData parts for createMortgageRequestWithDocuments:")
@@ -475,7 +475,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * Update mortgage request status
-     * PUT api/v1/mortgage-request/{requestId}/update-status
+     * PUT mortgage-request/{requestId}/update-status
      *
      * @param requestId The mortgage request ID
      * @param statusId The new status ID
@@ -483,7 +483,7 @@ class MortgageApiService @Inject constructor(
      */
     suspend fun updateMortgageStatus(requestId: Int, statusId: Int): Result<Boolean> {
         return marineUnitsApiService.updateTransactionStatus(
-            endpoint = "api/v1/mortgage-request",
+            endpoint = "mortgage-request",
             requestId = requestId,
             statusId = statusId,
             transactionType = "Mortgage"
@@ -492,7 +492,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * ✅ Send/Submit mortgage request (final submission after review)
-     * PUT /api/v1/mortgage-request/{requestId}/send-request
+     * PUT /mortgage-request/{requestId}/send-request
      *
      * This is called when user clicks "Accept and Send" on review page
      *
@@ -505,9 +505,9 @@ class MortgageApiService @Inject constructor(
             println("📤 Sending Mortgage Request...")
             println("=".repeat(80))
             println("   Request ID: $requestId")
-            println("   Endpoint: api/v1/mortgage-request/$requestId/send-request")
+            println("   Endpoint: mortgage-request/$requestId/send-request")
 
-            when (val response = repo.onPutAuth("api/v1/mortgage-request/$requestId/send-request", "")) {
+            when (val response = repo.onPutAuth("mortgage-request/$requestId/send-request", "")) {
                 is RepoServiceState.Success -> {
                     println("✅ Mortgage request sent successfully")
                     println("📥 Response: ${response.response}")
@@ -532,7 +532,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * Create a mortgage redemption (release) request with file attachment
-     * POST api/v1/mortgage-redemption-request
+     * POST mortgage-redemption-request
      * Content-Type: multipart/form-data
      *
      * @param request The redemption request data
@@ -557,7 +557,7 @@ class MortgageApiService @Inject constructor(
             }
             println("=".repeat(80))
 
-            val url = "api/v1/mortgage-redemption-request"
+            val url = "mortgage-redemption-request"
 
             // ✅ Build dto JSON (same as mortgage request)
             val dtoJson = json.encodeToString(request)
@@ -732,7 +732,7 @@ class MortgageApiService @Inject constructor(
 
     /**
      * ✅ Create mortgage redemption request WITH documents (multipart/form-data)
-     * POST /api/v1/mortgage-redemption-request
+     * POST /mortgage-redemption-request
      *
      * Example request:
      * dto: {"shipInfoId":321,"documents":[{"fileName":"wallpaper.png","documentId":101}]}
@@ -798,7 +798,7 @@ class MortgageApiService @Inject constructor(
                 )
             }
 
-            val url = "api/v1/mortgage-redemption-request"
+            val url = "mortgage-redemption-request"
 
             // Debug: print form parts before sending
             println("📤 Debug FormData parts for createRedemptionRequestWithDocuments:")

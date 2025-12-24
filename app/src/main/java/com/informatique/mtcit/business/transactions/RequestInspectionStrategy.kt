@@ -66,6 +66,10 @@ class RequestInspectionStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
 
+    // ✅ NEW: Inspection request lookups
+    private var inspectionPurposeOptions: List<String> = emptyList()
+    private var inspectionAuthorityOptions: Map<String, List<String>> = emptyMap()
+
     // NEW: Store filtered ship types based on selected category
     private var filteredShipTypeOptions: List<String> = emptyList()
     private var isShipTypeFiltered: Boolean = false
@@ -315,41 +319,6 @@ class RequestInspectionStrategy @Inject constructor(
 
             println("🔍 DEBUG - overallLength: $overallLength")
             println("🔍 DEBUG - isInspectionDocMandatory: $isInspectionDocMandatory")
-
-            println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
-            // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
-            if (requiredDocuments.isNotEmpty()) {
-                steps.add(
-                    SharedSteps.dynamicDocumentsStep(
-                        documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
-                    )
-                )
-            } else {
-                println("ℹ️ Skipping dynamic documents step - no required documents returned from API")
-            }
-
-            // ✅ Add inspection purpose/authority step with test data (replace with API when available)
-            val inspectionPurposesTest = listOf("فحص سنوي", "فحص مفاجئ", "إعادة تسجيل")
-            val inspectionRecordingPortsTest = listOf("ميناء السلطان قابوس", "ميناء الدقم")
-            val inspectionAuthoritySectionsTest = listOf(
-                DropdownSection(
-                    title = "جهات حكومية",
-                    items = listOf("هيئة النقل", "وزارة الثروة السمكية")
-                ),
-                DropdownSection(
-                    title = "هيئات تصنيف",
-                    items = listOf("Lloyds Register", "Bureau Veritas", "DNV")
-                )
-            )
-
-            steps.add(
-                SharedSteps.inspectionPurposeAndAuthorityStep(
-                    inspectionPurposes = inspectionPurposesTest,
-                    recordingPorts = inspectionRecordingPortsTest,
-                    authoritySections = inspectionAuthoritySectionsTest
-                )
-            )
-
         }
 
         // ✅ Review Step - ALWAYS show for BOTH new and existing ships
@@ -360,6 +329,44 @@ class RequestInspectionStrategy @Inject constructor(
         } else if (hasSelectedExistingUnit) {
             println("✅ Adding Review Step (for EXISTING ship - will skip send-request API)")
         }
+
+        println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
+        // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
+        if (requiredDocuments.isNotEmpty()) {
+            steps.add(
+                SharedSteps.dynamicDocumentsStep(
+                    documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
+                )
+            )
+        } else {
+            println("ℹ️ Skipping dynamic documents step - no required documents returned from API")
+        }
+
+        // ✅ Add inspection purpose/authority step with API data
+        // Convert grouped authorities Map to DropdownSection list
+        val inspectionAuthoritySections = inspectionAuthorityOptions.map { (groupName, authorities) ->
+            DropdownSection(
+                title = groupName,
+                items = authorities
+            )
+        }
+
+        // Get ports for recording port dropdown (reuse existing portOptions)
+        val recordingPorts = portOptions.ifEmpty { emptyList() }
+
+        println("📊 Creating inspection step with:")
+        println("   - ${inspectionPurposeOptions.size} purposes")
+        println("   - ${recordingPorts.size} recording ports")
+        println("   - ${inspectionAuthoritySections.size} authority sections")
+
+        steps.add(
+            SharedSteps.inspectionPurposeAndAuthorityStep(
+                inspectionPurposes = inspectionPurposeOptions.ifEmpty { emptyList() },
+                recordingPorts = recordingPorts,
+                authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() }
+            )
+        )
+
         steps.add(SharedSteps.reviewStep())
 
         // ✅ NEW: Payment Steps - Only show if we have requestId from name selection API
@@ -507,6 +514,8 @@ class RequestInspectionStrategy @Inject constructor(
 
                 if (hasSelectedExistingShip) {
                     println("🚢 User selected EXISTING ship - calling ShipSelectionManager...")
+                    // ✅ WORKAROUND: Simulate successful API call for existing ship selection
+//                    accumulatedFormData["requestId"] = "25"
 
                     try {
                         val result = shipSelectionManager.handleShipSelection(
@@ -517,7 +526,7 @@ class RequestInspectionStrategy @Inject constructor(
                         when (result) {
                             is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
                                 println("✅ Ship selection successful via Manager!")
-                                accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                                accumulatedFormData["requestId"] = result.requestId.toString()
                             }
                             is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                                 println("❌ Ship selection failed: ${result.message}")
@@ -555,10 +564,9 @@ class RequestInspectionStrategy @Inject constructor(
                     println("✅ Registration step processed: ${registrationResult.message}")
 
                     // Extract requestId if it was set
-                    val requestIdStr = accumulatedFormData["requestId"]
-                    if (requestIdStr != null) {
+                    accumulatedFormData["requestId"]?.let { requestIdStr ->
                         requestId = requestIdStr.toLongOrNull()
-                        println("✅ requestId: $requestId")
+                        println("✅ requestId: ${requestIdStr} -> parsed: $requestId")
                     }
 
                     // Check if we need to trigger step rebuild
@@ -692,309 +700,6 @@ class RequestInspectionStrategy @Inject constructor(
         return step
     }
 
-    override suspend fun submit(data: Map<String, String>): Result<Boolean> {
-        println("=".repeat(80))
-        println("📤 RequestInspectionStrategy.submit() called")
-        println("=".repeat(80))
-
-        // ✅ Get the created request ID
-        val requestId = getCreatedRequestId()
-
-        if (requestId == null) {
-            println("❌ No registration request ID found - cannot submit")
-            return Result.failure(Exception("لم يتم العثور على رقم الطلب. يرجى المحاولة مرة أخرى."))
-        }
-
-        println("✅ Registration Request ID: $requestId")
-        println("✅ Strategy validation complete - ready for submission")
-        println("   ViewModel will handle API call via submitOnReview()")
-        println("=".repeat(80))
-
-        // ✅ Return success - ViewModel will call submitOnReview() which handles the API
-        // No direct API call here - keep Strategy focused on business logic only
-        return Result.success(true)
-    }
-
-    override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
-        val mutableFormData = formData.toMutableMap()
-
-        // ✅ نفس المنطق من TemporaryRegistrationStrategy
-        // Handle ship category change - fetch filtered ship types
-        if (fieldId == "unitClassification" && value.isNotBlank()) {
-            println("🚢 Ship category changed to: $value")
-
-            val categoryId = lookupRepository.getShipCategoryId(value)
-
-            if (categoryId != null) {
-                println("🔍 Found category ID: $categoryId")
-
-                kotlinx.coroutines.runBlocking {
-                    val filteredTypes = lookupRepository.getShipTypesByCategory(categoryId).getOrNull()
-                    if (filteredTypes != null && filteredTypes.isNotEmpty()) {
-                        println("✅ Loaded ${filteredTypes.size} ship types for category $categoryId")
-                        filteredShipTypeOptions = filteredTypes
-                        isShipTypeFiltered = true
-
-                        mutableFormData.remove("unitType")
-                        mutableFormData["_triggerRefresh"] = "true"
-                    } else {
-                        println("⚠️ No ship types found for category $categoryId")
-                        filteredShipTypeOptions = emptyList()
-                        isShipTypeFiltered = true
-                        mutableFormData.remove("unitType")
-                        mutableFormData["_triggerRefresh"] = "true"
-                    }
-                }
-            } else {
-                println("❌ Could not find category ID for: $value")
-            }
-
-            return mutableFormData
-        }
-
-        // ✅ Handle fishing boat selection from unitType dropdown
-        if (fieldId == "unitType") {
-            println("🔍 DEBUG - unitType changed to: $value")
-
-            if (value == "قارب صيد" || value.contains("صيد") || value.contains("Fishing")) {
-                println("✅ Fishing boat selected! Setting flag and storing in accumulated data")
-                isFishingBoat = true
-                fishingBoatDataLoaded = false
-                accumulatedFormData["isFishingBoat"] = "true"
-                accumulatedFormData["unitType"] = value
-            } else {
-                println("❌ Not a fishing boat. Hiding agriculture field")
-                isFishingBoat = false
-                fishingBoatDataLoaded = false
-                accumulatedFormData.remove("isFishingBoat")
-                accumulatedFormData.remove("agricultureRequestNumber")
-                accumulatedFormData["unitType"] = value
-            }
-
-            val updatedFormData = formData.toMutableMap()
-            updatedFormData["unitType"] = value
-            updatedFormData["_triggerRefresh"] = System.currentTimeMillis().toString()
-            return updatedFormData
-        }
-
-        if (fieldId == "owner_type") {
-            when (value) {
-                "فرد" -> {
-                    mutableFormData.remove("companyName")
-                    mutableFormData.remove("companyRegistrationNumber")
-                }
-            }
-            return mutableFormData
-        }
-
-        return formData
-    }
-
-    override suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
-        if (fieldId == "companyRegistrationNumber") {
-            return handleCompanyRegistrationLookup(value)
-        }
-
-        // ✅ NEW: Handle agriculture request number lookup for fishing boats
-        if (fieldId == "agricultureRequestNumber") {
-            return handleAgricultureRequestLookup(value)
-        }
-
-        return FieldFocusResult.NoAction
-    }
-
-    private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
-        if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
-        }
-
-        if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
-        }
-
-        return try {
-            val result = companyRepository.fetchCompanyLookup(registrationNumber)
-                .flowOn(Dispatchers.IO)
-                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
-                .first()
-
-            when (result) {
-                is BusinessState.Success -> {
-                    val companyData = result.data.result
-                    if (companyData != null) {
-                        FieldFocusResult.UpdateFields(
-                            mapOf(
-                                "companyName" to companyData.arabicCommercialName,
-                                "companyType" to companyData.commercialRegistrationEntityType
-                            )
-                        )
-                    } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
-                    }
-                }
-                is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
-                is BusinessState.Loading -> FieldFocusResult.NoAction
-            }
-        } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
-        }
-    }
-
-    /**
-     * Handle Ministry of Agriculture request number lookup for fishing boats
-     * Fetches all boat data from Ministry API and auto-fills form fields
-     */
-    private suspend fun handleAgricultureRequestLookup(requestNumber: String): FieldFocusResult {
-        if (requestNumber.isBlank()) {
-            return FieldFocusResult.Error("agricultureRequestNumber", "رقم طلب وزارة الزراعة مطلوب")
-        }
-
-        if (requestNumber.length < 5) {
-            return FieldFocusResult.Error("agricultureRequestNumber", "رقم الطلب يجب أن يكون 5 أرقام على الأقل")
-        }
-
-        return try {
-            println("🔍 Fetching fishing boat data from Ministry of Agriculture...")
-
-            // ✅ Use marineUnitRepository instead of agricultureRepository
-            val result = marineUnitRepository.getFishingBoatData(requestNumber)
-
-            if (result.isSuccess) {
-                val boatData = result.getOrNull()
-
-                if (boatData != null) {
-                    println("✅ Boat data loaded successfully from Ministry")
-
-                    // ✅ Mark that data has been loaded
-                    fishingBoatDataLoaded = true
-                    accumulatedFormData["fishingBoatDataLoaded"] = "true"
-
-                    // ✅ Auto-fill ALL form fields with data from Ministry
-                    val fieldsToUpdate = mutableMapOf<String, String>()
-
-                    // Unit Selection Data
-                    fieldsToUpdate["unitType"] = boatData.unitType
-                    fieldsToUpdate["unitClassification"] = boatData.unitClassification
-                    fieldsToUpdate["callSign"] = boatData.callSign
-                    boatData.imoNumber?.let { fieldsToUpdate["imoNumber"] = it }
-                    fieldsToUpdate["registrationPort"] = boatData.registrationPort
-                    boatData.mmsi?.let { fieldsToUpdate["mmsi"] = it }
-                    fieldsToUpdate["manufacturerYear"] = boatData.manufacturerYear
-                    fieldsToUpdate["maritimeActivity"] = boatData.maritimeActivity
-                    boatData.buildingDock?.let { fieldsToUpdate["buildingDock"] = it }
-                    boatData.constructionPool?.let { fieldsToUpdate["constructionPool"] = it }
-                    boatData.buildingMaterial?.let { fieldsToUpdate["buildingMaterial"] = it }
-                    boatData.constructionStartDate?.let { fieldsToUpdate["constructionStartDate"] = it }
-                    boatData.constructionEndDate?.let { fieldsToUpdate["constructionEndDate"] = it }
-                    boatData.buildingCountry?.let { fieldsToUpdate["buildingCountry"] = it }
-                    boatData.firstRegistrationDate?.let { fieldsToUpdate["registrationDate"] = it }
-                    boatData.registrationCountry?.let { fieldsToUpdate["registrationCountry"] = it }
-
-                    // Dimensions
-                    fieldsToUpdate["overallLength"] = boatData.overallLength
-                    fieldsToUpdate["overallWidth"] = boatData.overallWidth
-                    fieldsToUpdate["depth"] = boatData.depth
-                    boatData.height?.let { fieldsToUpdate["height"] = it }
-                    boatData.decksCount?.let { fieldsToUpdate["decksCount"] = it }
-
-                    // Weights
-                    fieldsToUpdate["grossTonnage"] = boatData.grossTonnage
-                    fieldsToUpdate["netTonnage"] = boatData.netTonnage
-                    boatData.staticLoad?.let { fieldsToUpdate["staticLoad"] = it }
-                    boatData.maxPermittedLoad?.let { fieldsToUpdate["maxPermittedLoad"] = it }
-
-                    // Owner Info
-                    fieldsToUpdate["ownerFullNameAr"] = boatData.ownerFullNameAr
-                    boatData.ownerFullNameEn?.let { fieldsToUpdate["ownerFullNameEn"] = it }
-                    fieldsToUpdate["ownerNationality"] = boatData.ownerNationality
-                    fieldsToUpdate["ownerIdNumber"] = boatData.ownerIdNumber
-                    boatData.ownerPassportNumber?.let { fieldsToUpdate["ownerPassportNumber"] = it }
-                    fieldsToUpdate["ownerMobile"] = boatData.ownerMobile
-                    boatData.ownerEmail?.let { fieldsToUpdate["ownerEmail"] = it }
-                    boatData.ownerAddress?.let { fieldsToUpdate["ownerAddress"] = it }
-                    boatData.ownerCity?.let { fieldsToUpdate["ownerCity"] = it }
-                    fieldsToUpdate["ownerCountry"] = boatData.ownerCountry
-                    boatData.ownerPostalCode?.let { fieldsToUpdate["ownerPostalCode"] = it }
-
-                    println("✅ Auto-filled ${fieldsToUpdate.size} fields from Ministry data")
-
-                    FieldFocusResult.UpdateFields(fieldsToUpdate)
-                } else {
-                    FieldFocusResult.Error("agricultureRequestNumber", "لم يتم العثور على بيانات القارب")
-                }
-            } else {
-                val error = result.exceptionOrNull()
-                FieldFocusResult.Error("agricultureRequestNumber", error?.message ?: "فشل تحميل بيانات القارب")
-            }
-        } catch (e: Exception) {
-            println("❌ Error fetching fishing boat data: ${e.message}")
-            e.printStackTrace()
-            FieldFocusResult.Error("agricultureRequestNumber", e.message ?: "حدث خطأ أثناء تحميل بيانات القارب")
-        }
-    }
-
-    /**
-     * Validate marine unit selection using TemporaryRegistrationRules
-     * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
-     */
-    override suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
-        return try {
-            println("🔍 RequestInspectionStrategy: Validating unit $unitId using TemporaryRegistrationRules")
-
-            // Find the selected unit
-            val selectedUnit = marineUnits.firstOrNull { it.id == unitId }
-
-            if (selectedUnit == null) {
-                println("❌ Unit not found with id: $unitId")
-                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
-            }
-
-            println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
-
-            // Use TemporaryRegistrationRules to validate
-            val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
-            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
-
-            println("✅ Validation result: ${validationResult::class.simpleName}")
-            println("✅ Navigation action: ${navigationAction::class.simpleName}")
-
-            ValidationResult.Success(
-                validationResult = validationResult,
-                navigationAction = navigationAction
-            )
-        } catch (e: Exception) {
-            println("❌ Validation error: ${e.message}")
-            e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
-        }
-    }
-
-    /**
-     * NEW: Validate a NEW marine unit that doesn't exist in the database yet
-     * This is used when user is adding a new marine unit during registration
-     */
-    override suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
-        return try {
-            println("🔍 RequestInspectionStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
-
-            // Use TemporaryRegistrationRules to validate the new unit
-            val validationResult = temporaryRegistrationRules.validateUnit(newUnit, userId)
-            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
-
-            println("✅ Validation result: ${validationResult::class.simpleName}")
-            println("✅ Navigation action: ${navigationAction::class.simpleName}")
-
-            ValidationResult.Success(
-                validationResult = validationResult,
-                navigationAction = navigationAction
-            )
-        } catch (e: Exception) {
-            println("❌ Validation error: ${e.message}")
-            e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
-        }
-    }
-
     /**
      * ✅ NEW: Called when a step is opened - loads required lookups lazily
      */
@@ -1028,6 +733,7 @@ class RequestInspectionStrategy @Inject constructor(
             }
             return // Don't process lookups for payment step
         }
+
 
         if (step.requiredLookups.isEmpty()) {
             println("ℹ️ Step $stepIndex has no required lookups")
@@ -1185,6 +891,62 @@ class RequestInspectionStrategy @Inject constructor(
                         onLookupCompleted?.invoke("buildMaterials", buildMaterialOptions, true)
                     }
                 }
+                "inspectionPurposes" -> {
+                    if (inspectionPurposeOptions.isEmpty()) {
+                        println("📥 Loading inspection purposes...")
+                        val data = lookupRepository.getInspectionPurposes().getOrNull() ?: emptyList()
+                        inspectionPurposeOptions = data
+                        println("✅ Loaded ${inspectionPurposeOptions.size} inspection purposes")
+                        onLookupCompleted?.invoke("inspectionPurposes", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("inspectionPurposes", inspectionPurposeOptions, true)
+                    }
+                }
+                "inspectionAuthorities" -> {
+                    // Get shipInfoId from accumulated form data
+                    val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
+                    val shipInfoId = if (selectedUnitsJson != null) {
+                        selectedUnitsJson
+                            .replace("[", "")
+                            .replace("]", "")
+                            .replace("\"", "")
+                            .trim()
+                            .toIntOrNull()
+                    } else {
+                        null
+                    }
+
+                    if (shipInfoId == null) {
+                        println("❌ No shipInfoId found - cannot load inspection authorities")
+                        onLookupCompleted?.invoke("inspectionAuthorities", emptyList(), false)
+                    } else if (inspectionAuthorityOptions.isEmpty()) {
+                        println("📥 Loading inspection authorities for shipInfoId: $shipInfoId...")
+                        val data = lookupRepository.getInspectionAuthorities(shipInfoId).getOrNull() ?: emptyMap()
+                        inspectionAuthorityOptions = data
+                        println("✅ Loaded ${inspectionAuthorityOptions.size} authority groups")
+                        data.forEach { (groupName, authorities) ->
+                            println("   - $groupName: ${authorities.size} authorities")
+                        }
+                        // Convert Map to flat list for callback
+                        val flatList = data.values.flatten()
+                        onLookupCompleted?.invoke("inspectionAuthorities", flatList, true)
+                    } else {
+                        val flatList = inspectionAuthorityOptions.values.flatten()
+                        onLookupCompleted?.invoke("inspectionAuthorities", flatList, true)
+                    }
+                }
+                "inspectionPorts" -> {
+                    // Reuse ports lookup for inspection recording ports
+                    if (portOptions.isEmpty()) {
+                        println("📥 Loading inspection recording ports...")
+                        val data = lookupRepository.getPorts().getOrNull() ?: emptyList()
+                        portOptions = data
+                        println("✅ Loaded ${portOptions.size} inspection ports")
+                        onLookupCompleted?.invoke("inspectionPorts", data, true)
+                    } else {
+                        onLookupCompleted?.invoke("inspectionPorts", portOptions, true)
+                    }
+                }
                 else -> {
                     println("⚠️ Unknown lookup key: $lookupKey")
                     onLookupCompleted?.invoke(lookupKey, emptyList(), false)
@@ -1196,6 +958,72 @@ class RequestInspectionStrategy @Inject constructor(
             // ✅ Notify ViewModel even on failure (with empty list and success=false)
             onLookupCompleted?.invoke(lookupKey, emptyList(), false)
         }
+    }
+
+    /**
+     * Validate marine unit selection using TemporaryRegistrationRules
+     * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
+     */
+    override suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
+        return try {
+            println("🔍 RequestInspectionStrategy: Validating unit $unitId using TemporaryRegistrationRules")
+
+            // Find the selected unit
+            val selectedUnit = marineUnits.firstOrNull { it.id == unitId }
+
+            if (selectedUnit == null) {
+                println("❌ Unit not found with id: $unitId")
+                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
+            }
+
+            println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
+
+            // Use TemporaryRegistrationRules to validate
+            val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
+            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
+
+            println("✅ Validation result: ${validationResult::class.simpleName}")
+            println("✅ Navigation action: ${navigationAction::class.simpleName}")
+
+            ValidationResult.Success(
+                validationResult = validationResult,
+                navigationAction = navigationAction
+            )
+        } catch (e: Exception) {
+            println("❌ Validation error: ${e.message}")
+            e.printStackTrace()
+            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+        }
+    }
+
+    /**
+     * NEW: Validate a NEW marine unit that doesn't exist in the database yet
+     * This is used when user is adding a new marine unit during registration
+     */
+    override suspend fun validateNewMarineUnit(newUnit: MarineUnit, userId: String): ValidationResult {
+        return try {
+            println("🔍 RequestInspectionStrategy: Validating NEW unit ${newUnit.name} (id: ${newUnit.id})")
+
+            // Use TemporaryRegistrationRules to validate the new unit
+            val validationResult = temporaryRegistrationRules.validateUnit(newUnit, userId)
+            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
+
+            println("✅ Validation result: ${validationResult::class.simpleName}")
+            println("✅ Navigation action: ${navigationAction::class.simpleName}")
+
+            ValidationResult.Success(
+                validationResult = validationResult,
+                navigationAction = navigationAction
+            )
+        } catch (e: Exception) {
+            println("❌ Validation error: ${e.message}")
+            e.printStackTrace()
+            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+        }
+    }
+
+    override suspend fun submit(data: Map<String, String>): Result<Boolean> {
+        return Result.success(true)
     }
 
     // ✅ NEW: Implement TransactionStrategy interface methods for generic transaction handling
@@ -1230,3 +1058,4 @@ class RequestInspectionStrategy @Inject constructor(
         return transactionContext.buildSendRequestUrl(requestId)
     }
 }
+
