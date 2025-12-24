@@ -107,6 +107,10 @@ fun ShipDataModificationScreen(
                 is FileNavigationEvent.ViewFile -> {
                     val uri = event.fileUri.toUri()
 
+                    // ✅ CRITICAL: Re-cache the URI before viewing to restore permissions
+                    // This fixes the "corrupted PDF" issue when viewing files after app restart
+                    com.informatique.mtcit.util.UriCache.cacheUri(context, uri)
+
                     // CRITICAL: Grant permission to the current activity/context before navigation
                     // This ensures the permission persists when navigating to FileViewerScreen
                     try {

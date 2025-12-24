@@ -47,8 +47,12 @@ fun MarineRegistrationScreen(
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
     val fileNavigationEvent by viewModel.fileNavigationEvent.collectAsStateWithLifecycle()
     val navigationToComplianceDetail by viewModel.navigationToComplianceDetail.collectAsStateWithLifecycle()
-    val isResuming by viewModel.isResuming.collectAsStateWithLifecycle()  // ✅ NEW: Observe resuming state
-    val showToast by viewModel.showToastEvent.collectAsStateWithLifecycle()  // ✅ NEW: Toast messages
+    val isResuming by viewModel.isResuming.collectAsStateWithLifecycle()
+    val showToast by viewModel.showToastEvent.collectAsStateWithLifecycle()
+
+    // ✅ NEW: Observe file viewer dialog state
+    val fileViewerState by viewModel.fileViewerState.collectAsStateWithLifecycle()
+
     val context = LocalContext.current
 
     // ✅ NEW: Show Toast messages
@@ -159,28 +163,27 @@ fun MarineRegistrationScreen(
                 is FileNavigationEvent.ViewFile -> {
                     val uri = event.fileUri.toUri()
 
-                    // CRITICAL: Grant permission to the current activity/context before navigation
-                    // This ensures the permission persists when navigating to FileViewerScreen
+                    // ✅ CRITICAL: Re-cache the URI before viewing to restore permissions
+                    // This fixes the "corrupted PDF" issue when viewing files after app restart
+                    com.informatique.mtcit.util.UriCache.cacheUri(context, uri)
+
+                    // ✅ NEW: Open file viewer dialog instead of navigating to separate screen
+                    // This preserves the form state
                     try {
-                        // First, try to take persistent permission
+                        // Take persistent permission if possible
                         context.contentResolver.takePersistableUriPermission(
                             uri,
                             android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
                         )
                         android.util.Log.d("MarineRegistration", "Took persistent permission for $uri")
                     } catch (e: SecurityException) {
-                        // If persistent permission fails, the temporary permission from file picker should still work
-                        // But we need to ensure it's granted to the activity
-                        android.util.Log.w("MarineRegistration", "Could not take persistent permission, using temporary: ${e.message}")
+                        android.util.Log.w("MarineRegistration", "Could not take persistent permission: ${e.message}")
                     }
 
-                    val fileName = getFileNameFromUri(context, uri)
+                    val fileName = getFileNameFromUri(context, uri) ?: "File"
 
-                    // Navigate to internal file viewer
-                    val encodedUri = java.net.URLEncoder.encode(event.fileUri, "UTF-8")
-                    val encodedFileName = java.net.URLEncoder.encode(fileName ?: "File", "UTF-8")
-                    navController.navigate(NavRoutes.FileViewerRoute.createRoute(encodedUri, encodedFileName))
-
+                    // ✅ Open dialog instead of navigating
+                    viewModel.openFileViewerDialog(event.fileUri, fileName, event.fileType)
                     viewModel.clearFileNavigationEvent()
                 }
 
@@ -268,6 +271,15 @@ fun MarineRegistrationScreen(
         nextStep = viewModel::nextStep,
         submitForm = viewModel::submitForm,
         viewModel = viewModel
+    )
+
+    // ✅ NEW: File Viewer Dialog - Preserves form state
+    com.informatique.mtcit.ui.components.FileViewerDialog(
+        isOpen = fileViewerState.isOpen,
+        fileUri = fileViewerState.fileUri,
+        fileName = fileViewerState.fileName,
+        mimeType = fileViewerState.mimeType,
+        onDismiss = viewModel::closeFileViewerDialog
     )
 }
 

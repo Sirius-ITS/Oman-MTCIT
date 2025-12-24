@@ -41,6 +41,17 @@ sealed class FileNavigationEvent {
 }
 
 /**
+ * ✅ NEW: File viewer state for displaying files in a dialog overlay
+ * This preserves form state instead of navigating to a separate screen
+ */
+data class FileViewerState(
+    val isOpen: Boolean = false,
+    val fileUri: String = "",
+    val fileName: String = "",
+    val mimeType: String = ""
+)
+
+/**
  * Base Transaction ViewModel - Abstract base class for category-specific ViewModels
  * Contains common transaction logic shared across all categories
  *
@@ -77,6 +88,10 @@ abstract class BaseTransactionViewModel(
     // File navigation events
     private val _fileNavigationEvent = MutableStateFlow<FileNavigationEvent?>(null)
     val fileNavigationEvent: StateFlow<FileNavigationEvent?> = _fileNavigationEvent.asStateFlow()
+
+    // ✅ NEW: File viewer state for dialog overlay (preserves form state)
+    private val _fileViewerState = MutableStateFlow(FileViewerState())
+    val fileViewerState: StateFlow<FileViewerState> = _fileViewerState.asStateFlow()
 
     // Error state
     protected val _error = MutableStateFlow<AppError?>(null)
@@ -457,10 +472,10 @@ abstract class BaseTransactionViewModel(
                     val prevStepFields =
                         currentState.steps.getOrNull(prevStep)?.fields?.map { it.id } ?: emptyList()
                     val isGoingToPersonTypeStep = prevStepFields.contains("selectionPersonType")
-                    val isGoingToCommercialRegStep =
-                        prevStepFields.contains("commercialRegistration")
+                    // ✅ FIXED: Use correct field ID "selectionData" instead of "commercialRegistration"
+                    val isGoingToCommercialRegStep = prevStepFields.contains("selectionData")
 
-                    // ✅ Clear ships if going back to person type or commercial reg step
+                    // ✅ Clear ships ONLY if going back to person type or commercial reg step
                     if (isLeavingMarineUnitStep && (isGoingToPersonTypeStep || isGoingToCommercialRegStep)) {
                         println("🧹 Going back from marine unit selection to person type/commercial reg - clearing ships")
                         val strategy = currentStrategy
@@ -470,7 +485,7 @@ abstract class BaseTransactionViewModel(
                         val updatedSteps = strategy?.getSteps() ?: currentState.steps
 
                         _uiState.value = currentState.copy(
-                            currentStep = prevStep, // ✅ Simply go to previous step
+                            currentStep = prevStep,
                             steps = updatedSteps,
                             canProceedToNext = navigationUseCase.canProceedToNext(
                                 prevStep,
@@ -479,9 +494,10 @@ abstract class BaseTransactionViewModel(
                             )
                         )
                     } else {
-                        // ✅ Normal back navigation - keep ships cached
+                        // ✅ Normal back navigation - keep ships cached (DON'T clear them!)
+                        println("⬅️ Normal back navigation - keeping ships cached")
                         _uiState.value = currentState.copy(
-                            currentStep = prevStep, // ✅ Simply go to previous step
+                            currentStep = prevStep,
                             canProceedToNext = navigationUseCase.canProceedToNext(
                                 prevStep,
                                 currentState.steps,
@@ -692,6 +708,25 @@ abstract class BaseTransactionViewModel(
 
     fun clearFileNavigationEvent() {
         _fileNavigationEvent.value = null
+    }
+
+    /**
+     * ✅ NEW: Open file viewer dialog (preserves form state)
+     */
+    fun openFileViewerDialog(fileUri: String, fileName: String, mimeType: String) {
+        _fileViewerState.value = FileViewerState(
+            isOpen = true,
+            fileUri = fileUri,
+            fileName = fileName,
+            mimeType = mimeType
+        )
+    }
+
+    /**
+     * ✅ NEW: Close file viewer dialog
+     */
+    fun closeFileViewerDialog() {
+        _fileViewerState.value = FileViewerState(isOpen = false)
     }
 
     /**

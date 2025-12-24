@@ -283,6 +283,11 @@ private fun ReviewFieldItem(
                 DisplayOwnerListData(value, extraColors)
             }
 
+            is com.informatique.mtcit.common.FormField.EngineList -> {
+                // This is an engine list field - parse JSON
+                DisplayEngineListData(value, extraColors)
+            }
+
             is com.informatique.mtcit.common.FormField.MarineUnitSelector -> {
                 DisplaySelectedMarineUnits(value, field.units, extraColors)
             }
@@ -683,13 +688,330 @@ private fun DisplayOwnerListData(
             }
         }
     } else {
-        // Fallback - if JSON parsing fails, show the raw mortgageValue
+        // Fallback - if JSON parsing fails, show the raw value
         DisplayRegularValue(value)
     }
 }
 
 /**
+ * ✅ NEW: Display engine list data - parses JSON and shows in cards like owners
+ */
+@Composable
+private fun DisplayEngineListData(
+    value: String,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    val engines = remember(value) {
+        try {
+            Json.decodeFromString<List<EngineData>>(value)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    if (engines.isNotEmpty()) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            engines.forEachIndexed { index, engine ->
+                ExpandableEngineReviewCard(
+                    engine = engine,
+                    index = index,
+                    extraColors = extraColors
+                )
+            }
+        }
+    } else {
+        // Fallback - if JSON parsing fails, show the raw value
+        DisplayRegularValue(value)
+    }
+}
+
+/**
+ * ✅ NEW: Expandable card for displaying individual engine data in review
+ */
+@Composable
+private fun ExpandableEngineReviewCard(
+    engine: EngineData,
+    index: Int,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Clickable Header Section
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Engine Icon
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(extraColors.startServiceButton.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "⚙️", fontSize = 24.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = "محرك ${index + 1}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = extraColors.whiteInDarkMode,
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (engine.type.isNotEmpty()) {
+                                Text(
+                                    text = engine.type,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                            if (engine.power.isNotEmpty()) {
+                                Surface(
+                                    color = extraColors.startServiceButton.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "${engine.power} حصان",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = extraColors.whiteInDarkMode,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Expand/Collapse Icon
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = extraColors.whiteInDarkMode,
+                    modifier = Modifier.padding(6.dp)
+                )
+            }
+
+            // Animated Expandable Details
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        color = extraColors.blue2.copy(alpha = 0.2f),
+                        thickness = 1.dp
+                    )
+
+                    // Engine Details
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Basic Information Section
+                        Text(
+                            text = "البيانات الأساسية",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = extraColors.startServiceButton,
+                            fontSize = 14.sp
+                        )
+
+                        if (engine.number.isNotEmpty()) {
+                            EngineDetailRow(
+                                label = "رقم المحرك",
+                                value = engine.number
+                            )
+                        }
+
+                        if (engine.type.isNotEmpty()) {
+                            EngineDetailRow(
+                                label = "نوع المحرك",
+                                value = engine.type
+                            )
+                        }
+
+                        if (engine.power.isNotEmpty()) {
+                            EngineDetailRow(
+                                label = "القوة (حصان)",
+                                value = engine.power
+                            )
+                        }
+
+                        if (engine.cylinder.isNotEmpty()) {
+                            EngineDetailRow(
+                                label = "عدد الأسطوانات",
+                                value = engine.cylinder
+                            )
+                        }
+
+                        // Manufacturer Information Section
+                        if (engine.manufacturer.isNotEmpty() || engine.model.isNotEmpty() ||
+                            engine.manufactureYear.isNotEmpty() || engine.productionCountry.isNotEmpty()) {
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "معلومات الصنع",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = extraColors.startServiceButton,
+                                fontSize = 14.sp
+                            )
+
+                            if (engine.manufacturer.isNotEmpty()) {
+                                EngineDetailRow(
+                                    label = "الشركة المصنعة",
+                                    value = engine.manufacturer
+                                )
+                            }
+
+                            if (engine.model.isNotEmpty()) {
+                                EngineDetailRow(
+                                    label = "الموديل",
+                                    value = engine.model
+                                )
+                            }
+
+                            if (engine.manufactureYear.isNotEmpty()) {
+                                EngineDetailRow(
+                                    label = "سنة الصنع",
+                                    value = engine.manufactureYear
+                                )
+                            }
+
+                            if (engine.productionCountry.isNotEmpty()) {
+                                EngineDetailRow(
+                                    label = "بلد الصنع",
+                                    value = engine.productionCountry
+                                )
+                            }
+                        }
+
+                        // Additional Information Section
+                        if (engine.fuelType.isNotEmpty() || engine.condition.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "معلومات إضافية",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = extraColors.startServiceButton,
+                                fontSize = 14.sp
+                            )
+
+                            if (engine.fuelType.isNotEmpty()) {
+                                EngineDetailRow(
+                                    label = "نوع الوقود",
+                                    value = engine.fuelType
+                                )
+                            }
+
+                            if (engine.condition.isNotEmpty()) {
+                                EngineDetailRow(
+                                    label = "الحالة",
+                                    value = engine.condition
+                                )
+                            }
+                        }
+
+                        // Document Information
+                        if (engine.documentName.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "المستندات",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = extraColors.startServiceButton,
+                                fontSize = 14.sp
+                            )
+
+                            EngineDetailRow(
+                                label = "المستند المرفق",
+                                value = engine.documentName
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * ✅ NEW: Helper function to display engine detail rows
+ */
+@Composable
+private fun EngineDetailRow(
+    label: String,
+    value: String,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors = LocalExtraColors.current
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f),
+            fontSize = 12.sp,
+            modifier = Modifier.weight(0.4f)
+        )
+        Text(
+            text = value.ifEmpty { "-" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = extraColors.whiteInDarkMode,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(0.6f),
+            textAlign = TextAlign.End
+        )
+    }
+}
+
+/**
  * Display file attachment - extracts filename from URI
+ * In Review Step, clicking opens the file directly without a menu
  */
 @Composable
 private fun DisplayFileAttachment(
@@ -701,7 +1023,6 @@ private fun DisplayFileAttachment(
 ) {
     if (value.isNotBlank()) {
         val context = androidx.compose.ui.platform.LocalContext.current
-        var showMenu by remember { mutableStateOf(false) }
 
         val fileName = remember(value, context) {
             // Extract filename from URI using ContentResolver (same as CustomFileUpload)
@@ -744,76 +1065,49 @@ private fun DisplayFileAttachment(
             }
         }
 
-        Box {
-            Card(
+        // ✅ In Review Step: Click directly opens file (no menu)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onViewFile?.invoke(value, mimeType)
+                },
+            colors = CardDefaults.cardColors(
+                containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
+            ),
+            elevation = CardDefaults.cardElevation(0.dp),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showMenu = true },
-                colors = CardDefaults.cardColors(
-                    containerColor = extraColors.cardBackground2.copy(alpha = 0.1f)
-                ),
-                elevation = CardDefaults.cardElevation(0.dp),
-                shape = RoundedCornerShape(8.dp)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        // Display file name first (what user selected)
-                        Text(
-                            text = fileName,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = extraColors.whiteInDarkMode
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        // Display field label below (file type)
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = extraColors.textSubTitle
-                        )
-                    }
-
-                    Icon(
-                        imageVector = Icons.Default.AttachFile,
-                        contentDescription = null,
-                        tint = extraColors.whiteInDarkMode,
-                        modifier = Modifier.size(20.dp)
+                Column(modifier = Modifier.weight(1f)) {
+                    // Display file name first (what user selected)
+                    Text(
+                        text = fileName,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = extraColors.whiteInDarkMode
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    // Display field label below (file type)
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = extraColors.textSubTitle
                     )
                 }
-            }
 
-            // Dropdown menu for file actions
-            androidx.compose.material3.DropdownMenu(
-                expanded = showMenu,
-                onDismissRequest = { showMenu = false },
-                offset = androidx.compose.ui.unit.DpOffset(0.dp, 4.dp)
-            ) {
-                // View/Open option
-                androidx.compose.material3.DropdownMenuItem(
-                    text = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = androidx.compose.material.icons.Icons.Default.Visibility,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(localizedApp(R.string.view_file))
-                        }
-                    },
-                    onClick = {
-                        showMenu = false
-                        onViewFile?.invoke(value, mimeType)
-                    }
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = null,
+                    tint = extraColors.whiteInDarkMode,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -1220,7 +1514,6 @@ private fun DeclarationSection(
                     ),
                     color = extraColors.whiteInDarkMode
                 )
-
             }
 
             Spacer(modifier = Modifier.height(8.dp))
