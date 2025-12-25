@@ -14,7 +14,7 @@
     <style name="Theme.AppTheme" parent="Base.Theme.AppTheme" />
 
     <!-- Splash Screen Theme for Android versions below 12 (default) -->
-    <style name="Theme.MTCIT.Splash" parent="Theme.AppCompat.Light.NoActionBar">
+    <style name="Theme.MTCIT.Splash" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/splash_background</item>
         <item name="android:windowFullscreen">false</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
@@ -23,6 +23,8 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowDisablePreview">true</item>
     </style>
 
 </resources>

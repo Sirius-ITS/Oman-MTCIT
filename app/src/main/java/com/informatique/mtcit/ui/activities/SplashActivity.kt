@@ -2,10 +2,10 @@ package com.informatique.mtcit.ui.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -39,37 +39,48 @@ import kotlinx.coroutines.launch
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : ComponentActivity() {
 
-    private var isReady = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen and control when it dismisses
+        val splashScreen = installSplashScreen()
+
         super.onCreate(savedInstanceState)
 
-        // Always use custom splash screen for all Android versions
+        // Enable edge-to-edge for seamless experience
+        enableEdgeToEdge()
+
+        // Keep system splash visible while we prepare
+        var keepSplashOnScreen = true
+        splashScreen.setKeepOnScreenCondition { keepSplashOnScreen }
+
+        // Show custom splash screen immediately
         setContent {
             AppTheme {
                 ModernSplashScreen()
             }
         }
 
-        // Perform initialization tasks
+        // Wait before dismissing system splash
         lifecycleScope.launch {
-            performInitialization()
-            navigateToMainActivity()
+            // Keep system splash for 1 second to let activity fully initialize
+            delay(1000)
+            // Now dismiss system splash and show our custom splash
+            keepSplashOnScreen = false
         }
     }
 
     @Composable
     private fun ModernSplashScreen() {
         // Omani flag colors
-        val omanBlue = Color(0xFF1568B8) // RGB(0.08, 0.42, 0.72)
-        val omanRed = Color(0xFFB52133) // RGB(0.71, 0.13, 0.20)
+        val omanBlue = Color(0xFF1568B8)
+        val omanRed = Color(0xFFB52133)
 
         // Animation states
-        var stripesOffset by remember { mutableFloatStateOf(-400f) } // ✅ Start further left
+        var stripesOffset by remember { mutableFloatStateOf(-400f) }
         var particleOpacity by remember { mutableFloatStateOf(0f) }
         var logoOffset by remember { mutableFloatStateOf(30f) }
         var logoOpacity by remember { mutableFloatStateOf(0f) }
         var textOpacity by remember { mutableFloatStateOf(0f) }
+        var shouldNavigate by remember { mutableStateOf(false) }
 
         // Stripes animation
         val stripesAnimOffset by animateFloatAsState(
@@ -113,8 +124,9 @@ class SplashActivity : ComponentActivity() {
 
         // Trigger animations on appear
         LaunchedEffect(Unit) {
+            // Remove the initial 500ms delay since we're controlling system splash now
             delay(100)
-            stripesOffset = 600f // ✅ End further right (travel distance = 1000dp)
+            stripesOffset = 600f
             particleOpacity = 1f
 
             delay(300)
@@ -123,6 +135,17 @@ class SplashActivity : ComponentActivity() {
 
             delay(700)
             textOpacity = 1f
+
+            // Wait for full 3 seconds total from start of our animation, then navigate
+            delay(1900) // 100+300+700+1900 = 3000ms
+            shouldNavigate = true
+        }
+
+        // Navigate when ready
+        LaunchedEffect(shouldNavigate) {
+            if (shouldNavigate) {
+                navigateToMainActivity()
+            }
         }
 
         Box(
@@ -384,7 +407,6 @@ class SplashActivity : ComponentActivity() {
     private suspend fun performInitialization() {
         // 3-second delay to match iOS (3.0 seconds)
         delay(3000)
-        isReady = true
     }
 
     private fun navigateToMainActivity() {

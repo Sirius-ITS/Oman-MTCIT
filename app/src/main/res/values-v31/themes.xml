@@ -1,11 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Modern Splash Screen Theme for Android 12+ (API 31+) -->
-    <style name="Theme.MTCIT.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/logo</item>
-        <item name="windowSplashScreenAnimationDuration">2000</item>
-        <item name="postSplashScreenTheme">@style/Theme.AppTheme</item>
+    <!-- Splash Screen Theme for Android 12+ (API 31+) with API 34+ support -->
+    <style name="Theme.MTCIT.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowDisablePreview">true</item>
+        <!-- Minimize system splash screen duration -->
+        <item name="android:windowSplashScreenAnimationDuration">0</item>
+        <!-- Hide the launcher icon on Android 12+ splash screen -->
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="android:windowSplashScreenBackground">@android:color/white</item>
     </style>
 </resources>
-
