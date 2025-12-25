@@ -42,20 +42,12 @@ class SplashActivity : ComponentActivity() {
     private var isReady = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Only use modern splash screen on Android 12+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val splashScreen = installSplashScreen()
-            splashScreen.setKeepOnScreenCondition { !isReady }
-        }
-
         super.onCreate(savedInstanceState)
 
-        // For Android 11 and older, use Compose-based splash screen
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            setContent {
-                AppTheme {
-                    ModernSplashScreen()
-                }
+        // Always use custom splash screen for all Android versions
+        setContent {
+            AppTheme {
+                ModernSplashScreen()
             }
         }
 
