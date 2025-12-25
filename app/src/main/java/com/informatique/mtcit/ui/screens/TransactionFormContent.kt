@@ -157,7 +157,8 @@ fun TransactionFormContent(
                         text = transactionTitle,
                         fontSize = 18.sp,
                         color = extraColors.whiteInDarkMode,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 1.sp,
                         maxLines = 2
                     )
                 },
@@ -353,7 +354,8 @@ fun TransactionFormContent(
                         Text(
                             text = localizedApp(currentStepData.titleRes),
                             style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
+                            letterSpacing = 1.sp,
                             fontSize = 18.sp,
                             color = extraColors.whiteInDarkMode,
                             modifier = Modifier.padding(bottom = 8.dp)

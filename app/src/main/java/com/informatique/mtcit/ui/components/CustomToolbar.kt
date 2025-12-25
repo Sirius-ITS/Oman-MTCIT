@@ -35,8 +35,8 @@ fun CustomToolbar(
     }
     Column(
         modifier = Modifier
-            .width(320.dp)
-            .widthIn( max = 400.dp)
+            .width(360.dp)
+            .widthIn( max = 440.dp)
             .background(Color.Transparent)
     ) {
         // الشريط السفلي
@@ -46,7 +46,7 @@ fun CustomToolbar(
                 .height(65.dp),
             shape = RoundedCornerShape(35.dp),
             color = LocalExtraColors.current.cardBackground,
-            shadowElevation = 0.dp
+            shadowElevation = 1.dp
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -117,22 +117,22 @@ fun TabItem(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+            modifier = Modifier.width(110.dp).padding( horizontal = 4.dp, vertical = 2.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = iconColor,
-                modifier = Modifier.size(24.dp)
+                tint = iconColor.copy(alpha = 0.9f),
+                modifier = Modifier.size(32.dp)
             )
 //            if (isSelected) {
                 Text(
                     text = label,
-                    fontSize = 13.sp,
-                    color = textColor,
-                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp,
+                    color = textColor.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Normal,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.width(65.dp)
+//                    modifier = Modifier.width(65.dp)
                 )
 //            }
         }

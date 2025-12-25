@@ -79,7 +79,8 @@ fun SettingsScreen(
                     Text(
                         text = localizedApp(R.string.done),
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.sp,
                         color = extraColors.whiteInDarkMode
                     )
                 }
@@ -179,13 +180,15 @@ fun SettingsScreen(
                     Text(
                         text = localizedApp(R.string.version),
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.sp,
                         color = extraColors.whiteInDarkMode
                     )
                     Text(
                         text = "1.0",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Normal,
+                        fontWeight = FontWeight.Light,
+                        letterSpacing = 1.sp,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
                     )
                 }
@@ -241,7 +244,8 @@ fun LanguageCardEnhanced(
                 Text(
                     text = languageName,
                     fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp,
                     color = if (isSelected) extraColors.whiteInDarkMode else extraColors.whiteInDarkMode.copy(alpha = 0.9f)
                 )
                 Text(
@@ -314,7 +318,8 @@ fun ThemeCardEnhanced(
             Text(
                 text = themeName,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode
             )
         }

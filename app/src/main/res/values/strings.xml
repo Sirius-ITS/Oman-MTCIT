@@ -901,5 +901,7 @@
     <string name="inspection_authority_and_entity_selection">Select Authority and Approved Entity for Inspection</string>
     <string name="select_inspection_authority_and_entity_placeholder">Select the responsible authority and approved entity for inspection execution</string>
 
+    <string name="service_req">Service Requirement</string>
+
 
 </resources>

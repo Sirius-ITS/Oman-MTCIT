@@ -196,7 +196,8 @@ fun RequestStatisticsSection() {
                 Text(
                     text = localizedApp(R.string.request_statistics_title),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 1.sp,
                     color = extraColors.whiteInDarkMode
                 )
             }
@@ -318,7 +319,8 @@ fun DonutChart(
             Text(
                 text = "$totalRequests",
                 fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode
             )
             Text(
@@ -366,14 +368,16 @@ fun LegendItem(
             Text(
                 text = "$value",
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode,
                 maxLines = 1
             )
             Text(
                 text = "(%.2f%%)".format(percentage),
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode,
                 maxLines = 1
             )
@@ -422,7 +426,8 @@ fun FormsSection(
             Text(
                 text = localizedApp(R.string.forms_section_title),
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode
             )
         }
@@ -459,7 +464,8 @@ fun FormsSection(
                     Text(
                         text = localizedApp(R.string.no_forms_available),
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 1.sp,
                         color = extraColors.whiteInDarkMode
                     )
                     Text(
@@ -541,7 +547,8 @@ fun RealRequestCard(
                     Text(
                         text = request.id,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 1.sp,
                         color = Color(0xFF6B7FD7),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
@@ -564,7 +571,8 @@ fun RealRequestCard(
                         Text(
                             text = localizedApp(statusTextRes),
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Normal,
+                            letterSpacing = 1.sp,
                             color = statusColor
                         )
                     }
@@ -576,7 +584,8 @@ fun RealRequestCard(
             Text(
                 text = request.getDisplayTitle(),
                 fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -597,7 +606,8 @@ fun RealRequestCard(
                 text = localizedApp(actionHintRes),
                 fontSize = 13.sp,
                 color = statusColor,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
                 modifier = Modifier.fillMaxWidth()
             )
 

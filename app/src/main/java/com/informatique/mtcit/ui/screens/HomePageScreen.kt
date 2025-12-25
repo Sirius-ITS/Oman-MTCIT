@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -32,18 +31,15 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -75,6 +71,7 @@ import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.ui.theme.fontTypography
 import android.graphics.Color as AndroidColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -180,7 +177,7 @@ fun HomePageScreen(navController: NavController) {
                     // Quick Stats (Circular Progress)
                     QuickStatsCircular()
                     // Available Services Section
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(30.dp))
                     AvailableServicesSection(
                         navController = navController,
                         categories = categories,
@@ -189,7 +186,7 @@ fun HomePageScreen(navController: NavController) {
                         }
                     )
                     // Latest Events Section
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(30.dp))
                     LatestEventsSection()
                     Spacer(modifier = Modifier.height(60.dp))
                 }
@@ -233,7 +230,7 @@ fun TopProfileBar(
         ) {
             Box(
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(50.dp)
                     .clip(CircleShape)
                     .border(
                         width = 1.dp,
@@ -254,19 +251,20 @@ fun TopProfileBar(
                     imageVector = Icons.Default.Person,
                     contentDescription = "الملف الشخصي",
                     tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(30.dp)
                 )
             }
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
                     text = localizedApp(R.string.hello_label),
                     fontSize = 14.sp,
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontWeight = FontWeight.Light
                 )
                 Text(
                     text = localizedApp(R.string.user_name),
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = Color.White
                 )
             }
@@ -276,7 +274,7 @@ fun TopProfileBar(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .border(
                         width = 1.dp,
@@ -350,17 +348,19 @@ fun WelcomeSection() {
     ) {
         Text(
             text = localizedApp(R.string.welcome_message),
-            fontSize = 18.sp,
+            fontSize = 20.sp,
             fontWeight = FontWeight.Medium,
+            letterSpacing = 1.sp,
             color = Color.White,
             textAlign = TextAlign.Start
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = localizedApp(R.string.how_can_help),
-            fontSize = 16.sp,
+            fontSize = 14.sp,
             color = Color.White.copy(alpha = 0.9f),
-            textAlign = TextAlign.Start
+            textAlign = TextAlign.Start,
+            fontWeight = FontWeight.Light
         )
     }
 }
@@ -376,7 +376,7 @@ fun QuickStatsCircular() {
         colors = CardDefaults.cardColors(
             containerColor = extraColors.cardBackground // شفافية خفيفة
         ),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -465,14 +465,16 @@ fun CircularStatItem(
         Text(
             text = value,
             fontSize = 18.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.sp,
             color = extracolor.whiteInDarkMode
         )
         Text(
             text = label,
             fontSize = 12.sp,
             color = Color.Gray,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
         )
     }
 }
@@ -494,18 +496,19 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     text = localizedApp(R.string.available_services_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extracolors.whiteInDarkMode
+                    color = extracolors.whiteInDarkMode.copy(alpha = 0.8f)
                 )
                 Text(
                     text = localizedApp(R.string.choose_service),
-                    fontSize = 12.sp,
-                    color = extracolors.whiteInDarkMode.copy(alpha = 0.5f)
+                    fontSize = 14.sp,
+                    color = extracolors.whiteInDarkMode.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Normal
                 )
             }
             Surface(
                 color = extracolors.viewAll,
                 shape = RoundedCornerShape(32.dp),
-                modifier = Modifier.height(34.dp).align(Alignment.CenterVertically)
+                modifier = Modifier.height(40.dp).align(Alignment.CenterVertically)
             ) {
                 TextButton(
                     onClick = { navController.navigate(NavRoutes.MainCategoriesRoute.route) },
@@ -517,9 +520,9 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     Text(
                         text = localizedApp(R.string.view_all),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.Medium,
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                         contentDescription = null,
@@ -528,7 +531,7 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                 }
             }
         }
-
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
         // Display categories dynamically from the categories array
         if (categories.isEmpty()) {
             // Show loading or empty state
@@ -576,24 +579,24 @@ fun ServiceCard(
     val extraColors = LocalExtraColors.current
     Card(
         modifier = modifier
-            .height(200.dp)
-            .width(250.dp)
+            .height(220.dp)
+            .width(320.dp)
             .padding(horizontal = 10.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(vertical = 18.dp , horizontal = 20.dp),
             horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
             Box(
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(60.dp)
                     .background(
                         extraColors.iconBlueBackground,
                         shape = RoundedCornerShape(18.dp)
@@ -610,36 +613,38 @@ fun ServiceCard(
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
                     text = title,
-                    fontSize = 15.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = extraColors.whiteInDarkMode,
                     textAlign = TextAlign.Start
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = description,
                     fontSize = 12.sp,
-                    color = extraColors.textSubTitle,
+                    color = extraColors.textSubTitle.copy(alpha = 0.8f),
                     textAlign = TextAlign.Start,
-                    lineHeight = 16.sp
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.Normal
                 )
             }
-
+            Spacer(modifier = Modifier.padding(vertical = 2.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = localizedApp(R.string.view_details),
-                    fontSize = 13.sp,
-                    color = extraColors.showDetials,
+                    fontSize = 15.sp,
+                    color = extraColors.showDetials.copy(alpha = 0.8f),
                     fontWeight = FontWeight.Medium
                 )
+                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                     contentDescription = null,
                     tint = extraColors.showDetials,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -664,40 +669,42 @@ fun LatestEventsSection() {
                     text = localizedApp(R.string.upcoming_events_title),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extracolors.whiteInDarkMode
+                    color = extracolors.whiteInDarkMode.copy(alpha = 0.8f)
                 )
                 Text(
                     text = localizedApp(R.string.dont_miss_opportunity),
-                    fontSize = 12.sp,
-                    color = extracolors.whiteInDarkMode.copy(alpha = 0.5f)
+                    fontSize = 14.sp,
+                    color = extracolors.whiteInDarkMode.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Normal
                 )
             }
             Surface(
                 color = extracolors.viewAll,
                 shape = RoundedCornerShape(32.dp),
-                modifier = Modifier.height(34.dp).align(Alignment.CenterVertically)
+                modifier = Modifier.height(40.dp).align(Alignment.CenterVertically)
             ) {
                 TextButton(
-                    onClick = { /* View all */ },
+                    onClick = { },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = extracolors.viewAllText
                     ),
-                    modifier = Modifier.align(Alignment.CenterVertically)
+                    modifier = Modifier.align(Alignment.CenterVertically),
                 ) {
                     Text(
                         text = localizedApp(R.string.view_all),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = FontWeight.Medium,
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(2.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
         }
+        Spacer(modifier = Modifier.padding(vertical = 8.dp))
         EventCard(
             title = localizedApp(R.string.event1_title),
             location = localizedApp(R.string.event1_location),
@@ -736,12 +743,12 @@ fun EventCard(
             .clickable { },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp , end = 11.dp),
+                .padding(horizontal = 11.dp , vertical = 11.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -768,9 +775,9 @@ fun EventCard(
             ) {
                 Text(
                     text = title,
-                    fontSize = 14.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
-                    color = extraColors.whiteInDarkMode
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
@@ -780,13 +787,14 @@ fun EventCard(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = extraColors.textSubTitle,
-                        modifier = Modifier.size(14.dp)
+                        tint = extraColors.textSubTitle.copy(alpha = 0.7f),
+                        modifier = Modifier.size(12.dp)
                     )
                     Text(
                         text = location,
                         fontSize = 12.sp,
-                        color = extraColors.textSubTitle
+                        color = extraColors.textSubTitle.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
@@ -803,18 +811,21 @@ fun EventCard(
                     Text(
                         text = time,
                         fontSize = 12.sp,
-                        color = extraColors.textBlueSubTitle
-                    )
+                        color = extraColors.textBlueSubTitle,
+                        fontWeight = FontWeight.Medium,
+                        )
                     Text(
                         text = "•",
                         fontSize = 12.sp,
-                        color = extraColors.textBlueSubTitle
-                    )
+                        fontWeight = FontWeight.Medium,
+                        color = extraColors.textBlueSubTitle,
+                        )
                     Text(
                         text = date,
                         fontSize = 12.sp,
-                        color = extraColors.textBlueSubTitle
-                    )
+                        color = extraColors.textBlueSubTitle,
+                        fontWeight = FontWeight.Medium,
+                        )
                 }
             }
             Icon(

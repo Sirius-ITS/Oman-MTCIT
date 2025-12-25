@@ -144,11 +144,12 @@ fun TransactionRequirementsScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = if (locale.language == "ar") transaction.nameAr else transaction.nameEn,
-                        fontSize = 22.sp,
+//                        text = if (locale.language == "ar") transaction.nameAr else transaction.nameEn,
+                        text = localizedApp(R.string.service_req),
+                        fontSize = 18.sp,
                         color = extraColors.whiteInDarkMode,
-                        fontWeight = FontWeight.Medium
-                    )
+                        fontWeight = FontWeight.Medium,
+                        )
                 },
                 navigationIcon = {
                     Box(
@@ -239,8 +240,8 @@ fun TransactionRequirementsScreen(
                         Text(
                             text = localizedApp(R.string.start_the_service),
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                            fontWeight = FontWeight.Medium,
+                            )
                     }
                 }
             }
@@ -283,13 +284,13 @@ fun TransactionRequirementsScreen(
                             modifier = Modifier.padding(20.dp)
                         ) {
                             Row (
-                                horizontalArrangement = Arrangement.Center
+                                horizontalArrangement = Arrangement.Start
                             ){
                                 Box(
                                     modifier = Modifier
                                         .size(35.dp)
                                         .background(
-                                            extraColors.iconLightBlueBackground,
+                                            extraColors.iconGreyBackground,
                                             shape = RoundedCornerShape(18.dp)
                                         ),
                                     contentAlignment = Alignment.Center
@@ -297,7 +298,7 @@ fun TransactionRequirementsScreen(
                                     Icon(
                                         imageVector = Icons.Filled.Description,
                                         contentDescription = null,
-                                        tint = extraColors.iconLightBlue,
+                                        tint = extraColors.iconBlueGrey,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -308,7 +309,7 @@ fun TransactionRequirementsScreen(
                                     text = if (locale.language == "ar") detail.nameAr else detail.nameEn,
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Medium,
-                                    fontSize = 18.sp,
+                                    fontSize = 16.sp,
                                     textAlign = TextAlign.Center,
                                     color = extraColors.whiteInDarkMode,
                                     modifier = Modifier.padding(bottom = 8.dp)
@@ -319,20 +320,23 @@ fun TransactionRequirementsScreen(
 
                             Text(
                                 text = if (locale.language == "ar") detail.descAr else detail.descEn,
-                                color = extraColors.textSubTitle
+                                color = extraColors.textSubTitle,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
                             )
 
                             Spacer(Modifier.height(8.dp))
 
                             Surface(
-                                color = extraColors.iconLightBlueBackground,
+                                color = extraColors.iconGreyBackground,
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Text(
                                     text = localizedApp(R.string.categories_title),
                                     fontSize = 12.sp,
-                                    color = extraColors.iconLightBlue,
-                                    fontWeight = FontWeight.Medium,
+                                    color = extraColors.iconBlueGrey,
+                                    fontWeight = FontWeight.Normal,
+                                    letterSpacing = 1.sp,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
                             }
@@ -429,8 +433,9 @@ fun TransactionRequirementsScreen(
                                         text = localizedApp(R.string.requirements_terms_title),
                                         style = MaterialTheme.typography.titleLarge.copy(
                                             fontSize = 18.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
+                                            fontWeight = FontWeight.Normal,
+                                            letterSpacing = 1.sp,
+                                            ),
                                         color = extraColors.whiteInDarkMode,
                                         modifier = Modifier.padding(8.dp),
                                         maxLines = 1
@@ -451,8 +456,9 @@ fun TransactionRequirementsScreen(
                                         text = localizedApp(R.string.requirements_steps_heading),
                                         style = MaterialTheme.typography.titleLarge.copy(
                                             fontSize = 18.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
+                                            fontWeight = FontWeight.Normal,
+                                            letterSpacing = 1.sp,
+                                            ),
                                         color = extraColors.whiteInDarkMode,
                                         modifier = Modifier.padding(8.dp),
                                         maxLines = 1
@@ -474,8 +480,9 @@ fun TransactionRequirementsScreen(
                                         text = localizedApp(R.string.requirements_fees_heading),
                                         style = MaterialTheme.typography.titleLarge.copy(
                                             fontSize = 18.sp,
-                                            fontWeight = FontWeight.Medium
-                                        ),
+                                            fontWeight = FontWeight.Normal,
+                                            letterSpacing = 1.sp,
+                                            ),
                                         color = extraColors.whiteInDarkMode,
                                         modifier = Modifier.padding(8.dp),
                                         maxLines = 1
@@ -518,7 +525,7 @@ private fun SummaryTileWithIcon(
     val extraColors = LocalExtraColors.current
     Card(
         modifier = modifier,
-        elevation = CardDefaults.cardElevation(0.dp),
+        elevation = CardDefaults.cardElevation(1.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(extraColors.cardBacground3)
     ) {
@@ -540,7 +547,6 @@ private fun SummaryTileWithIcon(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = label,
-                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
@@ -549,8 +555,9 @@ private fun SummaryTileWithIcon(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = sub,
-                fontWeight = FontWeight.Medium,
-                color = extraColors.textSubTitle,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
+                color = extraColors.textSubTitle.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
         }
@@ -578,7 +585,8 @@ private fun CustomTab(
     ) {
         Text(
             text = title,
-            fontWeight = if (selected) FontWeight.Medium else FontWeight.Medium,
+            fontWeight = if (selected) FontWeight.Normal else FontWeight.Normal,
+            letterSpacing = 1.sp,
             color = extraColors.whiteInDarkMode/*if (selected) {
                 extraColors.blue1
             } else extraColors.blue2*/,
@@ -654,7 +662,8 @@ private fun StepItem(
             Text(
                 text = number.toString(),
                 color = Color.White,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.sp,
                 fontSize = 16.sp
             )
         }

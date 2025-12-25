@@ -87,7 +87,8 @@ fun RequestDetailScreen(navController: NavController, requestDetail: RequestDeta
                     text = parsedData.title,
                     fontSize = 18.sp,
                     color = extraColors.whiteInDarkMode,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 1.sp,
                     maxLines = 2
                 )
             },
@@ -151,8 +152,9 @@ fun RequestDetailScreen(navController: NavController, requestDetail: RequestDeta
                 Text(
                     text = localizedApp(R.string.request_detail_back_title),
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 1.sp,
+                    )
             }
         }
     }
@@ -219,7 +221,8 @@ private fun RequestStatusCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp,
                     fontSize = 18.sp,
                     color = extraColors.whiteInDarkMode,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -270,7 +273,8 @@ private fun ExpandableDataSection(
             ) {
                 Text(
                     text = title,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp,
                     fontSize = 16.sp,
                     color = extraColors.whiteInDarkMode
                 )
@@ -328,7 +332,8 @@ private fun DataItemCard(
             Text(
                 text = label,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = 1.sp,
                 color = extraColors.whiteInDarkMode,
                 modifier = Modifier.weight(0.4f)
             )
