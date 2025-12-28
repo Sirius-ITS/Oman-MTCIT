@@ -25,7 +25,6 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class CreateInspectionRequestDto(
-    val id: Int? = null,                // Request ID: null for new ship, or actual ID from proceed-request/create request
     val shipInfoId: Int = 0,            // Ship info ID
     val purposeId: Int = 0,             // Inspection purpose ID
     val authorityId: Int = 0,           // Inspection authority ID
@@ -78,23 +77,14 @@ data class InspectionFileUpload(
 
 /**
  * Response from creating inspection request
+ * API returns: { "statusCode": 200, "success": true, "message": "...", "data": 416 }
+ * The data field is just the request ID number
  */
 @Serializable
 data class CreateInspectionRequestResponse(
     val statusCode: Int,
     val success: Boolean,
     val message: String,
-    val data: InspectionRequestData
-)
-
-@Serializable
-data class InspectionRequestData(
-    val id: Int = 1234,
-    val requestSerial: String? = null,
-    val requestYear: Int? = null,
-    val inspectionPurpose: String? = null,
-    val inspectionRecordingPort: String? = null,
-    val inspectionAuthority: String? = null,
-    val inspectionApprovedEntity: String? = null
+    val data: Int  // ✅ API returns just the ID, not an object
 )
 

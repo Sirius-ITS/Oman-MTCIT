@@ -52,7 +52,6 @@ class InspectionApiService @Inject constructor(
             println("=".repeat(80))
 
             println("📤 Request Details:")
-            println("   ID: ${dto.id}")
             println("   Ship Info ID: ${dto.shipInfoId}")
             println("   Purpose ID: ${dto.purposeId}")
             println("   Authority ID: ${dto.authorityId}")
@@ -143,9 +142,7 @@ class InspectionApiService @Inject constructor(
                             val inspectionResponse = json.decodeFromJsonElement<CreateInspectionRequestResponse>(responseJson)
 
                             println("✅ Inspection request created successfully!")
-                            println("   Request ID: ${inspectionResponse.data.id}")
-                            println("   Request Serial: ${inspectionResponse.data.requestSerial}")
-                            println("   Request Year: ${inspectionResponse.data.requestYear}")
+                            println("   Request ID: ${inspectionResponse.data}")
                             println("   Message: ${inspectionResponse.message}")
                             println("=".repeat(80))
 

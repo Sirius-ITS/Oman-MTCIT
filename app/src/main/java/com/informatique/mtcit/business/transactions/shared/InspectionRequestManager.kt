@@ -1,11 +1,13 @@
 package com.informatique.mtcit.business.transactions.shared
 
 import android.content.Context
+import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import com.informatique.mtcit.data.api.InspectionApiService
 import com.informatique.mtcit.data.model.CreateInspectionRequestDto
 import com.informatique.mtcit.data.model.InspectionDocumentDto
 import com.informatique.mtcit.data.model.InspectionFileUpload
+import com.informatique.mtcit.data.repository.LookupRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -15,7 +17,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class InspectionRequestManager @Inject constructor(
-    private val inspectionApiService: InspectionApiService
+    private val inspectionApiService: InspectionApiService,
+    private val lookupRepository: LookupRepository
 ) {
 
     /**
@@ -73,12 +76,19 @@ class InspectionRequestManager @Inject constructor(
             }
 
             // ✅ Extract crNumber (commercial registration number if company, else empty string)
-            val crNumber = formData["crNumber"]
-                ?: formData["commercialNumber"]
-                ?: formData["commercialRegistrationNumber"]
-                ?: ""  // Empty string for individual users
+            val personType = formData["selectionPersonType"]
+            val crNumber = if (personType == "شركة") {
+                formData["selectionData"]
+                    ?: formData["crNumber"]
+                    ?: formData["commercialNumber"]
+                    ?: formData["commercialRegistrationNumber"]
+                    ?: ""
+            } else {
+                ""  // Empty string for individuals
+            }
 
-            println("✅ Using crNumber: ${if (crNumber.isEmpty()) "\"\" (individual user)" else crNumber}")
+            println("✅ Person Type: '$personType'")
+            println("✅ Using crNumber: ${if (crNumber.isEmpty()) "\"\" (individual or not provided)" else "'$crNumber' (company)"}")
 
             // ✅ DEBUG: Print all formData keys to see what's available
             println("🔍 DEBUG - All formData keys:")
@@ -88,52 +98,58 @@ class InspectionRequestManager @Inject constructor(
 
             // ✅ Extract inspection purpose ID (send ID only, not "id|name")
             val inspectionPurposeValue = formData["inspectionPurpose"]
-            println("🔍 DEBUG - inspectionPurposeValue: $inspectionPurposeValue")
+            println("🔍 DEBUG - inspectionPurposeValue: '$inspectionPurposeValue'")
 
-            var purposeId = extractIdFromLookup(inspectionPurposeValue)
-            println("🔍 DEBUG - Extracted purposeId: $purposeId")
+            // Try extracting ID from "id|name" format first
+            val purposeId = extractIdFromLookup(inspectionPurposeValue)
+                ?: lookupRepository.getInspectionPurposeId(inspectionPurposeValue ?: "")
 
             if (purposeId == null) {
-                println("⚠️ WARNING: Could not extract inspection purpose ID from: $inspectionPurposeValue")
-                println("⚠️ The dropdown is storing display text only, not 'id|name' format")
-                println("⚠️ Using default purposeId = 1 as fallback")
-                purposeId = 1  // ✅ Use default value
+                println("❌ ERROR: Could not resolve inspection purpose ID for value: '$inspectionPurposeValue'")
+                println("   Available keys: ${formData.keys}")
+                return InspectionSubmitResult.Error("تعذر تحديد معرف الغرض من المعاينة")
             }
-            println("   📋 Using purposeId: $purposeId (from: $inspectionPurposeValue)")
+            println("   ✅ Resolved purposeId: $purposeId (from: $inspectionPurposeValue)")
 
-            // ✅ Extract recording port ID (send ID only, not "id|name")
+            // ✅ Extract recording port ID (send ID as String - port code)
             val inspectionRecordingPortValue = formData["inspectionRecordingPort"]
-            var portIdInt = extractIdFromLookup(inspectionRecordingPortValue)
-            if (portIdInt == null) {
-                println("⚠️ WARNING: Could not extract port ID from: $inspectionRecordingPortValue")
-                println("⚠️ The dropdown is storing display text only, not 'id|name' format")
-                println("⚠️ Using default portId = 1 as fallback")
-                portIdInt = 1  // ✅ Use default value
+            println("🔍 DEBUG - inspectionRecordingPortValue: '$inspectionRecordingPortValue'")
+
+            // Port ID is string (port code like "OMDQM"), extract from "code|name" format or lookup
+            val portId = if (inspectionRecordingPortValue?.contains("|") == true) {
+                val parts = inspectionRecordingPortValue.split("|")
+                parts[0].trim()  // Take first part as port code
+            } else {
+                lookupRepository.getPortId(inspectionRecordingPortValue ?: "")
             }
-            val portId = portIdInt.toString()
-            println("   📋 Using portId: $portId (from: $inspectionRecordingPortValue)")
+
+            if (portId.isNullOrBlank()) {
+                println("❌ ERROR: Could not resolve port ID for value: '$inspectionRecordingPortValue'")
+                return InspectionSubmitResult.Error("تعذر تحديد معرف ميناء تسجيل المعاينة")
+            }
+            println("   ✅ Resolved portId: '$portId' (from: $inspectionRecordingPortValue)")
 
             // ✅ Extract authority ID from combined field (send ID only)
-            // Format: "authority_id|entity_id" (e.g., "5|12") OR just text
+            // Format: "id|name" (e.g., "128|authority name")
             val authorityAndEntityValue = formData["inspectionAuthorityAndEntity"]
+            println("🔍 DEBUG - authorityAndEntityValue: '$authorityAndEntityValue'")
+
             if (authorityAndEntityValue.isNullOrBlank()) {
                 println("❌ No authority and entity selected")
                 return InspectionSubmitResult.Error("يرجى اختيار الجهة والهيئة المعتمدة")
             }
 
-            val authorityParts = authorityAndEntityValue.split("|")
-            var authorityId = authorityParts[0].toIntOrNull()
+            // Try extracting ID from "id|name" format first
+            val authorityId = extractIdFromLookup(authorityAndEntityValue)
+                ?: lookupRepository.getInspectionAuthorityId(authorityAndEntityValue)
 
             if (authorityId == null) {
-                println("⚠️ WARNING: Could not extract authority ID from: $authorityAndEntityValue")
-                println("⚠️ The dropdown is storing display text only, not 'id|name' format")
-                println("⚠️ Using default authorityId = 1 as fallback")
-                authorityId = 1  // ✅ Use default value
+                println("❌ ERROR: Could not resolve authority ID for value: '$authorityAndEntityValue'")
+                return InspectionSubmitResult.Error("تعذر تحديد معرف الجهة المعتمدة للمعاينة")
             }
-            println("   📋 Using authorityId: $authorityId (from: $authorityAndEntityValue)")
+            println("   ✅ Resolved authorityId: $authorityId (from: $authorityAndEntityValue)")
 
             println("✅ Extracted inspection details:")
-            println("   ID (requestId): ${requestId ?: "null (adding new ship)"}")
             println("   Ship Info ID: $shipInfoId")
             println("   Purpose ID: $purposeId")
             println("   Authority ID: $authorityId")
@@ -155,7 +171,15 @@ class InspectionRequestManager @Inject constructor(
                         try {
                             // Parse file URI
                             val fileUri = value.toUri()
-                            val fileName = fileUri.lastPathSegment ?: "document_$docId.pdf"
+
+                            // ✅ Get actual file name using helper
+                            val fileName = getFileName(context, fileUri) ?: run {
+                                val fallback = fileUri.lastPathSegment ?: "document_$docId.pdf"
+                                println("      ⚠️ Could not resolve display name, using: $fallback")
+                                fallback
+                            }
+
+                            println("      ✅ Resolved fileName: '$fileName' from URI")
 
                             // Read file bytes
                             val inputStream = context.contentResolver.openInputStream(fileUri)
@@ -198,16 +222,29 @@ class InspectionRequestManager @Inject constructor(
 
             println("📄 Total documents: ${documents.size}, Total files: ${files.size}")
 
-            // ✅ Create DTO with correct structure
+            // ✅ Create DTO with correct structure (no 'id' field)
             val dto = CreateInspectionRequestDto(
-                id = requestId,             // Use actual requestId (from proceed-request or create request)
                 shipInfoId = shipInfoId,    // Ship info ID
                 purposeId = purposeId,      // Inspection purpose ID
                 authorityId = authorityId,  // Authority ID
                 portId = portId,            // Port ID as string
-                crNumber = crNumber,        // Commercial registration number (or default)
+                crNumber = crNumber,        // Commercial registration number
                 documents = documents       // Documents metadata
             )
+
+            // ✅ DEBUG: Print final DTO values before sending
+            println("=" .repeat(80))
+            println("📤 FINAL REQUEST DTO VALUES:")
+            println("   shipInfoId: ${dto.shipInfoId}")
+            println("   purposeId: ${dto.purposeId}")
+            println("   authorityId: ${dto.authorityId}")
+            println("   portId: '${dto.portId}'")
+            println("   crNumber: '${dto.crNumber}'")
+            println("   documents (${dto.documents.size} items):")
+            dto.documents.forEachIndexed { index, doc ->
+                println("      [$index] fileName='${doc.fileName}', documentId=${doc.documentId}")
+            }
+            println("=" .repeat(80))
 
             // ✅ Call API
             println("📤 Calling InspectionApiService...")
@@ -217,11 +254,12 @@ class InspectionRequestManager @Inject constructor(
                 onSuccess = { response ->
                     println("✅ Inspection request submitted successfully!")
                     println("   Message: ${response.message}")
+                    println("   Request ID: ${response.data}")
                     println("=".repeat(80))
 
                     InspectionSubmitResult.Success(
                         message = response.message,
-                        requestId = response.data.id
+                        requestId = response.data
                     )
                 },
                 onFailure = { error ->
@@ -285,6 +323,29 @@ class InspectionRequestManager @Inject constructor(
             println("⚠️ Exception extracting ID from: $value - ${e.message}")
             e.printStackTrace()
             null
+        }
+    }
+
+    /**
+     * Resolve the display name of a content Uri to ensure we send the exact picked filename
+     */
+    private fun getFileName(context: Context, uri: android.net.Uri): String? {
+        return try {
+            context.contentResolver.query(
+                uri,
+                arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (nameIndex != -1 && cursor.moveToFirst()) {
+                    cursor.getString(nameIndex)
+                } else null
+            } ?: uri.lastPathSegment
+        } catch (e: Exception) {
+            println("⚠️ Failed to resolve file name from uri: $uri, ${e.message}")
+            uri.lastPathSegment
         }
     }
 
