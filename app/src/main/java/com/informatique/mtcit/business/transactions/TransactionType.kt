@@ -193,7 +193,8 @@ enum class TransactionType(
             sendRequestEndpoint = "navigation-permit/{requestId}/send-request",
             sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "navigation-permit/payment",
-            paymentSubmitEndpoint = "navigation-permit/add-payment"
+            paymentSubmitEndpoint = "navigation-permit/add-payment",
+            proceedRequestEndpoint = "navigation-permit/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     RENEW_NAVIGATION_PERMIT(

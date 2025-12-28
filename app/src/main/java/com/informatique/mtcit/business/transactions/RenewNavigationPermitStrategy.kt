@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
+
 /**
  * Strategy for Renew Navigation Permit
  * Uses NavigationLicenseManager for all navigation license operations
@@ -39,8 +40,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
     private val navigationManager: NavigationManager,
-    private val navigationLicenseManager: NavigationLicenseManager
-) : TransactionStrategy {
+    private val navigationLicenseManager: NavigationLicenseManager,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    ) : TransactionStrategy {
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
@@ -232,6 +234,35 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         val stepData = getSteps().getOrNull(step)
 
+        // ✅ Handle marine unit selection (existing ship) to capture requestId from proceed-request
+        if (stepData?.titleRes == R.string.owned_ships) {
+            val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
+            val selectedUnitsJson = data["selectedMarineUnits"] ?: accumulatedFormData["selectedMarineUnits"]
+            val hasSelectedExistingShip = !selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNew
+
+            if (hasSelectedExistingShip) {
+                try {
+                    val result = shipSelectionManager.handleShipSelection(
+                        shipId = selectedUnitsJson,
+                        context = TransactionType.RENEW_NAVIGATION_PERMIT.context
+                    )
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                            accumulatedFormData["requestId"] = result.requestId.toString()
+                            navigationRequestId = result.requestId.toLong()
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                            accumulatedFormData["apiError"] = result.message
+                            return -1
+                        }
+                    }
+                } catch (e: Exception) {
+                    accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
+                    return -1
+                }
+            }
+        }
+
         // ✅ Use stepType instead of checking field IDs
         when (stepData?.stepType) {
             StepType.NAVIGATION_AREAS -> handleNavigationAreasSubmission(data)
@@ -354,6 +385,12 @@ class RenewNavigationPermitStrategy @Inject constructor(
             return navigationRequestId
         }
 
+        // If requestId already captured from proceed-request, reuse it
+        accumulatedFormData["requestId"]?.toLongOrNull()?.let {
+            navigationRequestId = it
+            return navigationRequestId
+        }
+
         // Get selected ship info ID and last nav lic ID from accumulated data
         val shipInfoId = accumulatedFormData["selectedMarineUnit"]?.toLongOrNull()
         val lastLicId = accumulatedFormData["lastNavLicId"]?.toLongOrNull() // TODO: Get from selected ship
@@ -368,6 +405,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
             .onSuccess { (requestId, licId) ->
                 navigationRequestId = requestId
                 lastNavLicId = licId
+                accumulatedFormData["requestId"] = requestId.toString()
                 println("✅ Navigation license renewal request created with ID: $requestId")
             }
             .onFailure { error ->

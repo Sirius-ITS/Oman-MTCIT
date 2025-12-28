@@ -5,10 +5,12 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -111,10 +113,10 @@ fun MainCategoriesScreen(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
-                        Brush.verticalGradient(
+                        Brush.horizontalGradient(
                             colors = listOf(
                                 extraColors.blue1,
-                                extraColors.blue2
+                                extraColors.iconBlueGrey
                             )
                         )
                     )
@@ -394,7 +396,6 @@ fun HomeExtendedFabMenuItem(
         }
     }
 }
-
 @Composable
 fun FilterDropdown(
     label: String,
@@ -407,53 +408,57 @@ fun FilterDropdown(
 
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.15f)
+        ),
         elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { expanded = !expanded }
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // الأيقون على اليسار
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        Color.White.copy(alpha = 0.2f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(
-                            Color.White.copy(alpha = 0.1f),
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = label,
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = localizedApp(R.string.select),
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
-                        letterSpacing = 1.sp,
-                        color = Color.White
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
             }
+            Spacer(modifier = Modifier.width(12.dp))
+            // النص على اليمين
+            Column(
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 10.sp,
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Normal
+                )
+                Text(
+                    text = localizedApp(R.string.select),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
@@ -463,6 +468,75 @@ fun FilterDropdown(
         }
     }
 }
+
+//@Composable
+//fun FilterDropdown(
+//    label: String,
+//    icon: ImageVector,
+//    modifier: Modifier = Modifier,
+//    onSelected: (String) -> Unit
+//) {
+//    var expanded by remember { mutableStateOf(false) }
+//    val extraColors = LocalExtraColors.current
+//
+//    Card(
+//        modifier = modifier,
+//        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground2.copy(alpha = 0.5f)),
+//        elevation = CardDefaults.cardElevation(0.dp),
+//        shape = RoundedCornerShape(16.dp)
+//    ) {
+//        Row(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .clickable { expanded = !expanded }
+//                .padding(horizontal = 12.dp, vertical = 10.dp),
+//            horizontalArrangement = Arrangement.SpaceBetween,
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Row(
+//                horizontalArrangement = Arrangement.spacedBy(8.dp),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                Box(
+//                    modifier = Modifier
+//                        .size(36.dp)
+//                        .background(
+//                            Color.White.copy(alpha = 0.1f),
+//                            CircleShape
+//                        ),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Icon(
+//                        imageVector = icon,
+//                        contentDescription = null,
+//                        tint = Color.White,
+//                        modifier = Modifier.size(24.dp)
+//                    )
+//                }
+//                Column {
+//                    Text(
+//                        text = label,
+//                        fontSize = 12.sp,
+//                        color = Color.White.copy(alpha = 0.5f)
+//                    )
+//                    Text(
+//                        text = localizedApp(R.string.select),
+//                        fontSize = 14.sp,
+//                        fontWeight = FontWeight.Normal,
+//                        letterSpacing = 1.sp,
+//                        color = Color.White
+//                    )
+//                }
+//            }
+//            Icon(
+//                imageVector = Icons.Default.ArrowDropDown,
+//                contentDescription = null,
+//                tint = Color.White,
+//                modifier = Modifier.rotate(if (expanded) 180f else 0f)
+//            )
+//        }
+//    }
+//}
 
 @Composable
 fun CategoryCard(
@@ -524,7 +598,7 @@ fun CategoryCard(
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
 //                                letterSpacing = 1.sp,
-                                color = extraColors.whiteInDarkMode
+                                color = extraColors.whiteInDarkMode.copy(alpha = 0.9f)
                             )
                             if (category.descAr != null || category.descEn != null) {
                                 Spacer(modifier = Modifier.height(4.dp))

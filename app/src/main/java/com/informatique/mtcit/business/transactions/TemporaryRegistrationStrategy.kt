@@ -503,7 +503,8 @@ class TemporaryRegistrationStrategy @Inject constructor(
                         when (result) {
                             is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
                                 println("✅ Ship selection successful via Manager!")
-                                accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                                accumulatedFormData["requestId"] = result.requestId.toString()
+                                requestId = result.requestId.toLong()
                             }
                             is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                                 println("❌ Ship selection failed: ${result.message}")

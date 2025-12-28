@@ -78,6 +78,7 @@ fun PhoneNumberComponent(
                             text = localizedApp(R.string.country_code),
                             color = extraColors.textSubTitle,
                             fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -145,8 +146,9 @@ fun PhoneNumberComponent(
                 placeholder = {
                     Text(
                         text = localizedApp(R.string.enter_phone_number),
-                        color = extraColors.textSubTitle,
-                        fontSize = 16.sp
+                        color = extraColors.textSubTitle.copy(alpha = 0.6f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal
                     )
                 },
                 keyboardOptions = KeyboardOptions(
