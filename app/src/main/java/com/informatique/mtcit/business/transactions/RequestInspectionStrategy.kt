@@ -344,11 +344,14 @@ class RequestInspectionStrategy @Inject constructor(
 //        }
 
         // ✅ Add inspection purpose/authority step with API data
-        // Convert grouped authorities Map to DropdownSection list
+        // Convert grouped authorities Map to DropdownSection list (inject id|name when available)
         val inspectionAuthoritySections = inspectionAuthorityOptions.map { (groupName, authorities) ->
             DropdownSection(
                 title = groupName,
-                items = authorities
+                items = authorities.map { authorityName ->
+                    val id = lookupRepository.getInspectionAuthorityId(authorityName)
+                    if (id != null) "$id|$authorityName" else authorityName
+                }
             )
         }
 
@@ -362,11 +365,21 @@ class RequestInspectionStrategy @Inject constructor(
 
         println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
         // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
+        val purposeOptionsWithIds = inspectionPurposeOptions.ifEmpty { emptyList() }.map { name ->
+            val id = lookupRepository.getInspectionPurposeId(name)
+            if (id != null) "$id|$name" else name
+        }
+
+        val portOptionsWithIds = recordingPorts.map { name ->
+            val id = lookupRepository.getPortId(name)
+            if (id != null) "$id|$name" else name
+        }
+
         if (requiredDocuments.isNotEmpty()) {
             steps.add(
                 SharedSteps.inspectionPurposeAndAuthorityStep(
-                    inspectionPurposes = inspectionPurposeOptions.ifEmpty { emptyList() },
-                    recordingPorts = recordingPorts,
+                    inspectionPurposes = purposeOptionsWithIds,
+                    recordingPorts = portOptionsWithIds,
                     authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() },
                     documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
                 )
