@@ -37,6 +37,14 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
 
+    // Handle OAuth navigation - Navigate to OAuth WebView
+    LaunchedEffect(Unit) {
+        viewModel.navigateToOAuth.collect {
+            println("🚀 Navigating to OAuth WebView...")
+            navController.navigate(NavRoutes.OAuthWebViewRoute.route)
+        }
+    }
+
     // Handle login completion - Navigate to target transaction
     LaunchedEffect(Unit) {
         viewModel.loginComplete.collect { isComplete ->
@@ -102,4 +110,3 @@ fun LoginScreen(
         hideStepperForFirstStep = true // Hide stepper in first step, show "1 of 2" starting from step 2
     )
 }
-

@@ -6,6 +6,7 @@ import com.informatique.mtcit.business.transactions.TransactionStrategy
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.business.usecases.StepNavigationUseCase
 import com.informatique.mtcit.common.ResourceProvider
+import com.informatique.mtcit.data.repository.AuthRepository
 import com.informatique.mtcit.ui.base.UIState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,12 +23,23 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     resourceProvider: ResourceProvider,
     navigationUseCase: StepNavigationUseCase,
-    private val loginStrategy: LoginStrategy
+    private val loginStrategy: LoginStrategy,
+    private val authRepository: AuthRepository
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
     // Event to notify when login is complete
     private val _loginComplete = MutableSharedFlow<Boolean>()
     val loginComplete = _loginComplete.asSharedFlow()
+
+    // Event to trigger OAuth WebView navigation
+    private val _navigateToOAuth = MutableSharedFlow<Unit>()
+    val navigateToOAuth = _navigateToOAuth.asSharedFlow()
+
+    // OAuth URLs
+    companion object {
+        const val OAUTH_AUTH_URL = "https://omankeycloak.isfpegypt.com/realms/oman/protocol/openid-connect/auth?client_id=front&redirect_uri=https%3A%2F%2Fomankeycloak.isfpegypt.com%2Fstarter&response_type=code&scope=openid"
+        const val OAUTH_REDIRECT_URI = "https://omankeycloak.isfpegypt.com/starter"
+    }
 
     init {
         // Initialize login flow with a dummy transaction type
@@ -56,25 +68,50 @@ class LoginViewModel @Inject constructor(
     }
 
     /**
-     * ✅ Override nextStep to automatically submit when OTP is verified
-     * This makes the login flow seamless - one click on OTP screen forwards directly to target transaction
+     * ✅ Override nextStep to trigger OAuth flow when LoginStrategy sets the trigger flag
+     * This respects the architecture - Strategy decides when to trigger OAuth
      */
     override fun nextStep() {
-        val currentState = uiState.value
-        val currentStepIndex = currentState.currentStep
+        viewModelScope.launch {
+            // First call the parent to process the step
+            super.nextStep()
 
-        // Check if we're on step 2 (OTP step) and OTP has been entered
-        if (currentStepIndex == 2) {
-            val otpCode = currentState.formData["otpCode"]
-            if (!otpCode.isNullOrEmpty()) {
-                println("🚀 LoginViewModel: OTP entered, automatically submitting...")
-                // Automatically submit instead of going to next step
-                submitForm()
-                return
+            // Then check if OAuth flow should be triggered after processing
+            val currentState = uiState.value
+            if (currentState.formData["_triggerOAuthFlow"] == "true") {
+                println("🚀 LoginViewModel: OAuth trigger flag detected from LoginStrategy")
+                // Trigger navigation to OAuth WebView
+                _navigateToOAuth.emit(Unit)
             }
         }
+    }
 
-        // For other steps, use normal flow
-        super.nextStep()
+    /**
+     * Handle OAuth authorization code from WebView
+     * Exchange code for access token
+     */
+    fun handleOAuthCode(authorizationCode: String) {
+        viewModelScope.launch {
+            println("🔄 Exchanging OAuth code for token...")
+
+            val result = authRepository.exchangeCodeForToken(authorizationCode)
+
+            result.onSuccess { tokenResponse ->
+                println("✅ OAuth token received: ${tokenResponse.accessToken}")
+                // Token is automatically saved in AuthRepository
+
+                // ✅ Now call submitForm() to complete the login flow properly
+                // This respects the architecture and uses the proper submission handling
+                submitForm()
+            }.onFailure { error ->
+                println("❌ OAuth token exchange failed: ${error.message}")
+
+                // Show error toast to user
+                _showToastEvent.value = error.message ?: "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى"
+
+                // Navigate back or show error in UI
+                // The user can try again from the login screen
+            }
+        }
     }
 }

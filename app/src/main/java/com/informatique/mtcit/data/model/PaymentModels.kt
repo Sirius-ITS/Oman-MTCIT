@@ -78,10 +78,12 @@ data class TariffItem(
 
 @Serializable
 data class TariffRate(
-    val id: Int,
+    val id: Int? = null,
     val tariffItemId: Int? = null,
-    val expressionCode: String,
-    val expressionText: String,
+    val expressionCode: String? = null,
+    val expressionText: String? = null,
+    // Some API responses use a numeric 'tariffRate' field instead of expression fields
+    val tariffRate: Double? = null,
     val createdAt: String? = null,
     val createdBy: String? = null,
     val timeStamp: String? = null,

@@ -98,6 +98,17 @@ enum class StepType {
     REVIEW,
 
     /**
+     * OTP verification step (for login/authentication)
+     */
+    OTP_VERIFICATION,
+
+    /**
+     * Maritime identification fields step (IMO, MMSI, Call Sign)
+     * Used when these fields are missing after ship selection
+     */
+    MARITIME_IDENTIFICATION,
+
+    /**
      * Custom step (default fallback)
      */
     CUSTOM

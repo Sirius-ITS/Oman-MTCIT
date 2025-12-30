@@ -433,6 +433,8 @@
     <string name="select_authority">اختر جهة التسجيل</string>
     <string name="previous_registration_certificate">شهادة التسجيل السابقة</string>
     <string name="permanent_registration_proof">إثبات التسجيل الدائم</string>
+    <string name="maritime_identification_title">بيانات التعريف البحرية</string>
+    <string name="maritime_identification_description">يرجى إدخال رمز النداء ورقم الهوية البحرية (MMSI) المعتمدين للوحدة البحرية كما هو مسجّل رسميًا.</string>
 
     <!-- Existing Registration Info (Suspend/Cancel) -->
     <string name="existing_registration_info">معلومات التسجيل الحالي</string>

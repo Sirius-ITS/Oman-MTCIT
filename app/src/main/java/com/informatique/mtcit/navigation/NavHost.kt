@@ -7,8 +7,9 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,6 +28,7 @@ import com.informatique.mtcit.ui.screens.LoginScreen
 import com.informatique.mtcit.ui.screens.MainCategoriesScreen
 import com.informatique.mtcit.ui.screens.MarineRegistrationScreen
 import com.informatique.mtcit.ui.screens.NotificationScreen
+import com.informatique.mtcit.ui.screens.OAuthWebViewScreen
 import com.informatique.mtcit.ui.screens.PaymentDetailsScreen
 import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
 import com.informatique.mtcit.ui.screens.ProfileScreen
@@ -36,6 +38,7 @@ import com.informatique.mtcit.ui.screens.SettingsScreen
 import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
+import com.informatique.mtcit.ui.viewmodels.LoginViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.serialization.json.Json
@@ -125,6 +128,31 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 categoryId = categoryId,
                 subCategoryId = subCategoryId,
                 transactionId = transactionId
+            )
+        }
+
+        // ✅ OAuth WebView Screen - handles Keycloak authentication
+        composable(route = NavRoutes.OAuthWebViewRoute.route) {
+            val parentEntry = remember(navController.currentBackStackEntry) {
+                navController.previousBackStackEntry
+            }
+
+            val loginViewModel: LoginViewModel = if (parentEntry != null) {
+                hiltViewModel(parentEntry)
+            } else {
+                hiltViewModel()
+            }
+
+            OAuthWebViewScreen(
+                navController = navController,
+                authUrl = LoginViewModel.OAUTH_AUTH_URL,
+                redirectUri = LoginViewModel.OAUTH_REDIRECT_URI,
+                onAuthCodeReceived = { code: String ->
+                    println("✅ Authorization code received: $code")
+                    loginViewModel.handleOAuthCode(code)
+                    // Navigate back to login screen
+                    navController.popBackStack()
+                }
             )
         }
 

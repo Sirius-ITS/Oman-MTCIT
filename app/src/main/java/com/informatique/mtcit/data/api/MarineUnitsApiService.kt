@@ -9,7 +9,6 @@ import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.business.transactions.shared.ProofType
 import com.informatique.mtcit.business.transactions.shared.ShipCategory
 import com.informatique.mtcit.business.transactions.shared.ShipType
-import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.ProceedRequestResponse
 import com.informatique.mtcit.di.module.AppRepository
@@ -70,7 +69,7 @@ class MarineUnitsApiService @Inject constructor(
                 return Result.failure(IllegalStateException("getMyShips suppressed: step not active"))
             }
 
-            if (!stepActive && useTestCivilId) {
+            if (useTestCivilId) {
                 println("🧪 getMyShips: stepActive is false but useTestCivilId=true => forcing call with test civil id")
             }
 
@@ -561,23 +560,31 @@ class MarineUnitsApiService @Inject constructor(
                     println("📥 Response: ${response.response}")
 
                     // ✅ Parse response to extract message and needInspection flag
-                    // TODO: Parse actual API response when backend is ready
-                    // For now, return mock data
-                    val mockNeedInspection = requestId % 2 == 0 // Even IDs need inspection for testing
-                    val message = if (mockNeedInspection) {
-                        "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني"
-                    } else {
-                        "تم إرسال الطلب بنجاح"
-                    }
+                    // Extract the `data` object safely from the response JSON
+                    val dataObj = response.response.jsonObject["data"]?.jsonObject
+
+                    // Parse needInspection: it may be a boolean or string in some responses
+                    val needInspection = dataObj?.get("needInspection")?.jsonPrimitive?.let { prim ->
+                        try {
+                            prim.boolean
+                        } catch (e: Exception) {
+                            // Fallback: check textual content
+                            prim.content.equals("true", ignoreCase = true)
+                        }
+                    } ?: false
+
+                    // Parse message from response data if present, otherwise use defaults
+                    val message = dataObj?.get("message")?.jsonPrimitive?.content ?:
+                        if (needInspection) "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني" else "تم إرسال الطلب بنجاح"
 
                     println("   Message: $message")
-                    println("   Need Inspection: $mockNeedInspection")
+                    println("   Need Inspection: $needInspection")
                     println("=".repeat(80))
 
                     com.informatique.mtcit.business.transactions.shared.ReviewResponse(
                         message = message,
-                        needInspection = mockNeedInspection,
-                        additionalData = emptyMap<String, Any>() // ✅ Fixed: Explicitly specify type
+                        needInspection = needInspection,
+                        additionalData = emptyMap<String, Any>()
                     )
                 }
                 is RepoServiceState.Error -> {

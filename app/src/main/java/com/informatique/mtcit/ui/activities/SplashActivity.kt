@@ -29,42 +29,32 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.lifecycleScope
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.LandingActivity
 import com.informatique.mtcit.ui.theme.AppTheme
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : ComponentActivity() {
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        // Install splash screen and control when it dismisses
-        val splashScreen = installSplashScreen()
+    private var keepSplashOnScreen = true
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Install splash screen BEFORE super.onCreate() for Android 12+
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Keep the splash screen visible until custom content is ready
+        splashScreen.setKeepOnScreenCondition { keepSplashOnScreen }
 
         // Enable edge-to-edge for seamless experience
         enableEdgeToEdge()
 
-        // Keep system splash visible while we prepare
-        var keepSplashOnScreen = true
-        splashScreen.setKeepOnScreenCondition { keepSplashOnScreen }
-
-        // Show custom splash screen immediately
+        // Show custom splash screen
         setContent {
             AppTheme {
                 ModernSplashScreen()
             }
-        }
-
-        // Wait before dismissing system splash
-        lifecycleScope.launch {
-            // Keep system splash for 1 second to let activity fully initialize
-            delay(1000)
-            // Now dismiss system splash and show our custom splash
-            keepSplashOnScreen = false
         }
     }
 
@@ -124,7 +114,10 @@ class SplashActivity : ComponentActivity() {
 
         // Trigger animations on appear
         LaunchedEffect(Unit) {
-            // Remove the initial 500ms delay since we're controlling system splash now
+            // Dismiss system splash screen immediately to show custom splash
+            keepSplashOnScreen = false
+
+            // Start animations
             delay(100)
             stripesOffset = 600f
             particleOpacity = 1f
@@ -136,7 +129,7 @@ class SplashActivity : ComponentActivity() {
             delay(700)
             textOpacity = 1f
 
-            // Wait for full 3 seconds total from start of our animation, then navigate
+            // Wait for full 3 seconds total, then navigate
             delay(1900) // 100+300+700+1900 = 3000ms
             shouldNavigate = true
         }
@@ -404,14 +397,11 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
-    private suspend fun performInitialization() {
-        // 3-second delay to match iOS (3.0 seconds)
-        delay(3000)
-    }
-
     private fun navigateToMainActivity() {
         val intent = Intent(this, LandingActivity::class.java)
         startActivity(intent)
+        // Remove transition animation to prevent white flash
+        overridePendingTransition(0, 0)
         finish()
     }
 }

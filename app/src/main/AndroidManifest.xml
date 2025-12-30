@@ -36,24 +36,18 @@
         android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
 
-        <!-- Splash Activity as Launcher -->
+        <!-- Landing Activity as Launcher -->
         <activity
-            android:name="com.informatique.mtcit.ui.activities.SplashActivity"
-            android:theme="@style/Theme.MTCIT.Splash"
-            android:exported="true">
+            android:name="com.informatique.mtcit.ui.LandingActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AppTheme"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- Landing Activity -->
-        <activity
-            android:name="com.informatique.mtcit.ui.LandingActivity"
-            android:exported="false"
-            android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
-            android:theme="@style/Theme.AppTheme" />
 
         <!-- FileProvider for sharing files with external apps -->
         <provider

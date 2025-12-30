@@ -11,4 +11,19 @@
 <!--        <item name="windowSplashScreenAnimatedIcon">@drawable/moodle</item>-->
 <!--        <item name="postSplashScreenTheme">@style/Theme.AppTheme</item>-->
 <!--    </style>-->
+
+    <!-- Splash Screen Theme for Dark Mode - Force WHITE background to match custom splash -->
+    <style name="Theme.MTCIT.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Force white background even in dark mode -->
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
 </resources>

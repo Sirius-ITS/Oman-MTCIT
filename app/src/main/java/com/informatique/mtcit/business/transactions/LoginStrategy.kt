@@ -2,6 +2,7 @@ package com.informatique.mtcit.business.transactions
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.ui.viewmodels.StepData
@@ -112,25 +113,21 @@ class LoginStrategy @Inject constructor(
 
         println("📝 LoginStrategy.processStepData() - After: $accumulatedFormData")
 
-        // ✅ Handle OTP verification on Step 2
-        if (step == 2) {
+        // ✅ Check step type to determine what to do
+        val currentStep = getSteps().getOrNull(step)
+
+        // ✅ Handle OTP verification using StepType
+        if (currentStep?.stepType == StepType.OTP_VERIFICATION) {
             val otpCode = data["otpCode"]
             if (!otpCode.isNullOrEmpty()) {
-                println("📞 LoginStrategy: Verifying OTP code: $otpCode")
+                println("📞 LoginStrategy: OTP verified on step with type OTP_VERIFICATION")
+                println("🔑 LoginStrategy: OTP code: $otpCode")
 
-                // TODO: Call OTP verification API
-                // For now, simulate success
-                println("✅ LoginStrategy: OTP verified successfully")
+                // ✅ Add a flag to trigger OAuth WebView in LoginViewModel
+                // The LoginViewModel.nextStep() will detect this flag and open OAuth WebView
+                accumulatedFormData["_triggerOAuthFlow"] = "true"
 
-                // ✅ Strategy for immediate submission:
-                // When we return 'step', the BaseViewModel will:
-                // 1. Call getSteps() again
-                // 2. getSteps() will now return step 2 as a review step (empty fields) since OTP is present
-                // 3. The UI will show this as a review step with Submit button
-                // 4. We need to trigger submit automatically
-
-                // Instead, we mark this step as ready for submission
-                // by making it a review step in getSteps()
+                println("✅ LoginStrategy: OTP step processed, OAuth flow will be triggered")
             }
         }
 
@@ -149,6 +146,11 @@ class LoginStrategy @Inject constructor(
         // ✅ Return success - this will trigger LoginViewModel.loginComplete
         // which navigates to the target transaction
         return Result.success(true)
+    }
+
+    // ✅ Override getFormData to return accumulated form data (including OAuth trigger flag)
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData
     }
 
     override fun getContext(): TransactionContext {

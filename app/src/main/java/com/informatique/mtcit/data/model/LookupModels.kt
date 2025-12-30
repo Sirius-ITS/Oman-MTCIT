@@ -257,7 +257,8 @@ data class ShipRef(
     val id: Int,
     val shipName: String? = null,
     val imoNumber: Int? = null,
-    val callSign: String? = null
+    val callSign: String? = null,
+    val mmsiNumber: Int? = null  // ✅ Added mmsiNumber field
 )
 
 /**

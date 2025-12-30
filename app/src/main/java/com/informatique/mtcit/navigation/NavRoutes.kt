@@ -92,4 +92,7 @@ sealed class NavRoutes(val route: String) {
         fun createRoute(detail: RequestDetail)
                 = "request-detail/${Uri.encode(Json.encodeToString(detail))}"
     }
+
+    // OAuth WebView Route
+    data object OAuthWebViewRoute : NavRoutes("oauth_webview")
 }

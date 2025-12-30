@@ -1465,8 +1465,9 @@ object SharedSteps {
         )
 
         return StepData(
-            titleRes = R.string.otp_verification_title, // "تحقق من رقم هاتفك المحمول"
-            descriptionRes = R.string.otp_verification_description, // "لقد أرسلنا رمزاً مكوّن من 6 أرقام إلى رقم هاتفك المحمول."
+            stepType = StepType.OTP_VERIFICATION, // ✅ Add StepType
+            titleRes = R.string.otp_verification_title,
+            descriptionRes = R.string.otp_verification_description,
             fields = fields
         )
     }
@@ -1534,6 +1535,74 @@ object SharedSteps {
             descriptionRes = R.string.inspection_purpose_and_authority_description, // "يرجى اختيار الجهة والغرض من المعاينة لضمان توجيه الطلب للإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية."
             fields = fields,
             requiredLookups = listOf("inspectionPurposes", "inspectionPorts", "inspectionAuthorities") // ✅ Load via onStepOpened
+        )
+    }
+
+    /**
+     * Maritime Identification Fields Step
+     * Used when imoNumber, mmsiNumber, or callSign are missing after ship selection
+     *
+     * Fields that already have values will be disabled, empty ones will be editable
+     *
+     * @param imoNumber Current IMO number (null/empty if needs to be filled)
+     * @param mmsiNumber Current MMSI number (null/empty if needs to be filled)
+     * @param callSign Current call sign (null/empty if needs to be filled)
+     */
+    fun maritimeIdentificationStep(
+        imoNumber: String? = null,
+        mmsiNumber: String? = null,
+        callSign: String? = null
+    ): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Call Sign field - enabled only if empty
+        val callSignIsEmpty = callSign.isNullOrBlank()
+        fields.add(
+            FormField.TextField(
+                id = "callSign",
+                labelRes = R.string.call_sign,
+                mandatory = callSignIsEmpty, // Only mandatory if it's currently empty
+                enabled = callSignIsEmpty, // Only enabled if empty
+                initialValue = callSign ?: "",
+                maxLength = 10
+            )
+        )
+
+        // MMSI Number field - enabled only if empty
+        val mmsiIsEmpty = mmsiNumber.isNullOrBlank()
+        fields.add(
+            FormField.TextField(
+                id = "mmsiNumber",
+                labelRes = R.string.mmsi_number,
+                isNumeric = true,
+                mandatory = mmsiIsEmpty, // Only mandatory if it's currently empty
+                enabled = mmsiIsEmpty, // Only enabled if empty
+                initialValue = mmsiNumber ?: "",
+                maxLength = 9,
+                minLength = 9
+            )
+        )
+
+        // IMO Number field - enabled only if empty
+        val imoIsEmpty = imoNumber.isNullOrBlank()
+        fields.add(
+            FormField.TextField(
+                id = "imoNumber",
+                labelRes = R.string.imo_number,
+                isNumeric = true,
+                mandatory = imoIsEmpty, // Only mandatory if it's currently empty
+                enabled = imoIsEmpty, // Only enabled if empty
+                initialValue = imoNumber ?: "",
+                maxLength = 7,
+                minLength = 7
+            )
+        )
+
+        return StepData(
+            stepType = StepType.MARITIME_IDENTIFICATION,
+            titleRes = R.string.maritime_identification_title,
+            descriptionRes = R.string.maritime_identification_description,
+            fields = fields
         )
     }
 

@@ -69,6 +69,12 @@ class PermanentRegistrationStrategy @Inject constructor(
     // ✅ الحل: اعمل cache للـ form data
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ Store maritime identification data from ship selection
+    private var selectedShipImoNumber: String? = null
+    private var selectedShipMmsiNumber: String? = null
+    private var selectedShipCallSign: String? = null
+    private var needsMaritimeIdentification: Boolean = false
+
     private val requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.toRequestTypeId()
 
 
@@ -154,136 +160,43 @@ class PermanentRegistrationStrategy @Inject constructor(
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 
+        // Step 1: Person Type
         steps.add(SharedSteps.personTypeStep(typeOptions))
 
-        // Step 1: Commercial Registration (بس لو اختار شركة)
+        // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-
-        if (selectedPersonType == "شركة") {  // ⚠️ بيقارن بالـ string "شركة"
+        if (selectedPersonType == "شركة") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
+        // Step 3: Marine Unit Selection
         steps.add(
-            SharedSteps.marineUnitRegistrationCertificateStep(
-                showInfoMessage = true
+            SharedSteps.marineUnitSelectionStep(
+                units = marineUnits,
+                allowMultipleSelection = false,
+                showAddNewButton = true,
+                showOwnedUnitsWarning = true
             )
         )
-        val hasTemporaryCertificate = accumulatedFormData["hasTemporaryRegistrationCertificate"]
 
-        if (hasTemporaryCertificate == "yes") {
-            // ✅ لو "نعم": اتخطى كل الـ steps التقنية وروح على Insurance مباشرة
-            println("✅ User has temporary certificate - Skipping technical steps")
-            // بس هنضيف Owner Info (مهم للتسجيل)
-
-
+        // ✅ Step 4 (Conditional): Maritime Identification - only if fields are missing
+        if (needsMaritimeIdentification) {
+            println("📋 Adding Maritime Identification Step")
             steps.add(
-                SharedSteps.marineUnitSelectionStep(
-                    units = marineUnits,
-                    allowMultipleSelection = false, // اختيار وحدة واحدة فقط
-                    showAddNewButton = false,
-                    showOwnedUnitsWarning = true
-                )
-            )
-            steps.add(
-                SharedSteps.insuranceDocumentStep(
-                    countries = countryOptions
-                )
-            )
-            steps.add(
-                SharedSteps.marineUnitNameSelectionStep(
-                    showReservationInfo = true
-                )
-            )
-
-        } else if (hasTemporaryCertificate == "no") {
-
-            // Use filtered ship types if available, otherwise use empty list
-            val shipTypesToUse = if (isShipTypeFiltered) filteredShipTypeOptions else emptyList()
-
-            println("🔧 getSteps - isFiltered: $isShipTypeFiltered, types count: ${shipTypesToUse.size}")
-
-            steps.add(
-                SharedSteps.unitSelectionStep(
-                    shipTypes = shipTypesToUse,  // Use filtered types or empty list
-                    shipCategories = shipCategoryOptions,
-                    ports = portOptions,
-                    countries = countryOptions,
-                    marineActivities = marineActivityOptions,
-                    proofTypes = proofTypeOptions,
-                    buildingMaterials = emptyList(), // TODO: Add when API ready
-                    includeIMO = true,
-                    includeMMSI = true,
-                    includeManufacturer = true,
-                    includeProofDocument = false,
-                    includeConstructionDates = true,
-                    includeRegistrationCountry = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.marineUnitDimensionsStep(
-                    includeHeight = true,
-                    includeDecksCount = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.marineUnitWeightsStep(
-                    includeMaxPermittedLoad = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.engineInfoStep(
-                    manufacturers = listOf(
-                        "Manufacturer 1",
-                        "Manufacturer 2",
-                        "Manufacturer 3"
-                    ),
-                    enginesTypes = engineTypeOptions,
-                    countries = countryOptions,
-                    fuelTypes = engineFuelTypeOptions,
-                    engineConditions = engineStatusOptions,
-                )
-            )
-//            }
-
-
-            steps.add(
-                SharedSteps.ownerInfoStep(
-                    nationalities = countryOptions,
-                    countries = countryOptions,
-                    includeCompanyFields = true,
-                )
-            )
-            steps.add(
-                SharedSteps.documentsStep(
-                    requiredDocuments = listOf(
-                        DocumentConfig(
-                            id = "shipbuildingCertificate",
-                            labelRes = R.string.shipbuilding_certificate_or_sale_contract,
-                            mandatory = true
-                        ),
-                        DocumentConfig(
-                            id = "inspectionDocuments",
-                            labelRes = R.string.inspection_documents,
-                            mandatory = true
-                        )
-                    )
-                )
-            )
-            steps.add(SharedSteps.reviewStep())
-            steps.add(
-                SharedSteps.insuranceDocumentStep(
-                    countries = countryOptions
+                SharedSteps.maritimeIdentificationStep(
+                    imoNumber = selectedShipImoNumber,
+                    mmsiNumber = selectedShipMmsiNumber,
+                    callSign = selectedShipCallSign
                 )
             )
         }
-            steps.add(
-                SharedSteps.marineUnitNameSelectionStep(
-                    showReservationInfo = true
-                )
+
+        // Step 5: Insurance Document
+        steps.add(
+            SharedSteps.insuranceDocumentStep(
+                countries = countryOptions
             )
+        )
 
         return steps
     }
@@ -370,6 +283,18 @@ class PermanentRegistrationStrategy @Inject constructor(
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
                             println("✅ Ship selection successful!")
                             accumulatedFormData["createdRequestId"] = result.requestId.toString()
+
+                            // ✅ NEW: Store maritime identification data
+                            selectedShipImoNumber = result.imoNumber
+                            selectedShipMmsiNumber = result.mmsiNumber
+                            selectedShipCallSign = result.callSign
+                            needsMaritimeIdentification = result.needsMaritimeIdentification
+
+                            // ✅ Also update form data with maritime identification fields
+                            accumulatedFormData["imoNumber"] = result.imoNumber ?: ""
+                            accumulatedFormData["mmsiNumber"] = result.mmsiNumber ?: ""
+                            accumulatedFormData["callSign"] = result.callSign ?: ""
+                            accumulatedFormData["needsMaritimeIdentification"] = result.needsMaritimeIdentification.toString()
                         }
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                             println("❌ Ship selection failed: ${result.message}")

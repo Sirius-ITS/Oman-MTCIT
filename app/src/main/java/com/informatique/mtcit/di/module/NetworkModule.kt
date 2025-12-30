@@ -2,10 +2,13 @@ package com.informatique.mtcit.di.module
 
 import com.abanoub.myapp.di.security.Environment
 import com.abanoub.myapp.di.security.EnvironmentConfig
+import com.informatique.mtcit.data.datastorehelper.TokenManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import android.content.Context
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.network.sockets.ConnectTimeoutException
@@ -22,6 +25,7 @@ import io.ktor.client.request.header
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 import java.security.SecureRandom
@@ -55,7 +59,11 @@ class NetworkModule {
 
     @Singleton
     @Provides
-    fun provideHttpClient(environment: Environment, json: Json): HttpClient {
+    fun provideHttpClient(
+        environment: Environment,
+        json: Json,
+        @ApplicationContext context: Context
+    ): HttpClient {
         return HttpClient(Android) {
             // Engine configuration
             engine {
@@ -87,15 +95,23 @@ class NetworkModule {
             // Default request configuration
             defaultRequest {
                 url(environment.baseUrl)
-                header("X-API-Key", environment.apiKey)
+//                header("X-API-Key", environment.apiKey)
                 header("X-Client-Version", "BuildConfig.VERSION_NAME")
                 header("X-Platform", "Android")
-                header(
-                    key = "X-Auth-Token",
-                    // mortgageValue = "ZWE3ODUxMTEtMDM5Zi00ODQ2LTgyYWItMDJlZTIzYTEwNzBh" // Qrcode data
-                    value = "ZWMxNjZjMTEtZTQwZS00OGE5LWJmMzYtZDkwNDA1ZWU5ZDdh"
-                    // mortgageValue = preferences.getAuthToken()
-                )
+
+                // ✅ Dynamic OAuth token from TokenManager as Bearer token
+                val token = runBlocking {
+                    TokenManager.getAccessToken(context)
+                }
+
+                if (!token.isNullOrEmpty()) {
+                    // ✅ Use OAuth token as Bearer token (industry standard)
+                    header("Authorization", "Bearer $token")
+                } else {
+                    // ✅ Fallback to legacy X-Auth-Token header with hardcoded token
+//                    header("X-Auth-Token", "ZWMxNjZjMTEtZTQwZS00OGE5LWJmMzYtZDkwNDA1ZWU5ZDdh")
+                }
+
                 contentType(ContentType.Application.Json)
             }
 

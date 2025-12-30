@@ -359,6 +359,8 @@
     <string name="select_authority">Select registration authority</string>
     <string name="previous_registration_certificate">Previous Registration Certificate</string>
     <string name="permanent_registration_proof">Permanent Registration Proof</string>
+    <string name="maritime_identification_title">Maritime Identification Data</string>
+    <string name="maritime_identification_description">Please enter the approved call sign and Maritime Identification Number (MMSI) for the maritime unit as officially registered</string>
 
     <!-- Existing Registration Info (Suspend/Cancel) -->
     <string name="existing_registration_info">Existing Registration Information</string>

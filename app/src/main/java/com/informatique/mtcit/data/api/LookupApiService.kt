@@ -1228,14 +1228,14 @@ class LookupApiService @Inject constructor(
 
     /**
      * Get required documents for a specific request type
-     * API: reqtype/{requestTypeId}/documents
+     * API: reqtype/{requestTypeId}/active-documents
      *
      * @param requestTypeId The ID of the request type
      * @return Result containing list of required documents
      */
     suspend fun getRequiredDocumentsByRequestType(requestTypeId: String): Result<RequiredDocumentsResponse> {
         return try {
-            when (val response = repo.onGet("reqtype/$requestTypeId/documents")) {
+            when (val response = repo.onGet("reqtype/$requestTypeId/active-documents")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
 
