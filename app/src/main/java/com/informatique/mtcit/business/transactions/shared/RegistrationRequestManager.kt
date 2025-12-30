@@ -713,15 +713,25 @@ class RegistrationRequestManager @Inject constructor(
                             if (firstElement is kotlinx.serialization.json.JsonPrimitive) {
                                 shipId = firstElement.content
                                 println("🔍 Format 1: Simple ID array -> $shipId")
+                                // ✅ Use shipId as shipInfoId when no explicit shipInfoId
+                                if (shipId != null) {
+                                    formData["shipInfoId"] = shipId
+                                    println("✅ Using shipId as shipInfoId: $shipId")
+                                }
                             } else if (firstElement is kotlinx.serialization.json.JsonObject) {
                                 val selectedUnit = firstElement.jsonObject
                                 shipId = selectedUnit["id"]?.jsonPrimitive?.content
                                 println("🔍 Format 2: Object array -> $shipId")
 
                                 // Extract shipInfoId if available
-                                selectedUnit["shipInfoId"]?.jsonPrimitive?.content?.let {
-                                    formData["shipInfoId"] = it
-                                    println("✅ Found shipInfoId: $it")
+                                val explicitShipInfoId = selectedUnit["shipInfoId"]?.jsonPrimitive?.content
+                                if (explicitShipInfoId != null) {
+                                    formData["shipInfoId"] = explicitShipInfoId
+                                    println("✅ Found explicit shipInfoId: $explicitShipInfoId")
+                                } else if (shipId != null) {
+                                    // ✅ Fallback: Use shipId as shipInfoId
+                                    formData["shipInfoId"] = shipId
+                                    println("✅ Using shipId as shipInfoId: $shipId")
                                 }
                             }
 

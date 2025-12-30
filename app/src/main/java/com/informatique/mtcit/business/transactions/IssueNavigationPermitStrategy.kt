@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
@@ -32,6 +33,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private val marineUnitRepository: MarineUnitRepository,
     private val lookupRepository: LookupRepository,
     private val navigationLicenseManager: NavigationLicenseManager,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val paymentManager: PaymentManager
  ) : TransactionStrategy {
 
@@ -194,6 +196,35 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         val stepData = getSteps().getOrNull(step)
 
+        // ✅ Handle marine unit selection (existing ship) to capture requestId from proceed-request
+        if (stepData?.titleRes == R.string.owned_ships) {
+            val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
+            val selectedUnitsJson = data["selectedMarineUnits"]
+            val hasSelectedExistingShip = !selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNew
+
+            if (hasSelectedExistingShip) {
+                try {
+                    val result = shipSelectionManager.handleShipSelection(
+                        shipId = selectedUnitsJson,
+                        context = TransactionType.ISSUE_NAVIGATION_PERMIT.context
+                    )
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                            accumulatedFormData["requestId"] = result.requestId.toString()
+                            navigationRequestId = result.requestId.toLong()
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                            accumulatedFormData["apiError"] = result.message
+                            return -1
+                        }
+                    }
+                } catch (e: Exception) {
+                    accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
+                    return -1
+                }
+            }
+        }
+
         // ✅ Use stepType instead of checking field IDs
         when (stepData?.stepType) {
             StepType.NAVIGATION_AREAS -> {
@@ -303,6 +334,12 @@ class IssueNavigationPermitStrategy @Inject constructor(
             return navigationRequestId
         }
 
+        // If requestId already captured from proceed-request, reuse it
+        accumulatedFormData["requestId"]?.toLongOrNull()?.let {
+            navigationRequestId = it
+            return navigationRequestId
+        }
+
         // Get selected ship info ID from accumulated data
         val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
 
@@ -343,6 +380,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         // ✅ Create the request - let exceptions propagate to ViewModel
         navigationRequestId = navigationLicenseManager.createIssueRequest(shipInfoId).getOrThrow()
+        accumulatedFormData["requestId"] = navigationRequestId?.toString() ?: ""
         println("✅ Navigation license request created with ID: $navigationRequestId")
 
         return navigationRequestId

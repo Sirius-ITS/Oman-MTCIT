@@ -156,9 +156,8 @@ fun TransactionFormContent(
                     Text(
                         text = transactionTitle,
                         fontSize = 18.sp,
-                        color = extraColors.whiteInDarkMode,
-                        fontWeight = FontWeight.Normal,
-                        letterSpacing = 1.sp,
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 2
                     )
                 },
@@ -353,18 +352,17 @@ fun TransactionFormContent(
                     ) {
                         Text(
                             text = localizedApp(currentStepData.titleRes),
-                            style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Normal,
-                            letterSpacing = 1.sp,
-                            fontSize = 18.sp,
-                            color = extraColors.whiteInDarkMode,
+                            fontSize = 16.sp,
+                            color = extraColors.whiteInDarkMode.copy(alpha = 0.9f),
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
                         Text(
                             text = localizedApp(currentStepData.descriptionRes),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = extraColors.textSubTitle
+                            color = extraColors.textSubTitle.copy(alpha = 0.7f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal
                         )
                     }
                 }
@@ -471,8 +469,10 @@ fun GenericNavigationBottomBar(
                 ) {
                     Text(
                         text = localizedApp(R.string.back_button),
-                        fontSize = 18.sp
-                    )
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                        )
                 }
             }
             Spacer(modifier = Modifier.width(12.dp))
@@ -497,18 +497,30 @@ fun GenericNavigationBottomBar(
                             color = Color.White
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(localizedApp(R.string.loading))
+                        Text(
+                            localizedApp(R.string.loading),
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
                     }
                 } else {
                     // Show "Pay" on PAYMENT step, "Accept & Send" on review step, or "Next" otherwise
                     when {
                         currentStepType == com.informatique.mtcit.business.transactions.shared.StepType.PAYMENT -> {
                             // Show "Pay" button for payment step
-                            Text(localizedApp(R.string.pay_button))
+                            Text(localizedApp(R.string.pay_button) ,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
                         }
                         isReviewStep || currentStep >= totalSteps - 1 -> {
                             // Show "Accept & Send" on review step or last step
-                            Text(localizedApp(R.string.accept_and_send))
+                            Text(localizedApp(R.string.accept_and_send) , fontWeight = FontWeight.Normal,
+                                fontSize = 14.sp,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
                         }
                         else -> {
                             // Show "Next" button for regular steps
@@ -517,7 +529,9 @@ fun GenericNavigationBottomBar(
                             ) {
                                 Text(
                                     text = localizedApp(R.string.next_button),
-                                    fontSize = 18.sp
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(vertical = 4.dp)
                                 )
 //                                Spacer(modifier = Modifier.width(8.dp))
 //                                Icon(

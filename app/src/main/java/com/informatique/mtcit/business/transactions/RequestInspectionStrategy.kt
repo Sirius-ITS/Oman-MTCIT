@@ -46,6 +46,7 @@ class RequestInspectionStrategy @Inject constructor(
     private val paymentManager: PaymentManager,
     private val reviewManager: ReviewManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    private val inspectionRequestManager: com.informatique.mtcit.business.transactions.shared.InspectionRequestManager,  // ✅ NEW: Inspection manager
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy, MarineUnitValidatable {
 
@@ -278,40 +279,40 @@ class RequestInspectionStrategy @Inject constructor(
                 )
             )
 
-            steps.add(
-                SharedSteps.marineUnitDimensionsStep(
-                    includeHeight = true,
-                    includeDecksCount = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.marineUnitWeightsStep(
-                    includeMaxPermittedLoad = true
-                )
-            )
-
-            steps.add(
-                SharedSteps.engineInfoStep(
-                    manufacturers = listOf(
-                        "Manufacturer 1",
-                        "Manufacturer 2",
-                        "Manufacturer 3"
-                    ),
-                    enginesTypes = engineTypeOptions,
-                    countries = countryOptions,
-                    fuelTypes = engineFuelTypeOptions,
-                    engineConditions = engineStatusOptions,
-                )
-            )
-
-            steps.add(
-                SharedSteps.ownerInfoStep(
-                    nationalities = countryOptions,
-                    countries = countryOptions,
-                    includeCompanyFields = true,
-                )
-            )
+//            steps.add(
+//                SharedSteps.marineUnitDimensionsStep(
+//                    includeHeight = true,
+//                    includeDecksCount = true
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.marineUnitWeightsStep(
+//                    includeMaxPermittedLoad = true
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.engineInfoStep(
+//                    manufacturers = listOf(
+//                        "Manufacturer 1",
+//                        "Manufacturer 2",
+//                        "Manufacturer 3"
+//                    ),
+//                    enginesTypes = engineTypeOptions,
+//                    countries = countryOptions,
+//                    fuelTypes = engineFuelTypeOptions,
+//                    engineConditions = engineStatusOptions,
+//                )
+//            )
+//
+//            steps.add(
+//                SharedSteps.ownerInfoStep(
+//                    nationalities = countryOptions,
+//                    countries = countryOptions,
+//                    includeCompanyFields = true,
+//                )
+//            )
 
             // ✅ Check overallLength to determine if inspection documents are mandatory
             val overallLength = accumulatedFormData["overallLength"]?.toDoubleOrNull() ?: 0.0
@@ -331,23 +332,26 @@ class RequestInspectionStrategy @Inject constructor(
         }
 
         println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
-        // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
-        if (requiredDocuments.isNotEmpty()) {
-            steps.add(
-                SharedSteps.dynamicDocumentsStep(
-                    documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
-                )
-            )
-        } else {
-            println("ℹ️ Skipping dynamic documents step - no required documents returned from API")
-        }
+//        // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
+//        if (requiredDocuments.isNotEmpty()) {
+//            steps.add(
+//                SharedSteps.dynamicDocumentsStep(
+//                    documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
+//                )
+//            )
+//        } else {
+//            println("ℹ️ Skipping dynamic documents step - no required documents returned from API")
+//        }
 
         // ✅ Add inspection purpose/authority step with API data
-        // Convert grouped authorities Map to DropdownSection list
+        // Convert grouped authorities Map to DropdownSection list (inject id|name when available)
         val inspectionAuthoritySections = inspectionAuthorityOptions.map { (groupName, authorities) ->
             DropdownSection(
                 title = groupName,
-                items = authorities
+                items = authorities.map { authorityName ->
+                    val id = lookupRepository.getInspectionAuthorityId(authorityName)
+                    if (id != null) "$id|$authorityName" else authorityName
+                }
             )
         }
 
@@ -359,13 +363,31 @@ class RequestInspectionStrategy @Inject constructor(
         println("   - ${recordingPorts.size} recording ports")
         println("   - ${inspectionAuthoritySections.size} authority sections")
 
-        steps.add(
-            SharedSteps.inspectionPurposeAndAuthorityStep(
-                inspectionPurposes = inspectionPurposeOptions.ifEmpty { emptyList() },
-                recordingPorts = recordingPorts,
-                authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() }
+        println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
+        // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
+        val purposeOptionsWithIds = inspectionPurposeOptions.ifEmpty { emptyList() }.map { name ->
+            val id = lookupRepository.getInspectionPurposeId(name)
+            if (id != null) "$id|$name" else name
+        }
+
+        val portOptionsWithIds = recordingPorts.map { name ->
+            val id = lookupRepository.getPortId(name)
+            if (id != null) "$id|$name" else name
+        }
+
+        if (requiredDocuments.isNotEmpty()) {
+            steps.add(
+                SharedSteps.inspectionPurposeAndAuthorityStep(
+                    inspectionPurposes = purposeOptionsWithIds,
+                    recordingPorts = portOptionsWithIds,
+                    authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() },
+                    documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
+                )
             )
-        )
+        }else {
+                println("ℹ️ Skipping dynamic documents step - no required documents returned from API")
+            }
+
 
         steps.add(SharedSteps.reviewStep())
 
@@ -514,8 +536,8 @@ class RequestInspectionStrategy @Inject constructor(
 
                 if (hasSelectedExistingShip) {
                     println("🚢 User selected EXISTING ship - calling ShipSelectionManager...")
-                    // ✅ WORKAROUND: Simulate successful API call for existing ship selection
-//                    accumulatedFormData["requestId"] = "25"
+//                     ✅ WORKAROUND: Simulate successful API call for existing ship selection
+                    accumulatedFormData["requestId"] = "25"
 
                     try {
                         val result = shipSelectionManager.handleShipSelection(
@@ -527,6 +549,7 @@ class RequestInspectionStrategy @Inject constructor(
                             is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
                                 println("✅ Ship selection successful via Manager!")
                                 accumulatedFormData["requestId"] = result.requestId.toString()
+                                accumulatedFormData["createdRequestId"] = result.requestId.toString()
                             }
                             is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                                 println("❌ Ship selection failed: ${result.message}")
@@ -548,6 +571,78 @@ class RequestInspectionStrategy @Inject constructor(
                 } else {
                     println("✅ User is adding NEW ship - skipping ShipSelectionManager, continuing to next step")
                     // User is adding a new ship - don't call the API, just continue to unit data step
+                }
+            }
+
+            // ✅ NEW: Handle INSPECTION_PURPOSES_AND_AUTHORITIES step - Submit inspection request with documents
+            if (stepType == StepType.INSPECTION_PURPOSES_AND_AUTHORITIES) {
+                println("🔍 Processing INSPECTION_PURPOSES_AND_AUTHORITIES step - submitting request with documents...")
+
+                // ✅ DEBUG: Print ALL accumulated formData before processing
+                println("🔍 DEBUG - accumulatedFormData BEFORE processing:")
+                accumulatedFormData.forEach { (key, value) ->
+                    println("   [$key] = $value")
+                }
+
+                // ✅ Check if user is adding new ship (not selecting existing ship)
+                val isAddingNewUnit = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
+                val selectedUnits = accumulatedFormData["selectedMarineUnits"]
+                val isSelectingExistingShip = !selectedUnits.isNullOrEmpty() && selectedUnits != "[]"
+
+                println("🔍 DEBUG - User flow:")
+                println("   isAddingNewUnit: $isAddingNewUnit")
+                println("   selectedMarineUnits: $selectedUnits")
+                println("   isSelectingExistingShip: $isSelectingExistingShip")
+                println("   requestId in formData: ${accumulatedFormData["requestId"]}")
+                println("   shipInfoId in formData: ${accumulatedFormData["shipInfoId"]}")
+                println("   shipId in formData: ${accumulatedFormData["shipId"]}")
+
+                // ✅ Create a copy of formData for inspection request
+                val inspectionFormData = accumulatedFormData.toMutableMap()
+
+                // ✅ If adding new ship, remove requestId so it sends null
+                if (isAddingNewUnit || !isSelectingExistingShip) {
+                    println("⚠️ User is adding NEW ship - removing requestId from inspection request (will send id = null)")
+                    inspectionFormData.remove("requestId")
+                } else {
+                    println("✅ User selected EXISTING ship - keeping requestId for inspection request")
+                }
+
+                // ✅ DEBUG: Print final formData being sent to manager
+                println("🔍 DEBUG - inspectionFormData AFTER processing:")
+                inspectionFormData.forEach { (key, value) ->
+                    println("   [$key] = $value")
+                }
+
+                try {
+                    val result = inspectionRequestManager.submitInspectionRequest(
+                        formData = inspectionFormData,
+                        context = appContext
+                    )
+
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.InspectionSubmitResult.Success -> {
+                            println("✅ Inspection request submitted successfully!")
+                            println("   Message: ${result.message}")
+                            println("   Request ID: ${result.requestId}")
+
+                            // Store success message
+                            accumulatedFormData["inspectionSubmitMessage"] = result.message
+                            accumulatedFormData["inspectionSubmitted"] = "true"
+
+                            // Continue to next step
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.InspectionSubmitResult.Error -> {
+                            println("❌ Inspection request submission failed: ${result.message}")
+                            accumulatedFormData["apiError"] = result.message
+                            return -1 // Block navigation
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Exception submitting inspection request: ${e.message}")
+                    e.printStackTrace()
+                    accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                    return -1
                 }
             }
 
@@ -734,6 +829,23 @@ class RequestInspectionStrategy @Inject constructor(
             return // Don't process lookups for payment step
         }
 
+        // ✅ NEW: If this is inspection purposes step, force reload authorities if we have shipInfoId now
+        if (step.stepType == StepType.INSPECTION_PURPOSES_AND_AUTHORITIES) {
+            println("🔍 Inspection purposes step opened")
+
+            val shipInfoId = accumulatedFormData["shipInfoId"]
+            if (shipInfoId != null && inspectionAuthorityOptions.isEmpty()) {
+                println("📥 shipInfoId is now available ($shipInfoId) - force loading inspection authorities...")
+
+                // Clear the cached options to force reload
+                inspectionAuthorityOptions = emptyMap()
+
+                // Trigger the lookup to load
+                onLookupStarted?.invoke("inspectionAuthorities")
+                loadLookup("inspectionAuthorities")
+            }
+        }
+
 
         if (step.requiredLookups.isEmpty()) {
             println("ℹ️ Step $stepIndex has no required lookups")
@@ -903,36 +1015,49 @@ class RequestInspectionStrategy @Inject constructor(
                     }
                 }
                 "inspectionAuthorities" -> {
-                    // Get shipInfoId from accumulated form data
-                    val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
-                    val shipInfoId = if (selectedUnitsJson != null) {
-                        selectedUnitsJson
-                            .replace("[", "")
-                            .replace("]", "")
-                            .replace("\"", "")
-                            .trim()
-                            .toIntOrNull()
-                    } else {
-                        null
-                    }
+                    // ✅ Get shipInfoId from accumulated form data
+                    // Case 1: User selected existing ship → shipInfoId in selectedMarineUnits
+                    // Case 2: User added new ship → shipInfoId returned from create request API
+
+                    val shipInfoId = accumulatedFormData["shipInfoId"]?.toIntOrNull()
+                        ?: run {
+                            // Try to extract from selectedMarineUnits (existing ship)
+                            val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
+                            selectedUnitsJson?.let {
+                                it.replace("[", "")
+                                  .replace("]", "")
+                                  .replace("\"", "")
+                                  .trim()
+                                  .toIntOrNull()
+                            }
+                        }
+
+                    println("🔍 DEBUG - Looking for shipInfoId for inspection authorities:")
+                    println("   shipInfoId from formData: ${accumulatedFormData["shipInfoId"]}")
+                    println("   selectedMarineUnits: ${accumulatedFormData["selectedMarineUnits"]}")
+                    println("   Resolved shipInfoId: $shipInfoId")
 
                     if (shipInfoId == null) {
                         println("❌ No shipInfoId found - cannot load inspection authorities")
+                        println("   Available keys: ${accumulatedFormData.keys}")
                         onLookupCompleted?.invoke("inspectionAuthorities", emptyList(), false)
-                    } else if (inspectionAuthorityOptions.isEmpty()) {
-                        println("📥 Loading inspection authorities for shipInfoId: $shipInfoId...")
-                        val data = lookupRepository.getInspectionAuthorities(shipInfoId).getOrNull() ?: emptyMap()
-                        inspectionAuthorityOptions = data
-                        println("✅ Loaded ${inspectionAuthorityOptions.size} authority groups")
-                        data.forEach { (groupName, authorities) ->
-                            println("   - $groupName: ${authorities.size} authorities")
-                        }
-                        // Convert Map to flat list for callback
-                        val flatList = data.values.flatten()
-                        onLookupCompleted?.invoke("inspectionAuthorities", flatList, true)
                     } else {
-                        val flatList = inspectionAuthorityOptions.values.flatten()
-                        onLookupCompleted?.invoke("inspectionAuthorities", flatList, true)
+                        println("📥 Loading inspection authorities for shipInfoId: $shipInfoId...")
+                        try {
+                            val data = lookupRepository.getInspectionAuthorities(shipInfoId).getOrNull() ?: emptyMap()
+                            inspectionAuthorityOptions = data
+                            println("✅ Loaded ${inspectionAuthorityOptions.size} authority groups")
+                            data.forEach { (groupName, authorities) ->
+                                println("   - $groupName: ${authorities.size} authorities")
+                            }
+                            // Convert Map to flat list for callback
+                            val flatList = data.values.flatten()
+                            onLookupCompleted?.invoke("inspectionAuthorities", flatList, true)
+                        } catch (e: Exception) {
+                            println("❌ Failed to load inspection authorities: ${e.message}")
+                            e.printStackTrace()
+                            onLookupCompleted?.invoke("inspectionAuthorities", emptyList(), false)
+                        }
                     }
                 }
                 "inspectionPorts" -> {
@@ -1058,4 +1183,3 @@ class RequestInspectionStrategy @Inject constructor(
         return transactionContext.buildSendRequestUrl(requestId)
     }
 }
-

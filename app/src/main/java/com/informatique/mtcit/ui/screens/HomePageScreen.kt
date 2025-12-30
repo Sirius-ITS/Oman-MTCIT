@@ -107,10 +107,10 @@ fun HomePageScreen(navController: NavController) {
                 modifier = Modifier
                     .matchParentSize()
                     .background(
-                        Brush.verticalGradient(
+                        Brush.horizontalGradient(
                             colors = listOf(
                                 extraColors.blue1,
-                                extraColors.blue2
+                                extraColors.iconBlueGrey
                             )
                         )
                     )
@@ -123,7 +123,7 @@ fun HomePageScreen(navController: NavController) {
                     moveTo(0f, h * 0.72f)
                     // Quadratic bezier to create a smooth wave
                     quadraticTo(
-                        x1 = w * 0.5f,
+                        x1 =  w * 0.5f,
                         y1 = h * 0.5f,
                         x2 = w,
                         y2 = h * 0.62f
@@ -243,14 +243,14 @@ fun TopProfileBar(
                         ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
                         spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                     )
-                    .background(extraColors.iconBackBackground)
+                    .background( Color.White.copy(alpha = 0.2f))
                     .clickable { },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "الملف الشخصي",
-                    tint = Color.White,
+                    tint = Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.size(30.dp)
                 )
             }
@@ -287,21 +287,41 @@ fun TopProfileBar(
                         ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
                         spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
                     )
-                    .background(extraColors.iconBackBackground)
+                    .background( Color.White.copy(alpha = 0.2f))
                     .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = "الإعدادات",
-                    tint = Color.White,
+                    tint = Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.size(24.dp)
                 )
             }
-//
+        }
+    }
+}
+//@Composable
+//fun TopProfileBar(
+//    navController: NavController
+//) {
+//    Row(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .statusBarsPadding() // ensure content is placed below the status bar
+//            .padding(horizontal = 20.dp, vertical = 16.dp),
+//        horizontalArrangement = Arrangement.SpaceBetween,
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        val extraColors = LocalExtraColors.current
+//        // Profile Section
+//        Row(
+//            horizontalArrangement = Arrangement.spacedBy(12.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
 //            Box(
 //                modifier = Modifier
-//                    .size(38.dp)
+//                    .size(50.dp)
 //                    .clip(CircleShape)
 //                    .border(
 //                        width = 1.dp,
@@ -314,29 +334,64 @@ fun TopProfileBar(
 //                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
 //                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
 //                    )
-//                    .background(extraColors.iconBackBackground)
-//                    .clickable { }
+//                    .background( Color.White.copy(alpha = 0.4f))
+//                    .clickable { },
+//                contentAlignment = Alignment.Center
 //            ) {
 //                Icon(
-//                    imageVector = Icons.Default.Notifications,
-//                    contentDescription = "الإشعارات",
+//                    imageVector = Icons.Default.Person,
+//                    contentDescription = "الملف الشخصي",
 //                    tint = Color.White,
-//                    modifier = Modifier
-//                        .size(24.dp)
-//                        .align(Alignment.Center)
+//                    modifier = Modifier.size(30.dp)
 //                )
-//                Badge(
-//                    containerColor = Color.Red,
-//                    modifier = Modifier
-//                        .align(Alignment.TopEnd)
-//                        .offset(x = (-4).dp, y = 4.dp)
-//                ) {
-//                    Text("3", fontSize = 10.sp, color = Color.White)
-//                }
 //            }
-        }
-    }
-}
+//            Column(horizontalAlignment = Alignment.Start) {
+//                Text(
+//                    text = localizedApp(R.string.hello_label),
+//                    fontSize = 14.sp,
+//                    color = Color.White.copy(alpha = 0.9f),
+//                    fontWeight = FontWeight.Light
+//                )
+//                Text(
+//                    text = localizedApp(R.string.user_name),
+//                    fontSize = 16.sp,
+//                    fontWeight = FontWeight.Normal,
+//                    color = Color.White
+//                )
+//            }
+//
+//        }
+//        // Settings and Notifications
+//        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+//            Box(
+//                modifier = Modifier
+//                    .size(42.dp)
+//                    .clip(CircleShape)
+//                    .border(
+//                        width = 1.dp,
+//                        color = Color(0xFF4A7BA7 ),
+//                        shape = CircleShape
+//                    )
+//                    .shadow(
+//                        elevation = 20.dp,
+//                        shape = CircleShape,
+//                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+//                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+//                    )
+//                    .background( Color.White.copy(alpha = 0.4f))
+//                    .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Settings,
+//                    contentDescription = "الإعدادات",
+//                    tint = Color.White,
+//                    modifier = Modifier.size(24.dp)
+//                )
+//            }
+//        }
+//    }
+//}
 
 @Composable
 fun WelcomeSection() {
@@ -349,7 +404,7 @@ fun WelcomeSection() {
         Text(
             text = localizedApp(R.string.welcome_message),
             fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             letterSpacing = 1.sp,
             color = Color.White,
             textAlign = TextAlign.Start
@@ -465,7 +520,7 @@ fun CircularStatItem(
         Text(
             text = value,
             fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Normal,
             letterSpacing = 1.sp,
             color = extracolor.whiteInDarkMode
         )
@@ -474,7 +529,7 @@ fun CircularStatItem(
             fontSize = 12.sp,
             color = Color.Gray,
             textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Normal
         )
     }
 }
@@ -495,7 +550,7 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                 Text(
                     text = localizedApp(R.string.available_services_title),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = extracolors.whiteInDarkMode.copy(alpha = 0.8f)
                 )
                 Text(
@@ -520,7 +575,7 @@ fun AvailableServicesSection(navController: NavController, categories: List<Main
                     Text(
                         text = localizedApp(R.string.view_all),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Icon(
@@ -614,7 +669,7 @@ fun ServiceCard(
                 Text(
                     text = title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = extraColors.whiteInDarkMode,
                     textAlign = TextAlign.Start
                 )
@@ -637,7 +692,7 @@ fun ServiceCard(
                     text = localizedApp(R.string.view_details),
                     fontSize = 15.sp,
                     color = extraColors.showDetials.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.padding(horizontal = 4.dp))
                 Icon(
@@ -668,7 +723,7 @@ fun LatestEventsSection() {
                 Text(
                     text = localizedApp(R.string.upcoming_events_title),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = extracolors.whiteInDarkMode.copy(alpha = 0.8f)
                 )
                 Text(
@@ -693,7 +748,7 @@ fun LatestEventsSection() {
                     Text(
                         text = localizedApp(R.string.view_all),
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     Icon(
@@ -776,7 +831,7 @@ fun EventCard(
                 Text(
                     text = title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.Normal,
                     color = extraColors.whiteInDarkMode.copy(alpha = 0.8f)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
@@ -794,7 +849,7 @@ fun EventCard(
                         text = location,
                         fontSize = 12.sp,
                         color = extraColors.textSubTitle.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Normal
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
@@ -812,19 +867,19 @@ fun EventCard(
                         text = time,
                         fontSize = 12.sp,
                         color = extraColors.textBlueSubTitle,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         )
                     Text(
                         text = "•",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         color = extraColors.textBlueSubTitle,
                         )
                     Text(
                         text = date,
                         fontSize = 12.sp,
                         color = extraColors.textBlueSubTitle,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         )
                 }
             }

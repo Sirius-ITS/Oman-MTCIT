@@ -644,8 +644,8 @@ object SharedSteps {
 
         // Filter only active documents and sort by order
         val activeDocuments = documents
-//            .filter { it.document.isActive == 1 }
-//            .sortedBy { it.document.docOrder }
+            .filter { it.document.isActive == 1 }
+            .sortedBy { it.document.docOrder }
 
         println("📄 Creating ${activeDocuments.size} file pickers (after filtering active only)")
 
@@ -1489,7 +1489,10 @@ object SharedSteps {
     fun inspectionPurposeAndAuthorityStep(
         inspectionPurposes: List<String>,
         recordingPorts: List<String>,
-        authoritySections: List<DropdownSection>
+        authoritySections: List<DropdownSection>,
+        documents: List<RequiredDocumentItem>,
+        allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
+        maxSizeMB: Int = 5
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -1528,6 +1531,34 @@ object SharedSteps {
                 sections = authoritySections // ✅ Pass the sections here
             )
         )
+
+        println("📄 SharedSteps.dynamicDocumentsStep called")
+        println("📄 Received ${documents.size} documents from API")
+
+        // Filter only active documents and sort by order
+        val activeDocuments = documents
+            .filter { it.document.isActive == 1 }
+            .sortedBy { it.document.docOrder }
+
+        println("📄 Creating ${activeDocuments.size} file pickers (after filtering active only)")
+
+        // Create a file upload field for each document
+        activeDocuments.forEach { docItem ->
+            val document = docItem.document
+            val isMandatory = document.isMandatory == 1
+
+            println("   📎 ${document.nameAr} - ${if (isMandatory) "إلزامي" else "اختياري"} (id=${document.id})")
+
+            fields.add(
+                FormField.FileUpload(
+                    id = "document_${document.id}",
+                    label = document.nameAr, // Use Arabic name as label
+                    allowedTypes = allowedTypes,
+                    maxSizeMB = maxSizeMB,
+                    mandatory = isMandatory
+                )
+            )
+        }
 
         return StepData(
             stepType = StepType.INSPECTION_PURPOSES_AND_AUTHORITIES,
