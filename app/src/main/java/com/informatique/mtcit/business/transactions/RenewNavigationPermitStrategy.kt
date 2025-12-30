@@ -26,6 +26,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.informatique.mtcit.util.UserHelper
 
 
 /**
@@ -42,6 +45,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private val navigationManager: NavigationManager,
     private val navigationLicenseManager: NavigationLicenseManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    @ApplicationContext private val appContext: Context
     ) : TransactionStrategy {
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
@@ -57,8 +61,12 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private var existingCrew: List<CrewResDto> = emptyList() // ✅ Loaded crew
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
@@ -153,15 +161,19 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }

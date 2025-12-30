@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.informatique.mtcit.util.UserHelper
 
 /**
  * Strategy for Captain Name Change transaction - UPDATED to use SharedSteps
@@ -34,7 +37,8 @@ class CaptainNameChangeStrategy @Inject constructor(
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
     private val marineUnitRepository: MarineUnitRepository,
-    private val lookupRepository: LookupRepository
+    private val lookupRepository: LookupRepository,
+    @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -45,11 +49,15 @@ class CaptainNameChangeStrategy @Inject constructor(
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf() // ✅ Track form data
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         // Load all dropdown options from API
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         // Cache the options for use in getSteps()
@@ -78,15 +86,19 @@ class CaptainNameChangeStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ FOR TESTING: Use ownerCivilId for BOTH person types
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId (FOR TESTING - API doesn't support commercialRegNumber yet)")
-                Pair("12345678", null)
+                println("✅ Company: Using ownerCivilId from token (FOR TESTING - API doesn't support commercialRegNumber yet)")
+                Pair(ownerCivilIdFromToken, null)
             }
             else -> Pair(null, null)
         }

@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.informatique.mtcit.util.UserHelper
 
 /**
  * Strategy for Issue Navigation Permit
@@ -34,7 +37,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val navigationLicenseManager: NavigationLicenseManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
-    private val paymentManager: PaymentManager
+    private val paymentManager: PaymentManager,
+    @ApplicationContext private val appContext: Context
  ) : TransactionStrategy {
 
     private var countryOptions: List<String> = emptyList()
@@ -68,15 +72,19 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }
@@ -106,8 +114,12 @@ class IssueNavigationPermitStrategy @Inject constructor(
     }
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         countryOptions = countries
@@ -196,7 +208,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         val stepData = getSteps().getOrNull(step)
 
-        // ✅ Handle marine unit selection (existing ship) to capture requestId from proceed-request
+        // ✅ Handle marine unit selection - call createIssueRequest after successful ship selection
         if (stepData?.titleRes == R.string.owned_ships) {
             val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
             val selectedUnitsJson = data["selectedMarineUnits"]
@@ -204,17 +216,44 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
             if (hasSelectedExistingShip) {
                 try {
-                    val result = shipSelectionManager.handleShipSelection(
+                    // ✅ Step 1: Call selectships (proceed-request) - just for validation
+                    val selectionResult = shipSelectionManager.handleShipSelection(
                         shipId = selectedUnitsJson,
                         context = TransactionType.ISSUE_NAVIGATION_PERMIT.context
                     )
-                    when (result) {
+
+                    when (selectionResult) {
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                            accumulatedFormData["requestId"] = result.requestId.toString()
-                            navigationRequestId = result.requestId.toLong()
+                            // ✅ Step 2: After successful selection, create the navigation license request
+                            println("✅ Ship selection successful, now creating navigation license request...")
+
+                            // Extract shipInfoId from selectedUnitsJson
+                            val shipInfoId = extractShipInfoId(selectedUnitsJson)
+
+                            if (shipInfoId != null) {
+                                // ✅ Call createIssueRequest API to get the real requestId
+                                val createResult = navigationLicenseManager.createIssueRequest(shipInfoId)
+
+                                createResult.fold(
+                                    onSuccess = { requestId ->
+                                        // ✅ Store the requestId from createIssueRequest (not from selectships)
+                                        navigationRequestId = requestId
+                                        accumulatedFormData["requestId"] = requestId.toString()
+                                        println("✅ Navigation license request created with ID: $requestId")
+                                    },
+                                    onFailure = { error ->
+                                        println("❌ Failed to create navigation license request: ${error.message}")
+                                        accumulatedFormData["apiError"] = error.message ?: "فشل في إنشاء طلب رخصة الملاحة"
+                                        return -1
+                                    }
+                                )
+                            } else {
+                                accumulatedFormData["apiError"] = "فشل في استخراج معرف السفينة"
+                                return -1
+                            }
                         }
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                            accumulatedFormData["apiError"] = result.message
+                            accumulatedFormData["apiError"] = selectionResult.message
                             return -1
                         }
                     }
@@ -239,6 +278,34 @@ class IssueNavigationPermitStrategy @Inject constructor(
         }
 
         return step
+    }
+
+    /**
+     * Extract shipInfoId from selectedMarineUnits JSON
+     * Handles formats: ["132435445"] or [{"id":"123","shipName":"..."}]
+     */
+    private fun extractShipInfoId(selectedUnitsJson: String?): Long? {
+        if (selectedUnitsJson.isNullOrEmpty() || selectedUnitsJson == "[]") {
+            return null
+        }
+
+        return try {
+            // First try: simple array of strings/numbers ["132435445"]
+            val simpleArrayRegex = """\["?(\d+)"?\]""".toRegex()
+            val simpleMatch = simpleArrayRegex.find(selectedUnitsJson)
+
+            if (simpleMatch != null) {
+                simpleMatch.groupValues[1].toLongOrNull()
+            } else {
+                // Second try: array of objects with id field
+                val objectIdRegex = """"id"\s*:\s*"?(\d+)"?""".toRegex()
+                val objectMatch = objectIdRegex.find(selectedUnitsJson)
+                objectMatch?.groupValues?.get(1)?.toLongOrNull()
+            }
+        } catch (e: Exception) {
+            println("❌ Failed to parse selectedMarineUnits JSON: ${e.message}")
+            null
+        }
     }
 
     /**
@@ -277,12 +344,10 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         println("✅ Selected navigation areas: names=$selectedNames, ids=$selectedAreaIds")
 
-        // Ensure we have a request ID (create request if needed)
-        val requestId = ensureRequestCreated()
-
-        // ✅ If request creation failed, throw exception (will be caught by ViewModel)
+        // ✅ Use the navigationRequestId that was created after ship selection
+        val requestId = navigationRequestId
         if (requestId == null) {
-            throw Exception("Failed to create navigation request")
+            throw Exception("No navigation request ID available. Ship selection might have failed.")
         }
 
         // ✅ Call API - let exceptions propagate to ViewModel
@@ -297,12 +362,16 @@ class IssueNavigationPermitStrategy @Inject constructor(
      * @return true if error occurred, false if successful
      */
     private suspend fun handleCrewSubmission(data: Map<String, String>): Boolean {
-        val requestId = ensureRequestCreated()
+        println("🔵 handleCrewSubmission called with data keys: ${data.keys}")
 
-        // If request creation failed, throw exception
+        // ✅ Use the navigationRequestId that was created after ship selection
+        val requestId = navigationRequestId
         if (requestId == null) {
+            println("❌ No requestId available - cannot add crew")
             throw Exception("Cannot add crew - no request ID available")
         }
+
+        println("✅ Using requestId: $requestId")
 
         // Check if user chose Excel upload
         if (navigationLicenseManager.isExcelUploadSelected(data)) {
@@ -312,79 +381,26 @@ class IssueNavigationPermitStrategy @Inject constructor(
             return false
         } else {
             // Manual crew entry
+            println("👥 Manual crew entry mode - parsing form data...")
             val crewData = navigationLicenseManager.parseCrewFromFormData(data)
 
+            println("📋 Parsed ${crewData.size} crew members from form data")
+
             if (crewData.isNotEmpty()) {
+                println("📤 Calling addCrewBulkIssue API with ${crewData.size} crew members...")
+
                 // ✅ Call API - let exceptions propagate to ViewModel
                 navigationLicenseManager.addCrewBulkIssue(requestId, crewData).getOrThrow()
 
-                println("✅ Added ${crewData.size} crew members successfully")
+                println("✅ Successfully added ${crewData.size} crew members")
+            } else {
+                println("⚠️ No crew data to submit")
             }
         }
 
         return false
     }
 
-    /**
-     * Ensure navigation request is created before submitting data
-     * @return Request ID if successful, null if failed
-     */
-    private suspend fun ensureRequestCreated(): Long? {
-        if (navigationRequestId != null) {
-            return navigationRequestId
-        }
-
-        // If requestId already captured from proceed-request, reuse it
-        accumulatedFormData["requestId"]?.toLongOrNull()?.let {
-            navigationRequestId = it
-            return navigationRequestId
-        }
-
-        // Get selected ship info ID from accumulated data
-        val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
-
-        // Parse JSON to extract shipInfoId
-        val shipInfoId = if (!selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]") {
-            try {
-                // Handle two possible formats:
-                // 1. Array of IDs: ["132435445"]
-                // 2. Array of objects: [{"id":"123","shipName":"..."}]
-
-                // First try: simple array of strings/numbers ["132435445"]
-                val simpleArrayRegex = """\["?(\d+)"?\]""".toRegex()
-                val simpleMatch = simpleArrayRegex.find(selectedUnitsJson)
-
-                if (simpleMatch != null) {
-                    simpleMatch.groupValues[1].toLongOrNull()
-                } else {
-                    // Second try: array of objects with id field
-                    val objectIdRegex = """"id"\s*:\s*"?(\d+)"?""".toRegex()
-                    val objectMatch = objectIdRegex.find(selectedUnitsJson)
-                    objectMatch?.groupValues?.get(1)?.toLongOrNull()
-                }
-            } catch (e: Exception) {
-                println("❌ Failed to parse selectedMarineUnits JSON: ${e.message}")
-                null
-            }
-        } else {
-            null
-        }
-
-        if (shipInfoId == null) {
-            println("❌ No ship selected, cannot create request")
-            println("🔍 selectedUnitsJson = $selectedUnitsJson")
-            return null
-        }
-
-        println("✅ Extracted shipInfoId: $shipInfoId from JSON: $selectedUnitsJson")
-
-        // ✅ Create the request - let exceptions propagate to ViewModel
-        navigationRequestId = navigationLicenseManager.createIssueRequest(shipInfoId).getOrThrow()
-        accumulatedFormData["requestId"] = navigationRequestId?.toString() ?: ""
-        println("✅ Navigation license request created with ID: $navigationRequestId")
-
-        return navigationRequestId
-    }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
         // Final submission - all data has been submitted step by step

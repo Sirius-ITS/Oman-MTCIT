@@ -21,6 +21,7 @@ import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
 import com.informatique.mtcit.ui.viewmodels.StepData
+import com.informatique.mtcit.util.UserHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -147,15 +148,19 @@ class CancelRegistrationStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }

@@ -1174,7 +1174,7 @@ class LookupApiService @Inject constructor(
      */
     suspend fun getCrewJobTitles(): Result<LookupResponse<CrewJobTitle>> {
         return try {
-            when (val response = repo.onGet("crew-job-title")) {
+            when (val response = repo.onGet("crew-job-title/ddl")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     if (!responseJson.jsonObject.isEmpty()) {

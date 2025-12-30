@@ -101,7 +101,7 @@ object SharedSteps {
                 labelRes = R.string.sailor_documents, // add this string resource if missing
                 allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
                 maxSizeMB = 5,
-                mandatory =true
+                mandatory =false
             )
         )
         fields.add(

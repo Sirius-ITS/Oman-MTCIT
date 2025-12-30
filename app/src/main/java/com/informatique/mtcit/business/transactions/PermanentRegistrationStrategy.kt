@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.util.UserHelper
 
 /**
  * Strategy for Permanent Registration Certificate
@@ -85,8 +86,13 @@ class PermanentRegistrationStrategy @Inject constructor(
         // ✅ Load only ESSENTIAL lookups needed for initial steps
         // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
 
+        // ✅ Get civilId from token
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
 
         // Store in instance variables
         typeOptions = personTypes
@@ -109,16 +115,20 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
-        // For individuals, use ownerCivilId
+        // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }

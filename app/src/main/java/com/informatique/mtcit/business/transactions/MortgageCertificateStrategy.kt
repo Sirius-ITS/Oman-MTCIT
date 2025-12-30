@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
+import com.informatique.mtcit.util.UserHelper
 import com.informatique.mtcit.business.transactions.marineunit.rules.MortgageCertificateRules
 import com.informatique.mtcit.business.transactions.marineunit.usecases.ValidateMarineUnitUseCase
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
@@ -53,9 +54,9 @@ class MortgageCertificateStrategy @Inject constructor(
     private val marineUnitsApiService: MarineUnitsApiService,
     private val marineUnitRepository: MarineUnitRepository,
     private val mortgageApiService: com.informatique.mtcit.data.api.MortgageApiService,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
     private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
-    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
@@ -163,10 +164,14 @@ class MortgageCertificateStrategy @Inject constructor(
         println("📋 MortgageCertificate - loadDynamicOptions() CALLED")
         println("📋 ===============================================")
 
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
 
         println("🏦 MortgageCertificate - Fetching banks from API...")
         val banksList = lookupRepository.getBanks().getOrElse { error ->
@@ -234,15 +239,19 @@ class MortgageCertificateStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }

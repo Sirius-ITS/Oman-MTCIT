@@ -12,7 +12,8 @@ import kotlinx.serialization.Serializable
 // ============================================
 
 /**
- * Request DTO for adding/updating a crew member
+ * Request DTO for adding/updating a crew member in bulk operations
+ * @param id Request ID (shipNavigationRequestId) for the transaction
  * @param nameAr Crew member name in Arabic (required)
  * @param nameEn Crew member name in English (required)
  * @param jobTitle Job title ID from lookup (required)
@@ -22,6 +23,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class CrewReqDto(
+    val id: Long,
     val nameAr: String,
     val nameEn: String,
     val jobTitle: Int,
@@ -32,11 +34,11 @@ data class CrewReqDto(
 
 /**
  * Country/Nationality request wrapper
- * @param id Country ID from lookup
+ * @param id Country ID from lookup (as String to match API)
  */
 @Serializable
 data class CountryReqDto(
-    val id: Int
+    val id: String
 )
 
 // ============================================

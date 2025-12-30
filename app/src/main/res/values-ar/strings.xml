@@ -927,4 +927,6 @@
     <string name="select_inspection_authority_and_entity_placeholder">تحديد الجهة المسؤولة و الهيئة المعتمدة عن تنفيذ المعاينة</string>
 
     <string name="service_req">تفاصيل الخدمة</string>
+    <string name="empty">يرجي تسجيل الدخول</string>
+
 </resources>

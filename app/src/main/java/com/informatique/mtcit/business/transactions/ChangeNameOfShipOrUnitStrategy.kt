@@ -21,6 +21,9 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
 import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
+import com.informatique.mtcit.util.UserHelper
 
 class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -28,7 +31,8 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
-    private val temporaryRegistrationRules: TemporaryRegistrationRules
+    private val temporaryRegistrationRules: TemporaryRegistrationRules,
+    @ApplicationContext private val appContext: Context
 ) : TransactionStrategy {
 
     private var portOptions: List<String> = emptyList()
@@ -42,10 +46,14 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         portOptions = ports
@@ -80,15 +88,19 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }

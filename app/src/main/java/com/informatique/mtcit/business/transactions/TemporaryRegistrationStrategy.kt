@@ -35,6 +35,7 @@ import com.informatique.mtcit.ui.components.EngineData as UIEngineData
 import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.informatique.mtcit.util.UserHelper
 
 class TemporaryRegistrationStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -103,8 +104,12 @@ class TemporaryRegistrationStrategy @Inject constructor(
         // ✅ Load only ESSENTIAL lookups needed for initial steps
         // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
 
+        // ✅ Get civilId from token
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         println("📄 RegistrationRequests - Fetching required documents from API...")
         val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
             println("❌ ERROR fetching required documents: ${error.message}")
@@ -145,16 +150,20 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
-        // For individuals, use ownerCivilId
+        // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId")
-                Pair("12345678", null)
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair("12345678", commercialReg) // ✅ Send both ownerCivilId AND commercialRegNumber
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
             else -> Pair(null, null)
         }

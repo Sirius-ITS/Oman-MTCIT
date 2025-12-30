@@ -7,6 +7,10 @@ import com.informatique.mtcit.data.dto.CountryReqDto
 import com.informatique.mtcit.data.dto.NavigationAreaResDto
 import com.informatique.mtcit.data.repository.NavigationLicenseRepository
 import io.ktor.http.content.PartData
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +28,7 @@ import javax.inject.Singleton
 class NavigationLicenseManager @Inject constructor(
     private val repository: NavigationLicenseRepository
 ) {
+    private val json = Json { ignoreUnknownKeys = true }
 
     // ========================================
     // REQUEST CREATION
@@ -129,12 +134,13 @@ class NavigationLicenseManager @Inject constructor(
 
         val crewList = crewData.map { crew ->
             CrewReqDto(
+                id = requestId, // Include requestId in each crew member
                 nameAr = crew["nameAr"] ?: "",
                 nameEn = crew["nameEn"] ?: "",
                 jobTitle = crew["jobTitle"]?.toIntOrNull() ?: 0,
                 civilNo = crew["civilNo"],
                 seamenBookNo = crew["seamenBookNo"] ?: "",
-                nationality = crew["nationality"]?.toIntOrNull()?.let { CountryReqDto(it) }
+                nationality = crew["nationality"]?.let { CountryReqDto(it) } // Keep as String
             )
         }
 
@@ -189,12 +195,13 @@ class NavigationLicenseManager @Inject constructor(
 
         val crewList = crewData.map { crew ->
             CrewReqDto(
+                id = requestId, // Include requestId in each crew member
                 nameAr = crew["nameAr"] ?: "",
                 nameEn = crew["nameEn"] ?: "",
                 jobTitle = crew["jobTitle"]?.toIntOrNull() ?: 0,
                 civilNo = crew["civilNo"],
                 seamenBookNo = crew["seamenBookNo"] ?: "",
-                nationality = crew["nationality"]?.toIntOrNull()?.let { CountryReqDto(it) }
+                nationality = crew["nationality"]?.let { CountryReqDto(it) } // Keep as String
             )
         }
 
@@ -216,12 +223,13 @@ class NavigationLicenseManager @Inject constructor(
         println("✏️ NavigationLicenseManager: Updating crew member (Issue)")
 
         val crew = CrewReqDto(
+            id = requestId, // Include requestId in each crew member
             nameAr = crewData["nameAr"] ?: "",
             nameEn = crewData["nameEn"] ?: "",
             jobTitle = crewData["jobTitle"]?.toIntOrNull() ?: 0,
             civilNo = crewData["civilNo"],
             seamenBookNo = crewData["seamenBookNo"] ?: "",
-            nationality = crewData["nationality"]?.toIntOrNull()?.let { CountryReqDto(it) }
+            nationality = crewData["nationality"]?.let { CountryReqDto(it) } // Keep as String
         )
 
         return repository.updateCrewMemberIssue(requestId, crewId, crew)
@@ -242,12 +250,13 @@ class NavigationLicenseManager @Inject constructor(
         println("✏️ NavigationLicenseManager: Updating crew member (Renew)")
 
         val crew = CrewReqDto(
+            id = requestId, // Include requestId
             nameAr = crewData["nameAr"] ?: "",
             nameEn = crewData["nameEn"] ?: "",
             jobTitle = crewData["jobTitle"]?.toIntOrNull() ?: 0,
             civilNo = crewData["civilNo"],
             seamenBookNo = crewData["seamenBookNo"] ?: "",
-            nationality = crewData["nationality"]?.toIntOrNull()?.let { CountryReqDto(it) }
+            nationality = crewData["nationality"]?.let { CountryReqDto(it) } // Keep as String
         )
 
         return repository.updateCrewMemberRenew(requestId, crewId, crew)
@@ -302,11 +311,80 @@ class NavigationLicenseManager @Inject constructor(
     /**
      * Parse crew data from form fields
      * Handles both individual crew entry and list of crew
+     * Maps SailorData from UI to API format:
+     * - job -> jobTitle
+     * - fullName -> nameEn & nameAr
+     * - identityNumber -> civilNo
+     * - seamanPassportNumber -> seamenBookNo
      */
     fun parseCrewFromFormData(formData: Map<String, String>): List<Map<String, String>> {
-        // TODO: Implement parsing logic based on your form structure
-        // This will extract crew data from form fields
-        return emptyList()
+        println("🔍 parseCrewFromFormData - Available keys: ${formData.keys}")
+
+        val sailorsJson = formData["sailors"]
+
+        if (sailorsJson == null || sailorsJson == "[]") {
+            println("⚠️ No 'sailors' field found or empty array")
+            return emptyList()
+        }
+
+        println("📋 sailors JSON: $sailorsJson")
+
+        // Parse the JSON array of sailors
+        return try {
+            val jsonArray = json.parseToJsonElement(sailorsJson).jsonArray
+
+            println("✅ Parsed JSON array with ${jsonArray.size} elements")
+
+            jsonArray.mapNotNull { element ->
+                try {
+                    val sailor = element.jsonObject
+
+                    // Extract fields from SailorData format
+                    val job = sailor["job"]?.jsonPrimitive?.content ?: ""
+                    val fullName = sailor["fullName"]?.jsonPrimitive?.content ?: ""
+                    val identityNumber = sailor["identityNumber"]?.jsonPrimitive?.content ?: ""
+                    val seamanPassportNumber = sailor["seamanPassportNumber"]?.jsonPrimitive?.content ?: ""
+
+                    println("🔍 Raw sailor data:")
+                    println("   - job: '$job'")
+                    println("   - fullName: '$fullName'")
+                    println("   - identityNumber: '$identityNumber'")
+                    println("   - seamanPassportNumber: '$seamanPassportNumber'")
+
+                    // Validate required fields
+                    if (fullName.isBlank()) {
+                        println("⚠️ Skipping sailor with empty fullName")
+                        return@mapNotNull null
+                    }
+
+                    if (job.isBlank() || job == "0") {
+                        println("⚠️ Skipping sailor with empty or invalid job")
+                        return@mapNotNull null
+                    }
+
+                    // Map to API format
+                    val crewMember = mapOf(
+                        "nameAr" to fullName, // Use fullName for both Arabic and English
+                        "nameEn" to fullName,
+                        "jobTitle" to job, // job is already the ID as string
+                        "civilNo" to identityNumber.ifBlank { "12345678" }, // ✅ Use default test value if empty
+                        "seamenBookNo" to seamanPassportNumber.ifBlank { "SM-${System.currentTimeMillis() % 100000}" }, // Generate if empty
+                        "nationality" to "" // Empty for now - UI doesn't collect this yet
+                    )
+
+                    println("✅ Mapped crew member: name='$fullName', job='$job', civilNo='${crewMember["civilNo"]}', seamenBookNo='${crewMember["seamenBookNo"]}'")
+                    crewMember
+                } catch (e: Exception) {
+                    println("⚠️ Failed to parse sailor: ${e.message}")
+                    e.printStackTrace()
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Failed to parse sailors JSON: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
     }
 
     /**

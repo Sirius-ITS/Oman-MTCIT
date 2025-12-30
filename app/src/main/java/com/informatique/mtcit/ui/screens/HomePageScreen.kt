@@ -47,6 +47,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -214,6 +216,13 @@ fun HomePageScreen(navController: NavController) {
 fun TopProfileBar(
     navController: NavController
 ) {
+    val context = LocalContext.current
+    var userName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+
+    // Load user name from token
+    LaunchedEffect(Unit) {
+        userName = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserName(context)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -255,6 +264,17 @@ fun TopProfileBar(
                 )
             }
             Column(horizontalAlignment = Alignment.Start) {
+                // Display welcome message with user name if available
+                val welcomeText = if (!userName.isNullOrEmpty()) {
+                    val currentLanguage = java.util.Locale.getDefault().language
+                    if (currentLanguage == "ar") {
+                        "$userName"
+                    } else {
+                        "$userName"
+                    }
+                } else {
+                    localizedApp(R.string.empty)
+                }
                 Text(
                     text = localizedApp(R.string.hello_label),
                     fontSize = 14.sp,
@@ -262,7 +282,7 @@ fun TopProfileBar(
                     fontWeight = FontWeight.Light
                 )
                 Text(
-                    text = localizedApp(R.string.user_name),
+                    text = welcomeText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Normal,
                     color = Color.White

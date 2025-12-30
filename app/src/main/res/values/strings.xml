@@ -905,5 +905,7 @@
 
     <string name="service_req">Service Requirement</string>
 
+    <string name="empty">Please log in</string>
+
 
 </resources>

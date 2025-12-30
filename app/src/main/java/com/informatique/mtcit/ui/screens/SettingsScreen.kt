@@ -1,5 +1,8 @@
 package com.informatique.mtcit.ui.screens
 
+import android.util.Log
+import android.webkit.CookieManager
+import android.webkit.WebStorage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,18 +19,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
+import com.informatique.mtcit.data.datastorehelper.TokenManager
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SettingsScreen(
@@ -40,6 +49,8 @@ fun SettingsScreen(
     val theme by viewModel.theme.collectAsState()
     val currentLanguage by languageViewModel.languageFlow.collectAsState(initial = "ar")
     val isLoading = languageViewModel.isLoading.value
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -192,6 +203,86 @@ fun SettingsScreen(
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Logout Button
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        try {
+                            Log.d("SettingsScreen", "🔴 Logout button clicked!")
+
+                            // Log token before clearing
+                            val tokenBefore = withContext(Dispatchers.IO) {
+                                TokenManager.getAccessToken(context)
+                            }
+                            Log.d("SettingsScreen", "Token before logout: ${tokenBefore?.take(20)}...")
+
+                            // Step 1: Clear WebView cookies (this clears Keycloak session)
+                            withContext(Dispatchers.Main) {
+                                try {
+                                    val cookieManager = CookieManager.getInstance()
+                                    cookieManager.removeAllCookies { success ->
+                                        Log.d("SettingsScreen", "🍪 Cleared cookies: $success")
+                                    }
+                                    cookieManager.flush()
+
+                                    // Also clear WebView cache
+                                    WebStorage.getInstance().deleteAllData()
+
+                                    Log.d("SettingsScreen", "🍪 Cleared all WebView cookies and storage")
+                                } catch (e: Exception) {
+                                    Log.e("SettingsScreen", "Failed to clear cookies: ${e.message}")
+                                }
+                            }
+
+                            // Step 2: Clear local token from DataStore
+                            withContext(Dispatchers.IO) {
+                                TokenManager.clearToken(context)
+                                delay(100) // Ensure write completes
+                            }
+
+                            // Step 3: Verify token was cleared
+                            val tokenAfter = withContext(Dispatchers.IO) {
+                                TokenManager.getAccessToken(context)
+                            }
+                            Log.d("SettingsScreen", "Token after logout: $tokenAfter")
+
+                            if (tokenAfter == null) {
+                                Log.d("SettingsScreen", "✅ Token successfully cleared!")
+                            } else {
+                                Log.e("SettingsScreen", "❌ Token NOT cleared! Still exists: ${tokenAfter.take(20)}...")
+                            }
+
+                            // Step 4: Navigate to homepage
+                            withContext(Dispatchers.Main) {
+                                navController.navigate("homepage") {
+                                    popUpTo("homepage") { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("SettingsScreen", "❌ Error during logout", e)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red.copy(alpha = 0.15f)
+                )
+            ) {
+                Text(
+                    text = "تسجيل الخروج / Logout",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp,
+                    color = Color.Red.copy(alpha = 0.9f)
+                )
             }
 
             Spacer(modifier = Modifier.height(40.dp))
