@@ -135,4 +135,31 @@ class AppRepository(client: HttpClient): AppHttpRequests(client = client) {
     fun onClose(){
         client.close()
     }
+
+    // New helper: fetch raw response body as text (for HTML responses like payment redirect form)
+    suspend fun fetchRawString(url: String): Result<String> {
+        return try {
+            when (val data = onGetData(url = url)) {
+                is AppHttpRequest.AppHttpRequestModel -> {
+                    val statusCode = data.response.status.value
+                    if (statusCode == 200 || statusCode == 201) {
+                        val text = try {
+                            data.response.body(TypeInfo(String::class))
+                        } catch (e: Exception) {
+                            println("❌ Failed to read response as text: ${e.message}")
+                            ""
+                        }
+                        Result.success(text)
+                    } else {
+                        Result.failure(Exception("HTTP $statusCode"))
+                    }
+                }
+                is AppHttpRequest.AppHttpRequestErrorModel -> {
+                    Result.failure(Exception(data.message))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

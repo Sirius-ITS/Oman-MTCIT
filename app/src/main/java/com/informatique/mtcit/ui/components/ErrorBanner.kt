@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.rounded.Close
@@ -24,7 +25,9 @@ import androidx.compose.ui.unit.sp
 fun ErrorBanner(
     message: String,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showRefreshButton: Boolean = false,  // ✅ NEW: Show refresh token button for 401 errors
+    onRefreshToken: (() -> Unit)? = null  // ✅ NEW: Callback for refresh token action
 ) {
     Card(
         modifier = modifier
@@ -40,47 +43,80 @@ fun ErrorBanner(
             color = Color(0xFFFF9933) // بوردر برتقالي
         )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-
-            // أيقونة التحذير على اليمين
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Warning",
-                tint = Color(0xFFFF9933), // برتقالي
-                modifier = Modifier.size(24.dp)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // رسالة الخطأ في المنتصف
-            Text(
-                text = message,
-                fontSize = 16.sp,
-                color = Color(0xFF000000), // أسود غامق
-                modifier = Modifier.weight(1f),
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // أيقونة X على اليسار
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.size(24.dp)
+            // First row: Icon, message, and close button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+
+                // أيقونة التحذير على اليمين
                 Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = "Close",
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Warning",
                     tint = Color(0xFFFF9933), // برتقالي
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // رسالة الخطأ في المنتصف
+                Text(
+                    text = message,
+                    fontSize = 16.sp,
+                    color = Color(0xFF000000), // أسود غامق
+                    modifier = Modifier.weight(1f),
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // أيقونة X على اليسار
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Close",
+                        tint = Color(0xFFFF9933), // برتقالي
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // ✅ NEW: Show refresh token button for 401 errors
+            if (showRefreshButton && onRefreshToken != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = onRefreshToken,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF9933)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "تحديث الرمز",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

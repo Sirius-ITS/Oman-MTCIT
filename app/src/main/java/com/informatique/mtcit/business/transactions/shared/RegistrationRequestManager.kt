@@ -783,9 +783,9 @@ class RegistrationRequestManager @Inject constructor(
                             }
                         }
                         // For testing without API, uncomment below:
-                        /*formData["requestId"] = "1026"
-                        formData["shipInfoId"] = "1184"
-                        formData["shipId"] = "1265"
+                        /*formData["requestId"] = "1812"
+                        formData["shipInfoId"] = "1733"
+                        formData["shipId"] = "1832"
                         StepProcessResult.Success("Registration request created: ${requestId}")*/
 
                     } else {

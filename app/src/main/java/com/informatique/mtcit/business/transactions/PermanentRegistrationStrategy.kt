@@ -42,6 +42,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,
     private val registrationRequestManager: RegistrationRequestManager,
     private val reviewManager: ReviewManager,
+    private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy {
@@ -208,6 +209,12 @@ class PermanentRegistrationStrategy @Inject constructor(
                 countries = countryOptions
             )
         )
+
+        // ✅ Step 6: Payment Details - Show if we have a request ID
+        val hasRequestId = accumulatedFormData["requestId"] != null
+        if (hasRequestId) {
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+        }
 
         return steps
     }
@@ -432,6 +439,42 @@ class PermanentRegistrationStrategy @Inject constructor(
                             return -1
                         }
                     }
+
+                    // ✅ HANDLE PAYMENT STEP
+                    if (stepType == StepType.PAYMENT) {
+                        println("💰 Handling Payment Step using PaymentManager")
+
+                        val paymentResult = paymentManager.processStepIfNeeded(
+                            stepType = stepType,
+                            formData = accumulatedFormData,
+                            requestTypeId = requestTypeId.toInt(),
+                            context = transactionContext
+                        )
+
+                        when (paymentResult) {
+                            is StepProcessResult.Success -> {
+                                println("✅ Payment step processed: ${paymentResult.message}")
+
+                                // Trigger UI rebuild so payment details are shown (important for mortgage path)
+                                onStepsNeedRebuild?.invoke()
+
+                                // Check if payment was submitted successfully
+                                val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+                                if (showPaymentSuccessDialog) {
+                                    println("✅ Payment submitted successfully - dialog will be shown")
+                                    return step
+                                }
+                            }
+                            is StepProcessResult.Error -> {
+                                println("❌ Payment error: ${paymentResult.message}")
+                                accumulatedFormData["apiError"] = paymentResult.message
+                                return -1
+                            }
+                            is StepProcessResult.NoAction -> {
+                                println("ℹ️ No payment action needed")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -439,7 +482,36 @@ class PermanentRegistrationStrategy @Inject constructor(
         return step
     }
 
+    // ✅ NEW: Handle payment step loading when step is opened
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
 
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+        }
+    }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
         return repository.submitRegistration(data)

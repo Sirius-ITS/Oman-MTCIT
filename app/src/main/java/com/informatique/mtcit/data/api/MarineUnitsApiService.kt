@@ -720,14 +720,21 @@ class MarineUnitsApiService @Inject constructor(
                     val errorMsg = if (errorMessage.isNotBlank() && errorMessage != "Unknown error") {
                         errorMessage
                     } else {
-                        "فشل في متابعة طلب $transactionType (code: ${response.code})"
+                        // ✅ Special message for 401 errors
+                        if (response.code == 401) {
+                            "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        } else {
+                            "فشل في متابعة طلب $transactionType (code: ${response.code})"
+                        }
                     }
 
                     println("❌ $errorMsg")
                     println("   HTTP Code: ${response.code}")
                     println("   Error Body: ${response.error}")
                     println("=".repeat(80))
-                    Result.failure(Exception(errorMsg))
+
+                    // ✅ CRITICAL FIX: Throw ApiException with status code so BaseTransactionViewModel can detect 401
+                    throw com.informatique.mtcit.common.ApiException(response.code, errorMsg)
                 }
             }
         } catch (e: Exception) {

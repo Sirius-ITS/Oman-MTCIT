@@ -331,7 +331,14 @@ abstract class BaseTransactionViewModel(
                         } catch (e: ApiException) {
                             // ✅ Handle API errors with proper error code and message
                             println("❌ API Error in processStepData: ${e.code} - ${e.message}")
-                            _error.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+
+                            // ✅ NEW: Special handling for 401 Unauthorized errors
+                            if (e.code == 401) {
+                                println("🔐 401 Unauthorized - Token expired or invalid")
+                                _error.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة")
+                            } else {
+                                _error.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                            }
 
                             // ✅ Only show banner, no toast
                             // Toast removed - banner is sufficient for error display
@@ -734,6 +741,37 @@ abstract class BaseTransactionViewModel(
      */
     fun clearError() {
         _error.value = null
+    }
+
+    /**
+     * ✅ NEW: Refresh expired token
+     * This should be called by child ViewModels when user clicks refresh token button
+     * Child ViewModels must inject AuthRepository and call this method
+     */
+    protected suspend fun handleTokenRefresh(authRepository: com.informatique.mtcit.data.repository.AuthRepository): Boolean {
+        return try {
+            println("🔄 BaseTransactionViewModel: Attempting to refresh token...")
+            val result = authRepository.refreshAccessToken()
+
+            result.fold(
+                onSuccess = { tokenResponse ->
+                    println("✅ Token refreshed successfully")
+                    // Clear the error state
+                    _error.value = null
+                    true
+                },
+                onFailure = { error ->
+                    println("❌ Token refresh failed: ${error.message}")
+                    // Show error that refresh failed - user needs to login again
+                    _error.value = AppError.Unknown("فشل تحديث الرمز. يرجى تسجيل الدخول مرة أخرى")
+                    false
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception during token refresh: ${e.message}")
+            _error.value = AppError.Unknown("حدث خطأ أثناء تحديث الرمز: ${e.message}")
+            false
+        }
     }
 
     /**

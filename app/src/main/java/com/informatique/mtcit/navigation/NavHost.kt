@@ -41,6 +41,9 @@ import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import java.net.URLDecoder
 
@@ -149,9 +152,25 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 redirectUri = LoginViewModel.OAUTH_REDIRECT_URI,
                 onAuthCodeReceived = { code: String ->
                     println("✅ Authorization code received: $code")
-                    loginViewModel.handleOAuthCode(code)
-                    // Navigate back to login screen
-                    navController.popBackStack()
+
+                    // ✅ PROPER SOLUTION: Wait for actual token exchange completion
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        val success = loginViewModel.handleOAuthCode(code)
+
+                        if (success) {
+                            // ✅ Token exchange completed and saved successfully
+                            println("🔔 Setting login_completed flag to TRUE")
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("login_completed", true)
+
+                            println("🔙 Navigating back to previous screen")
+                            navController.popBackStack()
+                        } else {
+                            // ❌ Token exchange failed - stay on WebView or show error
+                            println("❌ Token exchange failed - staying on login screen")
+                        }
+                    }
                 }
             )
         }

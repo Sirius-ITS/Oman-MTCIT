@@ -54,7 +54,8 @@ class MarineRegistrationViewModel @Inject constructor(
     navigationUseCase: StepNavigationUseCase,
     private val strategyFactory: TransactionStrategyFactory,
     private val requestRepository: RequestRepository,
-    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService  // ✅ Use generic API service
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,  // ✅ Use generic API service
+    private val authRepository: com.informatique.mtcit.data.repository.AuthRepository  // ✅ NEW: Inject AuthRepository for token refresh
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
     // NEW: Validation state for marine unit selection
@@ -991,6 +992,25 @@ class MarineRegistrationViewModel @Inject constructor(
      */
     fun clearNavigationFlags() {
         _transactionSubmitSuccess.value = false
+    }
+
+    /**
+     * ✅ NEW: Refresh expired access token
+     * Called by UI when user clicks "Refresh Token" button in 401 error banner
+     */
+    fun refreshToken() {
+        viewModelScope.launch {
+            val success = handleTokenRefresh(authRepository)
+
+            if (success) {
+                println("✅ Token refreshed - user can continue their transaction")
+                // Token refreshed successfully, error banner will be cleared automatically
+                // User can now retry their last action (e.g., click Next again)
+            } else {
+                println("❌ Token refresh failed - user needs to login again")
+                // Error will be shown via _error state flow
+            }
+        }
     }
 
     /**

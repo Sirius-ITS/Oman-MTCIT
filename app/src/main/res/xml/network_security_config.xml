@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- ✅ AGGRESSIVE: Trust ALL certificates in base config for development -->
+    <!-- ✅ Trust system and user certificates for development -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
@@ -8,11 +8,20 @@
         </trust-anchors>
     </base-config>
 
-    <!-- ✅ Explicitly trust the problematic HTTPS domain -->
+    <!-- ✅ Backend API configuration -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">omanapi.isfpegypt.com</domain>
         <trust-anchors>
-            <!-- Accept ANY certificate for this domain -->
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- ✅ Bank Muscat Payment Gateway -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">spayuattrns.bmtest.om</domain>
+        <domain includeSubdomains="true">bmtest.om</domain>
+        <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
         </trust-anchors>

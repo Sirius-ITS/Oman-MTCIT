@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.home
 
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.api.CategoriesApiService
 import com.informatique.mtcit.data.model.category.SubCategory
 import com.informatique.mtcit.data.model.category.TransactionDetail
@@ -24,15 +25,10 @@ class MainCategoriesStrategyFactory @Inject constructor(
 
     suspend fun fetchSubCategories(): Result<List<SubCategory>> {
         return try {
-            val result = apiService.getSubCategories()
-            result.fold(
-                onSuccess = { subCategories ->
-                    Result.success(subCategories)
-                },
-                onFailure = { error ->
-                    Result.failure(error)
-                }
-            )
+            apiService.getSubCategories()
+        } catch (e: ApiException) {
+            // ✅ Re-throw ApiException to preserve status code
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -40,19 +36,13 @@ class MainCategoriesStrategyFactory @Inject constructor(
 
     suspend fun fetchTransactionDetail(serviceId: Int): Result<TransactionDetail> {
         return try {
-            val result = apiService.getTransactionInfo(serviceId = serviceId)
-            result.fold(
-                onSuccess = { transactionDetail ->
-                    Result.success(transactionDetail)
-                },
-                onFailure = { error ->
-                    Result.failure(error)
-                }
-            )
+            apiService.getTransactionInfo(serviceId = serviceId)
+        } catch (e: ApiException) {
+            // ✅ Re-throw ApiException to preserve status code
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
 }
-

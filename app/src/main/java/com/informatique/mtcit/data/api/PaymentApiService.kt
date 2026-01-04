@@ -234,4 +234,46 @@ class PaymentApiService @Inject constructor(
             Result.failure(Exception("Failed to submit payment: ${e.message}"))
         }
     }
+
+    /**
+     * Prepare payment redirect HTML
+     * GET /api/v1/online-payment/pay?dto=<base64>
+     * Returns HTML (text/html) containing auto-submitting form to payment gateway
+     */
+    suspend fun preparePaymentRedirect(
+        receiptId: Long,
+        successUrl: String,
+        canceledUrl: String
+    ): Result<String> {
+        return try {
+            println("🚀 PaymentApiService: Preparing payment redirect...")
+
+            // Build DTO JSON
+            val dtoJson = kotlinx.serialization.json.buildJsonObject {
+                put("receiptId", kotlinx.serialization.json.JsonPrimitive(receiptId))
+                put("successURL", kotlinx.serialization.json.JsonPrimitive(successUrl))
+                put("canceledURL", kotlinx.serialization.json.JsonPrimitive(canceledUrl))
+            }.toString()
+
+            val base64Dto = Base64.encodeToString(dtoJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+            val endpoint = "online-payment/pay?dto=$base64Dto"
+
+            // Use AppRepository.fetchRawString to get raw HTML
+            val htmlResult = repo.fetchRawString(endpoint)
+            htmlResult.fold(
+                onSuccess = { html ->
+                    println("✅ Prepared payment redirect HTML (length=${html.length})")
+                    Result.success(html)
+                },
+                onFailure = { err ->
+                    println("❌ Failed to prepare payment redirect: ${err.message}")
+                    Result.failure(err)
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception in preparePaymentRedirect: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
 }

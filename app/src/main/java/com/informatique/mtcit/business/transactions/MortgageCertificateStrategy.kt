@@ -24,11 +24,13 @@ import com.informatique.mtcit.business.transactions.marineunit.usecases.Validate
 import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligibleMarineUnitsUseCase
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import android.content.Context
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.api.MarineUnitsApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -85,6 +87,11 @@ class MortgageCertificateStrategy @Inject constructor(
 
     // ✅ Transaction context with all API endpoints
     private val context: TransactionContext = TransactionType.MORTGAGE_CERTIFICATE.context
+
+    // Override callbacks so ViewModel can assign them and trigger rebuilds/loading states
+    override var onStepsNeedRebuild: (() -> Unit)? = null
+    override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
+    override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
 
     // Helper: normalize different input date formats into ISO yyyy-MM-dd
     private fun normalizeDateToIso(input: String?): String? {
@@ -279,6 +286,11 @@ class MortgageCertificateStrategy @Inject constructor(
         println("📦 MortgageCertificate - Updated accumulated data: $accumulatedFormData")
     }
 
+    // ✅ NEW: Return current form data including payment WebView trigger flags
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
+    }
+
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 
@@ -343,6 +355,70 @@ class MortgageCertificateStrategy @Inject constructor(
         }
 
         return steps
+    }
+
+
+    /**
+     * Called when a step is opened - loads only the required lookups for that step
+     * ✅ NEW: Loads lookups in PARALLEL with per-field loading indicators
+     * ✅ ALSO: Triggers payment API call when payment step is opened
+     */
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+
+        // ✅ NEW: If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            // Call PaymentManager to load payment receipt
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+            return // Don't process lookups for payment step
+        }
+
+        if (step.requiredLookups.isEmpty()) {
+            println("ℹ️ Step $stepIndex has no required lookups")
+            return
+        }
+
+        println("🔄 Loading ${step.requiredLookups.size} lookups in PARALLEL for step $stepIndex: ${step.requiredLookups}")
+
+        // ✅ Notify ViewModel that all lookups are starting (sets loading state immediately)
+        step.requiredLookups.forEach { lookupKey ->
+            onLookupStarted?.invoke(lookupKey)
+        }
+
+        // ✅ Launch all lookups in parallel - each updates UI independently when done
+        kotlinx.coroutines.coroutineScope {
+            step.requiredLookups.forEach { lookupKey ->
+                launch {
+//                    loadLookup(lookupKey)
+                }
+            }
+        }
+
+        println("✅ Finished loading all lookups for step $stepIndex")
+
+        // ✅ Rebuild steps after all lookups complete
+        onStepsNeedRebuild?.invoke()
     }
 
 
@@ -522,7 +598,26 @@ class MortgageCertificateStrategy @Inject constructor(
                         println("   Request ID: ${result.requestId}")
                         // ✅ Store the created request ID
                         createdMortgageRequestId = result.requestId
+                        // Persist the request id into accumulatedFormData so getSteps can detect payment step
+                        accumulatedFormData["requestId"] = result.requestId.toString()
+                        accumulatedFormData["mortgageRequestId"] = result.requestId.toString()
                         apiResponses["proceedRequest"] = result.response
+                        // ✅ Extract and store shipInfoId for payment
+                        val selectedUnitsJson = data["selectedMarineUnits"]
+                        if (selectedUnitsJson != null) {
+                            try {
+                                val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                                val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                val firstShipId = shipIds.firstOrNull()
+                                if (firstShipId != null) {
+                                    accumulatedFormData["shipInfoId"] = firstShipId
+                                    accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                    println("✅ Stored shipInfoId: $firstShipId")
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ Failed to extract shipInfoId: ${e.message}")
+                            }
+                        }
                         println("💾 STORED createdMortgageRequestId = $createdMortgageRequestId")
                     }
                     is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
@@ -564,6 +659,8 @@ class MortgageCertificateStrategy @Inject constructor(
 
                         // Store the mortgage request ID for later use
                         accumulatedFormData["mortgageRequestId"] = response.data.id.toString()
+                        // Also store a generic requestId key so payment step detection is consistent
+                        accumulatedFormData["requestId"] = response.data.id.toString()
                         lastApiError = null // Clear any previous error
                         apiCallSucceeded = true
                     },
@@ -596,7 +693,10 @@ class MortgageCertificateStrategy @Inject constructor(
         if (currentStepData?.stepType == StepType.REVIEW) {
             println("📋 Handling Review Step using ReviewManager for Mortgage Certificate")
 
-            val requestIdInt = createdMortgageRequestId ?: accumulatedFormData["mortgageRequestId"]?.toIntOrNull()
+            // Determine request id from any available source
+            val requestIdInt = createdMortgageRequestId
+                ?: accumulatedFormData["requestId"]?.toIntOrNull()
+                ?: accumulatedFormData["mortgageRequestId"]?.toIntOrNull()
             if (requestIdInt == null) {
                 println("❌ No mortgageRequestId available for review step")
                 lastApiError = "لم يتم العثور على رقم طلب الرهن"
@@ -670,6 +770,9 @@ class MortgageCertificateStrategy @Inject constructor(
 
                         // Proceed - request submitted successfully
                         println("✅ No blocking conditions - mortgage request submitted successfully")
+                        // Persist request id into formData to ensure payment step is shown
+                        accumulatedFormData["requestId"] = requestIdInt.toString()
+                        accumulatedFormData["mortgageRequestId"] = requestIdInt.toString()
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${reviewResult.message}")
@@ -698,6 +801,9 @@ class MortgageCertificateStrategy @Inject constructor(
             when (paymentResult) {
                 is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Success -> {
                     println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Trigger UI rebuild so payment details are shown (important for mortgage path)
+                    onStepsNeedRebuild?.invoke()
 
                     // Check if payment was submitted successfully
                     val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false

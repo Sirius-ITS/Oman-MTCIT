@@ -96,11 +96,42 @@ class PaymentManager @Inject constructor(
                                     println("   Message: ${paymentResponse.message}")
                                     println("   Timestamp: ${paymentResponse.timestamp}")
 
-                                    // Store payment success data in formData
+                                    // Store receipt id and timestamp
                                     formData["paymentReceiptId"] = paymentResponse.data.toString()
-                                    formData["paymentSuccessMessage"] = paymentResponse.message
                                     formData["paymentTimestamp"] = paymentResponse.timestamp
-                                    formData["showPaymentSuccessDialog"] = "true"
+                                    formData["paymentSuccessMessage"] = paymentResponse.message
+
+                                    // Prepare payment redirect (HTML form to send user to payment gateway)
+                                    try {
+                                        val receiptId = paymentResponse.data
+                                        // Use a deep link that the gateway will redirect to; WebView will intercept it
+                                        val successUrl = "mtcit://payment/success"
+                                        val canceledUrl = "mtcit://payment/cancel"
+
+                                        val htmlResult = withContext(Dispatchers.IO) {
+                                            paymentRepository.preparePaymentRedirect(receiptId, successUrl, canceledUrl)
+                                        }
+
+                                        htmlResult.fold(
+                                            onSuccess = { html ->
+                                                // Trigger in-app WebView by storing HTML and setting trigger flag
+                                                formData["paymentRedirectHtml"] = html
+                                                formData["paymentRedirectSuccessUrl"] = successUrl
+                                                formData["paymentRedirectCanceledUrl"] = canceledUrl
+                                                formData["_triggerPaymentWebView"] = "true"
+
+                                                println("🚀 Payment redirect prepared and WebView trigger set")
+                                            },
+                                            onFailure = { err ->
+                                                println("⚠️ Failed to prepare payment redirect, falling back to showing success dialog: ${err.message}")
+                                                // Fallback: show success dialog so user can see receipt id and retry later
+                                                formData["showPaymentSuccessDialog"] = "true"
+                                            }
+                                        )
+                                    } catch (e: Exception) {
+                                        println("❌ Exception while preparing payment redirect: ${e.message}")
+                                        formData["showPaymentSuccessDialog"] = "true"
+                                    }
 
                                     StepProcessResult.Success("Payment submitted successfully")
                                 },

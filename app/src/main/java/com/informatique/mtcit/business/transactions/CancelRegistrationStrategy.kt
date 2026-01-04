@@ -188,6 +188,11 @@ class CancelRegistrationStrategy @Inject constructor(
         println("📦 CancelRegistration - Updated accumulated data: $accumulatedFormData")
     }
 
+    // ✅ NEW: Return current form data including payment WebView trigger flags
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
+    }
+
     override fun getContext(): TransactionContext {
         TODO("Not yet implemented")
     }

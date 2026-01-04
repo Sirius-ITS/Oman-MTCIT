@@ -163,6 +163,11 @@ class ReleaseMortgageStrategy @Inject constructor(
         println("📦 ReleaseMortgage - Updated accumulated data: $accumulatedFormData")
     }
 
+    // ✅ NEW: Return current form data including payment WebView trigger flags
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
+    }
+
     override fun getSteps(): List<StepData> {
         val steps = mutableListOf<StepData>()
 

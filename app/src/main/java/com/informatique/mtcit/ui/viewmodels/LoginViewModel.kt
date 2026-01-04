@@ -89,21 +89,24 @@ class LoginViewModel @Inject constructor(
     /**
      * Handle OAuth authorization code from WebView
      * Exchange code for access token
+     * ✅ CHANGED: Made suspend function so caller can wait for completion
      */
-    fun handleOAuthCode(authorizationCode: String) {
-        viewModelScope.launch {
-            println("🔄 Exchanging OAuth code for token...")
+    suspend fun handleOAuthCode(authorizationCode: String): Boolean {
+        println("🔄 Exchanging OAuth code for token...")
 
-            val result = authRepository.exchangeCodeForToken(authorizationCode)
+        val result = authRepository.exchangeCodeForToken(authorizationCode)
 
-            result.onSuccess { tokenResponse ->
+        return result.fold(
+            onSuccess = { tokenResponse ->
                 println("✅ OAuth token received: ${tokenResponse.accessToken}")
                 // Token is automatically saved in AuthRepository
 
                 // ✅ Now call submitForm() to complete the login flow properly
                 // This respects the architecture and uses the proper submission handling
                 submitForm()
-            }.onFailure { error ->
+                true // Return success
+            },
+            onFailure = { error ->
                 println("❌ OAuth token exchange failed: ${error.message}")
 
                 // Show error toast to user
@@ -111,7 +114,8 @@ class LoginViewModel @Inject constructor(
 
                 // Navigate back or show error in UI
                 // The user can try again from the login screen
+                false // Return failure
             }
-        }
+        )
     }
 }

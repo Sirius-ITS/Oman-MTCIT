@@ -67,10 +67,40 @@ fun MainCategoriesScreen(
     val viewModel: MainCategoriesViewModel = hiltViewModel()
 
     val uiState by viewModel.subCategories.collectAsStateWithLifecycle()
+    // ✅ NEW: Collect API error state for 401 handling
+    val apiError by viewModel.apiError.collectAsStateWithLifecycle()
+    // ✅ NEW: Collect navigation trigger
+    val shouldNavigateToLogin by viewModel.shouldNavigateToLogin.collectAsStateWithLifecycle()
 
-//    LaunchedEffect(Unit) {
-//        viewModel.getSubCategoriesApi()
-//    }
+    // ✅ NEW: Handle navigation to login
+    LaunchedEffect(shouldNavigateToLogin) {
+        if (shouldNavigateToLogin) {
+            navController.navigate(com.informatique.mtcit.navigation.NavRoutes.OAuthWebViewRoute.route)
+            viewModel.resetNavigationTrigger()
+        }
+    }
+
+    // ✅ FIXED: Use DisposableEffect to observe savedStateHandle changes properly
+    DisposableEffect(navController.currentBackStackEntry) {
+        val handle = navController.currentBackStackEntry?.savedStateHandle
+
+        val observer = androidx.lifecycle.Observer<Boolean> { loginCompleted ->
+            if (loginCompleted == true) {
+                println("✅ Login completed detected, retrying API call...")
+                // User returned from successful login, retry API call
+                viewModel.clearApiError()
+                viewModel.getSubCategoriesApi()
+                // Clear the flag
+                handle?.set("login_completed", false)
+            }
+        }
+
+        handle?.getLiveData<Boolean>("login_completed")?.observeForever(observer)
+
+        onDispose {
+            handle?.getLiveData<Boolean>("login_completed")?.removeObserver(observer)
+        }
+    }
 
     // Auto-expand the specified category when navigating from home
     LaunchedEffect(categoryIdToExpand) {
@@ -248,7 +278,7 @@ fun MainCategoriesScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 50.dp, top = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 //                    // Institution Filter
@@ -265,6 +295,49 @@ fun MainCategoriesScreen(
                         modifier = Modifier.weight(1f),
                         onSelected = { viewModel.selectOrganization(it) }
                     )
+                }
+
+                // ✅ MOVED: Show error banner directly under the gradient box
+                apiError?.let { error ->
+                    when (error) {
+                        is com.informatique.mtcit.common.AppError.Unauthorized -> {
+                            // 401 - Show banner WITH refresh button
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                showRefreshButton = true,
+                                onRefreshToken = {
+                                    viewModel.refreshToken()
+                                },
+                                onDismiss = { viewModel.clearApiError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.ApiError -> {
+                            // Other API errors - Show banner WITHOUT refresh button
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                onDismiss = { viewModel.clearApiError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.Unknown -> {
+                            // ✅ Token refresh failed - Show with "Go to Login" button
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                showRefreshButton = true,
+                                onRefreshToken = {
+                                    // Navigate to login when refresh token is expired
+                                    viewModel.navigateToLogin()
+                                },
+                                onDismiss = { viewModel.clearApiError() }
+                            )
+                        }
+                        else -> {
+                            // Other error types
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = "حدث خطأ",
+                                onDismiss = { viewModel.clearApiError() }
+                            )
+                        }
+                    }
                 }
 
                 // Categories List
@@ -304,8 +377,7 @@ fun MainCategoriesScreen(
                         }
                     }
                     is SubCategoriesUiState.Error -> {
-                        val error = (uiState as SubCategoriesUiState.Error).message
-                        Text(text = error)
+                        // ✅ REMOVED: Don't show error message in body, only banner shows it
                     }
                 }
 

@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.lifecycle.viewModelScope
 import com.informatique.mtcit.business.home.MainCategoriesStrategyInterface
 import com.informatique.mtcit.business.home.MainCategoriesStrategyFactory
+import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.AppError
+import com.informatique.mtcit.data.repository.AuthRepository
 import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.data.model.category.SubCategory
 import com.informatique.mtcit.data.model.category.TransactionDetail
@@ -23,7 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainCategoriesViewModel @Inject constructor(
     @param:ApplicationContext val context: Context,
-    val strategyFactory: MainCategoriesStrategyFactory
+    val strategyFactory: MainCategoriesStrategyFactory,
+    private val authRepository: AuthRepository  // ✅ NEW: Inject AuthRepository for token refresh
 ) : BaseViewModel() {
 
     // Current strategy for categories management
@@ -55,6 +59,14 @@ class MainCategoriesViewModel @Inject constructor(
 
     private val _transactionDetail = MutableStateFlow<TransactionDetailUiState>(TransactionDetailUiState.Blank)
     val transactionDetail: StateFlow<TransactionDetailUiState> = _transactionDetail.asStateFlow()
+
+    // ✅ NEW: Error state for 401 handling
+    private val _apiError = MutableStateFlow<AppError?>(null)
+    val apiError: StateFlow<AppError?> = _apiError.asStateFlow()
+
+    // ✅ NEW: Navigation trigger for login
+    private val _shouldNavigateToLogin = MutableStateFlow(false)
+    val shouldNavigateToLogin: StateFlow<Boolean> = _shouldNavigateToLogin.asStateFlow()
 
     init {
         // Initialize strategy only
@@ -122,36 +134,99 @@ class MainCategoriesViewModel @Inject constructor(
     fun getSubCategoriesApi(){
         viewModelScope.launch {
             _subCategories.value = SubCategoriesUiState.Loading
+            _apiError.value = null  // Clear previous errors
 
-            strategyFactory.fetchSubCategories()
-                .onSuccess {
-                    _subCategories.value = SubCategoriesUiState.Success(it)
-                }
-                .onFailure { error ->
-                    _subCategories.value = SubCategoriesUiState.Error(
-                        error.message ?: "Unknown error"
+            try {
+                strategyFactory.fetchSubCategories()
+                    .onSuccess {
+                        _subCategories.value = SubCategoriesUiState.Success(it)
+                    }
+                    .onFailure { error ->
+                        _subCategories.value = SubCategoriesUiState.Error(
+                            error.message ?: "Unknown error"
+                        )
+                    }
+            } catch (e: ApiException) {
+                // ✅ Handle 401 specifically for token refresh
+                if (e.code == 401) {
+                    _apiError.value = AppError.Unauthorized(
+                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
                     )
+                } else {
+                    _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
                 }
+                _subCategories.value = SubCategoriesUiState.Error(e.message ?: "API Error")
+            }
         }
     }
 
     fun getTransactionDetailApi(serviceId: Int){
         viewModelScope.launch {
             _transactionDetail.value = TransactionDetailUiState.Loading
+            _apiError.value = null  // Clear previous errors
 
-            strategyFactory.fetchTransactionDetail(serviceId = serviceId)
-                .onSuccess {
-                    _transactionDetail.value = TransactionDetailUiState.Success(it)
+            try {
+                strategyFactory.fetchTransactionDetail(serviceId = serviceId)
+                    .onSuccess {
+                        _transactionDetail.value = TransactionDetailUiState.Success(it)
 
-                    // ✅ FIX: Don't populate tabs here - let the UI handle localization
-                    // The Application Context doesn't respect runtime locale changes
-                }
-                .onFailure { error ->
-                    _transactionDetail.value = TransactionDetailUiState.Error(
-                        error.message ?: "Unknown error"
+                        // ✅ FIX: Don't populate tabs here - let the UI handle localization
+                        // The Application Context doesn't respect runtime locale changes
+                    }
+                    .onFailure { error ->
+                        _transactionDetail.value = TransactionDetailUiState.Error(
+                            error.message ?: "Unknown error"
+                        )
+                    }
+            } catch (e: ApiException) {
+                // ✅ Handle 401 specifically for token refresh
+                if (e.code == 401) {
+                    _apiError.value = AppError.Unauthorized(
+                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
                     )
+                } else {
+                    _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
                 }
+                _transactionDetail.value = TransactionDetailUiState.Error(e.message ?: "API Error")
+            }
         }
+    }
+
+    // ✅ NEW: Token refresh method
+    fun refreshToken() {
+        viewModelScope.launch {
+            val result = authRepository.refreshAccessToken()
+
+            result.fold(
+                onSuccess = {
+                    println("✅ Token refreshed successfully in MainCategoriesViewModel")
+                    _apiError.value = null  // Clear error banner
+                    // Retry the API call automatically
+                    getSubCategoriesApi()
+                },
+                onFailure = {
+                    println("❌ Token refresh failed in MainCategoriesViewModel")
+                    // Show error with "Go to Login" button
+                    _apiError.value = AppError.Unknown("انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى")
+                    // Don't auto-navigate, let user click the button
+                }
+            )
+        }
+    }
+
+    // ✅ NEW: Trigger navigation to login
+    fun navigateToLogin() {
+        _shouldNavigateToLogin.value = true
+    }
+
+    // ✅ NEW: Reset navigation trigger
+    fun resetNavigationTrigger() {
+        _shouldNavigateToLogin.value = false
+    }
+
+    // ✅ NEW: Clear API error
+    fun clearApiError() {
+        _apiError.value = null
     }
 
     /**

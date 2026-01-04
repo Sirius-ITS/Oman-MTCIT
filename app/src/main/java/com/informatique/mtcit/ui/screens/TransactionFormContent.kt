@@ -131,6 +131,42 @@ fun TransactionFormContent(
         )
     }
 
+    // ✅ NEW: Show Payment WebView when PaymentManager triggers it
+    val showPaymentWebView = uiState.formData["_triggerPaymentWebView"]?.toBoolean() ?: false
+    val paymentRedirectHtml = uiState.formData["paymentRedirectHtml"] ?: ""
+    val paymentRedirectSuccessUrl = uiState.formData["paymentRedirectSuccessUrl"] ?: ""
+    val paymentRedirectCanceledUrl = uiState.formData["paymentRedirectCanceledUrl"] ?: ""
+
+    if (showPaymentWebView && paymentRedirectHtml.isNotBlank()) {
+        PaymentWebViewDialog(
+            html = paymentRedirectHtml,
+            successUrl = paymentRedirectSuccessUrl,
+            canceledUrl = paymentRedirectCanceledUrl,
+            onResult = { success ->
+                if (success) {
+                    // Mark to show success dialog and trigger a refresh of data
+                    onFieldValueChange("showPaymentSuccessDialog", "true")
+                    // Trigger a refresh so payment receipt can be reloaded if needed
+                    onFieldValueChange("_triggerRefresh", System.currentTimeMillis().toString())
+                } else {
+                    // Payment canceled - show cancel as failure dialog (reuse success dialog flag set to false)
+                    onFieldValueChange("showPaymentSuccessDialog", "false")
+                    onFieldValueChange("paymentSuccessMessage", "Payment canceled or failed")
+                }
+
+                // Clear webview trigger and html
+                onFieldValueChange("_triggerPaymentWebView", "false")
+                onFieldValueChange("paymentRedirectHtml", "")
+                onFieldValueChange("paymentRedirectSuccessUrl", "")
+                onFieldValueChange("paymentRedirectCanceledUrl", "")
+            },
+            onDismiss = {
+                // User closed webview without completing - clear trigger
+                onFieldValueChange("_triggerPaymentWebView", "false")
+            }
+        )
+    }
+
     // ✅ NEW: Handle API errors from centralized error state
     errorState?.let { error ->
         when (error) {
@@ -313,6 +349,20 @@ fun TransactionFormContent(
                         is com.informatique.mtcit.common.AppError.ApiError -> {
                             ErrorBanner(
                                 message = error.message,
+                                onDismiss = {
+                                    viewModel.clearError()
+                                }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.Unauthorized -> {
+                            // ✅ NEW: Special handling for 401 errors - show refresh token button
+                            ErrorBanner(
+                                message = error.message,
+                                showRefreshButton = true,
+                                onRefreshToken = {
+                                    // Cast viewModel to MarineRegistrationViewModel to access refreshToken()
+                                    (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.refreshToken()
+                                },
                                 onDismiss = {
                                     viewModel.clearError()
                                 }

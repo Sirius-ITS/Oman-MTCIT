@@ -10,6 +10,7 @@ sealed class AppError {
     data class CompanyLookup(val message: String) : AppError()
     data class Submission(val message: String) : AppError()
     data class Initialization(val message: String) : AppError() // For transaction initialization errors
-    data class ApiError(val code: Int, val message: String) : AppError() // ✅ NEW: For API errors (including 406)
+    data class ApiError(val code: Int, val message: String) : AppError() // ✅ NEW: For API errors (including 406, 500)
+    data class Unauthorized(val message: String) : AppError() // ✅ NEW: Specifically for 401 errors with token refresh
     data class Unknown(val message: String) : AppError()
 }
