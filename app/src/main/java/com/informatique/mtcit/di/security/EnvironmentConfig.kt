@@ -67,7 +67,7 @@ data class Environment(
                 enableExperimentalFeatures = true,
                 enableDebugEndpoints = true,
                 logLevel = "debug",
-                cacheTimeoutMs = 300000L
+                cacheTimeoutMs = 3000000L
             ),
             security = SecurityConfig(
                 enableSSLPinning = false,
@@ -85,7 +85,7 @@ data class Environment(
                 enableExperimentalFeatures = true,
                 enableDebugEndpoints = true,
                 logLevel = "debug",
-                cacheTimeoutMs = 300000L
+                cacheTimeoutMs = 3000000L
             ),
             security = SecurityConfig(
                 enableSSLPinning = false,
@@ -103,7 +103,7 @@ data class Environment(
                 enableExperimentalFeatures = false,
                 enableDebugEndpoints = false,
                 logLevel = "warn",
-                cacheTimeoutMs = 300000L
+                cacheTimeoutMs = 3000000L
             ),
             security = SecurityConfig(
                 enableSSLPinning = true,
@@ -121,7 +121,7 @@ data class FeatureFlags(
     val enableDebugEndpoints: Boolean = false,
     val enableCaching: Boolean = false,
     val logLevel: String = "info", // debug, info, warn, error
-    val cacheTimeoutMs: Long = 600000L,
+    val cacheTimeoutMs: Long = 6000000L,
     val enableAnalytics: Boolean = true,
     val enableCrashReporting: Boolean = true
 )

@@ -600,6 +600,9 @@
     <string name="sailor_edit_title">Edit Sailor</string>
     <string name="sailor_job_title">Select sailor job</string>
     <string name="sailor_name_title">Enter sailor name</string>
+    <string name="name_ar_label">Name in Arabic</string>
+    <string name="name_en_label">Name in English</string>
+    <string name="nationality_label">Nationality</string>
     <string name="sailor_identity_number_title">Enter identity number</string>
     <string name="sailor_seaman_passport_number_title">Enter seaman\'s passport number</string>
     <string name="sailor_count">Total Number of Sailors</string>
@@ -697,6 +700,12 @@
     <string name="insurance_company">Issuing Company</string>
     <string name="insurance_company_placeholder">Enter issuing insurance company</string>
 
+    <string name="insurance_expiry_date">Insurance Expiry Date</string>
+    <string name="insurance_expiry_date_placeholder">Select insurance expiry date</string>
+
+    <string name="cr_number">Commercial Registration Number</string>
+    <string name="cr_number_placeholder">Enter commercial registration number</string>
+
     <string name="insurance_document_attachment">Attach insurance document (if insurance company is outside the Sultanate)</string>
     <string name="insurance_document_hint">Only files of 5MB or less.\nMust be png, jpeg, jpg, or pdf.</string>
     <string name="insurance_document_button">Choose file</string>
@@ -705,6 +714,8 @@
     <string name="insurance_document_number_required">Insurance document number is required</string>
     <string name="insurance_country_required">Country must be selected</string>
     <string name="insurance_company_required">Issuing company must be selected</string>
+    <string name="insurance_expiry_date_required">Insurance expiry date is required</string>
+    <string name="cr_number_required">Commercial registration number is required</string>
     <string name="insurance_document_required">Insurance document must be attached</string>
     <string name="insurance_document_invalid_format">File format not supported. Please upload PDF or image</string>
     <string name="insurance_document_size_exceeded">File size exceeds 5MB</string>

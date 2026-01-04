@@ -103,6 +103,15 @@ interface ShipRegistrationRepository {
     ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
 
     /**
+     * Validate build status with dynamic documents for PERMANENT registration
+     * POST perm-registration-requests/{requestId}/validate-build-status
+     */
+    suspend fun validatePermanentBuildStatusWithDocuments(
+        requestId: Int,
+        documents: List<com.informatique.mtcit.data.model.DocumentFileUpload>
+    ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
+
+    /**
      * Send registration request and check if inspection is needed
      * POST registration-requests/{request-id}/send-request
      */
@@ -116,11 +125,23 @@ interface ShipRegistrationRepository {
 
     // Create navigation license request for a selected ship (returns API response wrapper)
     suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse>
+
+    /**
+     * Add maritime identification (IMO, MMSI, Call Sign) to a ship
+     * PATCH /api/v1/perm-registration-requests/{shipId}/add-ship-identity
+     */
+    suspend fun addMaritimeIdentity(
+        shipId: Int,
+        imoNumber: String?,
+        mmsiNumber: String?,
+        callSign: String?
+    ): Result<com.informatique.mtcit.data.model.MaritimeIdentityResponse>
 }
 
 @Singleton
 class ShipRegistrationRepositoryImpl @Inject constructor(
-    private val registrationApiService: RegistrationApiService
+    private val registrationApiService: RegistrationApiService,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService
 ) : ShipRegistrationRepository {
 
     override suspend fun submitRegistration(formData: Map<String, String>): Result<Boolean> {
@@ -240,6 +261,14 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         return registrationApiService.validateBuildStatusWithDocuments(requestId, documents)
     }
 
+    override suspend fun validatePermanentBuildStatusWithDocuments(
+        requestId: Int,
+        documents: List<com.informatique.mtcit.data.model.DocumentFileUpload>
+    ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse> {
+        println("📞 ShipRegistrationRepository: Calling validatePermanentBuildStatusWithDocuments API...")
+        return registrationApiService.validatePermanentBuildStatusWithDocuments(requestId, documents)
+    }
+
     override suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {
         println("📞 ShipRegistrationRepository: Calling sendRequest API...")
         return registrationApiService.sendRequest(requestId)
@@ -253,5 +282,15 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
     override suspend fun createNavigationLicense(shipInfoId: Int): Result<com.informatique.mtcit.data.model.CreateNavigationResponse> {
         println("📞 ShipRegistrationRepository: Creating navigation license for shipInfoId=$shipInfoId")
         return registrationApiService.createNavigationLicense(shipInfoId)
+    }
+
+    override suspend fun addMaritimeIdentity(
+        shipId: Int,
+        imoNumber: String?,
+        mmsiNumber: String?,
+        callSign: String?
+    ): Result<com.informatique.mtcit.data.model.MaritimeIdentityResponse> {
+        println("📞 ShipRegistrationRepository: Adding maritime identity for shipId=$shipId")
+        return marineUnitsApiService.addMaritimeIdentity(shipId, imoNumber, mmsiNumber, callSign)
     }
 }

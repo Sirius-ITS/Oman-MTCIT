@@ -118,18 +118,18 @@ class IssueNavigationPermitStrategy @Inject constructor(
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
-        val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
+        // ✅ Don't load countries here - will be loaded in onStepOpened with ISO codes
         val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
-        countryOptions = countries
+        // countryOptions will be loaded in onStepOpened() with proper ISO code format
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
 
         return mapOf(
             "marineUnits" to emptyList<MarineUnit>(), // ✅ Empty initially
-            "registrationCountry" to countries,
+            "registrationCountry" to emptyList<String>(), // ✅ Empty - loaded lazily
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes
         )
@@ -150,8 +150,21 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 }
                 "crewJobTitles" -> {
                     if (crewJobTitles.isEmpty()) {
-                        val jobs = lookupRepository.getCrewJobTitles().getOrNull() ?: emptyList()
-                        crewJobTitles = jobs
+                        // ✅ Load with IDs in "ID|Name" format
+                        val jobs = lookupRepository.getCrewJobTitlesRaw()
+                        crewJobTitles = jobs.map { "${it.id}|${it.nameAr}" }
+                        println("✅ Loaded ${crewJobTitles.size} crew job titles with IDs")
+                    }
+                }
+                "countries" -> {
+                    if (countryOptions.isEmpty()) {
+                        val countries = lookupRepository.getCountriesRaw()
+                        println("🌍 Raw countries from API (first 3):")
+                        countries.take(3).forEach { println("   - id='${it.id}', nameAr='${it.nameAr}', isoCode='${it.isoCode}'") }
+                        // ✅ IMPORTANT: Use isoCode (ISO country code like "UA") instead of id (which contains country name)
+                        countryOptions = countries.map { "${it.isoCode}|${it.nameAr}" }
+                        println("✅ Loaded ${countryOptions.size} countries with ISO codes")
+                        println("   First 3 formatted: ${countryOptions.take(3)}")
                     }
                 }
                  // add other lookups if needed
@@ -183,7 +196,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
             sailingRegions = sailingRegionsOptions.map { it.nameAr } // ✅ Pass names to UI
         ))
         steps.add( SharedSteps.sailorInfoStep(
-            jobs = crewJobTitles
+            jobs = crewJobTitles,
+            nationalities = countryOptions
         ))
 
         // Review Step (shows all collected data)

@@ -1333,4 +1333,44 @@ class LookupApiService @Inject constructor(
             Result.failure(Exception("Failed to get inspection authorities: ${e.message}"))
         }
     }
+
+    // ✅ NEW: Get insurance companies for permanent registration
+    suspend fun getInsuranceCompanies(): Result<LookupResponse<InsuranceCompany>> {
+        return try {
+            println("📡 Fetching insurance companies from API...")
+            when (val response = repo.onGet("perm-registration-requests/get-insurance-companies")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("📥 Response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val companies: List<InsuranceCompany> = json.decodeFromJsonElement(dataArray)
+                            println("✅ Parsed ${companies.size} insurance companies")
+                            Result.success(LookupResponse(true, companies))
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to fetch insurance companies"
+                            println("❌ API error: $message")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response")
+                        Result.failure(Exception("Empty insurance companies response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMsg = ErrorMessageExtractor.extract(response.error)
+                    println("❌ Network error: $errorMsg")
+                    Result.failure(Exception("Failed to get insurance companies: $errorMsg"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get insurance companies: ${e.message}"))
+        }
+    }
 }

@@ -1201,4 +1201,271 @@ class RegistrationApiService @Inject constructor(
         }
     }
 
+    /**
+     * Validate Insurance Document for Permanent Registration
+     * POST /api/v1/perm-registration-requests/validate-insurance-document
+     *
+     * Sends insurance document with DTO + file (multipart)
+     * - If countryId = "OM": insuranceCompanyId is required (selected from dropdown)
+     * - If countryId != "OM": insuranceCompanyName is required (text field input)
+     */
+    suspend fun validateInsuranceDocument(
+        insuranceDto: com.informatique.mtcit.data.model.InsuranceDocumentRequestDto,
+        file: com.informatique.mtcit.data.model.DocumentFileUpload
+    ): Result<com.informatique.mtcit.data.model.InsuranceDocumentResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🚀 RegistrationApiService: Validating insurance document...")
+            println("=".repeat(80))
+
+            println("📤 Insurance Document Request Details:")
+            println("   Ship Info ID: ${insuranceDto.shipInfoId}")
+            println("   Insurance Number: ${insuranceDto.insuranceNumber}")
+            println("   Country ID: ${insuranceDto.countryId}")
+            println("   Insurance Company ID: ${insuranceDto.insuranceCompanyId}")
+            println("   Insurance Company Name: ${insuranceDto.insuranceCompanyName}")
+            println("   Insurance Expiry Date: ${insuranceDto.insuranceExpiryDate}")
+            println("   CR Number: ${insuranceDto.crNumber}")
+            println("   File: ${file.fileName} (${file.fileBytes.size} bytes)")
+            println("=".repeat(80))
+
+            val url = "perm-registration-requests/validate-insurance-document"
+
+            // Build multipart form data
+            val formParts = mutableListOf<PartData>()
+
+            // ✅ 1. Add DTO as JSON
+            val dtoJson = json.encodeToString(insuranceDto)
+            println("📤 DTO JSON: $dtoJson")
+
+            formParts.add(
+                PartData.FormItem(
+                    value = dtoJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            println("✅ Added dto field: $dtoJson")
+
+            // ✅ 2. Add insurance file
+            formParts.add(
+                PartData.BinaryItem(
+                    provider = { file.fileBytes.inputStream().asInput() },
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(
+                            HttpHeaders.ContentDisposition,
+                            "form-data; name=\"files\"; filename=\"${file.fileName}\""
+                        )
+                        append(HttpHeaders.ContentType, file.mimeType)
+                    }
+                )
+            )
+            println("📎 Added file: ${file.fileName} (${file.fileBytes.size} bytes)")
+
+            println("📤 Sending ${formParts.size} form parts to $url")
+            println("=".repeat(80))
+
+            when (val response = repo.onPostMultipart(url, formParts)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            try {
+                                val insuranceResponse: com.informatique.mtcit.data.model.InsuranceDocumentResponse =
+                                    json.decodeFromJsonElement(responseJson)
+
+                                println("✅ Insurance document validated successfully!")
+                                println("   Message: ${insuranceResponse.message}")
+                                println("   Request ID: ${insuranceResponse.data?.id}")
+                                println("   Status ID: ${insuranceResponse.data?.status?.id}")
+                                println("   Insurance Doc: ${insuranceResponse.data?.insuranceDoc?.fileName}")
+                                println("=".repeat(80))
+
+                                Result.success(insuranceResponse)
+                            } catch (e: Exception) {
+                                println("❌ Failed to parse insurance response: ${e.message}")
+                                println("   Response JSON: $responseJson")
+                                println("=".repeat(80))
+                                e.printStackTrace()
+                                Result.failure(ApiException(500, "Failed to parse insurance response: ${e.message}"))
+                            }
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to validate insurance document"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            println("   Full response: $responseJson")
+                            println("=".repeat(80))
+                            Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error Response:")
+                    val errorMsg = ErrorMessageExtractor.extract(response.code.toString())
+                    println("   Error: $errorMsg")
+                    println("=".repeat(80))
+                    Result.failure(ApiException(response.code, errorMsg))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in validateInsuranceDocument: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, e.message ?: "Failed to validate insurance document"))
+        }
+    }
+
+    /**
+     * Validate build status with dynamic documents for PERMANENT registration
+     * POST perm-registration-requests/{requestId}/validate-build-status
+     *
+     * @param requestId The permanent registration request ID
+     * @param documents List of document file uploads with documentId mapping
+     * @return Result with DocumentValidationResponse
+     */
+    suspend fun validatePermanentBuildStatusWithDocuments(
+        requestId: Int,
+        documents: List<com.informatique.mtcit.data.model.DocumentFileUpload>
+    ): Result<DocumentValidationResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🚀 RegistrationApiService: Validating PERMANENT build status with dynamic documents...")
+            println("=".repeat(80))
+
+            println("📤 Request Details:")
+            println("   Request ID: $requestId")
+            println("   Documents Count: ${documents.size}")
+            documents.forEachIndexed { index, doc ->
+                println("   Document $index: ${doc.fileName} (documentId=${doc.documentId}, ${doc.mimeType})")
+            }
+            println("=".repeat(80))
+
+            val url = "perm-registration-requests/$requestId/validate-build-status"
+
+            // Build multipart form data
+            val formParts = mutableListOf<PartData>()
+
+            // ✅ 1. Build documents DTO array
+            val documentsDto = documents.map { doc ->
+                com.informatique.mtcit.data.model.DocumentMetadata(
+                    fileName = doc.fileName,
+                    documentId = doc.documentId
+                )
+            }
+
+            val dtoWrapper = com.informatique.mtcit.data.model.DocumentValidationRequestDto(
+                documents = documentsDto
+            )
+
+            val dtoJson = json.encodeToString(dtoWrapper)
+            println("📤 DTO JSON: $dtoJson")
+
+            // Add "dto" field
+            formParts.add(
+                PartData.FormItem(
+                    value = dtoJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            println("✅ Added dto field: $dtoJson")
+
+            // ✅ 2. Add files (matching the DTO structure)
+            documents.forEach { doc ->
+                formParts.add(
+                    PartData.BinaryItem(
+                        provider = { doc.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${doc.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, doc.mimeType)
+                        }
+                    )
+                )
+                println("📎 Added file: ${doc.fileName} (${doc.fileBytes.size} bytes, documentId=${doc.documentId})")
+            }
+
+            // Debug: Print all form parts
+            println("📤 Debug - All FormData parts:")
+            formParts.forEachIndexed { index, part ->
+                when (part) {
+                    is PartData.FormItem -> {
+                        val cd = part.headers[HttpHeaders.ContentDisposition] ?: ""
+                        val ct = part.headers[HttpHeaders.ContentType] ?: ""
+                        println("   [$index] FormItem: disposition='$cd', contentType='$ct', value='${part.value}'")
+                    }
+                    is PartData.BinaryItem -> {
+                        val cd = part.headers[HttpHeaders.ContentDisposition] ?: ""
+                        val ct = part.headers[HttpHeaders.ContentType] ?: ""
+                        println("   [$index] BinaryItem: disposition='$cd', contentType='$ct'")
+                    }
+                    else -> println("   [$index] Unknown part type: $part")
+                }
+            }
+
+            println("📤 Sending ${formParts.size} form parts to $url")
+            println("=".repeat(80))
+
+            when (val response = repo.onPostMultipart(url, formParts)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        if (statusCode == 200 || statusCode == 201) {
+                            val validationResponse: DocumentValidationResponse = json.decodeFromJsonElement(responseJson)
+                            println("✅ Documents validated successfully!")
+                            println("=".repeat(80))
+                            return Result.success(validationResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to validate documents"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            println("=".repeat(80))
+                            return Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from server")
+                        println("=".repeat(80))
+                        return Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    println("=".repeat(80))
+                    return Result.failure(ApiException(response.code, response.error?.toString() ?: "API error"))
+                }
+            }
+
+            return Result.failure(ApiException(500, "Unknown error validating documents"))
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+            println("❌ Exception in validatePermanentBuildStatusWithDocuments: ${e.message}")
+            println("=".repeat(80))
+            return Result.failure(ApiException(500, "Failed to validate build status: ${e.message}"))
+        }
+    }
 }

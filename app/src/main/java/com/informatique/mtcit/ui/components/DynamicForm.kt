@@ -449,6 +449,7 @@ fun DynamicStepForm(
                             SailorListManager(
                                 sailors = sailors,
                                 jobs = field.jobs,
+                                nationalities = field.nationalities,
                                 onSailorChange = { updatedSailors ->
                                     val json = Json.encodeToString(updatedSailors)
                                     onFieldChange(field.id, json, null)

@@ -684,6 +684,14 @@
     <string name="insurance_company">الشركة المصدرة</string>
     <string name="insurance_company_placeholder">أدخل الشركة التأمين المصدرة</string>
 
+    <!-- Insurance Expiry Date -->
+    <string name="insurance_expiry_date">تاريخ انتهاء التأمين</string>
+    <string name="insurance_expiry_date_placeholder">اختر تاريخ انتهاء التأمين</string>
+
+    <!-- CR Number -->
+    <string name="cr_number">رقم السجل التجاري</string>
+    <string name="cr_number_placeholder">أدخل رقم السجل التجاري</string>
+
     <!-- Insurance Document Attachment -->
     <string name="insurance_document_attachment">أرفاق وثيقة التأمين (إذا كانت شركة التأمين خارج السلطنة)</string>
     <string name="insurance_document_hint">فقط ملفات بحجم 5 ميجابايت أو أقل.\nيجب png أو jpeg أو jpg أو pdf.</string>
@@ -693,6 +701,8 @@
     <string name="insurance_document_number_required">رقم وثيقة التأمين مطلوب</string>
     <string name="insurance_country_required">يجب اختيار الدولة</string>
     <string name="insurance_company_required">يجب اختيار الشركة المصدرة</string>
+    <string name="insurance_expiry_date_required">تاريخ انتهاء التأمين مطلوب</string>
+    <string name="cr_number_required">رقم السجل التجاري مطلوب</string>
     <string name="insurance_document_required">يجب إرفاق وثيقة التأمين</string>
     <string name="insurance_document_invalid_format">صيغة الملف غير مدعومة. يرجى رفع PDF أو صورة</string>
     <string name="insurance_document_size_exceeded">حجم الملف يتجاوز 5 ميجابايت</string>
@@ -705,6 +715,9 @@
     <string name="sailor_edit_title">تعديل بحار</string>
     <string name="sailor_job_title">إختر وظيفة البحار</string>
     <string name="sailor_name_title">أدخل اسم البحار</string>
+    <string name="name_ar_label">الإسم بالعربي</string>
+    <string name="name_en_label">الإسم بالإنجليزي</string>
+    <string name="nationality_label">الجنسية</string>
     <string name="sailor_identity_number_title">أدخل رقم الهوية</string>
     <string name="sailor_seaman_passport_number_title">أدخل رقم الجواز البحري</string>
     <string name="sailor_count">إجمالي عدد البحارة</string>

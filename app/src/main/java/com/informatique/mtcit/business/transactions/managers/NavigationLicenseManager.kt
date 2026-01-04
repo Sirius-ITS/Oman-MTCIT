@@ -128,21 +128,79 @@ class NavigationLicenseManager @Inject constructor(
      */
     suspend fun addCrewBulkIssue(
         requestId: Long,
-        crewData: List<Map<String, String>>
+        crewData: List<Map<String, Any>>
     ): Result<List<CrewResDto>> {
         println("👥 NavigationLicenseManager: Adding crew bulk (Issue) - count=${crewData.size}")
+        println("📋 Raw crewData received:")
+        crewData.forEachIndexed { index, crew ->
+            println("   Crew[$index]: $crew")
+        }
 
         val crewList = crewData.map { crew ->
-            CrewReqDto(
+            // Extract nationality ID from nested map or string
+            val nationalityId = when (val nat = crew["nationality"]) {
+                is Map<*, *> -> {
+                    val id = nat["id"]?.toString() ?: ""
+                    println("   🌍 Nationality from Map: $nat -> ID: '$id'")
+                    id
+                }
+                is String -> {
+                    println("   🌍 Nationality from String: '$nat'")
+                    nat
+                }
+                else -> {
+                    println("   ⚠️ Nationality type unknown: ${nat?.javaClass?.simpleName}")
+                    ""
+                }
+            }
+
+            val jobTitleValue = crew["jobTitle"]
+            val jobTitleInt = when (jobTitleValue) {
+                is Int -> {
+                    println("   💼 JobTitle from Int: $jobTitleValue")
+                    jobTitleValue
+                }
+                is String -> {
+                    val converted = jobTitleValue.toIntOrNull() ?: 0
+                    println("   💼 JobTitle from String: '$jobTitleValue' -> $converted")
+                    converted
+                }
+                else -> {
+                    println("   ⚠️ JobTitle type unknown: ${jobTitleValue?.javaClass?.simpleName}, value: $jobTitleValue")
+                    0
+                }
+            }
+
+            println("   ➡️ Creating CrewReqDto:")
+            println("      - nameAr: ${crew["nameAr"]}")
+            println("      - nameEn: ${crew["nameEn"]}")
+            println("      - jobTitle: $jobTitleInt")
+            println("      - nationality ID: '$nationalityId' (type: ${nationalityId.javaClass.simpleName})")
+
+            val dto = CrewReqDto(
                 id = requestId, // Include requestId in each crew member
-                nameAr = crew["nameAr"] ?: "",
-                nameEn = crew["nameEn"] ?: "",
-                jobTitle = crew["jobTitle"]?.toIntOrNull() ?: 0,
-                civilNo = crew["civilNo"],
-                seamenBookNo = crew["seamenBookNo"] ?: "",
-                nationality = crew["nationality"]?.let { CountryReqDto(it) } // Keep as String
+                nameAr = crew["nameAr"]?.toString() ?: "",
+                nameEn = crew["nameEn"]?.toString() ?: "",
+                jobTitle = jobTitleInt,
+                civilNo = crew["civilNo"]?.toString(),
+                seamenBookNo = crew["seamenBookNo"]?.toString() ?: "",
+                nationality = if (nationalityId.isNotBlank()) CountryReqDto(nationalityId) else null
             )
+
+            println("   ✅ Created DTO: jobTitle=${dto.jobTitle}, nationality.id='${dto.nationality?.id}'")
+            dto
         }
+
+        println("📤 Sending ${crewList.size} crew members to API")
+        println("=" .repeat(60))
+        crewList.forEachIndexed { index, crew ->
+            println("Crew[$index]:")
+            println("  - nameAr: ${crew.nameAr}")
+            println("  - nameEn: ${crew.nameEn}")
+            println("  - jobTitle: ${crew.jobTitle}")
+            println("  - nationality: ${crew.nationality?.id ?: "null"}")
+        }
+        println("=" .repeat(60))
 
         return repository.addCrewBulkIssue(requestId, crewList)
     }
@@ -313,11 +371,13 @@ class NavigationLicenseManager @Inject constructor(
      * Handles both individual crew entry and list of crew
      * Maps SailorData from UI to API format:
      * - job -> jobTitle
-     * - fullName -> nameEn & nameAr
+     * - nameAr -> nameAr
+     * - nameEn -> nameEn
      * - identityNumber -> civilNo
      * - seamanPassportNumber -> seamenBookNo
+     * - nationality -> nationality { id: "XX" }
      */
-    fun parseCrewFromFormData(formData: Map<String, String>): List<Map<String, String>> {
+    fun parseCrewFromFormData(formData: Map<String, String>): List<Map<String, Any>> {
         println("🔍 parseCrewFromFormData - Available keys: ${formData.keys}")
 
         val sailorsJson = formData["sailors"]
@@ -340,39 +400,64 @@ class NavigationLicenseManager @Inject constructor(
                     val sailor = element.jsonObject
 
                     // Extract fields from SailorData format
-                    val job = sailor["job"]?.jsonPrimitive?.content ?: ""
-                    val fullName = sailor["fullName"]?.jsonPrimitive?.content ?: ""
+                    val jobFull = sailor["job"]?.jsonPrimitive?.content ?: ""
+                    val nameAr = sailor["nameAr"]?.jsonPrimitive?.content ?: ""
+                    val nameEn = sailor["nameEn"]?.jsonPrimitive?.content ?: ""
                     val identityNumber = sailor["identityNumber"]?.jsonPrimitive?.content ?: ""
                     val seamanPassportNumber = sailor["seamanPassportNumber"]?.jsonPrimitive?.content ?: ""
+                    val nationalityFull = sailor["nationality"]?.jsonPrimitive?.content ?: ""
+
+                    // ✅ Extract job ID from "ID|Name" format
+                    val jobId = if (jobFull.contains("|")) {
+                        jobFull.split("|").firstOrNull()?.toIntOrNull() ?: 0
+                    } else {
+                        jobFull.toIntOrNull() ?: 0
+                    }
+
+                    // ✅ Extract nationality ID from "ID|Name" format
+                    val nationalityId = if (nationalityFull.contains("|")) {
+                        nationalityFull.split("|").firstOrNull() ?: ""
+                    } else {
+                        nationalityFull
+                    }
 
                     println("🔍 Raw sailor data:")
-                    println("   - job: '$job'")
-                    println("   - fullName: '$fullName'")
+                    println("   - job: '$jobFull' -> ID: $jobId")
+                    println("   - nameAr: '$nameAr'")
+                    println("   - nameEn: '$nameEn'")
                     println("   - identityNumber: '$identityNumber'")
                     println("   - seamanPassportNumber: '$seamanPassportNumber'")
+                    println("   - nationality: '$nationalityFull' -> ID: '$nationalityId'")
 
                     // Validate required fields
-                    if (fullName.isBlank()) {
-                        println("⚠️ Skipping sailor with empty fullName")
+                    if (nameEn.isBlank() && nameAr.isBlank()) {
+                        println("⚠️ Skipping sailor with empty name")
                         return@mapNotNull null
                     }
 
-                    if (job.isBlank() || job == "0") {
-                        println("⚠️ Skipping sailor with empty or invalid job")
+                    if (jobId == 0) {
+                        println("⚠️ Skipping sailor with empty or invalid job ID")
                         return@mapNotNull null
                     }
 
-                    // Map to API format
-                    val crewMember = mapOf(
-                        "nameAr" to fullName, // Use fullName for both Arabic and English
-                        "nameEn" to fullName,
-                        "jobTitle" to job, // job is already the ID as string
-                        "civilNo" to identityNumber.ifBlank { "12345678" }, // ✅ Use default test value if empty
-                        "seamenBookNo" to seamanPassportNumber.ifBlank { "SM-${System.currentTimeMillis() % 100000}" }, // Generate if empty
-                        "nationality" to "" // Empty for now - UI doesn't collect this yet
+                    // ✅ Map to API format - NO "id" field, only required fields
+                    val crewMember = mutableMapOf<String, Any>(
+                        "nameAr" to (nameAr.ifBlank { nameEn }),
+                        "nameEn" to (nameEn.ifBlank { nameAr }),
+                        "jobTitle" to jobId, // ✅ Use extracted ID
+                        "civilNo" to identityNumber.ifBlank { "12345678" },
+                        "seamenBookNo" to seamanPassportNumber.ifBlank { "SM-${System.currentTimeMillis() % 100000}" }
                     )
 
-                    println("✅ Mapped crew member: name='$fullName', job='$job', civilNo='${crewMember["civilNo"]}', seamenBookNo='${crewMember["seamenBookNo"]}'")
+                    // ✅ Add nationality as nested object with ID only
+                    if (nationalityId.isNotBlank()) {
+                        crewMember["nationality"] = mapOf("id" to nationalityId)
+                    }
+
+                    println("✅ Mapped crew member: nameAr='$nameAr', nameEn='$nameEn', jobId=$jobId, nationalityId='$nationalityId'")
+                    println("   Final map keys: ${crewMember.keys}")
+                    println("   jobTitle type: ${crewMember["jobTitle"]?.javaClass?.simpleName}, value: ${crewMember["jobTitle"]}")
+                    println("   nationality: ${crewMember["nationality"]}")
                     crewMember
                 } catch (e: Exception) {
                     println("⚠️ Failed to parse sailor: ${e.message}")
@@ -380,6 +465,10 @@ class NavigationLicenseManager @Inject constructor(
                     null
                 }
             }
+        } catch (e: Exception) {
+            println("❌ Failed to parse sailors JSON: ${e.message}")
+            e.printStackTrace()
+            emptyList()
         } catch (e: Exception) {
             println("❌ Failed to parse sailors JSON: ${e.message}")
             e.printStackTrace()

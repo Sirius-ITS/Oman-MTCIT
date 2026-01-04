@@ -898,6 +898,94 @@ class RegistrationRequestManager @Inject constructor(
                 }
             }
 
+            // ✅ Maritime Identification Step - Add IMO, MMSI, Call Sign
+            StepType.MARITIME_IDENTIFICATION -> {
+                println("=" .repeat(80))
+                println("🚢 MARITIME IDENTIFICATION STEP DETECTED")
+                println("=" .repeat(80))
+                println("📋 Current formData keys: ${formData.keys}")
+                println("📋 All formData values:")
+                formData.forEach { (key, value) ->
+                    println("   $key = $value")
+                }
+
+                println("🔍 Ship ID candidates:")
+                println("   shipId = ${formData["shipId"]}")
+                println("   shipInfoId = ${formData["shipInfoId"]}")
+                println("   selectedMarineUnits = ${formData["selectedMarineUnits"]}")
+
+                // ✅ Clean the shipId by removing brackets and quotes
+                val cleanShipId = formData["shipId"]?.trim()?.removeSurrounding("[", "]")?.trim()?.removeSurrounding("\"", "\"")?.toIntOrNull()
+                    ?: formData["shipInfoId"]?.trim()?.removeSurrounding("[", "]")?.trim()?.removeSurrounding("\"", "\"")?.toIntOrNull()
+                    ?: formData["selectedMarineUnits"]?.trim()?.removeSurrounding("[", "]")?.trim()?.removeSurrounding("\"", "\"")?.toIntOrNull()
+
+                println("   Cleaned shipId = $cleanShipId")
+                println("   Final shipId = $cleanShipId")
+
+                if (cleanShipId == null) {
+                    println("❌ No valid shipId found in formData after cleaning - skipping maritime identity update")
+                    println("=" .repeat(80))
+                    return StepProcessResult.NoAction
+                }
+
+                // Extract the values from form data
+                val imoNumber = formData["imoNumber"]?.takeIf { it.isNotBlank() && it != "null" }
+                val mmsiNumber = formData["mmsiNumber"]?.takeIf { it.isNotBlank() && it != "null" }
+                val callSign = formData["callSign"]?.takeIf { it.isNotBlank() && it != "null" }
+
+                println("📝 Maritime identity fields:")
+                println("   IMO Number: ${imoNumber ?: "(empty or unchanged)"}")
+                println("   MMSI Number: ${mmsiNumber ?: "(empty or unchanged)"}")
+                println("   Call Sign: ${callSign ?: "(empty or unchanged)"}")
+
+                // Only call API if at least one field has a value
+                if (imoNumber == null && mmsiNumber == null && callSign == null) {
+                    println("⚠️ No maritime identity data to update - all fields are empty")
+                    println("=" .repeat(80))
+                    return StepProcessResult.NoAction
+                }
+
+                println("🚀 CALLING API: addMaritimeIdentity")
+                println("   Ship ID: $cleanShipId")
+                println("   IMO: ${imoNumber ?: "(not sending)"}")
+                println("   MMSI: ${mmsiNumber ?: "(not sending)"}")
+                println("   Call Sign: ${callSign ?: "(not sending)"}")
+                println("=" .repeat(80))
+
+                val result = repository.addMaritimeIdentity(
+                    shipId = cleanShipId,
+                    imoNumber = imoNumber,
+                    mmsiNumber = mmsiNumber,
+                    callSign = callSign
+                )
+
+                result.fold(
+                    onSuccess = { response ->
+                        println("=" .repeat(80))
+                        if (response.success && response.statusCode in 200..201) {
+                            println("✅ ✅ ✅ MARITIME IDENTITY UPDATED SUCCESSFULLY! ✅ ✅ ✅")
+                            println("   Response: $response")
+                            println("=" .repeat(80))
+                            StepProcessResult.Success("Maritime identity updated")
+                        } else {
+                            println("❌ API RETURNED ERROR")
+                            println("   Status Code: ${response.statusCode}")
+                            println("   Message: ${response.message}")
+                            println("=" .repeat(80))
+                            StepProcessResult.Error(response.message)
+                        }
+                    },
+                    onFailure = { exception ->
+                        println("=" .repeat(80))
+                        println("❌ ❌ ❌ EXCEPTION IN MARITIME IDENTITY UPDATE ❌ ❌ ❌")
+                        println("   Exception: ${exception.message}")
+                        exception.printStackTrace()
+                        println("=" .repeat(80))
+                        StepProcessResult.Error(exception.message ?: "Failed to update maritime identity")
+                    }
+                )
+            }
+
             // ✅ Documents Step - Upload dynamic documents
             StepType.DOCUMENTS -> {
                 println("📄 Documents step detected")
@@ -921,8 +1009,18 @@ class RegistrationRequestManager @Inject constructor(
                 }
 
                 println("📤 Uploading ${documents.size} documents...")
+                println("🔍 Request Type ID: $requestTypeId")
 
-                val result = repository.validateBuildStatusWithDocuments(requestId.toInt(), documents)
+                // ✅ Choose the correct API endpoint based on requestTypeId
+                // requestTypeId "1" = Temporary Registration
+                // requestTypeId "2" = Permanent Registration
+                val result = if (requestTypeId == "2") {
+                    println("📄 Using PERMANENT registration API endpoint")
+                    repository.validatePermanentBuildStatusWithDocuments(requestId.toInt(), documents)
+                } else {
+                    println("📄 Using TEMPORARY registration API endpoint")
+                    repository.validateBuildStatusWithDocuments(requestId.toInt(), documents)
+                }
 
                 result.fold(
                     onSuccess = { response ->
