@@ -7,7 +7,10 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
@@ -39,6 +42,7 @@ import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
+import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -140,10 +144,53 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 navController.previousBackStackEntry
             }
 
-            val loginViewModel: LoginViewModel = if (parentEntry != null) {
+            // ✅ Detect if parent is LoginScreen or MainCategoriesScreen
+            val parentRoute = parentEntry?.destination?.route ?: ""
+            val isFromLoginScreen = parentRoute.startsWith("login/")
+            val isFromMainCategories = parentRoute.startsWith("mainCategoriesScreen")
+
+            println("🔍 OAuth WebView - Parent route: $parentRoute")
+            println("🔍 OAuth WebView - isFromLoginScreen: $isFromLoginScreen")
+            println("🔍 OAuth WebView - isFromMainCategories: $isFromMainCategories")
+
+            // ✅ Only get LoginViewModel if parent is LoginScreen
+            val loginViewModel: LoginViewModel? = if (isFromLoginScreen && parentEntry != null) {
                 hiltViewModel(parentEntry)
             } else {
-                hiltViewModel()
+                null
+            }
+
+            // ✅ Get AuthRepository for MainCategoriesScreen flow (properly injected via Hilt)
+            val authRepositoryProvider: com.informatique.mtcit.ui.viewmodels.AuthRepositoryProvider = hiltViewModel()
+            val authRepository = authRepositoryProvider.authRepository
+
+            // ✅ Track if we should navigate back
+            var shouldNavigateBack by remember { mutableStateOf(false) }
+
+            // ✅ Listen for login completion ONLY if coming from LoginScreen
+            if (isFromLoginScreen && loginViewModel != null) {
+                LaunchedEffect(loginViewModel) {
+                    loginViewModel.loginComplete.collect { isComplete ->
+                        if (isComplete) {
+                            println("✅ OAuth + Login complete! Setting navigation flag...")
+                            shouldNavigateBack = true
+
+                            // ✅ CRITICAL: Set flag in savedStateHandle so LoginScreen can detect it
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("oauth_login_completed", true)
+                        }
+                    }
+                }
+            }
+
+            // ✅ Handle navigation back when flag is set
+            LaunchedEffect(shouldNavigateBack) {
+                if (shouldNavigateBack) {
+                    println("🔙 Navigating back from OAuth WebView...")
+                    kotlinx.coroutines.delay(50) // Small delay to ensure state is updated
+                    navController.popBackStack()
+                }
             }
 
             OAuthWebViewScreen(
@@ -152,23 +199,44 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 redirectUri = LoginViewModel.OAUTH_REDIRECT_URI,
                 onAuthCodeReceived = { code: String ->
                     println("✅ Authorization code received: $code")
+                    println("🔍 Handling OAuth code - isFromLoginScreen: $isFromLoginScreen, isFromMainCategories: $isFromMainCategories")
 
-                    // ✅ PROPER SOLUTION: Wait for actual token exchange completion
-                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                        val success = loginViewModel.handleOAuthCode(code)
+                    CoroutineScope(Dispatchers.Main).launch {
+                        if (isFromLoginScreen && loginViewModel != null) {
+                            // ✅ LOGIN SCREEN FLOW: Exchange token and submit form
+                            println("🔄 OAuth from LoginScreen - calling handleOAuthCode()")
+                            val success = loginViewModel.handleOAuthCode(code)
 
-                        if (success) {
-                            // ✅ Token exchange completed and saved successfully
-                            println("🔔 Setting login_completed flag to TRUE")
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("login_completed", true)
+                            if (!success) {
+                                // ❌ Token exchange failed - navigate back to allow retry
+                                println("❌ Token exchange failed - navigating back to login screen")
+                                navController.popBackStack()
+                            }
+                            // ✅ If success, the loginComplete event will trigger navigation via shouldNavigateBack
+                        } else if (isFromMainCategories) {
+                            // ✅ MAIN CATEGORIES FLOW: Just exchange token and navigate back
+                            println("🔄 OAuth from MainCategoriesScreen - exchanging token directly")
 
-                            println("🔙 Navigating back to previous screen")
-                            navController.popBackStack()
+                            val result = authRepository.exchangeCodeForToken(code)
+
+                            result.fold(
+                                onSuccess = {
+                                    println("✅ Token exchanged successfully for MainCategoriesScreen")
+                                    // Set flag for MainCategoriesScreen to detect
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set("login_completed", true)
+                                    navController.popBackStack()
+                                },
+                                onFailure = { error ->
+                                    println("❌ Token exchange failed: ${error.message}")
+                                    navController.popBackStack()
+                                }
+                            )
                         } else {
-                            // ❌ Token exchange failed - stay on WebView or show error
-                            println("❌ Token exchange failed - staying on login screen")
+                            // ✅ UNKNOWN FLOW: Log and navigate back
+                            println("⚠️ OAuth from unknown screen - navigating back")
+                            navController.popBackStack()
                         }
                     }
                 }

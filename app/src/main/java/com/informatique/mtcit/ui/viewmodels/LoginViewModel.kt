@@ -65,24 +65,29 @@ class LoginViewModel @Inject constructor(
                 }
             }
         }
+
+        // ✅ PROPER SOLUTION: Observe uiState changes and trigger OAuth when flag is set
+        viewModelScope.launch {
+            uiState.collect { state ->
+                if (state.formData["_triggerOAuthFlow"] == "true") {
+                    println("🚀 LoginViewModel: OAuth trigger flag detected in uiState")
+                    // Clear the flag to avoid re-triggering
+                    state.formData.toMutableMap().remove("_triggerOAuthFlow")
+                    // Trigger navigation to OAuth WebView
+                    _navigateToOAuth.emit(Unit)
+                }
+            }
+        }
     }
 
     /**
-     * ✅ Override nextStep to trigger OAuth flow when LoginStrategy sets the trigger flag
-     * This respects the architecture - Strategy decides when to trigger OAuth
+     * ✅ Override nextStep to process the step normally
+     * OAuth trigger is now handled by state observation above
      */
     override fun nextStep() {
         viewModelScope.launch {
-            // First call the parent to process the step
             super.nextStep()
-
-            // Then check if OAuth flow should be triggered after processing
-            val currentState = uiState.value
-            if (currentState.formData["_triggerOAuthFlow"] == "true") {
-                println("🚀 LoginViewModel: OAuth trigger flag detected from LoginStrategy")
-                // Trigger navigation to OAuth WebView
-                _navigateToOAuth.emit(Unit)
-            }
+            // No need to check flag here - the init block observer handles it
         }
     }
 
@@ -104,6 +109,10 @@ class LoginViewModel @Inject constructor(
                 // ✅ Now call submitForm() to complete the login flow properly
                 // This respects the architecture and uses the proper submission handling
                 submitForm()
+
+                // ✅ CRITICAL: Wait a bit for submitForm to process
+                kotlinx.coroutines.delay(100)
+
                 true // Return success
             },
             onFailure = { error ->

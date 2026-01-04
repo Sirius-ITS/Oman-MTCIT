@@ -37,6 +37,52 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
 
+    // ✅ CRITICAL: Observe savedStateHandle for OAuth login completion
+    DisposableEffect(navController.currentBackStackEntry) {
+        val handle = navController.currentBackStackEntry?.savedStateHandle
+
+        val observer = androidx.lifecycle.Observer<Boolean> { completed ->
+            if (completed == true) {
+                println("✅ OAuth login completed detected via savedStateHandle!")
+                println("✅ Navigating to transaction: $targetTransactionType")
+
+                // Clear the flag
+                handle?.set("oauth_login_completed", false)
+
+                // Navigate to the target transaction screen
+                val route = when (targetTransactionType) {
+                    "TEMPORARY_REGISTRATION_CERTIFICATE", "SHIP_REGISTRATION" -> NavRoutes.ShipRegistrationRoute.route
+                    "PERMANENT_REGISTRATION_CERTIFICATE", "PERMANENT_REGISTRATION" -> NavRoutes.PermanentRegistrationRoute.route
+                    "REQUEST_FOR_INSPECTION", "REQUEST_INSPECTION" -> NavRoutes.RequestForInspection.route
+                    "SUSPEND_REGISTRATION", "SUSPEND_PERMANENT_REGISTRATION" -> NavRoutes.SuspendRegistrationRoute.route
+                    "CANCEL_REGISTRATION", "CANCEL_PERMANENT_REGISTRATION" -> NavRoutes.CancelRegistrationRoute.route
+                    "MORTGAGE_CERTIFICATE" -> NavRoutes.MortgageCertificateRoute.route
+                    "RELEASE_MORTGAGE" -> NavRoutes.ReleaseMortgageRoute.route
+                    "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
+                    "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
+                    "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
+                    "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
+                    "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
+                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
+                    "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
+                    "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
+                    else -> NavRoutes.ShipRegistrationRoute.route
+                }
+
+                navController.navigate(route) {
+                    // Remove login screen from back stack
+                    popUpTo(NavRoutes.LoginRoute.route) { inclusive = true }
+                }
+            }
+        }
+
+        handle?.getLiveData<Boolean>("oauth_login_completed")?.observeForever(observer)
+
+        onDispose {
+            handle?.getLiveData<Boolean>("oauth_login_completed")?.removeObserver(observer)
+        }
+    }
+
     // Handle OAuth navigation - Navigate to OAuth WebView
     LaunchedEffect(Unit) {
         viewModel.navigateToOAuth.collect {
