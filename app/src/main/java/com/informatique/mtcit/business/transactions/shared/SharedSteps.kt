@@ -93,6 +93,7 @@ object SharedSteps {
 
     fun sailorInfoStep(
         jobs: List<String>,
+        nationalities: List<String> = emptyList()
     ): StepData {
         val fields = mutableListOf<FormField>()
         fields.add(
@@ -110,6 +111,7 @@ object SharedSteps {
                 labelRes = R.string.sailor_info,
                 value = "[]",
                 jobs = jobs,
+                nationalities = nationalities,
                 mandatory = true
             )
         )
@@ -121,7 +123,7 @@ object SharedSteps {
             titleRes = R.string.sailor_info,
             descriptionRes = R.string.sailor_info_description,
             fields = fields,
-            requiredLookups = listOf("crewJobTitles")
+            requiredLookups = listOf("crewJobTitles", "countries")
         )
     }
 
@@ -832,8 +834,8 @@ object SharedSteps {
      * @param countries List of countries from API
      */
     fun insuranceDocumentStep(
-        countries: List<String>
-
+        countries: List<String>,
+        insuranceCompanies: List<String> = emptyList() // ✅ Add insurance companies parameter
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -858,16 +860,28 @@ object SharedSteps {
             )
         )
 
-        // Insurance Company (mandatory)
+        // Insurance Company (mandatory) - Dropdown for Oman with insurance company IDs
         fields.add(
             FormField.DropDown(
                 id = "insuranceCompany",
                 labelRes = R.string.insurance_company_placeholder,
-                options = countries, // This should be populated from API
+                options = insuranceCompanies, // ✅ Use insuranceCompanies list
                 mandatory = true,
                 placeholder = R.string.insurance_company_placeholder.toString()
             )
         )
+
+        // Insurance Expiry Date (mandatory)
+        fields.add(
+            FormField.DatePicker(
+                id = "insuranceExpiryDate",
+                labelRes = R.string.insurance_expiry_date,
+                allowPastDates = false,
+                mandatory = true
+            )
+        )
+
+        // ✅ NO CR Number field - it's taken from selectionData automatically
 
         // Insurance Document Attachment (mandatory)
         fields.add(
@@ -881,6 +895,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.INSURANCE_DOCUMENT, // ✅ Add step type
             titleRes = R.string.insurance_document_title,
             descriptionRes = R.string.insurance_document_description,
             fields = fields

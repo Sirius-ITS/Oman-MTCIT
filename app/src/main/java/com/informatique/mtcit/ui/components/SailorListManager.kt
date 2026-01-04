@@ -335,6 +335,7 @@ fun SailorListManager(
     modifier: Modifier = Modifier,
     sailors: List<SailorData>,
     jobs: List<String>,
+    nationalities: List<String> = emptyList(),
     onSailorChange: (List<SailorData>) -> Unit,
     onTotalCountChange: ((String) -> Unit)? = null
 ) {
@@ -568,6 +569,7 @@ fun SailorListManager(
         SailorFormBottomSheet(
             sailor = editingSailor,
             jobs = jobs,
+            nationalities = nationalities,
             onDismiss = { showBottomSheet = false },
             onSave = { sailorData ->
                 if (editingSailor != null) {

@@ -109,6 +109,11 @@ enum class StepType {
     MARITIME_IDENTIFICATION,
 
     /**
+     * Insurance document upload step with country-specific company selection
+     */
+    INSURANCE_DOCUMENT,
+
+    /**
      * Custom step (default fallback)
      */
     CUSTOM

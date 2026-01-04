@@ -18,9 +18,13 @@ import java.util.UUID
 data class SailorData(
     val id: String = UUID.randomUUID().toString(),
     val job: String = "",
-    val fullName: String = "",
+    val nameAr: String = "",
+    val nameEn: String = "",
     val identityNumber: String = "",
-    val seamanPassportNumber: String = ""
+    val seamanPassportNumber: String = "",
+    val nationality: String = "",
+    // Keep for backward compatibility
+    val fullName: String = nameEn
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +32,7 @@ data class SailorData(
 fun SailorFormBottomSheet(
     sailor: SailorData? = null,
     jobs: List<String>,
+    nationalities: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (SailorData) -> Unit
 ) {
@@ -35,9 +40,11 @@ fun SailorFormBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var job by remember { mutableStateOf(sailor?.job ?: "") }
-    var name by remember { mutableStateOf(sailor?.fullName ?: "") }
+    var nameAr by remember { mutableStateOf(sailor?.nameAr ?: "") }
+    var nameEn by remember { mutableStateOf(sailor?.nameEn ?: "") }
     var identityNumber by remember { mutableStateOf(sailor?.identityNumber ?: "") }
     var seamanPassportNumber by remember { mutableStateOf(sailor?.seamanPassportNumber ?: "") }
+    var nationality by remember { mutableStateOf(sailor?.nationality ?: "") }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -72,16 +79,44 @@ fun SailorFormBottomSheet(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Name
+            // Name in Arabic
             CustomTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = localizedApp(R.string.sailor_name_title),
+                value = nameAr,
+                onValueChange = { nameAr = it },
+                label = localizedApp(R.string.name_ar_label),
                 mandatory = true,
-                placeholder = localizedApp(R.string.sailor_name_title),
+                placeholder = localizedApp(R.string.name_ar_label),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Name in English
+            CustomTextField(
+                value = nameEn,
+                onValueChange = { nameEn = it },
+                label = localizedApp(R.string.name_en_label),
+                mandatory = true,
+                placeholder = localizedApp(R.string.name_en_label),
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Nationality
+            if (nationalities.isNotEmpty()) {
+                CustomDropdown(
+                    label = localizedApp(R.string.nationality_label),
+                    options = nationalities.map { it.split("|").lastOrNull() ?: it },
+                    selectedOption = nationality.split("|").lastOrNull() ?: nationality,
+                    onOptionSelected = { selectedLabel ->
+                        // Find the full "ID|Label" string from the selected label
+                        nationality = nationalities.find { it.endsWith("|$selectedLabel") } ?: selectedLabel
+                    },
+                    mandatory = true,
+                    placeholder = localizedApp(R.string.nationality_label)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Identity number
             CustomTextField(
@@ -123,9 +158,12 @@ fun SailorFormBottomSheet(
                         val sailorData = SailorData(
                             id = sailor?.id ?: UUID.randomUUID().toString(),
                             job = job,
-                            fullName = name,
+                            nameAr = nameAr,
+                            nameEn = nameEn,
                             identityNumber = identityNumber,
-                            seamanPassportNumber = seamanPassportNumber
+                            seamanPassportNumber = seamanPassportNumber,
+                            nationality = nationality,
+                            fullName = nameEn // Backward compatibility
                         )
                         onSave(sailorData)
                     },

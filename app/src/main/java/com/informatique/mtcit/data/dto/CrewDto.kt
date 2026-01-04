@@ -82,11 +82,16 @@ data class JobTitleResDto(
 
 /**
  * Country/Nationality response with bilingual names
+ * Note: API returns ISO code (String) in id field, e.g., "OM", "UA", "EG"
  */
 @Serializable
 data class CountryResDto(
-    val id: Int,
+    val id: String,        // ✅ Changed from Int to String to match API response
     val nameAr: String,
-    val nameEn: String
+    val nameEn: String,
+    val name: String? = null,           // ✅ Optional field from API
+    val isoCode: String? = null,        // ✅ Optional field from API
+    val capitalAr: String? = null,      // ✅ Optional field from API
+    val capitalEn: String? = null       // ✅ Optional field from API
 )
 

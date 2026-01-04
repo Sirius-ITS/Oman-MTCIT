@@ -6,6 +6,7 @@ import io.ktor.client.request.delete
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
+import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
@@ -78,6 +79,16 @@ open class AppHttpRequests(val client: HttpClient) {
     protected suspend fun onPostMultipartData(url: String, data: List<PartData>): AppHttpRequest {
         return try {
             val response = client.submitFormWithBinaryData(url = url, data)
+            AppHttpRequest.AppHttpRequestModel(key = "", response = response)
+        } catch (ex: Exception){
+            AppHttpRequest.AppHttpRequestErrorModel(
+                key = "", code = 0, message = ex.message.toString())
+        }
+    }
+
+    protected suspend fun onPatchData(url: String, data: Any): AppHttpRequest {
+        return try {
+            val response = client.patch(url) { setBody(data) }
             AppHttpRequest.AppHttpRequestModel(key = "", response = response)
         } catch (ex: Exception){
             AppHttpRequest.AppHttpRequestErrorModel(

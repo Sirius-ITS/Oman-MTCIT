@@ -100,10 +100,12 @@ class ShipSelectionManager @Inject constructor(
 
                     // ✅ Extract maritime identification fields from ship data
                     val shipData = response.data.shipInfo?.ship
+                    val shipId = shipData?.id // ✅ Extract ship ID for maritime identity API
                     val imoNumber = shipData?.imoNumber?.toString()
                     val mmsiNumber = shipData?.mmsiNumber?.toString() // ✅ Now properly extracted
                     val callSign = shipData?.callSign
 
+                    println("   Ship ID: $shipId")
                     println("   Ship IMO Number: $imoNumber")
                     println("   Ship MMSI Number: $mmsiNumber")
                     println("   Ship Call Sign: $callSign")
@@ -128,6 +130,7 @@ class ShipSelectionManager @Inject constructor(
                         requestId = response.data.id,
                         message = response.message,
                         response = response,
+                        shipId = shipId, // ✅ Add shipId for maritime identity API
                         imoNumber = imoNumber,
                         mmsiNumber = mmsiNumber,
                         callSign = callSign,
@@ -168,11 +171,17 @@ sealed class ShipSelectionResult {
      * @param requestId The created request ID from the API
      * @param message Success message from the API
      * @param response The full API response (optional, for additional data)
+     * @param shipId The ship ID (for maritime identification API)
+     * @param imoNumber The IMO number from ship data
+     * @param mmsiNumber The MMSI number from ship data
+     * @param callSign The call sign from ship data
+     * @param needsMaritimeIdentification Whether maritime identification step is needed
      */
     data class Success(
         val requestId: Int,
         val message: String,
         val response: ProceedRequestResponse,
+        val shipId: Int?, // ✅ Add shipId for maritime identity API
         val imoNumber: String?,
         val mmsiNumber: String?,
         val callSign: String?,

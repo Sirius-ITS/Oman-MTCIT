@@ -107,6 +107,25 @@ class AppRepository(client: HttpClient): AppHttpRequests(client = client) {
         }
     }
 
+    suspend fun onPatchAuth(url: String, body: Any): RepoServiceState {
+        val data = onPatchData(url = url, data = body)
+        return when (data){
+            is AppHttpRequest.AppHttpRequestModel -> {
+                if (data.response.status.value == 200 || data.response.status.value == 201){
+                    RepoServiceState.Success(
+                        data.response.body(TypeInfo(JsonElement::class)))
+                } else {
+                    RepoServiceState.Error(
+                        data.response.status.value,
+                        data.response.status)
+                }
+            }
+            is AppHttpRequest.AppHttpRequestErrorModel -> {
+                RepoServiceState.Error(data.code, data.message)
+            }
+        }
+    }
+
     suspend fun onPostMultipart(url: String, data: List<PartData>): RepoServiceState {
         return try {
             val data = onPostMultipartData(url = url, data = data)

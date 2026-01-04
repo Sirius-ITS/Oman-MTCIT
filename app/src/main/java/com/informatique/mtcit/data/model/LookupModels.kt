@@ -140,6 +140,16 @@ data class InspectionAuthorityType(
     val name: String
 )
 
+ // ✅ NEW: Insurance company model
+@Serializable
+data class InsuranceCompany(
+    val id: String, // ✅ Changed to String to match API response format
+    val nameAr: String,
+    val nameEn: String,
+    val name: String? = null, // ✅ Optional since API might not return it
+    val isActive: String? = null // ✅ API returns this field too
+)
+
 /**
  * Reference types for API requests
  * These are used when sending data to the API (only ID is needed)

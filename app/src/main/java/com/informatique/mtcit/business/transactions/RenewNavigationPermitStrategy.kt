@@ -377,7 +377,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
             if (crewData.isNotEmpty()) {
                 // ✅ For renew: Add new crew members (existing ones are already loaded)
-                navigationLicenseManager.addCrewBulkRenew(requestId, crewData)
+                navigationLicenseManager.addCrewBulkRenew(requestId,
+                    crewData as List<Map<String, String>>
+                )
                     .onSuccess { crew ->
                         println("✅ Added ${crew.size} crew members successfully")
                     }

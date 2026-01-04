@@ -737,4 +737,101 @@ class MarineUnitsApiService @Inject constructor(
             Result.failure(Exception("Failed to proceed with $transactionType request: ${e.message}"))
         }
     }
+
+    /**
+     * Add maritime identification (IMO, MMSI, Call Sign) to a ship
+     * PATCH /api/v1/perm-registration-requests/{shipId}/add-ship-identity
+     *
+     * This endpoint is used only when the ship is missing one or more of these fields.
+     * If the ship already has all three fields, this step should not appear.
+     *
+     * @param shipId The ship info ID
+     * @param imoNumber IMO number (only if missing)
+     * @param mmsiNumber MMSI number (only if missing)
+     * @param callSign Call sign (only if missing)
+     * @return Result with response or error
+     */
+    suspend fun addMaritimeIdentity(
+        shipId: Int,
+        imoNumber: String?,
+        mmsiNumber: String?,
+        callSign: String?
+    ): Result<com.informatique.mtcit.data.model.MaritimeIdentityResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🚢 Adding Maritime Identity to Ship")
+            println("   Ship ID: $shipId")
+            println("   IMO Number: ${imoNumber ?: "(not provided)"}")
+            println("   MMSI Number: ${mmsiNumber ?: "(not provided)"}")
+            println("   Call Sign: ${callSign ?: "(not provided)"}")
+
+            val endpoint = "perm-registration-requests/$shipId/add-ship-identity"
+
+            // Build request body with only non-null fields
+            val requestBody = com.informatique.mtcit.data.model.MaritimeIdentityRequest(
+                imoNumber = imoNumber,
+                mmsiNumber = mmsiNumber,
+                callSign = callSign
+            )
+
+            // Serialize to JSON
+            val jsonBody = json.encodeToString(
+                com.informatique.mtcit.data.model.MaritimeIdentityRequest.serializer(),
+                requestBody
+            )
+
+            println("📤 PATCH Request:")
+            println("   Endpoint: $endpoint")
+            println("   Body: $jsonBody")
+
+            // Make PATCH request
+            val response = repo.onPatchAuth(endpoint, requestBody)
+
+            when (response) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("📥 Response received:")
+                    println(responseJson.toString())
+
+                    // Parse response
+                    val maritimeResponse = json.decodeFromJsonElement(
+                        com.informatique.mtcit.data.model.MaritimeIdentityResponse.serializer(),
+                        responseJson
+                    )
+
+                    if (maritimeResponse.success && maritimeResponse.statusCode in 200..201) {
+                        println("✅ Maritime identity added successfully!")
+                        println("   Updated Ship ID: ${maritimeResponse.data?.id}")
+                        println("=".repeat(80))
+                        Result.success(maritimeResponse)
+                    } else {
+                        val message = maritimeResponse.message.ifBlank { "Failed to add maritime identity" }
+                        println("❌ API returned error: $message")
+                        println("=".repeat(80))
+                        Result.failure(Exception(message))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    val errorMsg = if (errorMessage.isNotBlank() && errorMessage != "Unknown error") {
+                        errorMessage
+                    } else {
+                        "Failed to add maritime identity (code: ${response.code})"
+                    }
+
+                    println("❌ $errorMsg")
+                    println("   HTTP Code: ${response.code}")
+                    println("   Error Body: ${response.error}")
+                    println("=".repeat(80))
+                    Result.failure(Exception(errorMsg))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in addMaritimeIdentity: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to add maritime identity: ${e.message}"))
+        }
+    }
 }
+

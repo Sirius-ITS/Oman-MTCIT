@@ -14,6 +14,7 @@ import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -43,6 +44,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val registrationRequestManager: RegistrationRequestManager,
     private val reviewManager: ReviewManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    private val registrationApiService: com.informatique.mtcit.data.api.RegistrationApiService,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy {
 
@@ -62,6 +64,8 @@ class PermanentRegistrationStrategy @Inject constructor(
     private var typeOptions: List<PersonType> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
+    private var insuranceCompanyOptions: List<String> = emptyList() // ✅ Add insurance companies
+    private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList() // ✅ Store required documents
 
     // NEW: Store filtered ship types based on selected category
     private var filteredShipTypeOptions: List<String> = emptyList()
@@ -79,6 +83,9 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.toRequestTypeId()
     private var requestId: Long? = null
 
+    // ✅ Allow ViewModel to set a callback when steps need to be rebuilt
+    override var onStepsNeedRebuild: (() -> Unit)? = null
+
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
@@ -94,9 +101,23 @@ class PermanentRegistrationStrategy @Inject constructor(
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
 
+        // ✅ Fetch required documents from API
+        println("📄 PermanentRegistration - Fetching required documents from API...")
+        val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
+            println("❌ ERROR fetching required documents: ${error.message}")
+            error.printStackTrace()
+            emptyList()
+        }
+        println("✅ Fetched ${requiredDocumentsList.size} required documents:")
+        requiredDocumentsList.forEach { docItem ->
+            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            println("   - ${docItem.document.nameAr} ($mandatoryText)")
+        }
+
         // Store in instance variables
         typeOptions = personTypes
         commercialOptions = commercialRegistrations
+        requiredDocuments = requiredDocumentsList // ✅ Store documents
 
         return mapOf(
             "marineUnits" to emptyList<MarineUnit>(), // ✅ Empty initially
@@ -152,6 +173,39 @@ class PermanentRegistrationStrategy @Inject constructor(
         marineUnits = emptyList()
     }
 
+    // ✅ Load lookups when a step is opened (lazy loading)
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+
+        println("🔍 onStepOpened called for step $stepIndex")
+        println("   Step title: ${step.titleRes}")
+
+        // ✅ Load countries and insurance companies when insurance document step is opened
+        if (step.titleRes == R.string.insurance_document_title) {
+            println("🏥 Insurance Document step opening - loading countries and insurance companies...")
+
+            var dataLoaded = false
+
+            if (countryOptions.isEmpty()) {
+                println("🌍 Loading countries...")
+                countryOptions = lookupRepository.getCountries().getOrNull() ?: emptyList()
+            }
+
+            if (insuranceCompanyOptions.isEmpty()) {
+                println("🏢 Loading insurance companies...")
+                insuranceCompanyOptions = lookupRepository.getInsuranceCompanies().getOrNull() ?: emptyList()
+                println("✅ Loaded ${insuranceCompanyOptions.size} insurance companies")
+                dataLoaded = true
+            }
+
+            // ✅ Notify UI to refresh steps so dropdowns pick up new data
+            if (dataLoaded) {
+                println("🔄 Notifying UI to rebuild steps with new data...")
+                onStepsNeedRebuild?.invoke()
+            }
+        }
+    }
+
     override fun updateAccumulatedData(data: Map<String, String>) {
         accumulatedFormData.putAll(data)
         println("📦 PermanentRegistration - Updated accumulated data: $accumulatedFormData")
@@ -175,8 +229,8 @@ class PermanentRegistrationStrategy @Inject constructor(
         steps.add(SharedSteps.personTypeStep(typeOptions))
 
         // Step 2: Commercial Registration (فقط للشركات)
-        val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        val personType = accumulatedFormData["selectionPersonType"]
+        if (personType == "شركة") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -202,14 +256,109 @@ class PermanentRegistrationStrategy @Inject constructor(
             )
         }
 
-        // Step 5: Insurance Document
-        steps.add(
+        // Step 5: Insurance Document (dynamic field based on country)
+        val selectedCountry = accumulatedFormData["insuranceCountry"]
+
+        // ✅ Check for both Arabic and English country names for Oman
+        val isOman = selectedCountry == null ||
+                     selectedCountry == "OM" ||
+                     selectedCountry == "عمان" ||
+                     selectedCountry.contains("عمان", ignoreCase = true)
+
+        val insuranceStep = if (isOman) {
+            // For Oman (default): Use dropdown with insurance company IDs
             SharedSteps.insuranceDocumentStep(
-                countries = countryOptions
+                countries = countryOptions,
+                insuranceCompanies = insuranceCompanyOptions
+            )
+        } else {
+            // For other countries: Create step with text field for company name
+            createInsuranceDocumentStepWithTextField(countries = countryOptions)
+        }
+        steps.add(insuranceStep)
+
+        // Step 6: Dynamic Documents (from API)
+        println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
+        steps.add(
+            SharedSteps.dynamicDocumentsStep(
+                documents = requiredDocuments  // ✅ Pass documents from API
             )
         )
 
+        // Step 7: Review
+        steps.add(
+            SharedSteps.reviewStep()
+        )
+
         return steps
+    }
+
+    /**
+     * Create insurance document step with text field for company name (non-Oman countries)
+     */
+    private fun createInsuranceDocumentStepWithTextField(countries: List<String>): StepData {
+        val fields = mutableListOf<FormField>()
+
+        // Insurance Document Number (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "insuranceDocumentNumber",
+                labelRes = R.string.insurance_document_number_placeholder,
+                placeholder = R.string.insurance_document_number_placeholder.toString(),
+                mandatory = true
+            )
+        )
+
+        // Country (mandatory)
+        fields.add(
+            FormField.DropDown(
+                id = "insuranceCountry",
+                labelRes = R.string.insurance_country_placeholder,
+                options = countries,
+                mandatory = true,
+                placeholder = R.string.insurance_country_placeholder.toString()
+            )
+        )
+
+        // Insurance Company Name as TextField (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "insuranceCompany",
+                labelRes = R.string.insurance_company_placeholder,
+                placeholder = R.string.insurance_company_placeholder.toString(),
+                mandatory = true
+            )
+        )
+
+        // Insurance Expiry Date (mandatory)
+        fields.add(
+            FormField.DatePicker(
+                id = "insuranceExpiryDate",
+                labelRes = R.string.insurance_expiry_date,
+                allowPastDates = false,
+                mandatory = true
+            )
+        )
+
+        // ✅ NO CR Number field - it's taken from selectionData automatically
+
+        // Insurance Document Attachment (mandatory)
+        fields.add(
+            FormField.FileUpload(
+                id = "insuranceDocumentFile",
+                labelRes = R.string.insurance_document_attachment,
+                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                maxSizeMB = 5,
+                mandatory = true
+            )
+        )
+
+        return StepData(
+            stepType = StepType.INSURANCE_DOCUMENT,
+            titleRes = R.string.insurance_document_title,
+            descriptionRes = R.string.insurance_document_description,
+            fields = fields
+        )
     }
 
     override fun validateStep(
@@ -302,12 +451,34 @@ class PermanentRegistrationStrategy @Inject constructor(
                             selectedShipCallSign = result.callSign
                             needsMaritimeIdentification = result.needsMaritimeIdentification
 
+                            // ✅ Store shipId from the API response (needed for maritime identity API)
+                            result.shipId?.let {
+                                accumulatedFormData["shipId"] = it.toString()
+                                println("✅ Stored shipId from API response: $it")
+                            } ?: run {
+                                // Fallback: use selectedMarineUnits if shipId not in response
+                                val selectedShipId = data["selectedMarineUnits"]
+                                if (selectedShipId != null) {
+                                    accumulatedFormData["shipId"] = selectedShipId
+                                    println("✅ Stored shipId from selectedMarineUnits: $selectedShipId")
+                                }
+                            }
+
                             // ✅ Also update form data with maritime identification fields
                             accumulatedFormData["imoNumber"] = result.imoNumber ?: ""
                             accumulatedFormData["mmsiNumber"] = result.mmsiNumber ?: ""
                             accumulatedFormData["callSign"] = result.callSign ?: ""
-                            accumulatedFormData["needsMaritimeIdentification"] = result.needsMaritimeIdentification.toString()
+                            accumulatedFormData["needsMaritimeIdentification"] =
+                                result.needsMaritimeIdentification.toString()
+
+                            println("📋 Maritime identification data stored:")
+                            println("   needsMaritimeIdentification: ${result.needsMaritimeIdentification}")
+                            println("   shipId: ${result.shipId}")
+                            println("   imoNumber: ${result.imoNumber}")
+                            println("   mmsiNumber: ${result.mmsiNumber}")
+                            println("   callSign: ${result.callSign}")
                         }
+
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                             println("❌ Ship selection failed: ${result.message}")
                             accumulatedFormData["apiError"] = result.message
@@ -321,120 +492,316 @@ class PermanentRegistrationStrategy @Inject constructor(
                     throw e // Re-throw to show error banner
                 } catch (e: Exception) {
                     println("❌ Exception in ship selection: ${e.message}")
-                    val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                    val errorMsg =
+                        com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
                     accumulatedFormData["apiError"] = errorMsg
                     throw ApiException(500, errorMsg)
                 }
             }
 
-            // ✅ Call RegistrationRequestManager to process registration-related steps
-            val result = registrationRequestManager.processStepIfNeeded(
-                stepType = stepType,
-                formData = accumulatedFormData,
-                requestTypeId = requestTypeId, // 2 = Permanent Registration
-                context = appContext
-            )
+            // ✅ Handle Insurance Document Step
+            if (currentStepData?.stepType == StepType.INSURANCE_DOCUMENT) {
+                println("📄 ✅ Insurance Document step completed - calling validate-insurance-document API...")
 
-            when (result) {
-                is StepProcessResult.Success -> {
-                    println("✅ ${result.message}")
-                }
-                is StepProcessResult.Error -> {
-                    println("❌ Error: ${result.message}")
-                    accumulatedFormData["apiError"] = result.message
-                    return -1 // Block navigation on error
-                }
-                is StepProcessResult.NoAction -> {
-                    println("ℹ️ No registration action needed for this step")
-
-                    // ✅ HANDLE REVIEW STEP - Use ReviewManager
-                    if (stepType == StepType.REVIEW) {
-                        println("📋 Handling Review Step using ReviewManager")
-
-                        val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
-                        if (requestIdInt == null) {
-                            println("❌ No requestId available for review step")
-                            accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
-                            return -1
+                try {
+                    // ✅ Get ship ID - handle both array format and single value
+                    val shipIdString = accumulatedFormData["shipId"]
+                    val shipInfoId = when {
+                        shipIdString == null -> throw ApiException(400, "Ship ID not found")
+                        shipIdString.startsWith("[") -> {
+                            // Array format: ["1674"] -> extract the number
+                            shipIdString.trim('[', ']', '"').toIntOrNull()
+                                ?: throw ApiException(400, "Invalid ship ID format")
                         }
 
-                        try {
-                            // ✅ Get endpoint and context from transactionContext
-                            val transactionContext = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
-                            val endpoint = transactionContext.sendRequestEndpoint.replace("{requestId}", requestIdInt.toString())
-                            val contextName = transactionContext.displayName
+                        else -> {
+                            // Single value: "1674"
+                            shipIdString.toIntOrNull()
+                                ?: throw ApiException(400, "Invalid ship ID")
+                        }
+                    }
 
-                            println("🚀 Calling ReviewManager.processReviewStep:")
-                            println("   Endpoint: $endpoint")
-                            println("   RequestId: $requestIdInt")
-                            println("   Context: $contextName")
+                    val insuranceNumber = data["insuranceDocumentNumber"]
+                        ?: throw ApiException(400, "Insurance document number is required")
 
-                            // ✅ Call ReviewManager which internally uses marineUnitsApiService via repository
-                            val reviewResult = reviewManager.processReviewStep(
-                                endpoint = endpoint,
-                                requestId = requestIdInt,
-                                transactionName = contextName,
-                                sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
-                            )
+                    // ✅ Get country name from form and convert to country ID
+                    val selectedCountryName = data["insuranceCountry"]
+                        ?: throw ApiException(400, "Insurance country is required")
 
-                            when (reviewResult) {
-                                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
-                                    println("✅ Review step processed successfully!")
-                                    println("   Message: ${reviewResult.message}")
-                                    println("   Need Inspection: ${reviewResult.needInspection}")
+                    val countryId = lookupRepository.getCountryId(selectedCountryName)
+                        ?: throw ApiException(
+                            400,
+                            "Could not find country ID for: $selectedCountryName"
+                        )
 
-                                    // ✅ Store response in formData
-                                    accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                    println("🌍 Selected country: $selectedCountryName -> ID: $countryId")
 
-                                    // ✅ PERMANENT REGISTRATION: Different response handling than temporary
-                                    // For permanent registration, we might check for different fields
-                                    // e.g., approvalStatus, documentVerification, etc.
+                    val insuranceExpiryDate = data["insuranceExpiryDate"]
+                        ?: throw ApiException(400, "Insurance expiry date is required")
 
-                                    // Check additionalData for permanent-specific fields
-                                    val approvalRequired = reviewResult.additionalData?.get("approvalRequired") as? Boolean
-                                    val documentVerification = reviewResult.additionalData?.get("documentVerification") as? String
+                    // ✅ Get CR number from selectionData (for companies) or null (for individuals)
+                    val selectedPersonType = accumulatedFormData["selectionPersonType"]
+                    val crNumber = if (selectedPersonType == "شركة") {
+                        // For companies: Get CR number from selectionData (commercial registration)
+                        accumulatedFormData["selectionData"]
+                            ?: throw ApiException(400, "Commercial registration number not found")
+                    } else {
+                        // For individuals: CR number is not required
+                        null
+                    }
 
-                                    if (approvalRequired == true) {
-                                        println("⚠️ Approval required for permanent registration")
-                                        accumulatedFormData["showApprovalDialog"] = "true"
-                                        accumulatedFormData["approvalMessage"] = reviewResult.message
-                                        return step // Stay on current step
-                                    }
+                    // ✅ Handle company field based on country selection
+                    // Check for both Arabic and English country names
+                    val insuranceCompanyId: Int?
+                    val insuranceCompanyName: String?
 
-                                    if (documentVerification == "pending") {
-                                        println("📄 Document verification pending")
-                                        accumulatedFormData["showDocVerificationDialog"] = "true"
-                                        accumulatedFormData["verificationMessage"] = reviewResult.message
-                                        return step // Stay on current step
-                                    }
+                    if (countryId == "OM" || countryId == "عمان" || countryId.contains(
+                            "عمان",
+                            ignoreCase = true
+                        )
+                    ) {
+                        // For Oman: insuranceCompany dropdown returns company name, we need to get the ID
+                        val selectedCompanyName = data["insuranceCompany"]
+                            ?: throw ApiException(400, "Insurance company is required for Oman")
 
-                                    // ✅ Also support needInspection (common field)
-                                    if (reviewResult.needInspection) {
-                                        println("🔍 Inspection required - showing dialog")
-                                        accumulatedFormData["showInspectionDialog"] = "true"
-                                        accumulatedFormData["inspectionMessage"] = reviewResult.message
-                                        return step // Stay on current step
-                                    }
+                        // ✅ Get company ID from name using lookupRepository
+                        val companyIdString = lookupRepository.getInsuranceCompanyId(selectedCompanyName)
+                            ?: throw ApiException(400, "Could not find insurance company ID for: $selectedCompanyName")
 
-                                    // Proceed to next step
-                                    println("✅ No blocking conditions - proceeding to next step")
-                                }
-                                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
-                                    println("❌ Review step failed: ${reviewResult.message}")
-                                    accumulatedFormData["apiError"] = reviewResult.message
-                                    return -1 // Block navigation
-                                }
+                        insuranceCompanyId = companyIdString.toIntOrNull()
+                            ?: throw ApiException(400, "Invalid insurance company ID format")
+
+                        insuranceCompanyName = null
+                        println("🇴🇲 Oman selected - Company: $selectedCompanyName, ID: $insuranceCompanyId")
+                    } else {
+                        // For other countries: insuranceCompany contains the company name (text field)
+                        insuranceCompanyId = null
+                        insuranceCompanyName = data["insuranceCompany"]
+                            ?: throw ApiException(400, "Insurance company name is required")
+                        println("🌍 Other country selected - using insuranceCompanyName: $insuranceCompanyName")
+                    }
+
+                    // Get the file from form data
+                    val fileUri = data["insuranceDocumentFile"]
+                        ?: throw ApiException(400, "Insurance document file is required")
+
+                    println("📋 Insurance Document Data:")
+                    println("   Ship Info ID: $shipInfoId")
+                    println("   Insurance Number: $insuranceNumber")
+                    println("   Country ID: $countryId")
+                    println("   Insurance Company ID: $insuranceCompanyId")
+                    println("   Insurance Company Name: $insuranceCompanyName")
+                    println("   Insurance Expiry Date: $insuranceExpiryDate")
+                    println("   CR Number: $crNumber")
+                    println("   Person Type: $selectedPersonType")
+                    println("   File URI: $fileUri")
+
+                    // ✅ Build the DTO
+                    val insuranceDto =
+                        com.informatique.mtcit.data.model.InsuranceDocumentRequestDto(
+                            shipInfoId = shipInfoId,
+                            insuranceNumber = insuranceNumber,
+                            countryId = countryId,
+                            insuranceCompanyId = insuranceCompanyId,
+                            insuranceCompanyName = insuranceCompanyName,
+                            insuranceExpiryDate = insuranceExpiryDate,
+                            crNumber = crNumber
+                        )
+
+                    // ✅ Prepare file upload from URI
+                    val fileBytes = try {
+                        val uri = android.net.Uri.parse(fileUri)
+                        val inputStream = appContext.contentResolver.openInputStream(uri)
+                            ?: throw ApiException(400, "Failed to read file")
+                        inputStream.readBytes()
+                    } catch (e: Exception) {
+                        println("❌ Error reading file: ${e.message}")
+                        throw ApiException(400, "Failed to read insurance document file")
+                    }
+
+                    val fileName = fileUri.substringAfterLast("/")
+                    val mimeType =
+                        appContext.contentResolver.getType(android.net.Uri.parse(fileUri))
+                            ?: "application/octet-stream"
+
+                    val fileUpload = com.informatique.mtcit.data.model.DocumentFileUpload(
+                        fileName = fileName,
+                        fileUri = fileUri,
+                        fileBytes = fileBytes,
+                        mimeType = mimeType,
+                        documentId = 0 // Not used for insurance document
+                    )
+
+                    println("📤 Calling validateInsuranceDocument API...")
+
+                    // ✅ Call the API
+                    val apiResult = registrationApiService.validateInsuranceDocument(
+                        insuranceDto = insuranceDto,
+                        file = fileUpload
+                    )
+
+                    apiResult.fold(
+                        onSuccess = { response ->
+                            println("✅ Insurance document validated successfully!")
+                            println("   Message: ${response.message}")
+                            println("   Request ID: ${response.data?.id}")
+                            println("   Status ID: ${response.data?.status?.id}")
+
+                            // ✅ Store response data and UPDATE requestId from insurance step
+                            accumulatedFormData["insuranceValidationMessage"] = response.message
+                            response.data?.id?.let {
+                                // ✅ Update requestId to use the ID from insurance step response
+                                accumulatedFormData["requestId"] = it.toString()
+                                requestId = it.toLong()
+                                println("✅ RequestId updated from insurance step: $it")
                             }
-                        } catch (e: Exception) {
-                            println("❌ Exception in review step: ${e.message}")
-                            e.printStackTrace()
-                            accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
-                            return -1
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to validate insurance document: ${error.message}")
+                            val errorMsg =
+                                com.informatique.mtcit.common.ErrorMessageExtractor.extract(error.message)
+                            accumulatedFormData["apiError"] = errorMsg
+                            throw ApiException(500, errorMsg)
+                        }
+                    )
+                } catch (e: ApiException) {
+                    println("❌ ApiException in insurance document: ${e.message}")
+                    accumulatedFormData["apiError"] = e.message ?: "Unknown error"
+                    throw e // Re-throw to show error banner
+                } catch (e: Exception) {
+                    println("❌ Exception in insurance document: ${e.message}")
+                    val errorMsg =
+                        com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                    accumulatedFormData["apiError"] = errorMsg
+                    throw ApiException(500, errorMsg)
+                }
+            }
+
+
+                // ✅ Call RegistrationRequestManager to process registration-related steps
+                val result = registrationRequestManager.processStepIfNeeded(
+                    stepType = stepType,
+                    formData = accumulatedFormData,
+                    requestTypeId = requestTypeId, // 2 = Permanent Registration
+                    context = appContext
+                )
+
+                when (result) {
+                    is StepProcessResult.Success -> {
+                        println("✅ ${result.message}")
+                    }
+
+                    is StepProcessResult.Error -> {
+                        println("❌ Error: ${result.message}")
+                        accumulatedFormData["apiError"] = result.message
+                        return -1 // Block navigation on error
+                    }
+
+                    is StepProcessResult.NoAction -> {
+                        println("ℹ️ No registration action needed for this step")
+
+                        // ✅ HANDLE REVIEW STEP - Use ReviewManager
+                        if (stepType == StepType.REVIEW) {
+                            println("📋 Handling Review Step using ReviewManager")
+
+                            val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
+                            if (requestIdInt == null) {
+                                println("❌ No requestId available for review step")
+                                accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                                return -1
+                            }
+
+                            try {
+                                // ✅ Get endpoint and context from transactionContext
+                                val transactionContext =
+                                    TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
+                                val endpoint = transactionContext.sendRequestEndpoint.replace(
+                                    "{requestId}",
+                                    requestIdInt.toString()
+                                )
+                                val contextName = transactionContext.displayName
+
+                                println("🚀 Calling ReviewManager.processReviewStep:")
+                                println("   Endpoint: $endpoint")
+                                println("   RequestId: $requestIdInt")
+                                println("   Context: $contextName")
+
+                                // ✅ Call ReviewManager which internally uses marineUnitsApiService via repository
+                                val reviewResult = reviewManager.processReviewStep(
+                                    endpoint = endpoint,
+                                    requestId = requestIdInt,
+                                    transactionName = contextName,
+                                    sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
+                                )
+
+                                when (reviewResult) {
+                                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                                        println("✅ Review step processed successfully!")
+                                        println("   Message: ${reviewResult.message}")
+                                        println("   Need Inspection: ${reviewResult.needInspection}")
+
+                                        // ✅ Store response in formData
+                                        accumulatedFormData["sendRequestMessage"] =
+                                            reviewResult.message
+
+                                        // ✅ PERMANENT REGISTRATION: Different response handling than temporary
+                                        // For permanent registration, we might check for different fields
+                                        // e.g., approvalStatus, documentVerification, etc.
+
+                                        // Check additionalData for permanent-specific fields
+                                        val approvalRequired =
+                                            reviewResult.additionalData?.get("approvalRequired") as? Boolean
+                                        val documentVerification =
+                                            reviewResult.additionalData?.get("documentVerification") as? String
+
+                                        if (approvalRequired == true) {
+                                            println("⚠️ Approval required for permanent registration")
+                                            accumulatedFormData["showApprovalDialog"] = "true"
+                                            accumulatedFormData["approvalMessage"] =
+                                                reviewResult.message
+                                            return step // Stay on current step
+                                        }
+
+                                        if (documentVerification == "pending") {
+                                            println("📄 Document verification pending")
+                                            accumulatedFormData["showDocVerificationDialog"] =
+                                                "true"
+                                            accumulatedFormData["verificationMessage"] =
+                                                reviewResult.message
+                                            return step // Stay on current step
+                                        }
+
+                                        // ✅ Also support needInspection (common field)
+                                        if (reviewResult.needInspection) {
+                                            println("🔍 Inspection required - showing dialog")
+                                            accumulatedFormData["showInspectionDialog"] = "true"
+                                            accumulatedFormData["inspectionMessage"] =
+                                                reviewResult.message
+                                            return step // Stay on current step
+                                        }
+
+                                        // Proceed to next step
+                                        println("✅ No blocking conditions - proceeding to next step")
+                                    }
+
+                                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                                        println("❌ Review step failed: ${reviewResult.message}")
+                                        accumulatedFormData["apiError"] = reviewResult.message
+                                        return -1 // Block navigation
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                println("❌ Exception in review step: ${e.message}")
+                                e.printStackTrace()
+                                accumulatedFormData["apiError"] =
+                                    "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                                return -1
+                            }
                         }
                     }
                 }
             }
-        }
+
 
         return step
     }
@@ -447,6 +814,20 @@ class PermanentRegistrationStrategy @Inject constructor(
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
         val mutableFormData = formData.toMutableMap()
+
+        // ✅ Handle insurance country change - switch between dropdown and text field for company
+        if (fieldId == "insuranceCountry" && value.isNotBlank()) {
+            println("🏢 Insurance country changed to: $value")
+
+            // Clear the insurance company field when country changes
+            mutableFormData.remove("insuranceCompany")
+
+            // Trigger step refresh to update the field type
+            mutableFormData["_triggerRefresh"] = "true"
+
+            println("✅ Insurance company field cleared and step refresh triggered")
+            return mutableFormData
+        }
 
         // NEW: Handle ship category change - fetch filtered ship types
         if (fieldId == "unitClassification" && value.isNotBlank()) {

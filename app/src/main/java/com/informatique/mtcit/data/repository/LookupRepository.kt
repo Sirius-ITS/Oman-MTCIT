@@ -69,6 +69,10 @@ interface LookupRepository {
     fun getInspectionPurposeId(purposeName: String): Int?
     fun getInspectionAuthorityId(authorityName: String): Int?
 
+    // ✅ NEW: Insurance companies lookup
+    suspend fun getInsuranceCompanies(): Result<List<String>>
+    fun getInsuranceCompanyId(companyName: String): String? // ✅ Changed return type to String
+
     fun clearCache()
 }
 
@@ -99,6 +103,9 @@ class LookupRepositoryImpl @Inject constructor(
 
     // ✅ NEW: Inspection lookups cache
     private var cachedInspectionPurposes: List<InspectionPurpose>? = null
+
+    // ✅ NEW: Insurance companies cache
+    private var cachedInsuranceCompanies: List<InsuranceCompany>? = null
     private val cachedInspectionAuthorities = mutableMapOf<Int, List<InspectionAuthority>>()
 
     override suspend fun getPorts(): Result<List<String>> = withContext(Dispatchers.IO) {
@@ -1075,5 +1082,45 @@ class LookupRepositoryImpl @Inject constructor(
             }?.let { return it.id }
         }
         return null
+    }
+
+    // ✅ NEW: Get insurance companies
+    override suspend fun getInsuranceCompanies(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            // ✅ Check cache first
+            if (cachedInsuranceCompanies != null) {
+                println("📦 Using cached insurance companies")
+                return@withContext Result.success(cachedInsuranceCompanies!!.map {
+                    getLocalizedName(it.nameAr, it.nameEn)
+                })
+            }
+
+            // ✅ Fetch from API
+            println("🔍 Fetching insurance companies from API")
+            val result = apiService.getInsuranceCompanies()
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success) {
+                        cachedInsuranceCompanies = response.data
+                        println("✅ Successfully cached ${response.data.size} insurance companies")
+                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                    } else {
+                        Result.failure(Exception(response.message ?: "Failed to fetch insurance companies"))
+                    }
+                },
+                onFailure = { exception ->
+                    Result.failure(exception)
+                }
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override fun getInsuranceCompanyId(companyName: String): String? {
+        return cachedInsuranceCompanies?.find {
+            getLocalizedName(it.nameAr, it.nameEn) == companyName
+        }?.id
     }
 }

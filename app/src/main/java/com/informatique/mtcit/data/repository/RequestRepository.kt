@@ -200,10 +200,10 @@ class RequestRepository @Inject constructor() {
      */
     private fun initializeMockData() {
         // Sample Request 1: PENDING (waiting for inspection)
-        mockRequests["REQ_001"] = UserRequest(
-            id = "REQ_001",
+        mockRequests["1/2026"] = UserRequest(
+            id = "1/2026",
             userId = "currentUserId",
-            type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
+            type = TransactionType.MORTGAGE_CERTIFICATE,
             status = RequestStatus.PENDING,
             // Use the shared MarineUnit model (fields have defaults) - set minimal identifying values
             marineUnit = MarineUnit(
@@ -229,10 +229,10 @@ class RequestRepository @Inject constructor() {
          // Sample Request 2: VERIFIED (inspection approved - can resume)
          // ✅ This simulates: User added NEW unit, completed up to Review step,
          // inspection was done and VERIFIED, now user can continue from Marine Unit Name step
-         mockRequests["REQ_002"] = UserRequest(
-             id = "REQ_002",
+         mockRequests["2/2026"] = UserRequest(
+             id = "2/2026",
              userId = "currentUserId",
-             type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
+             type = TransactionType.RELEASE_MORTGAGE,
              status = RequestStatus.VERIFIED,
              marineUnit = MarineUnit(
                  id = "new_789012",
@@ -300,8 +300,8 @@ class RequestRepository @Inject constructor() {
          )
 
          // Sample Request 3: REJECTED (inspection failed)
-         mockRequests["REQ_003"] = UserRequest(
-             id = "REQ_003",
+         mockRequests["3/2026"] = UserRequest(
+             id = "3/2026",
              userId = "currentUserId",
              type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
              status = RequestStatus.REJECTED,
