@@ -182,7 +182,7 @@ class PermanentRegistrationStrategy @Inject constructor(
         println("   Step title: ${step.titleRes}")
 
         // ✅ Load countries and insurance companies when insurance document step is opened
-        if (step.titleRes == R.string.insurance_document_title) {
+        if (step.stepType == StepType.INSURANCE_DOCUMENT) {
             println("🏥 Insurance Document step opening - loading countries and insurance companies...")
 
             var dataLoaded = false
@@ -203,6 +203,32 @@ class PermanentRegistrationStrategy @Inject constructor(
             if (dataLoaded) {
                 println("🔄 Notifying UI to rebuild steps with new data...")
                 onStepsNeedRebuild?.invoke()
+            }
+        }
+
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
             }
         }
     }
@@ -847,37 +873,6 @@ class PermanentRegistrationStrategy @Inject constructor(
 
 
         return step
-    }
-
-    // ✅ NEW: Handle payment step loading when step is opened
-    override suspend fun onStepOpened(stepIndex: Int) {
-        val step = getSteps().getOrNull(stepIndex) ?: return
-
-        // ✅ If this is the payment step, trigger payment API call
-        if (step.stepType == StepType.PAYMENT) {
-            println("💰 Payment step opened - triggering payment receipt API call...")
-
-            val paymentResult = paymentManager.processStepIfNeeded(
-                stepType = StepType.PAYMENT,
-                formData = accumulatedFormData,
-                requestTypeId = requestTypeId.toInt(),
-                context = transactionContext
-            )
-
-            when (paymentResult) {
-                is StepProcessResult.Success -> {
-                    println("✅ Payment receipt loaded - triggering step rebuild")
-                    onStepsNeedRebuild?.invoke()
-                }
-                is StepProcessResult.Error -> {
-                    println("❌ Payment error: ${paymentResult.message}")
-                    accumulatedFormData["apiError"] = paymentResult.message
-                }
-                is StepProcessResult.NoAction -> {
-                    println("ℹ️ No payment action needed")
-                }
-            }
-        }
     }
 
     override suspend fun submit(data: Map<String, String>): Result<Boolean> {
