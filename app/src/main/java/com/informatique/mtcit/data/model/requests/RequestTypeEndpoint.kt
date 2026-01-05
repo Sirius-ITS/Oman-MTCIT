@@ -2,36 +2,69 @@ package com.informatique.mtcit.data.model.requests
 
 /**
  * Maps Request Type IDs to their corresponding API endpoints
+ * Includes both detail fetch endpoints and certificate issuance endpoints
  * Easily extensible for new request types
  */
 enum class RequestTypeEndpoint(
     val requestTypeId: Int,
-    val endpointPath: String
+    val endpointPath: String,
+    val issuanceEndpoint: String? = null // ✅ NEW: Endpoint for certificate issuance
 ) {
-    // Temporary Registration
+    // 1. Temporary Registration
     TEMP_REGISTRATION(
         requestTypeId = 1,
-        endpointPath = "registration-requests"
+        endpointPath = "registration-requests",
+        issuanceEndpoint = "registration-requests/{requestId}/issuance-provisional-registration-certificate"
     ),
 
-    // Permanent Registration
+    // 2. Permanent Registration
     PERM_REGISTRATION(
         requestTypeId = 2,
-        endpointPath = "registration-requests"
+        endpointPath = "registration-requests",
+        issuanceEndpoint = "perm-registration-requests/{requestId}/issuance-provisional-registration-certificate"
     ),
 
-    // Mortgage Request
-    MORTGAGE(
+    // 3. Issue Navigation Permit
+    ISSUE_NAVIGATION_PERMIT(
         requestTypeId = 3,
-        endpointPath = "mortgage-requests"
+        endpointPath = "navigation-permit",
+        issuanceEndpoint = "navigation-permit/{requestId}/issuance-certificate"
     ),
 
-    // Add more request types here as needed
-    // Example:
-    // RENEWAL(
-    //     requestTypeId = 4,
-    //     endpointPath = "renewal-requests"
-    // ),
+    // 4. Mortgage Certificate
+    MORTGAGE(
+        requestTypeId = 4,
+        endpointPath = "mortgage-requests",
+        issuanceEndpoint = "mortgage-request/{requestId}/issuance-certificate"
+    ),
+
+    // 5. Release Mortgage
+    RELEASE_MORTGAGE(
+        requestTypeId = 5,
+        endpointPath = "mortgage-redemption-request",
+        issuanceEndpoint = "mortgage-redemption-request/{requestId}/issuance-certificate"
+    ),
+
+    // 6. Renew Navigation Permit
+    RENEW_NAVIGATION_PERMIT(
+        requestTypeId = 6,
+        endpointPath = "navigation-permit",
+        issuanceEndpoint = "navigation-permit/{requestId}/issuance-renewal-certificate"
+    ),
+
+    // 7. Cancel Permanent Registration (Change Name)
+    CANCEL_PERMANENT_REGISTRATION(
+        requestTypeId = 7,
+        endpointPath = "deletion-requests",
+        issuanceEndpoint = "deletion-requests/{requestId}/issuance-certificate"
+    ),
+
+    // 8. Request for Inspection
+    REQUEST_FOR_INSPECTION(
+        requestTypeId = 8,
+        endpointPath = "inspection-requests",
+        issuanceEndpoint = "inspection-requests/{requestId}/issuance-certificate"
+    ),
 
     ;
 
@@ -46,10 +79,28 @@ enum class RequestTypeEndpoint(
         }
 
         /**
+         * ✅ NEW: Get issuance endpoint by request type ID
+         * @param typeId Request type ID
+         * @param requestId The actual request ID to replace {requestId} placeholder
+         * @return Full endpoint path with requestId replaced, or null if not found
+         */
+        fun getIssuanceEndpoint(typeId: Int, requestId: Int): String? {
+            val template = values().find { it.requestTypeId == typeId }?.issuanceEndpoint
+            return template?.replace("{requestId}", requestId.toString())
+        }
+
+        /**
          * Check if request type is supported for detail fetching
          */
         fun isSupported(typeId: Int): Boolean {
             return values().any { it.requestTypeId == typeId }
+        }
+
+        /**
+         * ✅ NEW: Check if issuance is supported for this request type
+         */
+        fun isIssuanceSupported(typeId: Int): Boolean {
+            return values().find { it.requestTypeId == typeId }?.issuanceEndpoint != null
         }
     }
 }

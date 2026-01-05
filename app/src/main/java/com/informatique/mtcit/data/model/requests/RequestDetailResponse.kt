@@ -29,7 +29,8 @@ data class RequestDetailUiModel(
     val status: RequestStatusInfo,
     val message: String?,
     val messageDetails: String?,
-    val sections: List<RequestDetailSection>
+    val sections: List<RequestDetailSection>,
+    val isPaid: Int = 0 // 0 = not paid, 1 = paid
 )
 
 /**

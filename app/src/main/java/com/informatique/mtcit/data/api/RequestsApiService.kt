@@ -223,6 +223,87 @@ class RequestsApiService @Inject constructor(
     }
 
     /**
+     * Issue certificate for a request (POST)
+     * Called when isPaid == 1 and status is APPROVED
+     *
+     * @param issuanceEndpoint The full issuance endpoint path
+     * @return Result with common response containing certificate data
+     * @throws ApiException for HTTP error codes
+     */
+    suspend fun issueCertificate(
+        issuanceEndpoint: String
+    ): Result<RequestDetailResponse> {
+        return try {
+            println("🔍 Issuing certificate: endpoint=$issuanceEndpoint")
+            println("📡 API Call (POST): $issuanceEndpoint")
+
+            when (val response = repo.onPostAuth(issuanceEndpoint, "")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Certificate issuance response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            // Parse the response (common response format)
+                            val issuanceResponse: RequestDetailResponse = json.decodeFromJsonElement(responseJson)
+                            println("✅ Certificate issued successfully")
+
+                            Result.success(issuanceResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "حدث خطأ في إصدار الشهادة"
+                            println("❌ API Error: Status code $statusCode - $message")
+
+                            when (statusCode) {
+                                401 -> throw ApiException(401, message)
+                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
+                                404 -> throw ApiException(404, "الطلب غير موجود")
+                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                else -> throw ApiException(statusCode, message)
+                            }
+                        }
+                    } else {
+                        println("❌ Empty JSON response")
+                        throw ApiException(500, "استجابة فارغة من الخادم")
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    val errorMessage = response.error?.toString() ?: "حدث خطأ في إصدار الشهادة"
+
+                    val errorCode = when {
+                        errorMessage.contains("401", ignoreCase = true) -> 401
+                        errorMessage.contains("403", ignoreCase = true) -> 403
+                        errorMessage.contains("404", ignoreCase = true) -> 404
+                        errorMessage.contains("500", ignoreCase = true) -> 500
+                        else -> extractStatusCode(errorMessage) ?: 500
+                    }
+
+                    val friendlyMessage = when (errorCode) {
+                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        403 -> "ليس لديك صلاحية لإصدار هذه الشهادة"
+                        404 -> "الطلب غير موجود"
+                        else -> errorMessage
+                    }
+
+                    throw ApiException(errorCode, friendlyMessage)
+                }
+            }
+        } catch (e: ApiException) {
+            println("❌ ApiException in issueCertificate: ${e.code} - ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in issueCertificate: ${e.message}")
+            e.printStackTrace()
+            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+        }
+    }
+
+    /**
      * Extract status code from error message if present
      */
     private fun extractStatusCode(error: String): Int? {

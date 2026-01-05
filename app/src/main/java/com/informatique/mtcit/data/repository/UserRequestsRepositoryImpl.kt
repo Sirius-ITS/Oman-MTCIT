@@ -49,6 +49,21 @@ class UserRequestsRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun issueCertificate(
+        issuanceEndpoint: String
+    ): Result<RequestDetailResponse> = withContext(Dispatchers.IO) {
+        try {
+            println("📦 UserRequestsRepository: Issuing certificate for endpoint=$issuanceEndpoint")
+
+            requestsApiService.issueCertificate(
+                issuanceEndpoint = issuanceEndpoint
+            )
+        } catch (e: Exception) {
+            println("❌ UserRequestsRepository: Error issuing certificate: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
     override suspend fun refreshRequests() {
         // Can implement cache clearing here if needed in the future
         println("🔄 UserRequestsRepository: Refresh requests (cache clear if implemented)")

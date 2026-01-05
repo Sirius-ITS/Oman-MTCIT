@@ -45,6 +45,9 @@ object RequestDetailParser {
         // ✅ Use ShipDataExtractor to get structured ship data sections
         val sections = ShipDataExtractor.extractShipDataSections(response.data)
 
+        // ✅ Extract isPaid field (comes as string "0" or "1" from API)
+        val isPaid = dataObject["isPaid"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
+
         return RequestDetailUiModel(
             requestId = requestId,
             requestSerial = "$requestSerial/$requestYear",
@@ -53,7 +56,8 @@ object RequestDetailParser {
             status = status,
             message = message,
             messageDetails = messageDetails,
-            sections = sections
+            sections = sections,
+            isPaid = isPaid
         )
     }
 

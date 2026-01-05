@@ -32,6 +32,15 @@ interface UserRequestsRepository {
     ): Result<RequestDetailResponse>
 
     /**
+     * Issue certificate for a request (when isPaid == 1)
+     * @param issuanceEndpoint Full issuance endpoint path
+     * @return Result with certificate data
+     */
+    suspend fun issueCertificate(
+        issuanceEndpoint: String
+    ): Result<RequestDetailResponse>
+
+    /**
      * Refresh requests (clear cache if any)
      */
     suspend fun refreshRequests()

@@ -38,6 +38,7 @@ import com.informatique.mtcit.data.model.requests.RequestDetailSection
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.RequestDetailViewModel
+import com.informatique.mtcit.ui.viewmodels.CertificateData
 import java.util.Locale
 
 /**
@@ -58,6 +59,8 @@ fun ApiRequestDetailScreen(
     val requestDetail by viewModel.requestDetail.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val appError by viewModel.appError.collectAsState()
+    val isIssuingCertificate by viewModel.isIssuingCertificate.collectAsState()
+    val certificateData by viewModel.certificateData.collectAsState()
 
     // Allow drawing behind system bars and make status bar transparent
     LaunchedEffect(window) {
@@ -72,6 +75,48 @@ fun ApiRequestDetailScreen(
     LaunchedEffect(requestId, requestTypeId) {
         println("🔍 ApiRequestDetailScreen: Loading request $requestId (type: $requestTypeId)")
         viewModel.fetchRequestDetail(requestId, requestTypeId)
+    }
+
+    // ✅ Show certificate issuance success dialog when certificateData is available
+    certificateData?.let { certData ->
+        println("🎉 Showing certificate dialog: ${certData.certificationNumber}")
+
+        val isArabic = Locale.getDefault().language == "ar"
+        val items = buildList {
+            add(
+                com.informatique.mtcit.ui.components.SuccessDialogItem(
+                    label = if (isArabic) "رقم الشهادة" else "Certificate Number",
+                    value = certData.certificationNumber,
+                    icon = "📄"
+                )
+            )
+            add(
+                com.informatique.mtcit.ui.components.SuccessDialogItem(
+                    label = if (isArabic) "تاريخ الإصدار" else "Issued Date",
+                    value = certData.issuedDate,
+                    icon = "📅"
+                )
+            )
+            if (!certData.expiryDate.isNullOrEmpty()) {
+                add(
+                    com.informatique.mtcit.ui.components.SuccessDialogItem(
+                        label = if (isArabic) "تاريخ الانتهاء" else "Expiry Date",
+                        value = certData.expiryDate,
+                        icon = "⏰"
+                    )
+                )
+            }
+        }
+
+        com.informatique.mtcit.ui.components.SuccessDialog(
+            title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
+            items = items,
+            qrCode = certData.certificationQrCode,
+            onDismiss = {
+                println("🔄 Dialog dismissed")
+                viewModel.clearCertificateData()
+            }
+        )
     }
 
     // Calculate status bar height
@@ -144,7 +189,10 @@ fun ApiRequestDetailScreen(
                         RequestDetailContent(
                             requestDetail = requestDetail!!,
                             extraColors = extraColors,
-                            navController = navController
+                            navController = navController,
+                            viewModel = viewModel,
+                            isIssuingCertificate = isIssuingCertificate,
+                            certificateData = certificateData
                         )
                     }
                 }
@@ -233,7 +281,10 @@ private fun ErrorState(
 private fun RequestDetailContent(
     requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
-    navController: NavController
+    navController: NavController,
+    viewModel: RequestDetailViewModel,
+    isIssuingCertificate: Boolean,
+    certificateData: CertificateData?
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // Scrollable content
@@ -243,6 +294,8 @@ private fun RequestDetailContent(
                 .padding(bottom = 80.dp), // Space for fixed bottom button
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // ...existing items...
+
             item {
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -275,6 +328,9 @@ private fun RequestDetailContent(
             requestDetail = requestDetail,
             extraColors = extraColors,
             navController = navController,
+            viewModel = viewModel,
+            isIssuingCertificate = isIssuingCertificate,
+            certificateData = certificateData,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -288,15 +344,20 @@ private fun BottomActionButtons(
     requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
     navController: NavController,
+    viewModel: RequestDetailViewModel,
+    isIssuingCertificate: Boolean,
+    certificateData: CertificateData?,
     modifier: Modifier = Modifier
 ) {
     val statusId = requestDetail.status.id
+    val isPaid = requestDetail.isPaid
 
     // Only show buttons for statuses that require action
     val shouldShowButton = when (statusId) {
         1 -> true  // Draft - Continue Editing
         2, 10 -> true  // Rejected - Submit New Request
-        3, 7, 11, 12 -> true  // Accepted/Approved - Continue to Payment
+        3, 7, 11, 12 -> true  // Accepted/Approved - Show Payment or Issue Certificate button
+        13, 14 -> true  // ✅ NEW: Action Taken/Issued - Show View Certificate button
         else -> false
     }
 
@@ -361,53 +422,169 @@ private fun BottomActionButtons(
                     }
 
                     3, 7, 11, 12 -> {
-                        // Accepted/Approved - Continue to Payment
-                        // ✅ Smart routing: For Temp Registration with ACCEPTED, go to Marine Unit Name first
-                        Button(
-                            onClick = {
-                                // ✅ Calculate lastCompletedStep based on transaction type and status
-                                val lastCompletedStep = when {
-                                    statusId == 7 && requestDetail.requestType.id == 1 -> 7  // Temp Registration ACCEPTED → Marine Unit Name step
-                                    else -> 8  // Other transactions → Payment step
-                                }
+                        // ✅ NEW: Check isPaid to determine which button to show
+                        if (isPaid == 1) {
+                            // ✅ Payment completed - Show Issue Certificate button
+                            IssueCertificateButton(
+                                requestDetail = requestDetail,
+                                navController = navController,
+                                extraColors = extraColors,
+                                viewModel = viewModel,
+                                isIssuingCertificate = isIssuingCertificate,
+                                certificateData = certificateData
+                            )
+                        } else {
+                            // ✅ Not paid - Show Proceed to Payment button
+                            ProceedToPaymentButton(
+                                requestDetail = requestDetail,
+                                navController = navController,
+                                extraColors = extraColors
+                            )
+                        }
+                    }
 
-                                println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep")
-
-                                // ✅ Smart navigation with lastCompletedStep passed through URL
-                                val route = getTransactionRouteForPayment(
-                                    requestTypeId = requestDetail.requestType.id,
-                                    requestId = requestDetail.requestId,
-                                    statusId = statusId,
-                                    lastCompletedStep = lastCompletedStep
-                                )
-                                if (route != null) {
-                                    navController.navigate(route)
-                                } else {
-                                    // Fallback: show error or unsupported message
-                                    println("⚠️ Payment not supported for requestTypeId: ${requestDetail.requestType.id}")
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = extraColors.blue1
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(
-                                text = if (Locale.getDefault().language == "ar")
-                                    "متابعة الدفع"
-                                else "Continue to Payment",
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                    13, 14 -> {
+                        // ✅ NEW: Certificate Already Issued - Show View/Re-issue Certificate button
+                        if (isPaid == 1) {
+                            IssueCertificateButton(
+                                requestDetail = requestDetail,
+                                navController = navController,
+                                extraColors = extraColors,
+                                viewModel = viewModel,
+                                isIssuingCertificate = isIssuingCertificate,
+                                certificateData = certificateData,
+                                isAlreadyIssued = true  // ✅ Pass flag to change button text
+                            )
+                        } else {
+                            // Edge case: Issued but not paid (shouldn't happen normally)
+                            ProceedToPaymentButton(
+                                requestDetail = requestDetail,
+                                navController = navController,
+                                extraColors = extraColors
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * ✅ NEW: Issue Certificate Button (when isPaid == 1)
+ */
+@Composable
+private fun IssueCertificateButton(
+    requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
+    navController: NavController,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
+    viewModel: RequestDetailViewModel,
+    isIssuingCertificate: Boolean,
+    certificateData: CertificateData?,
+    isAlreadyIssued: Boolean = false  // ✅ NEW: Flag for already issued certificates
+) {
+
+    val buttonText = when {
+        isAlreadyIssued -> {
+            // Certificate already issued - show "View Certificate" text
+            if (Locale.getDefault().language == "ar")
+                "عرض الشهادة"
+            else "View Certificate"
+        }
+        else -> {
+            // Not yet issued - show "Issue and Display Certificate" text
+            if (Locale.getDefault().language == "ar")
+                "اصدار و عرض الشهادة"
+            else "Issue and Display Certificate"
+        }
+    }
+
+    Button(
+        onClick = {
+            println("🔘 Issue/View Certificate button clicked (isAlreadyIssued=$isAlreadyIssued)")
+            viewModel.issueCertificate(
+                requestId = requestDetail.requestId,
+                requestTypeId = requestDetail.requestType.id
+            )
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = extraColors.blue1
+        ),
+        shape = RoundedCornerShape(12.dp),
+        enabled = !isIssuingCertificate
+    ) {
+        if (isIssuingCertificate) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = Color.White,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text(
+                text = buttonText,
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * ✅ NEW: Proceed to Payment Button (when isPaid == 0)
+ */
+@Composable
+private fun ProceedToPaymentButton(
+    requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
+    navController: NavController,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    // Accepted/Approved - Continue to Payment
+    // ✅ Smart routing: For Temp Registration with ACCEPTED, go to Marine Unit Name first
+    Button(
+        onClick = {
+            val statusId = requestDetail.status.id
+            // ✅ Calculate lastCompletedStep based on transaction type and status
+            val lastCompletedStep = when {
+                statusId == 7 && requestDetail.requestType.id == 1 -> 7  // Temp Registration ACCEPTED → Marine Unit Name step
+                else -> 8  // Other transactions → Payment step
+            }
+
+            println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep")
+
+            // ✅ Smart navigation with lastCompletedStep passed through URL
+            val route = getTransactionRouteForPayment(
+                requestTypeId = requestDetail.requestType.id,
+                requestId = requestDetail.requestId,
+                statusId = statusId,
+                lastCompletedStep = lastCompletedStep
+            )
+            if (route != null) {
+                navController.navigate(route)
+            } else {
+                // Fallback: show error or unsupported message
+                println("⚠️ Payment not supported for requestTypeId: ${requestDetail.requestType.id}")
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = extraColors.blue1
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = if (Locale.getDefault().language == "ar")
+                "متابعة الدفع"
+            else "Continue to Payment",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
