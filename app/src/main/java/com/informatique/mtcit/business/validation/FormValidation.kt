@@ -2,6 +2,7 @@ package com.informatique.mtcit.business.validation
 
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.FormField
+import io.ktor.client.request.forms.formData
 import javax.inject.Inject
 
 class FormValidator @Inject constructor(
@@ -139,9 +140,10 @@ class FormValidator @Inject constructor(
 
 
             is FormField.SailorList -> {
+                // Simple validation - detailed validation is in FormValidationUseCase
                 val error = when {
                     field.value == "[]" || field.value.isBlank() -> {
-                        if (field.mandatory) "At least one sailor must be added" else null
+                        if (field.mandatory) "يجب إضافة بحارة أو رفع ملف Excel" else null
                     }
                     else -> null
                 }

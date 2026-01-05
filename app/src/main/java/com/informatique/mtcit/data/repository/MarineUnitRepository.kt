@@ -65,6 +65,13 @@ interface MarineUnitRepository {
     suspend fun getFishingBoatData(requestNumber: String): Result<FishingBoatData>
 
     /**
+     * ✅ NEW: Check inspection preview for permanent registration
+     * Backend API: GET /api/v1/perm-registration-requests/{shipInfoId}/inspection-preview
+     * Returns inspection status (0 = no inspection, 1 = has inspection)
+     */
+    suspend fun checkInspectionPreview(shipInfoId: Int): Result<Int>
+
+    /**
      * ✅ NEW: Send transaction request (for review step)
      * Calls marineUnitsApiService.sendTransactionRequest internally
      *
@@ -554,6 +561,21 @@ class MarineUnitRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             println("❌ Exception occurred: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * ✅ NEW: Check inspection preview for permanent registration
+     * Backend API: GET /api/v1/perm-registration-requests/{shipInfoId}/inspection-preview
+     * Returns inspection status (0 = no inspection, 1 = has inspection)
+     */
+    override suspend fun checkInspectionPreview(shipInfoId: Int): Result<Int> {
+        return try {
+            println("🔍 Checking inspection preview for shipInfoId: $shipInfoId")
+            apiService.checkInspectionPreview(shipInfoId)
+        } catch (e: Exception) {
+            println("❌ Error checking inspection preview: ${e.message}")
             Result.failure(e)
         }
     }

@@ -243,6 +243,7 @@ data class ProceedRequestResponse(
 data class ProceedRequestData(
     val id: Int,
     val shipInfo: ShipInfoRef? = null,
+    val ship: ShipRef? = null,  // ✅ Add direct ship reference for some endpoints
     val requestSerial: Int? = null,
     val requestYear: Int? = null,
     val requestType: RequestTypeRef? = null,

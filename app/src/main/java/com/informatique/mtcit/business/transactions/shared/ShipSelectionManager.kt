@@ -99,18 +99,22 @@ class ShipSelectionManager @Inject constructor(
                     println("   Message: ${response.message}")
 
                     // ✅ Extract maritime identification fields from ship data
-                    val shipData = response.data.shipInfo?.ship
+                    // Check both locations: data.shipInfo.ship (nested) or data.ship (direct)
+                    val shipData = response.data.shipInfo?.ship ?: response.data.ship
                     val shipId = shipData?.id // ✅ Extract ship ID for maritime identity API
-                    val imoNumber = shipData?.imoNumber?.toString()
-                    val mmsiNumber = shipData?.mmsiNumber?.toString() // ✅ Now properly extracted
-                    val callSign = shipData?.callSign
 
+                    // ✅ Convert to String only if value is valid (not null or 0)
+                    val imoNumber = shipData?.imoNumber?.takeIf { it > 0 }?.toString()
+                    val mmsiNumber = shipData?.mmsiNumber?.takeIf { it > 0 }?.toString()
+                    val callSign = shipData?.callSign?.takeIf { it.isNotBlank() }
+
+                    println("   Ship Data Source: ${if (response.data.shipInfo != null) "shipInfo.ship" else "ship (direct)"}")
                     println("   Ship ID: $shipId")
                     println("   Ship IMO Number: $imoNumber")
                     println("   Ship MMSI Number: $mmsiNumber")
                     println("   Ship Call Sign: $callSign")
 
-                    // ✅ Check if any maritime identification field is missing
+                    // ✅ Check if any maritime identification field is missing or invalid
                     val needsMaritimeId = imoNumber.isNullOrBlank() ||
                                          mmsiNumber.isNullOrBlank() ||
                                          callSign.isNullOrBlank()
@@ -121,7 +125,7 @@ class ShipSelectionManager @Inject constructor(
                         if (mmsiNumber.isNullOrBlank()) println("   - MMSI Number is missing")
                         if (callSign.isNullOrBlank()) println("   - Call Sign is missing")
                     } else {
-                        println("✅ All maritime identification fields present")
+                        println("✅ All maritime identification fields present - skipping maritime ID step")
                     }
 
                     println("=".repeat(80))

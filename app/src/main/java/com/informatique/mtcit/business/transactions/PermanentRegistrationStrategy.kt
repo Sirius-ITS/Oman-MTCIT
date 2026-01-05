@@ -84,6 +84,17 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.toRequestTypeId()
     private var requestId: Long? = null
 
+    // ✅ Add init block to verify requestTypeId
+    init {
+        println("=" .repeat(60))
+        println("🏗️ PermanentRegistrationStrategy INITIALIZED")
+        println("   Transaction Type: PERMANENT_REGISTRATION_CERTIFICATE")
+        println("   requestTypeId: '$requestTypeId'")
+        println("   Expected value: '2'")
+        println("   Actual value matches: ${requestTypeId == "2"}")
+        println("=" .repeat(60))
+    }
+
     // ✅ Allow ViewModel to set a callback when steps need to be rebuilt
     override var onStepsNeedRebuild: (() -> Unit)? = null
 
@@ -135,6 +146,13 @@ class PermanentRegistrationStrategy @Inject constructor(
         // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
         val commercialReg = formData["selectionData"]
 
+        println("=" .repeat(60))
+        println("🔍 DEBUG: PermanentRegistrationStrategy.loadShipsForSelectedType")
+        println("   Transaction Type: PERMANENT_REGISTRATION_CERTIFICATE")
+        println("   requestTypeId value: '$requestTypeId' (type: ${requestTypeId.javaClass.simpleName})")
+        println("   Expected: '2' (Permanent Registration)")
+        println("=" .repeat(60))
+
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
         // ✅ Get civilId from token instead of hardcoded value
@@ -155,7 +173,11 @@ class PermanentRegistrationStrategy @Inject constructor(
             else -> Pair(null, null)
         }
 
-        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
+        println("🔍 Calling loadShipsForOwner with:")
+        println("   ownerCivilId: $ownerCivilId")
+        println("   commercialRegNumber: $commercialRegNumber")
+        println("   requestTypeId: $requestTypeId")
+        println("=" .repeat(60))
 
         marineUnits = marineUnitRepository.loadShipsForOwner(
             ownerCivilId = ownerCivilId,
@@ -164,7 +186,11 @@ class PermanentRegistrationStrategy @Inject constructor(
             //Request Type Id
             requestTypeId = requestTypeId
         )
+
         println("✅ Loaded ${marineUnits.size} ships")
+        marineUnits.forEach { unit ->
+            println("   - ${unit.shipName} (ID: ${unit.id})")
+        }
 
         return marineUnits
     }
@@ -246,7 +272,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     }
 
     override fun getContext(): TransactionContext {
-        TODO("Not yet implemented")
+        return transactionContext
     }
 
     override fun getSteps(): List<StepData> {
@@ -316,12 +342,6 @@ class PermanentRegistrationStrategy @Inject constructor(
         steps.add(
             SharedSteps.reviewStep()
         )
-
-        // ✅ Step 6: Payment Details - Show if we have a request ID
-        val hasRequestId = accumulatedFormData["requestId"] != null
-        if (hasRequestId) {
-            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
-        }
 
         return steps
     }
@@ -745,6 +765,49 @@ class PermanentRegistrationStrategy @Inject constructor(
                             }
 
                             try {
+                                // ✅ STEP 1: Check inspection preview first
+                                println("🔍 STEP 1: Checking inspection preview...")
+
+                                // Get shipInfoId from formData
+                                val shipIdString = accumulatedFormData["shipId"]
+                                val shipInfoId = when {
+                                    shipIdString == null -> {
+                                        println("❌ Ship ID not found in formData")
+                                        throw com.informatique.mtcit.common.ApiException(400, "معرف السفينة غير موجود")
+                                    }
+                                    shipIdString.startsWith("[") -> {
+                                        // Array format: ["1674"] -> extract the number
+                                        shipIdString.trim('[', ']', '"').toIntOrNull()
+                                            ?: throw com.informatique.mtcit.common.ApiException(400, "تنسيق معرف السفينة غير صحيح")
+                                    }
+                                    else -> {
+                                        // Single value: "1674"
+                                        shipIdString.toIntOrNull()
+                                            ?: throw com.informatique.mtcit.common.ApiException(400, "معرف السفينة غير صحيح")
+                                    }
+                                }
+
+                                println("   Calling checkInspectionPreview with shipInfoId: $shipInfoId")
+                                val inspectionResult = marineUnitRepository.checkInspectionPreview(shipInfoId)
+
+                                inspectionResult.fold(
+                                    onSuccess = { inspectionStatus ->
+                                        println("✅ Inspection preview check successful")
+                                        println("   Inspection status: $inspectionStatus (0=no inspection, 1=has inspection)")
+
+                                        // Continue to send request regardless of inspection status
+                                        // The backend will handle the validation
+                                    },
+                                    onFailure = { error ->
+                                        println("❌ Failed to check inspection preview: ${error.message}")
+                                        // Don't block - continue with send request
+                                        // The backend will handle validation
+                                    }
+                                )
+
+                                // ✅ STEP 2: Send request (proceed regardless of inspection check)
+                                println("🚀 STEP 2: Calling ReviewManager.processReviewStep...")
+
                                 // ✅ Get endpoint and context from transactionContext
                                 val transactionContext =
                                     TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
@@ -777,44 +840,11 @@ class PermanentRegistrationStrategy @Inject constructor(
                                         accumulatedFormData["sendRequestMessage"] =
                                             reviewResult.message
 
-                                        // ✅ PERMANENT REGISTRATION: Different response handling than temporary
-                                        // For permanent registration, we might check for different fields
-                                        // e.g., approvalStatus, documentVerification, etc.
-
-                                        // Check additionalData for permanent-specific fields
-                                        val approvalRequired =
-                                            reviewResult.additionalData?.get("approvalRequired") as? Boolean
-                                        val documentVerification =
-                                            reviewResult.additionalData?.get("documentVerification") as? String
-
-                                        if (approvalRequired == true) {
-                                            println("⚠️ Approval required for permanent registration")
-                                            accumulatedFormData["showApprovalDialog"] = "true"
-                                            accumulatedFormData["approvalMessage"] =
-                                                reviewResult.message
-                                            return step // Stay on current step
-                                        }
-
-                                        if (documentVerification == "pending") {
-                                            println("📄 Document verification pending")
-                                            accumulatedFormData["showDocVerificationDialog"] =
-                                                "true"
-                                            accumulatedFormData["verificationMessage"] =
-                                                reviewResult.message
-                                            return step // Stay on current step
-                                        }
-
-                                        // ✅ Also support needInspection (common field)
-                                        if (reviewResult.needInspection) {
-                                            println("🔍 Inspection required - showing dialog")
-                                            accumulatedFormData["showInspectionDialog"] = "true"
-                                            accumulatedFormData["inspectionMessage"] =
-                                                reviewResult.message
-                                            return step // Stay on current step
-                                        }
-
-                                        // Proceed to next step
-                                        println("✅ No blocking conditions - proceeding to next step")
+                                        // ✅ Show success alert and exit
+                                        println("✅ Transaction submitted successfully - showing success alert")
+                                        accumulatedFormData["showSuccessAlert"] = "true"
+                                        accumulatedFormData["successAlertMessage"] = reviewResult.message
+                                        return step // Stay on current step to show alert
                                     }
 
                                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {

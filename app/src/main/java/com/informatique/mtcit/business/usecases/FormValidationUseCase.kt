@@ -172,6 +172,19 @@ class FormValidationUseCase @Inject constructor(
                     println("✅ selectedMarineUnits has selection: $value")
                 }
 
+                // ✅ Special validation for crew/sailor step
+                // User must either upload Excel file OR add sailors manually
+                if (field.id == "sailors") {
+                    val hasExcelFile = formData["crewExcelFile"]?.isNotBlank() == true
+                    val hasSailors = value != "[]" && value.isNotBlank()
+
+                    if (!hasExcelFile && !hasSailors) {
+                        println("❌ No crew data - neither Excel file nor manual sailors")
+                        return false
+                    }
+                    println("✅ Crew data provided: hasExcelFile=$hasExcelFile, hasSailors=$hasSailors")
+                }
+
                 // For checkboxes, check if they're checked
                 if (field is FormField.CheckBox && value != "true") {
                     return false
