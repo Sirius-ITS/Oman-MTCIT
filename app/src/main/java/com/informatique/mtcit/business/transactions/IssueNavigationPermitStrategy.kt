@@ -119,7 +119,12 @@ class IssueNavigationPermitStrategy @Inject constructor(
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
         // ✅ Don't load countries here - will be loaded in onStepOpened with ISO codes
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        // ✅ Handle null civilId - return empty list if no token
+        val commercialRegistrations = if (ownerCivilId != null) {
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        } else {
+            emptyList()
+        }
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         // countryOptions will be loaded in onStepOpened() with proper ISO code format

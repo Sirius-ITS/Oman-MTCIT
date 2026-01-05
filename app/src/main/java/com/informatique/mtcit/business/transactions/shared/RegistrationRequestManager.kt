@@ -1053,7 +1053,8 @@ class RegistrationRequestManager @Inject constructor(
             StepType.MARINE_UNIT_NAME_SELECTION -> {
                 println("🏷️ Marine Unit Name Selection step detected")
 
-                val marineName = formData["selectedShipName"]
+                // ✅ FIX: Look for "marineUnitName" (not "selectedShipName")
+                val marineName = formData["marineUnitName"]
 
                 if (marineName.isNullOrBlank()) {
                     println("⚠️ Marine name is empty - skipping reservation")
@@ -1064,6 +1065,8 @@ class RegistrationRequestManager @Inject constructor(
                     println("❌ No requestId - cannot reserve name")
                     return StepProcessResult.Error("No request ID available")
                 }
+
+                println("✅ Marine name found: '$marineName', proceeding with reservation...")
 
                 try {
                     val result = reserveMarineName(

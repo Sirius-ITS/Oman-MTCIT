@@ -42,8 +42,14 @@ sealed class NavRoutes(val route: String) {
 
     data object ShipRegistrationRoute : NavRoutes("7") {
         const val REQUEST_ID_ARG = "requestId"
-        fun createRouteWithResume(requestId: String): String {
-            return "7?requestId=$requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null): String {
+            return if (lastCompletedStep != null) {
+                "7?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            } else {
+                "7?requestId=$requestId"
+            }
         }
     }
 
@@ -91,6 +97,13 @@ sealed class NavRoutes(val route: String) {
     data object RequestDetailRoute : NavRoutes("request-detail/{detail}"){
         fun createRoute(detail: RequestDetail)
                 = "request-detail/${Uri.encode(Json.encodeToString(detail))}"
+    }
+
+    // ✅ NEW: API Request Detail Route - for dynamic API-fetched request details
+    data object ApiRequestDetailRoute : NavRoutes("api-request-detail/{requestId}/{requestTypeId}") {
+        fun createRoute(requestId: Int, requestTypeId: Int): String {
+            return "api-request-detail/$requestId/$requestTypeId"
+        }
     }
 
     // OAuth WebView Route

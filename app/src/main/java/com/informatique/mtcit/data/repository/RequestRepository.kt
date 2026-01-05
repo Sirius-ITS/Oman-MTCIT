@@ -4,92 +4,74 @@ import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.data.model.UserRequest
-import com.informatique.mtcit.data.model.RequestStatus
-import com.informatique.mtcit.data.model.SaveRequestBody
 import kotlinx.coroutines.delay
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Repository for managing user requests (الاستمارات)
  *
- * Current: Mock implementation with in-memory storage
- * Future: Will call REST API endpoints
- *
- * API Endpoints:
- * - GET /api/users/{userId}/requests → Get all user requests
- * - GET /api/requests/{requestId}/status → Get specific request status
- * - POST /api/requests/save → Save request progress
- * - PUT /api/requests/{requestId}/status → Update request status (admin only)
+ * Handles request status checking and progress saving
+ * Uses UserRequestsRepository for real API calls
  */
 @Singleton
-class RequestRepository @Inject constructor() {
-
-    // ✅ Mock in-memory storage (simulates backend database)
-    // In real app, this data comes from API
-    private val mockRequests = mutableMapOf<String, UserRequest>()
-
-    init {
-        // Pre-populate with sample data for testing
-        initializeMockData()
-    }
+class RequestRepository @Inject constructor(
+    private val authRepository: AuthRepository,
+    private val userRequestsRepository: UserRequestsRepository
+) {
 
     /**
-     * Get all requests for a specific user
+     * Get request status by ID - Calls real API
      *
-     * Mock: Returns from in-memory map
-     * API: GET /api/users/{userId}/requests
-     */
-    suspend fun getUserRequests(userId: String): Result<List<UserRequest>> {
-        return try {
-            // Simulate network delay
-            delay(500)
-
-            // Filter requests by userId
-            val userRequests = mockRequests.values
-                .filter { it.userId == userId }
-                .sortedByDescending { it.lastUpdatedDate }
-
-            println("📋 RequestRepository: Found ${userRequests.size} requests for user $userId")
-
-            Result.success(userRequests)
-        } catch (e: Exception) {
-            println("❌ RequestRepository: Error getting requests: ${e.message}")
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Get specific request by ID with latest status
-     *
-     * Mock: Returns from in-memory map
-     * API: GET /api/requests/{requestId}/status
+     * API: GET /api/v1/registration-requests/{requestId}
+     * @param requestId Request ID (e.g., "1844")
+     * @return Result with UserRequest containing latest status and data
      */
     suspend fun getRequestStatus(requestId: String): Result<UserRequest> {
         return try {
-            // Simulate network delay
-            delay(300)
+            println("🌐 RequestRepository: Fetching request $requestId from API")
 
-            val request = mockRequests[requestId]
+            // Determine endpoint path based on request type
+            val endpointPath = "/api/v1/registration-requests"
 
-            if (request != null) {
-                println("✅ RequestRepository: Found request $requestId with status ${request.status}")
-                Result.success(request)
-            } else {
-                println("❌ RequestRepository: Request $requestId not found")
-                Result.failure(Exception("الطلب غير موجود"))
-            }
+            // Call real API
+            val result = userRequestsRepository.getRequestDetail(
+                requestId = requestId.toInt(),
+                endpointPath = endpointPath
+            )
+
+            result.fold(
+                onSuccess = { response ->
+                    println("✅ RequestRepository: API returned request $requestId")
+
+                    // Parse the JSON response to extract data
+                    val jsonData = response.data
+                    val mappedRequest = parseApiResponseToUserRequest(jsonData, requestId)
+
+                    println("✅ RequestRepository: Mapped to UserRequest with statusId ${mappedRequest.statusId}")
+                    Result.success(mappedRequest)
+                },
+                onFailure = { error ->
+                    println("❌ RequestRepository: API call failed: ${error.message}")
+                    Result.failure(error)
+                }
+            )
         } catch (e: Exception) {
             println("❌ RequestRepository: Error getting request status: ${e.message}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }
 
     /**
      * Save request progress (when inspection is pending)
-     *
-     * Mock: Saves to in-memory map
-     * API: POST /api/requests/save
+     * Mock implementation - will be replaced with real API call
      */
     suspend fun saveRequestProgress(
         userId: String,
@@ -97,32 +79,14 @@ class RequestRepository @Inject constructor() {
         marineUnit: MarineUnit?,
         formData: Map<String, String>,
         lastCompletedStep: Int,
-        status: RequestStatus = RequestStatus.PENDING
+        statusId: Int = 5 // Default: Pending
     ): Result<String> {
         return try {
-            // Simulate network delay
             delay(400)
 
-            // Generate request ID (in real app, comes from backend)
             val requestId = "REQ_${System.currentTimeMillis()}"
 
-            val request = UserRequest(
-                id = requestId,
-                userId = userId,
-                type = transactionType,
-                status = status,
-                marineUnit = marineUnit,
-                createdDate = getCurrentTimestamp(),
-                lastUpdatedDate = getCurrentTimestamp(),
-                formData = formData,
-                lastCompletedStep = lastCompletedStep,
-                estimatedCompletionDate = getEstimatedDate(3) // 3 days from now
-            )
-
-            // Save to mock storage
-            mockRequests[requestId] = request
-
-            println("✅ RequestRepository: Saved request $requestId for user $userId")
+            println("✅ RequestRepository: Saved request $requestId for user $userId with statusId $statusId")
 
             Result.success(requestId)
         } catch (e: Exception) {
@@ -132,226 +96,196 @@ class RequestRepository @Inject constructor() {
     }
 
     /**
-     * Update request status (simulates admin approval)
-     *
-     * Mock: Updates in-memory map
-     * API: PUT /api/requests/{requestId}/status (admin only)
+     * Parse API JSON response to UserRequest model
      */
-    suspend fun updateRequestStatus(
-        requestId: String,
-        newStatus: RequestStatus,
-        rejectionReason: String? = null
-    ): Result<Boolean> {
-        return try {
-            delay(300)
+    private fun parseApiResponseToUserRequest(
+        jsonData: kotlinx.serialization.json.JsonElement,
+        requestId: String
+    ): UserRequest {
+        val jsonObject = jsonData.jsonObject
 
-            val request = mockRequests[requestId]
+        // Extract basic fields
+        val id = jsonObject["id"]?.jsonPrimitive?.intOrNull ?: 0
+        val requestSerial = jsonObject["requestSerial"]?.jsonPrimitive?.intOrNull ?: 0
 
-            if (request != null) {
-                // Update status
-                val updatedRequest = request.copy(
-                    status = newStatus,
-                    lastUpdatedDate = getCurrentTimestamp(),
-                    rejectionReason = rejectionReason
-                )
+        // Extract status
+        val statusObject = jsonObject["status"]?.jsonObject
+        val statusId = statusObject?.get("id")?.jsonPrimitive?.intOrNull ?: 5
 
-                mockRequests[requestId] = updatedRequest
+        // Extract request type
+        val requestTypeObject = jsonObject["requestType"]?.jsonObject
+        val requestTypeId = requestTypeObject?.get("id")?.jsonPrimitive?.intOrNull ?: 1
+        val transactionType = TransactionType.fromTypeId(requestTypeId) ?: TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE
 
-                println("✅ RequestRepository: Updated request $requestId to status $newStatus")
+        // Extract ship info
+        val shipInfoObject = jsonObject["shipInfo"]?.jsonObject
+        val shipObject = shipInfoObject?.get("ship")?.jsonObject
 
-                Result.success(true)
-            } else {
-                println("❌ RequestRepository: Request $requestId not found")
-                Result.failure(Exception("الطلب غير موجود"))
-            }
-        } catch (e: Exception) {
-            println("❌ RequestRepository: Error updating status: ${e.message}")
-            Result.failure(e)
-        }
-    }
+        val marineUnit = shipObject?.let { ship ->
+            val shipId = ship["id"]?.jsonPrimitive?.intOrNull ?: 0
+            val callSign = ship["callSign"]?.jsonPrimitive?.contentOrNull ?: ""
+            val imoNumber = ship["imoNumber"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
+            val mmsiNumber = ship["mmsiNumber"]?.jsonPrimitive?.longOrNull?.toString() ?: ""
 
-    /**
-     * Delete request (optional - for testing)
-     */
-    suspend fun deleteRequest(requestId: String): Result<Boolean> {
-        return try {
-            delay(200)
+            val portObject = ship["portOfRegistry"]?.jsonObject
+            val portName = portObject?.get("nameEn")?.jsonPrimitive?.contentOrNull
+                ?: portObject?.get("nameAr")?.jsonPrimitive?.contentOrNull
+                ?: ""
 
-            val removed = mockRequests.remove(requestId)
+            val length = ship["vesselLengthOverall"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
+            val width = ship["vesselBeam"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
+            val height = ship["vesselHeight"]?.jsonPrimitive?.intOrNull?.toString() ?: ""
 
-            if (removed != null) {
-                println("✅ RequestRepository: Deleted request $requestId")
-                Result.success(true)
-            } else {
-                println("❌ RequestRepository: Request $requestId not found")
-                Result.failure(Exception("الطلب غير موجود"))
-            }
-        } catch (e: Exception) {
-            println("❌ RequestRepository: Error deleting request: ${e.message}")
-            Result.failure(e)
-        }
-    }
-
-    // ========== Mock Data Helpers ==========
-
-    /**
-     * Initialize mock data for testing
-     * In real app, this data comes from backend
-     */
-    private fun initializeMockData() {
-        // Sample Request 1: PENDING (waiting for inspection)
-        mockRequests["1/2026"] = UserRequest(
-            id = "1/2026",
-            userId = "currentUserId",
-            type = TransactionType.MORTGAGE_CERTIFICATE,
-            status = RequestStatus.PENDING,
-            // Use the shared MarineUnit model (fields have defaults) - set minimal identifying values
-            marineUnit = MarineUnit(
-                id = "new_123456",
-                shipName = "Sea Falcon",
-                callSign = "ABC123",
-                imoNumber = "IMO1234567",
-                mmsiNumber = "",
-                portOfRegistry = PortOfRegistry("ميناء صحار")
-            ),
-             createdDate = "2025-11-15T10:30:00Z",
-             lastUpdatedDate = "2025-11-15T10:30:00Z",
-             formData = mapOf(
-                 "selectionPersonType" to "فرد",
-                 "callSign" to "ABC123",
-                 "registrationPort" to "ميناء صحار",
-                 "unitType" to "سفينة شحن"
-             ),
-             lastCompletedStep = 8, // Completed up to review step
-             estimatedCompletionDate = "2025-11-22T10:30:00Z"
-         )
-
-         // Sample Request 2: VERIFIED (inspection approved - can resume)
-         // ✅ This simulates: User added NEW unit, completed up to Review step,
-         // inspection was done and VERIFIED, now user can continue from Marine Unit Name step
-         mockRequests["2/2026"] = UserRequest(
-             id = "2/2026",
-             userId = "currentUserId",
-             type = TransactionType.RELEASE_MORTGAGE,
-             status = RequestStatus.VERIFIED,
-             marineUnit = MarineUnit(
-                 id = "new_789012",
-                 shipName = "Ocean Star",
-                 callSign = "XYZ789",
-                 imoNumber = "",
-                 mmsiNumber = "",
-                 portOfRegistry = PortOfRegistry("ميناء صلالة"),
-                 totalLength = "15.5",
-                 totalWidth = "4.2",
-                 height = "3.0"
-             ),
-             createdDate = "2025-11-10T14:20:00Z",
-             lastUpdatedDate = "2025-11-18T09:15:00Z",
-             formData = mapOf(
-                 // Step 0: Person Type
-                 "selectionPersonType" to "فرد",
-
-                 // Step 2: Marine Unit Selection (chose to add new)
-                 "isAddingNewUnit" to "true",
-                 "selectedMarineUnits" to "[]",
-
-                 // Step 3: Unit Selection (new unit details)
-                 "callSign" to "XYZ789",
-                 "registrationPort" to "ميناء صلالة",
-                 "unitType" to "قارب صيد",
-                 "imoNumber" to "",
-                 "mmsi" to "123456789",
-                 "manufacturer" to "Yamaha",
-                 "maritimeactivity" to "صيد",
-                 "constructionDate" to "2020-01-01",
-                 "registrationCountry" to "عمان",
-
-                 // Step 4: Dimensions
-                 "length" to "15.5",
-                 "width" to "4.2",
-                 "height" to "3.0",
-                 "decksCount" to "1",
-
-                 // Step 5: Weights
-                 "grossTonnage" to "25.5",
-                 "netTonnage" to "20.0",
-                 "maxPermittedLoad" to "5000",
-
-                 // Step 6: Engine Info
-                 "engineManufacturer" to "Yamaha",
-                 "engineModel" to "F150",
-                 "enginePower" to "150",
-                 "engineManufacturerCountry" to "اليابان",
-                 "fuelType" to "Diesel",
-                 "engineCondition" to "New",
-
-                 // Step 7: Owner Info
-                 "ownerName" to "أحمد محمد",
-                 "ownerNationality" to "عمان",
-                 "ownerCountry" to "عمان",
-                 "ownerPhone" to "+96812345678",
-
-                 // Step 8: Documents (uploaded)
-                 "shipbuildingCertificate" to "uploaded",
-                 "inspectionDocuments" to "uploaded"
-             ),
-             lastCompletedStep = 8, // Completed Review step, should resume at step 9 (Marine Unit Name)
-             inspectionCertificateUrl = "https://example.com/certificates/12345.pdf"
-         )
-
-         // Sample Request 3: REJECTED (inspection failed)
-         mockRequests["3/2026"] = UserRequest(
-             id = "3/2026",
-             userId = "currentUserId",
-             type = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
-             status = RequestStatus.REJECTED,
-             marineUnit = MarineUnit(
-                 id = "new_345678",
-                 shipName = "Wave Runner",
-                 callSign = "WR2024",
-                 imoNumber = "",
-                 mmsiNumber = "",
-                 portOfRegistry = PortOfRegistry("ميناء مسقط")
-             ),
-             createdDate = "2025-11-05T11:00:00Z",
-             lastUpdatedDate = "2025-11-12T16:45:00Z",
-             formData = mapOf(
-                 "selectionPersonType" to "فرد",
-                 "callSign" to "WR2024",
-                 "registrationPort" to "ميناء مسقط",
-                 "unitType" to "يخت"
-             ),
-             lastCompletedStep = 8,
-             rejectionReason = "الوحدة البحرية لا تستوفي متطلبات السلامة البحرية"
-         )
-
-         println("✅ RequestRepository: Initialized with ${mockRequests.size} mock requests")
-     }
-
-    /**
-     * Simulate status change (for testing)
-     * In real app, this is done by backend based on admin actions
-     */
-    fun simulateStatusChange(requestId: String, newStatus: RequestStatus) {
-        val request = mockRequests[requestId]
-        if (request != null) {
-            mockRequests[requestId] = request.copy(
-                status = newStatus,
-                lastUpdatedDate = getCurrentTimestamp()
+            MarineUnit(
+                id = shipId.toString(),
+                shipName = callSign,
+                callSign = callSign,
+                imoNumber = imoNumber,
+                mmsiNumber = mmsiNumber,
+                portOfRegistry = PortOfRegistry(portName),
+                totalLength = length,
+                totalWidth = width,
+                height = height
             )
-            println("🔄 Simulated status change: $requestId → $newStatus")
         }
+
+        // Build form data from API response
+        val formData = buildFormDataFromJson(jsonObject)
+
+        // Extract messages
+        val message = jsonObject["message"]?.jsonPrimitive?.contentOrNull
+        val messageDetails = jsonObject["messageDetails"]?.jsonPrimitive?.contentOrNull
+
+        // ✅ SMART: Determine last completed step based on status AND transaction type
+        // For ACCEPTED status (7), the review step is COMPLETED, so we resume AFTER review
+        // For Temporary Registration: Resume at Marine Unit Name Selection (step after Review)
+        // For other transactions: Resume at Payment (step after Review)
+        val lastCompletedStep = when {
+            // ✅ ACCEPTED status - review is COMPLETED, resume at next step
+            statusId == 7 -> {
+                // ✅ SMART: Return index of REVIEW step (typically 8)
+                // The findResumeStepByType function will find the correct NEXT step
+                // based on each strategy's actual step structure:
+                // - Temp Registration: Has CUSTOM (Marine Unit Name) after REVIEW
+                // - Other transactions: Have PAYMENT directly after REVIEW
+                println("✅ ACCEPTED status - Review completed, will resume at next step after REVIEW")
+                8  // Index of REVIEW step - findResumeStepByType will find the correct next step
+            }
+            // Confirmed, Approved by Authorities, Final Approval
+            statusId in listOf(3, 11, 12) -> 8
+            // Action Taken, Issued - everything done
+            statusId in listOf(13, 14) -> 10
+            // Default
+            else -> 0
+        }
+
+        println("🔍 RequestRepository: statusId=$statusId, transactionType=$transactionType, lastCompletedStep=$lastCompletedStep")
+
+        return UserRequest(
+            id = requestId,
+            userId = "currentUserId",
+            type = transactionType,
+            statusId = statusId,
+            marineUnit = marineUnit,
+            createdDate = requestSerial.toString(),
+            lastUpdatedDate = requestSerial.toString(),
+            formData = formData,
+            lastCompletedStep = lastCompletedStep,
+            rejectionReason = if (statusId in listOf(2, 10)) messageDetails else null,
+            estimatedCompletionDate = null
+        )
     }
 
-    // ========== Utility Functions ==========
+    /**
+     * Build form data map from JSON response
+     */
+    private fun buildFormDataFromJson(jsonObject: kotlinx.serialization.json.JsonObject): Map<String, String> {
+        val formData = mutableMapOf<String, String>()
 
-    private fun getCurrentTimestamp(): String {
-        return java.time.Instant.now().toString()
-    }
+        // Add request metadata
+        val id = jsonObject["id"]?.jsonPrimitive?.intOrNull
+        val requestSerial = jsonObject["requestSerial"]?.jsonPrimitive?.intOrNull
 
-    private fun getEstimatedDate(daysFromNow: Int): String {
-        return java.time.Instant.now()
-            .plus(java.time.Duration.ofDays(daysFromNow.toLong()))
-            .toString()
+        if (id != null) formData["requestId"] = id.toString()
+        if (requestSerial != null) formData["requestSerial"] = requestSerial.toString()
+
+        // Extract ship info
+        val shipInfoObject = jsonObject["shipInfo"]?.jsonObject
+        val shipObject = shipInfoObject?.get("ship")?.jsonObject
+
+        shipInfoObject?.let {
+            val shipInfoId = it["id"]?.jsonPrimitive?.intOrNull
+            if (shipInfoId != null) {
+                formData["shipInfoId"] = shipInfoId.toString()
+                formData["coreShipsInfoId"] = shipInfoId.toString()
+            }
+        }
+
+        // ✅ CRITICAL FIX: If ship data exists, mark that unit was already added
+        // This tells the strategy to generate all the detail steps
+        if (shipObject != null) {
+            formData["isAddingNewUnit"] = "true"
+            println("✅ Setting isAddingNewUnit=true because ship data exists in API response")
+        }
+
+        shipObject?.let { ship ->
+            ship["callSign"]?.jsonPrimitive?.contentOrNull?.let { formData["callSign"] = it }
+            ship["imoNumber"]?.jsonPrimitive?.intOrNull?.let { formData["imoNumber"] = it.toString() }
+            ship["mmsiNumber"]?.jsonPrimitive?.longOrNull?.let { formData["mmsiNumber"] = it.toString() }
+            ship["officialNumber"]?.jsonPrimitive?.contentOrNull?.let { formData["officialNumber"] = it }
+            ship["vesselLengthOverall"]?.jsonPrimitive?.intOrNull?.let { formData["length"] = it.toString() }
+            ship["vesselBeam"]?.jsonPrimitive?.intOrNull?.let { formData["width"] = it.toString() }
+            ship["vesselHeight"]?.jsonPrimitive?.intOrNull?.let { formData["height"] = it.toString() }
+            ship["decksNumber"]?.jsonPrimitive?.intOrNull?.let { formData["decksCount"] = it.toString() }
+            ship["grossTonnage"]?.jsonPrimitive?.intOrNull?.let { formData["grossTonnage"] = it.toString() }
+            ship["netTonnage"]?.jsonPrimitive?.intOrNull?.let { formData["netTonnage"] = it.toString() }
+            ship["maxLoadCapacity"]?.jsonPrimitive?.intOrNull?.let { formData["maxPermittedLoad"] = it.toString() }
+
+            val portObject = ship["portOfRegistry"]?.jsonObject
+            portObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["registrationPort"] = it }
+
+            val shipTypeObject = ship["shipType"]?.jsonObject
+            shipTypeObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["unitType"] = it }
+
+            val activityObject = ship["marineActivity"]?.jsonObject
+            activityObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["maritimeactivity"] = it }
+
+            val buildCountryObject = ship["buildCountry"]?.jsonObject
+            buildCountryObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["buildCountry"] = it }
+
+            ship["shipBuildYear"]?.jsonPrimitive?.intOrNull?.let { formData["constructionDate"] = it.toString() }
+        }
+
+        // Extract engine data
+        val enginesArray = shipInfoObject?.get("shipInfoEngines")?.jsonArray
+        enginesArray?.firstOrNull()?.jsonObject?.let { engineInfo ->
+            val engineObject = engineInfo["engine"]?.jsonObject
+            engineObject?.let { engine ->
+                engine["engineManufacturer"]?.jsonPrimitive?.contentOrNull?.let { formData["engineManufacturer"] = it }
+                engine["engineModel"]?.jsonPrimitive?.contentOrNull?.let { formData["engineModel"] = it }
+                engine["enginePower"]?.jsonPrimitive?.intOrNull?.let { formData["enginePower"] = it.toString() }
+
+                val engineTypeObject = engine["engineType"]?.jsonObject
+                engineTypeObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["fuelType"] = it }
+
+                val engineCountryObject = engine["engineCountry"]?.jsonObject
+                engineCountryObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["engineManufacturerCountry"] = it }
+            }
+        }
+
+        // Extract owner data
+        val ownersArray = shipInfoObject?.get("shipInfoOwners")?.jsonArray
+        ownersArray?.firstOrNull()?.jsonObject?.let { ownerInfo ->
+            val ownerObject = ownerInfo["owner"]?.jsonObject
+            ownerObject?.let { owner ->
+                owner["ownerName"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerName"] = it }
+                owner["ownerCivilId"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerCivilId"] = it }
+                owner["ownerPhone"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerPhone"] = it }
+                owner["ownerEmail"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerEmail"] = it }
+                owner["ownerAddress"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerAddress"] = it }
+            }
+        }
+
+        return formData
     }
 }

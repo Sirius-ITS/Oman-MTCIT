@@ -20,7 +20,7 @@ data class UserRequest(
     val id: String,                           // Unique request ID (from backend)
     val userId: String,                       // User who created the request
     val type: TransactionType,                // Type of transaction
-    val status: RequestStatus,                // Current status
+    val statusId: Int,                        // Current status ID from API (1-16)
     val marineUnit: MarineUnit?,              // Marine unit associated with request
     val createdDate: String,                  // When request was created (ISO 8601)
     val lastUpdatedDate: String,              // Last status update (ISO 8601)
@@ -46,48 +46,57 @@ data class UserRequest(
     }
 
     /**
-     * Get status display text in Arabic
+     * Get status display text in Arabic based on API status ID
      */
     fun getStatusText(): String {
-        return when (status) {
-            RequestStatus.PENDING -> "قيد المراجعة"
-            RequestStatus.VERIFIED -> "تم التحقق"
-            RequestStatus.REJECTED -> "مرفوض"
-            RequestStatus.IN_PROGRESS -> "قيد المعالجة"
-            RequestStatus.COMPLETED -> "مكتمل"
+        return when (statusId) {
+            1 -> "مسودة"                    // Draft
+            2 -> "مرفوض"                    // Rejected
+            3 -> "مؤكد"                     // Confirmed
+            4 -> "تم الإرسال"               // Sent
+            5 -> "قيد الانتظار"             // Pending
+            6 -> "مجدول"                    // Scheduled
+            7 -> "مقبول"                    // Accepted
+            8 -> "قيد المراجعة"             // In Review
+            9 -> "مراجعة RTA"               // RTA Review
+            10 -> "رفض من الجهات"          // Rejected by Authorities
+            11 -> "موافقة الجهات"           // Approved by Authorities
+            12 -> "الموافقة النهائية"      // Final Approval
+            13 -> "تم اتخاذ الإجراء"        // Action Taken
+            14 -> "تم الإصدار"              // Issued
+            15 -> "قيد التحقيق"             // Under Investigation
+            16 -> "في انتظار نتيجة التفتيش" // Waiting for Inspection
+            else -> "غير معروف"             // Unknown
         }
     }
 
     /**
-     * Check if request can be resumed (verified and not completed)
+     * Check if request can be resumed (accepted and ready for payment)
      */
     fun canResume(): Boolean {
-        return status == RequestStatus.VERIFIED
+        return statusId == 7 // Accepted - ready for payment
     }
 
     /**
      * Check if request is still waiting for review
      */
     fun isPending(): Boolean {
-        return status == RequestStatus.PENDING || status == RequestStatus.IN_PROGRESS
+        return statusId in listOf(4, 5, 6, 8, 9, 15, 16) // Sent, Pending, Scheduled, In Review, RTA Review, Under Investigation, Waiting for Inspection
     }
-}
 
-/**
- * Status of a user request
- *
- * Flow:
- * 1. User submits → PENDING (waiting for inspection)
- * 2. Inspection done → VERIFIED (can continue transaction)
- * 3. Inspection failed → REJECTED (cannot continue)
- * 4. User completes transaction → COMPLETED
- */
-enum class RequestStatus {
-    PENDING,        // Waiting for inspection/approval (قيد المراجعة)
-    IN_PROGRESS,    // Being processed by admin (قيد المعالجة)
-    VERIFIED,       // Inspection verified - user can resume (تم التحقق)
-    REJECTED,       // Inspection rejected - cannot continue (مرفوض)
-    COMPLETED       // Transaction fully completed (مكتمل)
+    /**
+     * Check if request is rejected
+     */
+    fun isRejected(): Boolean {
+        return statusId in listOf(2, 10) // Rejected, Rejected by Authorities
+    }
+
+    /**
+     * Check if request is completed
+     */
+    fun isCompleted(): Boolean {
+        return statusId in listOf(13, 14) // Action Taken, Issued
+    }
 }
 
 /**
@@ -112,4 +121,3 @@ data class SaveRequestBody(
     val formData: Map<String, String>,
     val lastCompletedStep: Int
 )
-

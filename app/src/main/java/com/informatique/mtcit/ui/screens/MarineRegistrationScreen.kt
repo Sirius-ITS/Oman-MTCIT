@@ -40,7 +40,8 @@ import com.informatique.mtcit.util.UriPermissionManager
 fun MarineRegistrationScreen(
     navController: NavController,
     transactionType: TransactionType,
-    requestId: String? = null  // ✅ NEW: Accept optional request ID for resume
+    requestId: String? = null,  // ✅ NEW: Accept optional request ID for resume
+    lastCompletedStep: Int? = null  // ✅ NEW: Accept lastCompletedStep from navigation to avoid API call
 ) {
     val viewModel: MarineRegistrationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,11 +65,18 @@ fun MarineRegistrationScreen(
     }
 
     // ✅ NEW: Trigger resume if requestId is provided
-    LaunchedEffect(requestId) {
+    LaunchedEffect(requestId, lastCompletedStep) {
         if (requestId != null) {
-            println("🎬 MarineRegistrationScreen mounted with requestId: $requestId - will complete resume")
-            // ✅ No longer needed - strategies get context via Hilt @ApplicationContext injection
-            viewModel.setRequestIdAndCompleteResume(requestId)
+            println("🎬 MarineRegistrationScreen mounted with requestId: $requestId, lastCompletedStep: $lastCompletedStep")
+
+            // ✅ If lastCompletedStep is provided, use direct resume (no API call)
+            if (lastCompletedStep != null) {
+                println("✅ Using direct resume with lastCompletedStep from navigation (avoiding API call)")
+                viewModel.resumeDirectlyWithStep(requestId, lastCompletedStep)
+            } else {
+                println("⚠️ No lastCompletedStep provided, falling back to API call")
+                viewModel.setRequestIdAndCompleteResume(requestId)
+            }
         } else {
             println("🎬 MarineRegistrationScreen mounted - no requestId provided")
         }
@@ -80,7 +88,6 @@ fun MarineRegistrationScreen(
         // Check if we're currently resuming - if yes, skip normal initialization
         if (!isResuming && requestId == null) {
             println("🆕 Normal initialization for transaction type: $transactionType")
-            // ✅ No longer needed - strategies get context via Hilt @ApplicationContext injection
             viewModel.initializeTransaction(transactionType)
         } else {
             println("⏭️ Skipping normal initialization - resume in progress (isResuming=$isResuming, requestId=$requestId)")

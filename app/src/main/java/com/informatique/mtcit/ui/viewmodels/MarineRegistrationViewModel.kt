@@ -23,6 +23,7 @@ import com.informatique.mtcit.data.repository.RequestRepository
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.business.transactions.shared.ShipType
+import com.informatique.mtcit.business.transactions.shared.StepType
 import kotlinx.coroutines.delay
 
 /**
@@ -356,123 +357,6 @@ class MarineRegistrationViewModel @Inject constructor(
     }
 
     /**
-     * ✅ NEW: Resume transaction from saved request
-     * Called when user opens a request from their profile (الاستمارات)
-     *
-     * GENERIC APPROACH:
-     * 1. Initialize transaction type
-     * 2. Restore ALL form data to strategy's internal state
-     * 3. Rebuild steps based on restored state
-     * 4. Jump to the step specified by API (lastCompletedStep + 1)
-     * 5. Lock all previous steps (user cannot go back)
-     *
-     * Works for ALL transaction types - no special logic needed
-     *
-     * Flow:
-     * 1. Fetch latest request status from API
-     * 2. If PENDING → Show RequestDetailScreen (still under review)
-     * 3. If VERIFIED → Navigate to transaction screen, then resume
-     * 4. If REJECTED → Show RequestDetailScreen with rejection reason
-     */
-    fun resumeTransaction(requestId: String) {
-        viewModelScope.launch {
-            try {
-                println("🔄 Resuming transaction: $requestId")
-
-                // Fetch latest request status
-                val result = requestRepository.getRequestStatus(requestId)
-
-                result.onSuccess { request ->
-                    println("✅ Request found: ${request.id}, status: ${request.status}")
-
-                    when (request.status) {
-                        com.informatique.mtcit.data.model.RequestStatus.VERIFIED -> {
-                            // Inspection verified - resume transaction
-                            println("✅ Request VERIFIED - Will navigate to transaction screen")
-
-                            // Store request ID and trigger navigation
-                            _pendingResumeRequestId = requestId
-                            _navigateToTransactionScreen.value = true
-                        }
-
-                        com.informatique.mtcit.data.model.RequestStatus.PENDING,
-                        com.informatique.mtcit.data.model.RequestStatus.IN_PROGRESS -> {
-                            // Still under review - show detail screen
-                            println("⏳ Request still PENDING - Showing detail screen")
-
-                            val action = MarineUnitNavigationAction.ShowComplianceDetailScreen(
-                                marineUnit = request.marineUnit ?: createPlaceholderUnit(),
-                                complianceIssues = listOf(
-                                    com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                                        category = "حالة الفحص",
-                                        title = "الطلب قيد المراجعة",
-                                        description = "طلبك ��يد المراجعة من قبل الإدارة",
-                                        severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING,
-                                        details = mapOf(
-                                            "رقم الطلب" to request.id,
-                                            "تاري�� الإنشاء" to request.createdDate,
-                                            "الموعد الم��وقع" to (request.estimatedCompletionDate ?: "غير محدد")
-                                        )
-                                    )
-                                ),
-                                rejectionReason = "طلبك قيد المراجعة. سيتم إشعارك عند اكتمال المراجعة.",
-                                rejectionTitle = "طلب قيد المرا��عة"
-                            )
-
-                            _navigationToComplianceDetail.value = action
-                        }
-
-                        com.informatique.mtcit.data.model.RequestStatus.REJECTED -> {
-                            // Request rejected - show detail screen with reason
-                            println("❌ Request REJECTED - Showing detail screen")
-
-                            val action = MarineUnitNavigationAction.ShowComplianceDetailScreen(
-                                marineUnit = request.marineUnit ?: createPlaceholderUnit(),
-                                complianceIssues = listOf(
-                                    com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                                        category = "سبب الرفض",
-                                        title = "تم رفض الطلب",
-                                        description = request.rejectionReason ?: "لم يتم تحديد السبب",
-                                        severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
-                                        details = mapOf(
-                                            "رقم الطلب" to request.id,
-                                            "تاريخ الرفض" to request.lastUpdatedDate
-                                        )
-                                    )
-                                ),
-                                rejectionReason = request.rejectionReason ?: "تم رفض الطلب",
-                                rejectionTitle = "تم رفض الطلب"
-                            )
-
-                            _navigationToComplianceDetail.value = action
-                        }
-
-                        com.informatique.mtcit.data.model.RequestStatus.COMPLETED -> {
-                            // Transaction already completed
-                            println("✅ Request COMPLETED - Nothing to do")
-                            _error.value = com.informatique.mtcit.common.AppError.Unknown("هذا الطلب مكتمل بالفعل")
-                        }
-                    }
-                }
-
-                result.onFailure { error ->
-                    println("❌ Failed to get request status: ${error.message}")
-                    _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                        error.message ?: "فشل في تحميل حالة الطلب"
-                    )
-                }
-
-            } catch (e: Exception) {
-                println("❌ Exception during resume: ${e.message}")
-                e.printStackTrace()
-                _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                    e.message ?: "حدث خطأ أثناء استعادة الطلب"
-                )
-            }
-        }
-    }
-
-    /**
      * ✅ NEW: Complete the resume after navigation to transaction screen
      * Called by MarineRegistrationScreen when it detects a pending resume
      */
@@ -629,6 +513,150 @@ class MarineRegistrationViewModel @Inject constructor(
     }
 
     /**
+     * ✅ NEW: Resume directly with step number (no API call)
+     * Called when lastCompletedStep is passed through navigation from ApiRequestDetailScreen
+     * This avoids duplicate API calls since ApiRequestDetailScreen already fetched the data
+     */
+    fun resumeDirectlyWithStep(requestId: String, lastCompletedStep: Int) {
+        println("🔄 resumeDirectlyWithStep called with requestId: $requestId, lastCompletedStep: $lastCompletedStep")
+
+        // ✅ Set resuming flag to prevent normal initialization
+        _isResuming.value = true
+        _pendingResumeRequestId = requestId
+
+        viewModelScope.launch {
+            try {
+                // ✅ Fetch request data from API to get form data and transaction type
+                val result = requestRepository.getRequestStatus(requestId)
+
+                result.onSuccess { request ->
+                    println("✅ Request data fetched - Resuming transaction WITHOUT recalculating step")
+                    println("📋 Transaction type: ${request.type}")
+                    // ✅ USE the lastCompletedStep from RequestRepository (which is smart-calculated based on status)
+                    // NOT the one from navigation arguments!
+                    println("📋 Using lastCompletedStep from RequestRepository: ${request.lastCompletedStep} (navigation had: $lastCompletedStep)")
+
+                    // ✅ Step 1: Initialize transaction with saved type
+                    initializeTransaction(request.type)
+
+                    // Wait for initialization
+                    delay(500)
+
+                    // ✅ Step 2: Restore form data to strategy's internal state
+                    val strategy = currentStrategy
+                    if (strategy == null) {
+                        println("❌ Strategy is null, cannot resume")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل في استعادة المعاملة")
+                        _isResuming.value = false
+                        _pendingResumeRequestId = null
+                        return@launch
+                    }
+
+                    println("🔧 Restoring form data to strategy...")
+
+                    // Call processStepData to update strategy's accumulatedFormData
+                    strategy.processStepData(0, request.formData)
+
+                    println("✅ Strategy's internal state updated")
+
+                    // ✅ Step 3: Rebuild steps based on restored state
+                    val rebuiltSteps = strategy.getSteps()
+                    println("📊 Steps after rebuild: ${rebuiltSteps.size}")
+                    println("📊 Step types: ${rebuiltSteps.mapIndexed { i, s -> "$i:${s.stepType}" }}")
+
+                    // Update UI state with rebuilt steps AND restored form data
+                    updateUiState { state ->
+                        state.copy(
+                            steps = rebuiltSteps,
+                            formData = request.formData
+                        )
+                    }
+
+                    // Small delay for UI state update
+                    delay(200)
+
+                    println("📊 Final steps in UI state: ${uiState.value.steps.size}")
+
+                    // ✅ Step 4: Find the correct resume step using StepType-based logic
+                    // USE request.lastCompletedStep from RequestRepository (not navigation parameter)
+                    val totalSteps = uiState.value.steps.size
+                    val resumeStep = findResumeStepByType(rebuiltSteps, request.lastCompletedStep)
+
+                    println("🎯 Mapped lastCompletedStep=${request.lastCompletedStep} to resumeStep=$resumeStep using StepType logic")
+
+                    // Lock all previous steps (user cannot go back)
+                    val lockedSteps = (0 until resumeStep).toSet()
+
+                    println("🎯 Resume from step: $resumeStep (last completed was ${request.lastCompletedStep})")
+                    println("🎯 Total steps: $totalSteps")
+                    println("🔒 Locked steps: $lockedSteps")
+
+                    // ✅ Step 5: Mark as resumed transaction and lock previous steps
+                    updateUiState { currentState ->
+                        currentState.copy(
+                            isResumedTransaction = true,
+                            lockedSteps = lockedSteps,
+                            completedSteps = lockedSteps // Mark locked steps as completed
+                        )
+                    }
+
+                    // ✅ Step 6: Navigate to resume step - DIRECTLY update currentStep
+                    println("✅ Directly updating currentStep to $resumeStep")
+
+                    when {
+                        resumeStep < totalSteps -> {
+                            // Resume step exists - update current step directly
+                            updateUiState { currentState ->
+                                currentState.copy(currentStep = resumeStep)
+                            }
+                            println("✅ Updated currentStep to $resumeStep")
+                        }
+                        resumeStep == totalSteps -> {
+                            // Last step was completed, go to last step (review/submit)
+                            updateUiState { currentState ->
+                                currentState.copy(currentStep = totalSteps - 1)
+                            }
+                            println("✅ Updated currentStep to ${totalSteps - 1}")
+                        }
+                        else -> {
+                            // Error: resume step beyond total steps
+                            println("❌ Resume step $resumeStep exceeds total steps $totalSteps")
+                            _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة")
+                        }
+                    }
+
+                    // ✅ IMPORTANT: Wait for UI state to actually update
+                    delay(300)
+                    println("✅ Final currentStep: ${uiState.value.currentStep}")
+                    println("���� Direct resume complete, clearing flags")
+
+                    // Clear pending request ID and resuming flag
+                    _pendingResumeRequestId = null
+                    _isResuming.value = false
+                }
+
+                result.onFailure { error ->
+                    println("❌ Failed to fetch request data: ${error.message}")
+                    _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                        error.message ?: "فشل في استعادة المعاملة"
+                    )
+                    _pendingResumeRequestId = null
+                    _isResuming.value = false
+                }
+
+            } catch (e: Exception) {
+                println("❌ Exception in direct resume: ${e.message}")
+                e.printStackTrace()
+                _error.value = com.informatique.mtcit.common.AppError.Unknown(
+                    e.message ?: "حدث خطأ أثناء استعادة الطلب"
+                )
+                _pendingResumeRequestId = null
+                _isResuming.value = false
+            }
+        }
+    }
+
+    /**
      * Clear all data and prepare for a new transaction
      * Called when user starts a new transaction from the dashboard
      */
@@ -643,44 +671,6 @@ class MarineRegistrationViewModel @Inject constructor(
 
         // Clear pending resume request ID
         _pendingResumeRequestId = null
-    }
-
-    /**
-     * ✅ NEW: Save request progress when inspection is PENDING
-     * Called after validation shows PENDING status
-     */
-    private suspend fun saveRequestProgress(
-        marineUnit: MarineUnit,
-        currentStep: Int
-    ) {
-        try {
-            val currentState = uiState.value
-            val userId = getCurrentUserId()
-
-            println("💾 Saving request progress for user $userId")
-
-            val result = requestRepository.saveRequestProgress(
-                userId = userId,
-                transactionType = currentState.transactionType ?: TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
-                marineUnit = marineUnit,
-                formData = currentState.formData,
-                lastCompletedStep = currentStep,
-                status = com.informatique.mtcit.data.model.RequestStatus.PENDING
-            )
-
-            result.onSuccess { requestId ->
-                println("✅ Request saved successfully: $requestId")
-                _requestSaved.value = requestId
-            }
-
-            result.onFailure { error ->
-                println("❌ Failed to save request: ${error.message}")
-            }
-
-        } catch (e: Exception) {
-            println("❌ Exception saving request: ${e.message}")
-            e.printStackTrace()
-        }
     }
 
     /**
@@ -1033,4 +1023,151 @@ class MarineRegistrationViewModel @Inject constructor(
         // No navigation here - let strategies control where to go next
     }
 
+    /**
+     * ✅ NEW: Find the correct resume step based on StepType instead of numeric index
+     * This handles cases where step order changes during rebuild (e.g., conditional steps)
+     */
+    private fun findResumeStepByType(steps: List<StepData>, lastCompletedIndex: Int): Int {
+        println("🔍 findResumeStepByType: lastCompletedIndex=$lastCompletedIndex, totalSteps=${steps.size}")
+        println("🔍 Rebuilt step types: ${steps.mapIndexed { i, s -> "$i=${s.stepType}" }}")
+
+        // The lastCompletedIndex refers to a step in the REBUILT list
+        // Since we're resuming with the SAME form data, the steps should rebuild in the SAME order
+        // So we can use lastCompletedIndex to find the completed step in the rebuilt list
+
+        if (lastCompletedIndex !in steps.indices) {
+            println("⚠️ Invalid lastCompletedIndex=$lastCompletedIndex (totalSteps=${steps.size})")
+            // If index is beyond the list, it means Review was completed
+            // Find the REVIEW step and look for what comes after it
+            val reviewIndex = steps.indexOfFirst { it.stepType == StepType.REVIEW }
+            if (reviewIndex >= 0 && lastCompletedIndex >= reviewIndex) {
+                println("🔍 Index beyond list and >= review, looking for next step after REVIEW")
+                return findStepAfterReview(steps, reviewIndex)
+            }
+            return 0 // Fallback to first step
+        }
+
+        // Get the StepType that was last completed from the rebuilt list
+        val lastCompletedType = steps[lastCompletedIndex].stepType
+        println("🔍 Last completed StepType at index $lastCompletedIndex: $lastCompletedType")
+
+        // ✅ SMART: If last completed is REVIEW, find the actual next step in THIS strategy
+        if (lastCompletedType == StepType.REVIEW) {
+            println("🔍 Last completed step is REVIEW, finding next step based on strategy structure...")
+            return findStepAfterReview(steps, lastCompletedIndex)
+        }
+
+        // Define the logical progression (what step comes AFTER each step)
+        val nextStepMapping = mapOf(
+            StepType.PERSON_TYPE to StepType.COMMERCIAL_REGISTRATION,
+            StepType.COMMERCIAL_REGISTRATION to StepType.MARINE_UNIT_SELECTION,
+            StepType.MARINE_UNIT_SELECTION to StepType.MARINE_UNIT_DATA,
+            StepType.MARINE_UNIT_DATA to StepType.SHIP_DIMENSIONS,
+            StepType.SHIP_DIMENSIONS to StepType.SHIP_WEIGHTS,
+            StepType.SHIP_WEIGHTS to StepType.ENGINE_INFO,
+            StepType.ENGINE_INFO to StepType.OWNER_INFO,
+            StepType.OWNER_INFO to StepType.DOCUMENTS,
+            StepType.DOCUMENTS to StepType.REVIEW,
+            StepType.REVIEW to StepType.CUSTOM,  // ← CUSTOM after REVIEW is Marine Unit Name Selection
+            StepType.MARINE_UNIT_NAME_SELECTION to StepType.PAYMENT,
+            StepType.PAYMENT to StepType.PAYMENT_SUCCESS,
+            StepType.CUSTOM to null  // Will be handled specially
+        )
+
+        // Special handling for CUSTOM steps (need to determine by position)
+        if (lastCompletedType == StepType.CUSTOM) {
+            println("🔍 Last completed step is CUSTOM, checking position...")
+            // If CUSTOM step is before REVIEW, it's MARINE_UNIT_SELECTION, so next is MARINE_UNIT_DATA
+            // If CUSTOM step is after REVIEW, it's MARINE_UNIT_NAME_SELECTION, so next is PAYMENT
+            val reviewIndex = steps.indexOfFirst { it.stepType == StepType.REVIEW }
+            if (reviewIndex >= 0) {
+                if (lastCompletedIndex < reviewIndex) {
+                    println("🔍 CUSTOM step before REVIEW -> Looking for next step")
+                    return (lastCompletedIndex + 1).coerceIn(0, steps.size - 1)
+                } else {
+                    println("🔍 CUSTOM step after REVIEW (Marine Unit Name) -> Next is PAYMENT")
+                    val paymentIndex = steps.indexOfFirst { it.stepType == StepType.PAYMENT }
+                    if (paymentIndex >= 0) {
+                        return paymentIndex
+                    }
+                }
+            }
+            // Fallback: just go to next step
+            return (lastCompletedIndex + 1).coerceIn(0, steps.size - 1)
+        }
+
+        // Find what step should come NEXT after the completed step
+        var nextExpectedType = nextStepMapping[lastCompletedType]
+
+        if (nextExpectedType == null) {
+            println("⚠️ No next step defined for $lastCompletedType, using next index")
+            return (lastCompletedIndex + 1).coerceIn(0, steps.size - 1)
+        }
+
+        println("🔍 Next expected StepType: $nextExpectedType")
+
+        // Try to find the next expected step in the rebuilt list
+        // If not found, try the step after that, etc. (to handle conditional steps)
+        var currentType: StepType? = nextExpectedType
+        var attempts = 0
+        val maxAttempts = 10  // Prevent infinite loop
+
+        while (currentType != null && attempts < maxAttempts) {
+            val foundIndex = steps.indexOfFirst { it.stepType == currentType }
+            if (foundIndex >= 0) {
+                println("✅ Found next step: $currentType at index $foundIndex")
+                return foundIndex
+            }
+
+            println("⚠️ Step $currentType not found in rebuilt steps, trying next...")
+            currentType = nextStepMapping[currentType]
+            attempts++
+        }
+
+        // Fallback: just go to next index
+        println("⚠️ Could not find expected next step, using next index")
+        return (lastCompletedIndex + 1).coerceIn(0, steps.size - 1)
+    }
+
+    /**
+     * ✅ NEW: Smart helper to find what step comes after REVIEW
+     * Different strategies have different steps after review:
+     * - Temp Registration & Change Name: CUSTOM (Marine Unit Name Selection)
+     * - Others: PAYMENT
+     */
+    private fun findStepAfterReview(steps: List<StepData>, reviewIndex: Int): Int {
+        println("🔍 Finding step after REVIEW (index $reviewIndex)...")
+
+        // Look for next step after review
+        val nextSteps = steps.drop(reviewIndex + 1)
+
+        if (nextSteps.isEmpty()) {
+            println("⚠️ No steps after REVIEW")
+            return reviewIndex // Stay at review
+        }
+
+        // Check what type comes after REVIEW in this strategy
+        val firstStepAfterReview = nextSteps.first()
+        val nextStepIndex = reviewIndex + 1
+
+        println("✅ First step after REVIEW is ${firstStepAfterReview.stepType} at index $nextStepIndex")
+
+        when (firstStepAfterReview.stepType) {
+            StepType.CUSTOM -> {
+                // This is Marine Unit Name Selection (Temp Registration or Change Name)
+                println("✅ Strategy has CUSTOM (Marine Unit Name) after REVIEW")
+                return nextStepIndex
+            }
+            StepType.PAYMENT -> {
+                // Direct to payment (other transactions)
+                println("✅ Strategy has PAYMENT directly after REVIEW")
+                return nextStepIndex
+            }
+            else -> {
+                // Unexpected, but go to next step anyway
+                println("⚠️ Unexpected step type after REVIEW: ${firstStepAfterReview.stepType}")
+                return nextStepIndex
+            }
+        }
+    }
 }

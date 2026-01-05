@@ -109,7 +109,14 @@ class TemporaryRegistrationStrategy @Inject constructor(
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+
+        // ✅ Handle null civilId - return empty list if no token
+        val commercialRegistrations = if (ownerCivilId != null) {
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        } else {
+            emptyList()
+        }
+
         println("📄 RegistrationRequests - Fetching required documents from API...")
         val requiredDocumentsList = lookupRepository.getRequiredDocumentsByRequestType(requestTypeId).getOrElse { error ->
             println("❌ ERROR fetching required documents: ${error.message}")

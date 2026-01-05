@@ -178,7 +178,13 @@ class MortgageCertificateStrategy @Inject constructor(
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+
+        // ✅ Handle null civilId - return empty list if no token
+        val commercialRegistrations = if (ownerCivilId != null) {
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        } else {
+            emptyList()
+        }
 
         println("🏦 MortgageCertificate - Fetching banks from API...")
         val banksList = lookupRepository.getBanks().getOrElse { error ->

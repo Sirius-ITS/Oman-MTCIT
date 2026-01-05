@@ -53,7 +53,13 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+
+        // ✅ Handle null civilId - return empty list if no token
+        val commercialRegistrations = if (ownerCivilId != null) {
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        } else {
+            emptyList()
+        }
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         portOptions = ports
@@ -146,7 +152,7 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شر��ة") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 

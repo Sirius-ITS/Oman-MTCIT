@@ -6,12 +6,17 @@ package com.informatique.mtcit.business.transactions
  */
 enum class TransactionType(
     /**
+     * Transaction type ID from the API
+     */
+    val typeId: Int,
+    /**
      * Transaction context containing all API endpoints and configuration
      */
     val context: TransactionContext
 ) {
     // Marine Unit Registration Category (6 transactions)
     TEMPORARY_REGISTRATION_CERTIFICATE(
+        typeId = 1,
         context = TransactionContext(
             displayName = "شهادة تسجيل مؤقتة",
             createEndpoint = "registration-requests",
@@ -26,6 +31,7 @@ enum class TransactionType(
         )
     ),
     PERMANENT_REGISTRATION_CERTIFICATE(
+        typeId = 2,
         context = TransactionContext(
             displayName = "شهادة تسجيل دائمة",
             createEndpoint = "perm-registration-requests/create-permanent",
@@ -40,6 +46,7 @@ enum class TransactionType(
         )
     ),
     SUSPEND_PERMANENT_REGISTRATION(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تعليق تسجيل دائم",
             createEndpoint = "registration/suspend",
@@ -51,6 +58,7 @@ enum class TransactionType(
         )
     ),
     CANCEL_PERMANENT_REGISTRATION(
+        typeId = 7,
         context = TransactionContext(
             displayName = "إلغاء تسجيل دائم",
             createEndpoint = "deletion-requests/cancel",
@@ -65,6 +73,7 @@ enum class TransactionType(
         )
     ),
     MORTGAGE_CERTIFICATE(
+        typeId = 4,
         context = TransactionContext(
             displayName = "طلب شهادة رهن",
             createEndpoint = "mortgage-request/create-mortgage-request",
@@ -79,6 +88,7 @@ enum class TransactionType(
         )
     ),
     RELEASE_MORTGAGE(
+        typeId = 5,
         context = TransactionContext(
             displayName = "طلب فك رهن",
             createEndpoint = "mortgage-redemption-request/create-mortgage-redemption-request",
@@ -93,6 +103,7 @@ enum class TransactionType(
         )
     ),
     REQUEST_FOR_INSPECTION(
+        typeId = 8,
         context = TransactionContext(
             displayName = "طلب معاينة",
             createEndpoint = "inspection-requests/create",
@@ -107,6 +118,7 @@ enum class TransactionType(
 
     // Ship Data Modifications Category
     SHIP_NAME_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير اسم السفينة",
             createEndpoint = "ship-modifications/name-change",
@@ -118,6 +130,7 @@ enum class TransactionType(
         )
     ),
     CAPTAIN_NAME_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير اسم الربان",
             createEndpoint = "ship-modifications/captain-change",
@@ -129,6 +142,7 @@ enum class TransactionType(
         )
     ),
     SHIP_ACTIVITY_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير نشاط السفينة",
             createEndpoint = "ship-modifications/activity-change",
@@ -140,6 +154,7 @@ enum class TransactionType(
         )
     ),
     SHIP_DIMENSIONS_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير أبعاد السفينة",
             createEndpoint = "ship-modifications/dimensions-change",
@@ -151,6 +166,7 @@ enum class TransactionType(
         )
     ),
     SHIP_ENGINE_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير محرك السفينة",
             createEndpoint = "ship-modifications/engine-change",
@@ -162,6 +178,7 @@ enum class TransactionType(
         )
     ),
     SHIP_PORT_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير ميناء السفينة",
             createEndpoint = "ship-modifications/port-change",
@@ -173,6 +190,7 @@ enum class TransactionType(
         )
     ),
     SHIP_OWNERSHIP_CHANGE(
+        typeId = 0,
         context = TransactionContext(
             displayName = "تغيير ملكية السفينة",
             createEndpoint = "ship-modifications/ownership-change",
@@ -186,6 +204,7 @@ enum class TransactionType(
 
     // Navigation permits
     ISSUE_NAVIGATION_PERMIT(
+        typeId = 3,
         context = TransactionContext(
             displayName = "إصدار تصريح إبحار",
             createEndpoint = "navigation-permit/issue",
@@ -198,6 +217,7 @@ enum class TransactionType(
         )
     ),
     RENEW_NAVIGATION_PERMIT(
+        typeId = 6,
         context = TransactionContext(
             displayName = "تجديد تصريح إبحار",
             createEndpoint = "navigation-permit/renew",
@@ -208,6 +228,24 @@ enum class TransactionType(
             paymentSubmitEndpoint = "navigation-permit/add-payment"
         )
     );
+
+    companion object {
+        /**
+         * Map API requestTypeId to TransactionType
+         * @param typeId The request type ID from the API
+         * @return TransactionType or null if not found
+         */
+        fun fromTypeId(typeId: Int): TransactionType? {
+            return entries.firstOrNull { it.typeId == typeId }
+        }
+
+        /**
+         * Get display name for a request type ID
+         */
+        fun getDisplayName(typeId: Int): String {
+            return fromTypeId(typeId)?.context?.displayName ?: "نوع غير معروف"
+        }
+    }
 }
 
 /**

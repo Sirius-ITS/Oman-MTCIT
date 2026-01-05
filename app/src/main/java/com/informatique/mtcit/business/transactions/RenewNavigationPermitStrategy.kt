@@ -66,7 +66,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+
+        // ✅ Handle null civilId - return empty list if no token
+        val commercialRegistrations = if (ownerCivilId != null) {
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        } else {
+            emptyList()
+        }
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         println("🚢 Skipping initial ship load - will load after user selects type and presses Next")

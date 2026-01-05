@@ -12,11 +12,11 @@ object UserHelper {
 
     /**
      * Get civil ID from token to use as owner ID
-     * Falls back to "12345678" if token is not available (for testing)
+     * Returns null if token is not available (should trigger login flow)
      */
-    suspend fun getOwnerCivilId(context: Context): String {
+    suspend fun getOwnerCivilId(context: Context): String? {
         return withContext(Dispatchers.IO) {
-            TokenManager.getCivilId(context) ?: "12345678"
+            TokenManager.getCivilId(context)
         }
     }
 
@@ -47,4 +47,3 @@ object UserHelper {
         }
     }
 }
-

@@ -247,6 +247,7 @@ private fun MarineUnitSelectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(0.7f),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -266,6 +267,7 @@ private fun MarineUnitSelectionCard(
                     Text(
                         text = unit.name,
                         style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
                         fontWeight = FontWeight.Medium,
                         color = titleColor,
                         fontSize = 16.sp

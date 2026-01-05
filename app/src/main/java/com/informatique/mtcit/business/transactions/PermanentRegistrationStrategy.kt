@@ -95,12 +95,17 @@ class PermanentRegistrationStrategy @Inject constructor(
         // Step-specific lookups (ports, countries, ship types, etc.) will be loaded lazily via onStepOpened()
 
         // ✅ Get civilId from token
-        // ✅ Get civilId from token
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+
+        // ✅ Handle null civilId - return empty list if no token
+        val commercialRegistrations = if (ownerCivilId != null) {
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        } else {
+            emptyList()
+        }
 
         // ✅ Fetch required documents from API
         println("📄 PermanentRegistration - Fetching required documents from API...")
@@ -246,7 +251,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     }
 
     override fun getContext(): TransactionContext {
-        TODO("Not yet implemented")
+        return transactionContext
     }
 
     override fun getSteps(): List<StepData> {

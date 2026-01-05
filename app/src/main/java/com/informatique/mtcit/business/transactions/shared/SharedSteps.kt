@@ -816,7 +816,8 @@ object SharedSteps {
             } else {
                 R.string.marine_unit_name_selection_description_simple
             },
-            fields = fields
+            fields = fields,
+            stepType = StepType.MARINE_UNIT_NAME_SELECTION  // ✅ Set step type for manager detection
         )
     }
 

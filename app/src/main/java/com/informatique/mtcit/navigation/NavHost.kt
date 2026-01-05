@@ -37,6 +37,7 @@ import com.informatique.mtcit.ui.screens.PaymentSuccessScreen
 import com.informatique.mtcit.ui.screens.ProfileScreen
 import com.informatique.mtcit.ui.screens.RequestDetail
 import com.informatique.mtcit.ui.screens.RequestDetailScreen
+import com.informatique.mtcit.ui.screens.ApiRequestDetailScreen
 import com.informatique.mtcit.ui.screens.SettingsScreen
 import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
@@ -144,14 +145,16 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 navController.previousBackStackEntry
             }
 
-            // ✅ Detect if parent is LoginScreen or MainCategoriesScreen
+            // ✅ Detect if parent is LoginScreen, MainCategoriesScreen, or ProfileScreen
             val parentRoute = parentEntry?.destination?.route ?: ""
             val isFromLoginScreen = parentRoute.startsWith("login/")
             val isFromMainCategories = parentRoute.startsWith("mainCategoriesScreen")
+            val isFromProfileScreen = parentRoute == "profileScreen"
 
             println("🔍 OAuth WebView - Parent route: $parentRoute")
             println("🔍 OAuth WebView - isFromLoginScreen: $isFromLoginScreen")
             println("🔍 OAuth WebView - isFromMainCategories: $isFromMainCategories")
+            println("🔍 OAuth WebView - isFromProfileScreen: $isFromProfileScreen")
 
             // ✅ Only get LoginViewModel if parent is LoginScreen
             val loginViewModel: LoginViewModel? = if (isFromLoginScreen && parentEntry != null) {
@@ -213,16 +216,16 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                                 navController.popBackStack()
                             }
                             // ✅ If success, the loginComplete event will trigger navigation via shouldNavigateBack
-                        } else if (isFromMainCategories) {
-                            // ✅ MAIN CATEGORIES FLOW: Just exchange token and navigate back
-                            println("🔄 OAuth from MainCategoriesScreen - exchanging token directly")
+                        } else if (isFromMainCategories || isFromProfileScreen) {
+                            // ✅ MAIN CATEGORIES / PROFILE SCREEN FLOW: Just exchange token and navigate back
+                            println("🔄 OAuth from ${if (isFromMainCategories) "MainCategoriesScreen" else "ProfileScreen"} - exchanging token directly")
 
                             val result = authRepository.exchangeCodeForToken(code)
 
                             result.fold(
                                 onSuccess = {
-                                    println("✅ Token exchanged successfully for MainCategoriesScreen")
-                                    // Set flag for MainCategoriesScreen to detect
+                                    println("✅ Token exchanged successfully - navigating back")
+                                    // Set flag so the calling screen knows login completed
                                     navController.previousBackStackEntry
                                         ?.savedStateHandle
                                         ?.set("login_completed", true)
@@ -384,20 +387,29 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
 
         // Ship Registration Forms
         composable(
-            route = "${NavRoutes.ShipRegistrationRoute.route}?requestId={requestId}",
+            route = "${NavRoutes.ShipRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType  // ✅ FIX: Use StringType for nullable values
                     nullable = true
                     defaultValue = null
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()  // ✅ Convert to Int if present
+
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
-                requestId = requestId
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 
@@ -651,6 +663,24 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             val requestDetail = Json.decodeFromString<RequestDetail>(
                 backStackEntry.arguments?.getString("detail") ?: "")
             RequestDetailScreen(navController = navController, requestDetail = requestDetail)
+        }
+
+        // ✅ NEW: API Request Detail Screen - fetches data dynamically from API
+        composable(
+            route = NavRoutes.ApiRequestDetailRoute.route,
+            arguments = listOf(
+                navArgument("requestId") { type = NavType.IntType },
+                navArgument("requestTypeId") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getInt("requestId") ?: 0
+            val requestTypeId = backStackEntry.arguments?.getInt("requestTypeId") ?: 0
+
+            ApiRequestDetailScreen(
+                navController = navController,
+                requestId = requestId,
+                requestTypeId = requestTypeId
+            )
         }
 
     }

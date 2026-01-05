@@ -148,9 +148,33 @@ object TokenManager {
      * Get civil ID from token (this will be used as ownerId)
      */
     suspend fun getCivilId(context: Context): String? {
-        val token = getAccessToken(context) ?: return null
+        val token = getAccessToken(context) ?: run {
+            Log.w("TokenManager", "⚠️ No access token found when getting civil ID")
+            return null
+        }
+
         val payload = decodeJwtPayload(token)
-        return payload?.optString("civilId")?.takeIf { it.isNotEmpty() }
+        if (payload == null) {
+            Log.e("TokenManager", "❌ Failed to decode JWT payload")
+            return null
+        }
+
+        // Log all available fields in the token
+        Log.d("TokenManager", "📋 JWT Token fields: ${payload.keys().asSequence().toList()}")
+
+        // Try different possible field names for civil ID
+        val civilId = payload.optString("civilId")?.takeIf { it.isNotEmpty() }
+            ?: payload.optString("civil_id")?.takeIf { it.isNotEmpty() }
+            ?: payload.optString("sub")?.takeIf { it.isNotEmpty() }
+            ?: payload.optString("preferred_username")?.takeIf { it.isNotEmpty() }
+
+        if (civilId != null) {
+            Log.d("TokenManager", "✅ Found civil ID in token: $civilId")
+        } else {
+            Log.w("TokenManager", "⚠️ No civil ID found in token. Available fields: ${payload.keys().asSequence().toList()}")
+        }
+
+        return civilId
     }
 
     /**

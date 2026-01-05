@@ -10,6 +10,8 @@ import com.informatique.mtcit.data.repository.NavigationLicenseRepository
 import com.informatique.mtcit.data.repository.NavigationLicenseRepositoryImpl
 import com.informatique.mtcit.data.repository.PaymentRepository
 import com.informatique.mtcit.data.repository.PaymentRepositoryImpl
+import com.informatique.mtcit.data.repository.UserRequestsRepository
+import com.informatique.mtcit.data.repository.UserRequestsRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -52,4 +54,10 @@ abstract class RepositoryModule {
     abstract fun bindPaymentRepository(
         impl: PaymentRepositoryImpl
     ): PaymentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserRequestsRepository(
+        impl: UserRequestsRepositoryImpl
+    ): UserRequestsRepository
 }
