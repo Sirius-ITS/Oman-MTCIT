@@ -348,6 +348,20 @@ class PermanentRegistrationStrategy @Inject constructor(
             SharedSteps.reviewStep()
         )
 
+        // ✅ NEW: Payment Steps - Only show if we have requestId from review step
+        val hasRequestId = accumulatedFormData["requestId"] != null
+
+        if (hasRequestId) {
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+
+            // Payment Success Step - Only show if payment was successful
+            val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
+            if (paymentSuccessful) {
+                steps.add(SharedSteps.paymentSuccessStep())
+            }
+        }
+
         return steps
     }
 
@@ -867,39 +881,37 @@ class PermanentRegistrationStrategy @Inject constructor(
                             }
                         }
 
-                        // ✅ HANDLE PAYMENT STEP
-                        if (stepType == StepType.PAYMENT) {
-                            println("💰 Handling Payment Step using PaymentManager")
+                        val paymentResult = paymentManager.processStepIfNeeded(
+                            stepType = stepType,
+                            formData = accumulatedFormData,
+                            requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.typeId, // 1 = Temporary Registration
+                            context = transactionContext // ✅ Pass TransactionContext
+                        )
 
-                            val paymentResult = paymentManager.processStepIfNeeded(
-                                stepType = stepType,
-                                formData = accumulatedFormData,
-                                requestTypeId = requestTypeId.toInt(),
-                                context = transactionContext
-                            )
+                        when (paymentResult) {
+                            is StepProcessResult.Success -> {
+                                println("✅ Payment step processed: ${paymentResult.message}")
 
-                            when (paymentResult) {
-                                is StepProcessResult.Success -> {
-                                    println("✅ Payment step processed: ${paymentResult.message}")
-
-                                    // Trigger UI rebuild so payment details are shown (important for mortgage path)
-                                    onStepsNeedRebuild?.invoke()
-
-                                    // Check if payment was submitted successfully
-                                    val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
-                                    if (showPaymentSuccessDialog) {
-                                        println("✅ Payment submitted successfully - dialog will be shown")
-                                        return step
+                                // Check if payment was successful and trigger step rebuild
+                                if (stepType == StepType.PAYMENT_CONFIRMATION) {
+                                    val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
+                                    if (paymentSuccessful) {
+                                        println("✅ Payment successful - triggering step rebuild")
+                                        onStepsNeedRebuild?.invoke()
                                     }
                                 }
-                                is StepProcessResult.Error -> {
-                                    println("❌ Payment error: ${paymentResult.message}")
-                                    accumulatedFormData["apiError"] = paymentResult.message
-                                    return -1
+
+                                // Check if we loaded payment details and trigger step rebuild
+                                if (stepType == StepType.PAYMENT) {
+                                    println("✅ Payment details loaded - triggering step rebuild")
+                                    onStepsNeedRebuild?.invoke()
                                 }
-                                is StepProcessResult.NoAction -> {
-                                    println("ℹ️ No payment action needed")
-                                }
+                            }
+                            is StepProcessResult.Error -> {
+                                println("❌ Payment error: ${paymentResult.message}")
+                            }
+                            is StepProcessResult.NoAction -> {
+                                println("ℹ️ No payment action needed for this step")
                             }
                         }
                     }

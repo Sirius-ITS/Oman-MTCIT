@@ -419,10 +419,30 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 transactionType = TransactionType.REQUEST_FOR_INSPECTION
             )
         }
-        composable(NavRoutes.PermanentRegistrationRoute.route) {
+        composable(
+            route = "${NavRoutes.PermanentRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType  // ✅ FIX: Use StringType for nullable Int values
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()  // ✅ Convert to Int if present
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE
+                transactionType = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 

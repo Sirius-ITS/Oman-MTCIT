@@ -660,7 +660,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
             val paymentResult = paymentManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = 1, // 1 = Temporary Registration
+                requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.typeId, // 1 = Temporary Registration
                 context = transactionContext // ✅ Pass TransactionContext
             )
 

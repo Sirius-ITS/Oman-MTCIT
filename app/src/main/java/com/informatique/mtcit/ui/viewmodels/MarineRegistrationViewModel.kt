@@ -448,13 +448,14 @@ class MarineRegistrationViewModel @Inject constructor(
                     // ✅ Step 6: Navigate to resume step - DIRECTLY update currentStep
                     println("✅ Directly updating currentStep to $resumeStep")
 
-                    when {
+                    val finalStep = when {
                         resumeStep < totalSteps -> {
                             // Resume step exists - update current step directly
                             updateUiState { currentState ->
                                 currentState.copy(currentStep = resumeStep)
                             }
                             println("✅ Updated currentStep to $resumeStep")
+                            resumeStep
                         }
                         resumeStep == totalSteps -> {
                             // Last step was completed, go to last step (review/submit)
@@ -462,18 +463,28 @@ class MarineRegistrationViewModel @Inject constructor(
                                 currentState.copy(currentStep = totalSteps - 1)
                             }
                             println("✅ Updated currentStep to ${totalSteps - 1}")
+                            totalSteps - 1
                         }
                         else -> {
                             // Error: resume step beyond total steps
                             println("❌ Resume step $resumeStep exceeds total steps $totalSteps")
                             _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة")
+                            -1
                         }
                     }
 
                     // ✅ IMPORTANT: Wait for UI state to actually update
                     delay(300)
                     println("✅ Final currentStep: ${uiState.value.currentStep}")
-                    println("🎬 Resume complete, clearing flags")
+
+                    // ✅ CRITICAL FIX: Trigger onStepOpened for the resume step to load payment details
+                    if (finalStep >= 0) {
+                        println("🔄 Triggering onStepOpened for step $finalStep to load step-specific data (e.g., payment details)")
+                        strategy.onStepOpened(finalStep)
+                        delay(200) // Give time for async loading
+                    }
+
+                    println("✅ Direct resume complete, clearing flags")
 
                     // Clear pending request ID and resuming flag
                     _pendingResumeRequestId = null
@@ -603,13 +614,14 @@ class MarineRegistrationViewModel @Inject constructor(
                     // ✅ Step 6: Navigate to resume step - DIRECTLY update currentStep
                     println("✅ Directly updating currentStep to $resumeStep")
 
-                    when {
+                    val finalStep = when {
                         resumeStep < totalSteps -> {
                             // Resume step exists - update current step directly
                             updateUiState { currentState ->
                                 currentState.copy(currentStep = resumeStep)
                             }
                             println("✅ Updated currentStep to $resumeStep")
+                            resumeStep
                         }
                         resumeStep == totalSteps -> {
                             // Last step was completed, go to last step (review/submit)
@@ -617,18 +629,42 @@ class MarineRegistrationViewModel @Inject constructor(
                                 currentState.copy(currentStep = totalSteps - 1)
                             }
                             println("✅ Updated currentStep to ${totalSteps - 1}")
+                            totalSteps - 1
                         }
                         else -> {
                             // Error: resume step beyond total steps
                             println("❌ Resume step $resumeStep exceeds total steps $totalSteps")
                             _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة")
+                            -1
                         }
                     }
 
                     // ✅ IMPORTANT: Wait for UI state to actually update
                     delay(300)
                     println("✅ Final currentStep: ${uiState.value.currentStep}")
-                    println("���� Direct resume complete, clearing flags")
+
+                    // ✅ CRITICAL FIX: Trigger onStepOpened for the resume step to load payment details
+                    if (finalStep >= 0) {
+                        println("🔄 Triggering onStepOpened for step $finalStep to load step-specific data (e.g., payment details)")
+                        strategy.onStepOpened(finalStep)
+                        delay(200) // Give time for async loading
+
+                        // ✅ CRITICAL FIX #2: Recalculate canProceedToNext after loading payment details
+                        // This ensures the "Pay" button is enabled when payment data is loaded
+                        println("🔄 Recalculating canProceedToNext after loading step data...")
+                        val updatedCanProceed = navigationUseCase.canProceedToNext(
+                            finalStep,
+                            uiState.value.steps,
+                            uiState.value.formData
+                        )
+                        println("✅ Updated canProceedToNext: $updatedCanProceed")
+
+                        updateUiState { currentState ->
+                            currentState.copy(canProceedToNext = updatedCanProceed)
+                        }
+                    }
+
+                    println("✅ Direct resume complete, clearing flags")
 
                     // Clear pending request ID and resuming flag
                     _pendingResumeRequestId = null
