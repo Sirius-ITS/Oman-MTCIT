@@ -45,7 +45,8 @@ fun CustomFileUpload(
     fieldId: String = "",
     onOpenFilePicker: ((String, List<String>) -> Unit)? = null,
     onViewFile: ((String, String) -> Unit)? = null,
-    onRemoveFile: ((String) -> Unit)? = null
+    onRemoveFile: ((String) -> Unit)? = null,
+    disabled: Boolean = false // ✅ NEW: Disable file upload when sailors are manually entered
 ) {
     val context = LocalContext.current
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
@@ -256,7 +257,7 @@ fun CustomFileUpload(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
+                    .clickable(enabled = !disabled) {
                         // Use enriched list that always contains Excel extensions
                         onOpenFilePicker?.invoke(fieldId, pickerAllowedTypes)
                     },
@@ -264,6 +265,8 @@ fun CustomFileUpload(
                 colors = CardDefaults.cardColors(
                     containerColor = if (error != null)
                         MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                    else if (disabled)
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f) // ✅ Dimmed when disabled
                     else
                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                 ),
@@ -271,6 +274,8 @@ fun CustomFileUpload(
                     width = 1.dp,
                     color = if (error != null)
                         MaterialTheme.colorScheme.error
+                    else if (disabled)
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.2f) // ✅ Lighter border when disabled
                     else
                         MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                 )
@@ -285,14 +290,20 @@ fun CustomFileUpload(
                     Icon(
                         imageVector = Icons.Default.Upload,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = if (disabled)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) // ✅ Dimmed icon when disabled
+                        else
+                            MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = localizedApp(R.string.choose_file),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = if (disabled)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) // ✅ Dimmed text when disabled
+                        else
+                            MaterialTheme.colorScheme.primary
                     )
                 }
             }

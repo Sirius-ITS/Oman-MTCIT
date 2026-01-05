@@ -129,14 +129,14 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Upload crew Excel file (Issue)
-     * POST /ship-navigation-license-request/{requestId}/crew/upload-excel
+     * POST /ship-navigation-license-request/{requestId}/crew/upload
      */
     suspend fun uploadCrewExcelIssue(
         requestId: Long,
         fileParts: List<PartData>
     ): Result<List<CrewResDto>> {
         return try {
-            println("📤 Uploading crew Excel (Issue)")
+            println("📤 Uploading crew Excel (Issue) to /crew/upload")
 
             when (val response = repo.onPostMultipart("ship-navigation-license-request/$requestId/crew/upload-excel", fileParts)) {
                 is RepoServiceState.Success -> {
@@ -468,14 +468,14 @@ class NavigationLicenseApiService @Inject constructor(
 
     /**
      * Upload crew Excel file (Renew)
-     * POST /navigation-license-renewal-request/{requestId}/crew/upload-excel
+     * POST /navigation-license-renewal-request/{requestId}/crew/upload
      */
     suspend fun uploadCrewExcelRenew(
         requestId: Long,
         fileParts: List<PartData>
     ): Result<List<CrewResDto>> {
         return try {
-            println("📤 Uploading crew Excel (Renew)")
+            println("📤 Uploading crew Excel (Renew) to /crew/upload")
 
             when (val response = repo.onPostMultipart("navigation-license-renewal-request/$requestId/crew/upload-excel", fileParts)) {
                 is RepoServiceState.Success -> {

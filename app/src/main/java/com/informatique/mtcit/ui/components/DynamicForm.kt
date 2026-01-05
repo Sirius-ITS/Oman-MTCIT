@@ -201,6 +201,19 @@ fun DynamicStepForm(
                         }
 
                         is FormField.FileUpload -> {
+                            // Check if this is crew Excel file field and if sailors are manually entered
+                            val hasSailors = if (field.id == "crewExcelFile") {
+                                val sailorsJson = formData["sailors"] ?: "[]"
+                                try {
+                                    val sailors = Json.decodeFromString<List<com.informatique.mtcit.ui.components.SailorData>>(sailorsJson)
+                                    sailors.isNotEmpty()
+                                } catch (e: Exception) {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+
                             CustomFileUpload(
                                 value = field.value,
                                 onValueChange = { onFieldChange(field.id, it, null) },
@@ -212,7 +225,8 @@ fun DynamicStepForm(
                                 fieldId = field.id,
                                 onOpenFilePicker = onOpenFilePicker,
                                 onViewFile = onViewFile,
-                                onRemoveFile = onRemoveFile
+                                onRemoveFile = onRemoveFile,
+                                disabled = hasSailors // ✅ Disable if sailors are manually entered
                             )
                           }
 
@@ -446,10 +460,14 @@ fun DynamicStepForm(
                                 }
                             }
 
+                            // Check if Excel file is uploaded (crewExcelFile field)
+                            val hasExcelFile = formData["crewExcelFile"]?.isNotBlank() == true
+
                             SailorListManager(
                                 sailors = sailors,
                                 jobs = field.jobs,
                                 nationalities = field.nationalities,
+                                hasExcelFile = hasExcelFile,
                                 onSailorChange = { updatedSailors ->
                                     val json = Json.encodeToString(updatedSailors)
                                     onFieldChange(field.id, json, null)

@@ -96,15 +96,19 @@ object SharedSteps {
         nationalities: List<String> = emptyList()
     ): StepData {
         val fields = mutableListOf<FormField>()
+
+        // Excel file upload for crew
         fields.add(
             FormField.FileUpload(
-                id = "sailorDocuments",
-                labelRes = R.string.sailor_documents, // add this string resource if missing
-                allowedTypes = listOf("pdf", "jpg", "jpeg", "png"),
+                id = "crewExcelFile",
+                labelRes = R.string.sailor_documents,
+                allowedTypes = listOf("xls", "xlsx"),
                 maxSizeMB = 5,
-                mandatory =false
+                mandatory = false
             )
         )
+
+        // Manual sailor entry
         fields.add(
             FormField.SailorList(
                 id = "sailors",
@@ -112,14 +116,12 @@ object SharedSteps {
                 value = "[]",
                 jobs = jobs,
                 nationalities = nationalities,
-                mandatory = true
+                mandatory = false
             )
         )
 
-
-
         return StepData(
-            stepType = StepType.CREW_MANAGEMENT,  // ✅ Added
+            stepType = StepType.CREW_MANAGEMENT,
             titleRes = R.string.sailor_info,
             descriptionRes = R.string.sailor_info_description,
             fields = fields,

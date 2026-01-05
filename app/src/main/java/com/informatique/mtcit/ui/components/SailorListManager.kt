@@ -336,6 +336,7 @@ fun SailorListManager(
     sailors: List<SailorData>,
     jobs: List<String>,
     nationalities: List<String> = emptyList(),
+    hasExcelFile: Boolean = false, // ✅ NEW: Disable add sailor button if Excel file is uploaded
     onSailorChange: (List<SailorData>) -> Unit,
     onTotalCountChange: ((String) -> Unit)? = null
 ) {
@@ -544,22 +545,24 @@ fun SailorListManager(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = extraColors.startServiceButton
+                containerColor = if (hasExcelFile) extraColors.startServiceButton.copy(alpha = 0.5f) else extraColors.startServiceButton,
+                disabledContainerColor = extraColors.startServiceButton.copy(alpha = 0.5f)
             ),
-            contentPadding = PaddingValues(vertical = 14.dp)
+            contentPadding = PaddingValues(vertical = 14.dp),
+            enabled = !hasExcelFile // ✅ Disable if Excel file is uploaded
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
                 modifier = Modifier.size(22.dp),
-                tint = Color.White
+                tint = if (hasExcelFile) Color.White.copy(alpha = 0.5f) else Color.White
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = localizedApp(R.string.sailor_add_title),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White
+                color = if (hasExcelFile) Color.White.copy(alpha = 0.5f) else Color.White
             )
         }
     }

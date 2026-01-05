@@ -24,6 +24,7 @@ import javax.inject.Inject
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
+import io.ktor.utils.io.streams.asInput
 
 /**
  * Strategy for Issue Navigation Permit
@@ -392,13 +393,61 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         println("✅ Using requestId: $requestId")
 
-        // Check if user chose Excel upload
-        if (navigationLicenseManager.isExcelUploadSelected(data)) {
-            // TODO: Handle Excel file upload
-            // This will be handled by the UI component passing file data
-            println("📤 Excel upload mode selected")
-            return false
-        } else {
+        // Check if Excel file is uploaded
+        val excelFileUri = data["crewExcelFile"]
+        val sailorsJson = data["sailors"] ?: "[]"
+
+        if (!excelFileUri.isNullOrBlank() && excelFileUri.startsWith("content://")) {
+            // Excel file upload mode
+            println("📤 Excel upload mode - file URI: $excelFileUri")
+
+            try {
+                // Convert URI to PartData
+                val uri = android.net.Uri.parse(excelFileUri)
+                val contentResolver = appContext.contentResolver
+
+                val inputStream = contentResolver.openInputStream(uri)
+                    ?: throw Exception("Cannot open file stream")
+
+                val fileBytes = inputStream.readBytes()
+                inputStream.close()
+
+                // Get file name
+                val fileName = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    cursor.moveToFirst()
+                    cursor.getString(nameIndex)
+                } ?: "crew.xlsx"
+
+                println("📎 File: $fileName (${fileBytes.size} bytes)")
+
+                // Create PartData for file upload
+                val fileParts = listOf(
+                    io.ktor.http.content.PartData.BinaryItem(
+                        provider = { fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = io.ktor.http.Headers.build {
+                            append(
+                                io.ktor.http.HttpHeaders.ContentDisposition,
+                                "form-data; name=\"file\"; filename=\"$fileName\""
+                            )
+                            append(
+                                io.ktor.http.HttpHeaders.ContentType,
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
+                        }
+                    )
+                )
+
+                // Call Excel upload API
+                navigationLicenseManager.uploadCrewExcelIssue(requestId, fileParts).getOrThrow()
+
+                println("✅ Successfully uploaded crew Excel file")
+            } catch (e: Exception) {
+                println("❌ Failed to upload Excel file: ${e.message}")
+                throw Exception("فشل رفع ملف Excel: ${e.message}")
+            }
+        } else if (sailorsJson != "[]") {
             // Manual crew entry
             println("👥 Manual crew entry mode - parsing form data...")
             val crewData = navigationLicenseManager.parseCrewFromFormData(data)
@@ -415,6 +464,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
             } else {
                 println("⚠️ No crew data to submit")
             }
+        } else {
+            println("⚠️ No crew data provided (neither Excel nor manual entry)")
         }
 
         return false

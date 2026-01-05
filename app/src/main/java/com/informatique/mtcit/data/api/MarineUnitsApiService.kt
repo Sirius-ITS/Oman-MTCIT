@@ -512,6 +512,77 @@ class MarineUnitsApiService @Inject constructor(
     }
 
     /**
+     * ✅ Check inspection preview before sending permanent registration request
+     * GET /api/v1/perm-registration-requests/{shipInfoId}/inspection-preview
+     *
+     * Response example:
+     * {
+     *   "message": "No valid inspection found for this request, inspection will be required to proceed",
+     *   "statusCode": 200,
+     *   "success": true,
+     *   "timestamp": "2025-12-18 17:56:23",
+     *   "data": 0
+     * }
+     *
+     * @param shipInfoId The ship info ID
+     * @return Result with inspection status (data field: 0 = no inspection, 1 = has inspection)
+     */
+    suspend fun checkInspectionPreview(
+        shipInfoId: Int
+    ): Result<Int> {
+        return try {
+            println("=".repeat(80))
+            println("🔍 Checking Inspection Preview...")
+            println("=".repeat(80))
+            println("   Ship Info ID: $shipInfoId")
+
+            val endpoint = "perm-registration-requests/$shipInfoId/inspection-preview"
+            println("   Endpoint: $endpoint")
+
+            val response = repo.onGet(endpoint)
+
+            when (response) {
+                is RepoServiceState.Success -> {
+                    println("✅ Inspection preview check successful")
+                    println("📥 Response: ${response.response}")
+
+                    // Parse the response
+                    val responseObj = response.response.jsonObject
+                    val message = responseObj["message"]?.jsonPrimitive?.content ?: ""
+                    val success = responseObj["success"]?.jsonPrimitive?.boolean ?: false
+                    val statusCode = responseObj["statusCode"]?.jsonPrimitive?.int ?: 0
+                    val data = responseObj["data"]?.jsonPrimitive?.int ?: 0
+
+                    println("   Message: $message")
+                    println("   Success: $success")
+                    println("   Status Code: $statusCode")
+                    println("   Data (inspection status): $data")
+                    println("=".repeat(80))
+
+                    if (success && statusCode == 200) {
+                        Result.success(data)
+                    } else {
+                        val errorMsg = message.ifBlank { "Failed to check inspection preview" }
+                        println("❌ $errorMsg")
+                        Result.failure(Exception(errorMsg))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMsg = response.error ?: "Failed to check inspection preview (code: ${response.code})"
+                    println("❌ $errorMsg")
+                    println("=".repeat(80))
+                    Result.failure(Exception(errorMsg as String?))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in checkInspectionPreview: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(e)
+        }
+    }
+
+    /**
      * ✅ Send transaction request (used in review step for all transactions)
      * Generic method that works for any transaction type
      *
