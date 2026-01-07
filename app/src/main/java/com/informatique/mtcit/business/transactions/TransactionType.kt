@@ -110,7 +110,7 @@ enum class TransactionType(
             updateStatusEndpoint = "inspection-requests/{requestId}/update-status",
             sendRequestEndpoint = "inspection-requests/{requestId}/send-request",
             sendRequestPostOrPut = "POST",
-            paymentReceiptEndpoint = "inspection-requests/payment",
+             paymentReceiptEndpoint = "inspection-requests/payment",
             paymentSubmitEndpoint = "inspection-requests/add-payment",
             proceedRequestEndpoint = "inspection-requests/ship-info/{shipInfoId}/proceed-request"
         )
@@ -225,7 +225,8 @@ enum class TransactionType(
             sendRequestEndpoint = "navigation-permit/{requestId}/send-request",
             sendRequestPostOrPut = "PUT",
             paymentReceiptEndpoint = "navigation-permit/payment",
-            paymentSubmitEndpoint = "navigation-permit/add-payment"
+            paymentSubmitEndpoint = "navigation-permit/add-payment",
+            proceedRequestEndpoint = "navigation-license-renewal-request/ship-info/{shipInfoId}/proceed-request"
         )
     );
 

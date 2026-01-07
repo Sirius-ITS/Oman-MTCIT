@@ -694,9 +694,16 @@ private fun updateFieldWithFormData(
         is FormField.MultiSelectDropDown -> field.copy(
             label = localizedLabel,
             value = value.ifEmpty { "[]" },
+            // Normalize decoded selected names and map to actual options so matching works reliably
             selectedOptions = try {
-                kotlinx.serialization.json.Json.decodeFromString(value.ifEmpty { "[]" })
+                val decoded = kotlinx.serialization.json.Json.decodeFromString<List<String>>(value.ifEmpty { "[]" })
+                val normalized = decoded.map { it.trim() }
+                // Preserve option strings from field.options when they match decoded values (trimmed)
+                val matched = field.options.filter { opt -> normalized.contains(opt.trim()) }
+                println("🔍 MultiSelect field='${field.id}' options=${field.options.size} decoded=${decoded} matched=${matched}")
+                matched
             } catch (e: Exception) {
+                println("⚠️ Failed to decode MultiSelect value for field='${field.id}': ${e.message}")
                 emptyList()
             },
             error = error

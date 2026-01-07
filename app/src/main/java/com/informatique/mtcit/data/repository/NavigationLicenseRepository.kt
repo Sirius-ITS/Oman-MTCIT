@@ -64,6 +64,11 @@ interface NavigationLicenseRepository {
     suspend fun createRenewalRequest(shipInfoId: Long, lastNavLicId: Long): Result<NavigationRequestResDto>
 
     /**
+     * Create a new navigation license renewal request (simple body)
+     */
+    suspend fun createRenewalRequestSimple(shipInfoId: Long): Result<NavigationRequestResDto>
+
+    /**
      * Get existing navigation areas (Renew)
      */
     suspend fun getNavigationAreasRenew(requestId: Long): Result<List<NavigationAreaResDto>>
@@ -233,5 +238,12 @@ class NavigationLicenseRepositoryImpl @Inject constructor(
     ): Result<List<CrewResDto>> {
         println("📤 Uploading crew Excel (Renew): requestId=$requestId")
         return apiService.uploadCrewExcelRenew(requestId, fileParts)
+    }
+
+    override suspend fun createRenewalRequestSimple(
+        shipInfoId: Long
+    ): Result<NavigationRequestResDto> {
+        println("🔄 Creating renewal navigation license request (simple): shipInfoId=$shipInfoId")
+        return apiService.createRenewalRequestSimple(shipInfoId)
     }
 }

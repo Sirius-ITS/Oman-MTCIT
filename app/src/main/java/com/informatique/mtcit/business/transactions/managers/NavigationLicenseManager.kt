@@ -60,6 +60,15 @@ class NavigationLicenseManager @Inject constructor(
         }
     }
 
+    /**
+     * Create a new renewal request with simple body (only shipInfo)
+     * Return full NavigationRequestResDto so callers can access lastNavLicId
+     */
+    suspend fun createRenewalRequestSimple(shipInfoId: Long): Result<NavigationRequestResDto> {
+        println("🔄 NavigationLicenseManager: Creating renewal request (simple) for shipInfoId=$shipInfoId")
+        return repository.createRenewalRequestSimple(shipInfoId)
+    }
+
     // ========================================
     // NAVIGATION AREAS MANAGEMENT
     // ========================================
@@ -485,4 +494,3 @@ class NavigationLicenseManager @Inject constructor(
         return formData["crewInputMethod"] == "excel"
     }
 }
-

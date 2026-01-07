@@ -139,9 +139,15 @@ abstract class BaseTransactionViewModel(
                     viewModelScope.launch {
                         println("🔄 Rebuilding steps after loading lookups...")
                         val rebuiltSteps = currentStrategy?.getSteps() ?: emptyList()
-                        _uiState.value = _uiState.value.copy(steps = rebuiltSteps)
+
+                        // Merge any strategy formData (pre-populated values) into UI state so fields pick up values
+                        val strategyFormData = currentStrategy?.getFormData() ?: emptyMap()
+                        val mergedFormData = _uiState.value.formData.toMutableMap().apply { putAll(strategyFormData) }
+
+                        _uiState.value = _uiState.value.copy(steps = rebuiltSteps, formData = mergedFormData)
                         println("✅ Steps rebuilt with ${rebuiltSteps.size} steps")
-                    }
+                        println("   Merged strategy formData keys: ${strategyFormData.keys}")
+                     }
                 }
 
                 // ✅ NEW: Set up callback for when a lookup starts loading

@@ -2,7 +2,6 @@ package com.informatique.mtcit.business.transactions
 
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
-import com.informatique.mtcit.business.transactions.shared.DocumentConfig
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
@@ -14,13 +13,12 @@ import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.dto.CrewResDto
 import com.informatique.mtcit.data.dto.NavigationAreaResDto
-import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.navigation.NavigationManager
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
-import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
+import com.informatique.mtcit.common.FormField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
@@ -29,6 +27,10 @@ import javax.inject.Inject
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
+
+// Added imports for API error handling and message extraction
+import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 
 
 /**
@@ -55,10 +57,17 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private var crewJobTitles: List<String> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    private val requestTypeId = TransactionType.RENEW_NAVIGATION_PERMIT.toRequestTypeId()
+
+
     private var navigationRequestId: Long? = null // ✅ Store created request ID
     private var lastNavLicId: Long? = null // ✅ Store last navigation license ID
     private var existingNavigationAreas: List<NavigationAreaResDto> = emptyList() // ✅ Loaded areas
     private var existingCrew: List<CrewResDto> = emptyList() // ✅ Loaded crew
+
+    // ✅ Add lastApiError and apiResponses to mirror Mortgage strategy
+    private var lastApiError: String? = null
+    private val apiResponses: MutableMap<String, Any> = mutableMapOf()
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // ✅ Get civilId from token
@@ -130,13 +139,68 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private suspend fun loadExistingNavigationAreas() {
         if (existingNavigationAreas.isNotEmpty()) return // Already loaded
 
-        val requestId = navigationRequestId ?: return
+        // Ensure sailingRegions lookup is loaded - needed for mapping ids -> names
+        if (sailingRegionsOptions.isEmpty()) {
+            val lookupAreas = lookupRepository.getNavigationAreas().getOrNull() ?: emptyList()
+            sailingRegionsOptions = lookupAreas
+            println("🔁 Loaded sailingRegions lookup inside loadExistingNavigationAreas: ${sailingRegionsOptions.map { it.id }}")
+        }
 
-        navigationLicenseManager.loadNavigationAreasRenew(requestId)
+        // Prefer explicit lastNavLicId (previous license id) when loading existing areas
+        val lastLicId = lastNavLicId ?: accumulatedFormData["lastNavLicId"]?.toLongOrNull()
+        if (lastLicId == null) {
+            println("⚠️ No lastNavLicId available - cannot load existing navigation areas")
+            return
+        }
+
+        navigationLicenseManager.loadNavigationAreasRenew(lastLicId)
             .onSuccess { areas ->
                 existingNavigationAreas = areas
-                println("✅ Loaded ${areas.size} existing navigation areas")
+                println("✅ Loaded ${areas.size} existing navigation areas for lastNavLicId=$lastLicId")
+
+                // Auto-select these areas in the sailingRegions step by storing the JSON array of names
+                try {
+                    println("🔍 Available sailingRegions lookup: ${sailingRegionsOptions.map { it.id.toString() + ':' + it.nameAr }}")
+                    println("🔍 API returned areas: ${areas.map { it.id.toString() + ':' + (try { it.areaNameAr } catch (_: Exception) { "<no-name>" })}}")
+                    if (areas.isNotEmpty()) {
+                        // Map API-returned areas (which may use `nameAr`) to our lookup names
+                        val selectedNames = areas.mapNotNull { apiArea ->
+                            // apiArea.id may be Long, sailingRegionsOptions use Int ids
+                            val apiId = try { apiArea.id.toInt() } catch (_: Exception) { null }
+                            apiId?.let { id ->
+                                sailingRegionsOptions.firstOrNull { it.id == id }?.nameAr
+                            }
+                        }.distinct()
+
+                        if (selectedNames.isNotEmpty()) {
+                            val namesJson = selectedNames.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }
+                            accumulatedFormData["sailingRegions"] = namesJson
+                            println("📝 Pre-populated sailingRegions with names from lookup: $namesJson")
+                            // Notify UI to rebuild steps so the selection will show
+                            onStepsNeedRebuild?.invoke()
+                        } else {
+                            // Fallback: try mapping by Arabic name returned by API (areaNameAr)
+                            val fallbackNames = areas.mapNotNull { apiArea ->
+                                val nameAr = try { apiArea.areaNameAr } catch (_: Exception) { null }
+                                nameAr?.let { apiName ->
+                                    sailingRegionsOptions.firstOrNull { it.nameAr == apiName }?.nameAr
+                                }
+                            }.distinct()
+
+                            if (fallbackNames.isNotEmpty()) {
+                                val namesJson = fallbackNames.joinToString(prefix = "[", postfix = "]") { "\"$it\"" }
+                                accumulatedFormData["sailingRegions"] = namesJson
+                                println("📝 Pre-populated sailingRegions with fallback names from API: $namesJson")
+                                onStepsNeedRebuild?.invoke()
+                            } else {
+                                ("⚠️ Could not map API areas to local lookup names - selected IDs: ${areas.map { it.id }}")
+                            }
+                        }
+                    }
+                } catch (e: Exception) { println("⚠️ Failed to pre-populate sailingRegions: ${e.message}")
             }
+            }
+
             .onFailure { error ->
                 println("❌ Failed to load existing navigation areas: ${error.message}")
             }
@@ -172,6 +236,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
         println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
 
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
+        // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
                 println("✅ Individual: Using ownerCivilId from token")
@@ -191,9 +256,14 @@ class RenewNavigationPermitStrategy @Inject constructor(
             commercialRegNumber = commercialRegNumber,
             // **********************************************************************************************************
             //Request Type Id
-            requestTypeId = TransactionType.RENEW_NAVIGATION_PERMIT.toRequestTypeId() // ✅ Renew Navigation Permit ID
+            requestTypeId = requestTypeId
         )
+
         println("✅ Loaded ${marineUnits.size} ships")
+        marineUnits.forEach { unit ->
+            println("   - ${unit.shipName} (ID: ${unit.id})")
+        }
+
         return marineUnits
     }
 
@@ -226,9 +296,22 @@ class RenewNavigationPermitStrategy @Inject constructor(
                 showOwnedUnitsWarning = true
             )
         )
-        steps.add(SharedSteps.sailingRegionsStep(
-            sailingRegions = sailingRegionsOptions.map { it.nameAr } // ✅ Pass names to UI
-        ))
+        // Build sailing regions step and inject any pre-populated selection from accumulatedFormData
+        val sailingStep = SharedSteps.sailingRegionsStep(
+            sailingRegions = sailingRegionsOptions.map { it.nameAr }
+        )
+        val prepopValue = accumulatedFormData["sailingRegions"]
+        if (!prepopValue.isNullOrBlank()) {
+            val modifiedFields = sailingStep.fields.map { field ->
+                // If this is the multiselect field, set its value to the prepopulated JSON
+                if (field.id == "sailingRegions" && field is FormField.MultiSelectDropDown) {
+                    field.copy(value = prepopValue)
+                } else field
+            }
+            steps.add(sailingStep.copy(fields = modifiedFields))
+        } else {
+            steps.add(sailingStep)
+        }
         steps.add( SharedSteps.sailorInfoStep(
             jobs = crewJobTitles
         ))
@@ -238,6 +321,11 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         println("📋 Total steps count: ${steps.size}")
         return steps
+    }
+
+    // Expose current accumulated form data so ViewModel can merge it into UI state
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData.toMap()
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
@@ -252,6 +340,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         val stepData = getSteps().getOrNull(step)
 
+        // Clear previous API error
+        lastApiError = null
+
         // ✅ Handle marine unit selection (existing ship) to capture requestId from proceed-request
         if (stepData?.titleRes == R.string.owned_ships) {
             val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
@@ -264,19 +355,106 @@ class RenewNavigationPermitStrategy @Inject constructor(
                         shipId = selectedUnitsJson,
                         context = TransactionType.RENEW_NAVIGATION_PERMIT.context
                     )
+
                     when (result) {
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                            // Store created request id
                             accumulatedFormData["requestId"] = result.requestId.toString()
                             navigationRequestId = result.requestId.toLong()
+
+                            // Store full API response for later use
+                            apiResponses["proceedRequest"] = result.response
+
+                            // Extract and persist selected shipInfoId (clean first element)
+                            val selectedUnits = selectedUnitsJson?.let { sel ->
+                                try {
+                                    val cleanJson = sel.trim().removeSurrounding("[", "]")
+                                    val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                    shipIds.firstOrNull()
+                                } catch (e: Exception) {
+                                    null
+                                }
+                            }
+
+                            selectedUnits?.let { firstShipId ->
+                                accumulatedFormData["shipInfoId"] = firstShipId
+                                accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                // ensureRequestCreated expects selectedMarineUnit (singular)
+                                accumulatedFormData["selectedMarineUnit"] = firstShipId
+                            }
+
+                            // Persist maritime identification fields if available
+                            result.imoNumber?.let { accumulatedFormData["imoNumber"] = it }
+                            result.mmsiNumber?.let { accumulatedFormData["mmsiNumber"] = it }
+                            result.callSign?.let { accumulatedFormData["callSign"] = it }
+
+                            // Flag to indicate maritime ID step necessity
+                            accumulatedFormData["needsMaritimeIdentification"] = result.needsMaritimeIdentification.toString()
+
+                            // -----------------------
+                            // Create renewal request using the simpler API (only shipInfo)
+                            // This mirrors the Issue flow where createIssueRequest is called after proceed-request
+                            // -----------------------
+                            val shipInfoIdLong = selectedUnits?.toLongOrNull()
+                            if (shipInfoIdLong != null) {
+                                try {
+                                    val createRes = navigationLicenseManager.createRenewalRequestSimple(shipInfoIdLong)
+                                    createRes.onSuccess { createdDto ->
+                                        // Store the real requestId returned by backend
+                                        navigationRequestId = createdDto.id
+                                        accumulatedFormData["requestId"] = createdDto.id.toString()
+                                        // also store lastNavLicId if returned
+                                        createdDto.lastNavLicId?.let {
+                                            accumulatedFormData["lastNavLicId"] = it.toString()
+                                            lastNavLicId = it
+                                        }
+                                        apiResponses["createRenewalRequest"] = createdDto
+                                        println("✅ Renewal request created (simple) with ID: ${createdDto.id}")
+                                    }
+
+                                    createRes.onFailure { err ->
+                                        val msg = err.message ?: "فشل في إنشاء طلب تجديد"
+                                        lastApiError = msg
+                                        println("❌ createRenewalRequestSimple failed: $msg")
+                                        throw ApiException(500, msg)
+                                    }
+
+                                    // After creating renewal request, try to immediately load existing navigation areas
+                                    // so they appear pre-selected without waiting for the user to open the step.
+                                    if (lastNavLicId != null) {
+                                        try {
+                                            loadExistingNavigationAreas()
+                                        } catch (e: Exception) {
+                                            println("⚠️ Failed to load existing navigation areas immediately: ${e.message}")
+                                        }
+                                    }
+
+                                } catch (e: com.informatique.mtcit.common.ApiException) {
+                                    lastApiError = e.message
+                                    throw e
+                                } catch (e: Exception) {
+                                    val msg = ErrorMessageExtractor.extract(e.message)
+                                    lastApiError = msg
+                                    throw com.informatique.mtcit.common.ApiException(500, msg)
+                                }
+                            }
+                            // -----------------------
                         }
                         is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                            accumulatedFormData["apiError"] = result.message
-                            return -1
+                            // Mirror Mortgage behavior: store and throw ApiException to surface error banner
+                            lastApiError = result.message
+                            throw ApiException(500, result.message)
                         }
                     }
+                } catch (e: ApiException) {
+                    // Re-throw after storing for UI
+                    lastApiError = e.message ?: "خطأ في النداء"
+                    throw e
                 } catch (e: Exception) {
-                    accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
-                    return -1
+                    println("❌ Exception in ship selection: ${e.message}")
+                    val errorMsg = ErrorMessageExtractor.extract(e.message)
+                    lastApiError = errorMsg
+                    throw ApiException(500, errorMsg)
                 }
             }
         }
@@ -288,8 +466,16 @@ class RenewNavigationPermitStrategy @Inject constructor(
             else -> {}
         }
 
-        if (step == 0 && data.filterValues { it == "فرد" }.isNotEmpty()){
-            return 2
+        // If we just completed the Person Type step, and the selection was "فرد" (individual),
+        // navigate to the dynamically-computed marine unit selection step instead of hardcoding indices.
+        if (step == 0) {
+            val incomingPersonType = data["selectionPersonType"]
+            val currentPersonType = incomingPersonType ?: accumulatedFormData["selectionPersonType"]
+            if (currentPersonType == "فرد") {
+                val stepsList = getSteps()
+                val marineStepIndex = stepsList.indexOfFirst { it.titleRes == R.string.owned_ships }
+                return if (marineStepIndex >= 0) marineStepIndex else step + 1
+            }
         } else if (step == 2 && data.filterValues { it == "[\"470123456\"]" }.isNotEmpty()){
             // ✅ TODO: Uncomment after backend integration is complete
             // This forwards to RequestDetailScreen when compliance issues are detected
@@ -497,5 +683,22 @@ class RenewNavigationPermitStrategy @Inject constructor(
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
         }
+    }
+
+    // Expose last API error to UI similar to Mortgage strategy
+    fun getLastApiError(): String? = lastApiError
+
+    fun clearLastApiError() {
+        lastApiError = null
+    }
+
+    // Store API responses for later retrieval (e.g., proceedRequest response)
+    override fun storeApiResponse(apiName: String, response: Any) {
+        println("💾 Storing API response for '$apiName': $response")
+        apiResponses[apiName] = response
+    }
+
+    override fun getApiResponse(apiName: String): Any? {
+        return apiResponses[apiName]
     }
 }

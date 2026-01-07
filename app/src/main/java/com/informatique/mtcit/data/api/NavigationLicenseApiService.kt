@@ -13,7 +13,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -270,6 +272,39 @@ class NavigationLicenseApiService @Inject constructor(
     }
 
     /**
+     * Create a new navigation license renewal request (simple body)
+     * POST /navigation-license-renewal-request
+     * Body: {"shipInfo": <id>}
+     */
+    suspend fun createRenewalRequestSimple(
+        shipInfoId: Long
+    ): Result<NavigationRequestResDto> {
+        return try {
+            val requestJson = """{"shipInfo":$shipInfoId}"""
+            println("📤 Creating renewal request (simple body) with body: $requestJson")
+
+            when (val response = repo.onPostAuthJson("navigation-license-renewal-request", requestJson)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Create renewal request (simple) response: $responseJson")
+
+                    val data = responseJson.jsonObject.getValue("data").jsonObject
+                    val result = json.decodeFromJsonElement(NavigationRequestResDto.serializer(), data)
+                    Result.success(result)
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ Error creating renewal request (simple): ${response.error}")
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in createRenewalRequestSimple: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Get existing navigation areas (Renew)
      * GET /navigation-license-renewal-request/{requestId}/navigation-areas
      */
@@ -281,7 +316,37 @@ class NavigationLicenseApiService @Inject constructor(
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
-                    val result = data.map { json.decodeFromJsonElement(NavigationAreaResDto.serializer(), it) }
+                    // The renewal API returns items like {"id":2,"nameAr":"المنطقة 2","nameEn":"Area 2"}
+                    // Map these into NavigationAreaResDto so existing code can consume areaNameAr/areaNameEn
+                    val result = data.map { elem ->
+                        try {
+                            val obj = elem.jsonObject
+                            val idLong = obj["id"]?.jsonPrimitive?.intOrNull?.toLong() ?: 0L
+                            val nameAr = obj["nameAr"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val nameEn = obj["nameEn"]?.jsonPrimitive?.contentOrNull ?: ""
+                            // areaId: use the integer id if present otherwise 0
+                            val areaId = obj["id"]?.jsonPrimitive?.intOrNull ?: 0
+                            NavigationAreaResDto(
+                                id = idLong,
+                                areaId = areaId,
+                                areaNameAr = nameAr,
+                                areaNameEn = nameEn,
+                                attachmentFile = null,
+                                shipNavigationRequestId = requestId
+                            )
+                        } catch (e: Exception) {
+                            println("⚠️ Failed to map navigation area element: ${e.message}")
+                            // Return a placeholder with minimal data
+                            NavigationAreaResDto(
+                                id = 0L,
+                                areaId = 0,
+                                areaNameAr = "",
+                                areaNameEn = "",
+                                attachmentFile = null,
+                                shipNavigationRequestId = requestId
+                            )
+                        }
+                    }
                     Result.success(result)
                 }
                 is RepoServiceState.Error -> {
