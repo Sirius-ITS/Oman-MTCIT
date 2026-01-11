@@ -69,7 +69,7 @@ interface MarineUnitRepository {
      * Backend API: GET /api/v1/perm-registration-requests/{shipInfoId}/inspection-preview
      * Returns inspection status (0 = no inspection, 1 = has inspection)
      */
-    suspend fun checkInspectionPreview(shipInfoId: Int): Result<Int>
+    suspend fun checkInspectionPreview(requestId: Int, baseContext: String): Result<Int>
 
     /**
      * ✅ NEW: Send transaction request (for review step)
@@ -570,10 +570,10 @@ class MarineUnitRepositoryImpl @Inject constructor(
      * Backend API: GET /api/v1/perm-registration-requests/{shipInfoId}/inspection-preview
      * Returns inspection status (0 = no inspection, 1 = has inspection)
      */
-    override suspend fun checkInspectionPreview(shipInfoId: Int): Result<Int> {
+    override suspend fun checkInspectionPreview(id: Int, baseContext: String): Result<Int> {
         return try {
-            println("🔍 Checking inspection preview for shipInfoId: $shipInfoId")
-            apiService.checkInspectionPreview(shipInfoId)
+            println("🔍 Checking inspection preview for requestId: $id")
+            apiService.checkInspectionPreview(id, baseContext)
         } catch (e: Exception) {
             println("❌ Error checking inspection preview: ${e.message}")
             Result.failure(e)

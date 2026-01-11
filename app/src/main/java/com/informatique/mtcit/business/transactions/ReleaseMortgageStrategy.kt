@@ -393,9 +393,30 @@ class ReleaseMortgageStrategy @Inject constructor(
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
 
-                       
-                        // Proceed - request submitted successfully
-                        println("✅ No blocking conditions - release mortgage request submitted successfully")
+                        // ✅ Extract request number
+                        val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
+                            ?: reviewResult.additionalData?.get("requestSerial")?.toString()
+                            ?: accumulatedFormData["requestSerial"]
+                            ?: "N/A"
+
+                        // ✅ NEW: Check if this is a NEW request
+                        val isNewRequest = accumulatedFormData["requestId"] == null ||
+                                          accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                        if (isNewRequest) {
+                            println("🎉 NEW release mortgage request submitted - showing success dialog and stopping")
+
+                            // Set success flags for ViewModel to show dialog
+                            accumulatedFormData["requestSubmitted"] = "true"
+                            accumulatedFormData["requestNumber"] = requestNumber
+                            accumulatedFormData["successMessage"] = reviewResult.message
+
+                            // Return -2 to indicate: success but show dialog and stop
+                            return -2
+                        }
+
+                        // Proceed - request submitted successfully (resumed requests only)
+                        println("✅ No blocking conditions - release mortgage request submitted successfully (resumed)")
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${reviewResult.message}")

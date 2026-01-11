@@ -144,7 +144,21 @@ abstract class BaseTransactionViewModel(
                         val strategyFormData = currentStrategy?.getFormData() ?: emptyMap()
                         val mergedFormData = _uiState.value.formData.toMutableMap().apply { putAll(strategyFormData) }
 
-                        _uiState.value = _uiState.value.copy(steps = rebuiltSteps, formData = mergedFormData)
+                        // ✅ CRITICAL FIX: Recalculate canProceedToNext after rebuilding steps
+                        // This ensures the "Pay" button is enabled when payment data is loaded via onStepOpened
+                        val currentStep = _uiState.value.currentStep
+                        val updatedCanProceed = navigationUseCase.canProceedToNext(
+                            currentStep,
+                            rebuiltSteps,
+                            mergedFormData
+                        )
+                        println("🔄 Recalculated canProceedToNext after step rebuild: $updatedCanProceed")
+
+                        _uiState.value = _uiState.value.copy(
+                            steps = rebuiltSteps,
+                            formData = mergedFormData,
+                            canProceedToNext = updatedCanProceed  // ✅ Update canProceedToNext
+                        )
                         println("✅ Steps rebuilt with ${rebuiltSteps.size} steps")
                         println("   Merged strategy formData keys: ${strategyFormData.keys}")
                      }
@@ -338,7 +352,7 @@ abstract class BaseTransactionViewModel(
                             // ✅ Handle API errors with proper error code and message
                             println("❌ API Error in processStepData: ${e.code} - ${e.message}")
 
-                            // ✅ NEW: Special handling for 401 Unauthorized errors
+                            // ✅ Special handling for 401 Unauthorized errors
                             if (e.code == 401) {
                                 println("🔐 401 Unauthorized - Token expired or invalid")
                                 _error.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة")
@@ -369,14 +383,41 @@ abstract class BaseTransactionViewModel(
                             println("⛔⛔⛔ processStepData returned -1 (BLOCKING NAVIGATION)")
                             println("=" .repeat(80))
 
-                            // ✅ Refresh steps to show any UI changes (no longer need error banner in formData)
+                            // ✅ Refresh steps to show any UI changes + merge formData for dialogs
                             val updatedSteps = strategy.getSteps()
+                            val strategyFormData = strategy.getFormData()
 
                             _uiState.value = currentState.copy(
-                                steps = updatedSteps
+                                steps = updatedSteps,
+                                formData = currentState.formData.toMutableMap().apply {
+                                    putAll(strategyFormData)
+                                }
                             )
 
-                            println("✅ UI State updated after error")
+                            println("✅ UI State updated after error (including formData)")
+                            println("=" .repeat(80))
+
+                            return@launch
+                        }
+
+                        // ✅ NEW: Handle return -2 (success but show dialog and stop - used for review step)
+                        if (requiredNextStep == -2) {
+                            println("=" .repeat(80))
+                            println("✅✅✅ processStepData returned -2 (SHOW SUCCESS DIALOG & STOP)")
+                            println("=" .repeat(80))
+
+                            // Strategy has set success data in formData, just refresh UI
+                            val updatedSteps = strategy.getSteps()
+                            val strategyFormData = strategy.getFormData()
+
+                            _uiState.value = currentState.copy(
+                                steps = updatedSteps,
+                                formData = currentState.formData.toMutableMap().apply {
+                                    putAll(strategyFormData)
+                                }
+                            )
+
+                            println("✅ UI State updated, success dialog should be shown by parent ViewModel")
                             println("=" .repeat(80))
 
                             return@launch

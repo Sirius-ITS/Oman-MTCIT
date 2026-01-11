@@ -357,7 +357,7 @@ private fun BottomActionButtons(
         1 -> true  // Draft - Continue Editing
         2, 10 -> true  // Rejected - Submit New Request
         3, 7, 11, 12 -> true  // Accepted/Approved - Show Payment or Issue Certificate button
-        13, 14 -> true  // ✅ NEW: Action Taken/Issued - Show View Certificate button
+        13, 14 -> true  // Action Taken/Issued - Show View Certificate button
         else -> false
     }
 
@@ -547,13 +547,19 @@ private fun ProceedToPaymentButton(
     Button(
         onClick = {
             val statusId = requestDetail.status.id
+            val requestTypeId = requestDetail.requestType.id
+
             // ✅ Calculate lastCompletedStep based on transaction type and status
+            // Each transaction has different number of steps, so review step index varies
             val lastCompletedStep = when {
-                statusId == 7 && requestDetail.requestType.id == 1 -> 7  // Temp Registration ACCEPTED → Marine Unit Name step
-                else -> 8  // Other transactions → Payment step
+                statusId == 7 && requestTypeId == 1 -> 7  // Temp Registration ACCEPTED → Marine Unit Name step
+                requestTypeId == 3 -> 3  // Issue Navigation Permit → Review step (0=PersonType, 1=MarineUnit, 2=SailingRegions, 3=SailorInfo, 4=Review)
+                requestTypeId == 4 -> 2  // Renew Navigation License → Review step (0=PersonType, 1=MarineUnit, 2=Review)
+                requestTypeId == 8 -> 3  // Request Inspection → Review step (0=PersonType, 1=MarineUnit, 2=InspectionDetails, 3=Review)
+                else -> 8  // Other transactions (Perm Registration, Mortgage, etc.) → Payment step at index 8
             }
 
-            println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep")
+            println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep (requestTypeId=$requestTypeId)")
 
             // ✅ Smart navigation with lastCompletedStep passed through URL
             val route = getTransactionRouteForPayment(
@@ -1111,7 +1117,7 @@ private fun getTransactionRouteForPayment(requestTypeId: Int, requestId: Int, st
             "${NavRoutes.ChangeNameOfShipOrUnitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
 
         TransactionType.REQUEST_FOR_INSPECTION ->
-            "${NavRoutes.RequestForInspection.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.RequestForInspection.createRouteWithResume(requestId.toString(), lastCompletedStep)
 
         else -> null // Unsupported or no payment flow for this transaction type
     }

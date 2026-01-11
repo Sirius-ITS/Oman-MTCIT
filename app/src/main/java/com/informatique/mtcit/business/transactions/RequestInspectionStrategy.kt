@@ -369,7 +369,9 @@ class RequestInspectionStrategy @Inject constructor(
         println("   - ${inspectionAuthoritySections.size} authority sections")
 
         println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
-        // Only show attachments step when API returns documents; otherwise skip to avoid empty review section
+
+        // ✅ ALWAYS add inspection step - even if documents aren't loaded yet
+        // This prevents step indices from shifting when documents load asynchronously
         val purposeOptionsWithIds = inspectionPurposeOptions.ifEmpty { emptyList() }.map { name ->
             val id = lookupRepository.getInspectionPurposeId(name)
             if (id != null) "$id|$name" else name
@@ -380,19 +382,21 @@ class RequestInspectionStrategy @Inject constructor(
             if (id != null) "$id|$name" else name
         }
 
-        if (requiredDocuments.isNotEmpty()) {
-            steps.add(
-                SharedSteps.inspectionPurposeAndAuthorityStep(
-                    inspectionPurposes = purposeOptionsWithIds,
-                    recordingPorts = portOptionsWithIds,
-                    authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() },
-                    documents = requiredDocuments  // ✅ Pass documents from API for requestTypeId 8
-                )
+        // ✅ Always add the step - documents will be empty list if not loaded yet
+        steps.add(
+            SharedSteps.inspectionPurposeAndAuthorityStep(
+                inspectionPurposes = purposeOptionsWithIds,
+                recordingPorts = portOptionsWithIds,
+                authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() },
+                documents = requiredDocuments  // Will be empty list if not loaded yet
             )
-        }else {
-                println("ℹ️ Skipping dynamic documents step - no required documents returned from API")
-            }
+        )
 
+        if (requiredDocuments.isEmpty()) {
+            println("ℹ️ Inspection step added with no documents (will update when documents load)")
+        } else {
+            println("✅ Inspection step added with ${requiredDocuments.size} documents")
+        }
 
         steps.add(SharedSteps.reviewStep())
 
@@ -631,6 +635,8 @@ class RequestInspectionStrategy @Inject constructor(
                             println("   Message: ${result.message}")
                             println("   Request ID: ${result.requestId}")
 
+                            accumulatedFormData["requestId"] = result.requestId.toString()
+
                             // Store success message
                             accumulatedFormData["inspectionSubmitMessage"] = result.message
                             accumulatedFormData["inspectionSubmitted"] = "true"
@@ -730,11 +736,37 @@ class RequestInspectionStrategy @Inject constructor(
                                     println("   Message: ${result.message}")
                                     println("   Need Inspection: ${result.needInspection}")
 
-                                    // ✅ Store response in formData - strategy decides what to do
+                                    // ✅ Store response in formData
                                     accumulatedFormData["needInspection"] = result.needInspection.toString()
                                     accumulatedFormData["sendRequestMessage"] = result.message
 
-                                    // ✅ Strategy decides: show inspection dialog or proceed
+                                    // ✅ Extract request number
+                                    val requestNumber = result.additionalData?.get("requestNumber")?.toString()
+                                        ?: result.additionalData?.get("requestSerial")?.toString()
+                                        ?: accumulatedFormData["requestSerial"]
+                                        ?: accumulatedFormData["requestId"] // Use requestId if available
+                                        ?: "N/A"
+
+                                    // ✅ NEW: Check if this is a NEW request (not resumed)
+                                    val isNewRequest = accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                                    println("🔍 isNewRequest check:")
+                                    println("   - isResumedTransaction flag: ${accumulatedFormData["isResumedTransaction"]}")
+                                    println("   - isNewRequest result: $isNewRequest")
+
+                                    if (isNewRequest) {
+                                        println("🎉 NEW inspection request submitted - showing success dialog and stopping")
+
+                                        // Set success flags for ViewModel to show dialog
+                                        accumulatedFormData["requestSubmitted"] = "true"
+                                        accumulatedFormData["requestNumber"] = requestNumber
+                                        accumulatedFormData["successMessage"] = result.message
+
+                                        // Return -2 to indicate: success but show dialog and stop
+                                        return -2
+                                    }
+
+                                    // ✅ For resumed requests: check if inspection needed
                                     if (result.needInspection) {
                                         println("🔍 Inspection required - showing dialog")
                                         accumulatedFormData["showInspectionDialog"] = "true"
@@ -742,8 +774,8 @@ class RequestInspectionStrategy @Inject constructor(
                                         return step // Stay on current step
                                     }
 
-                                    // Proceed to next step (could be payment, marine name, etc.)
-                                    println("✅ No inspection needed - proceeding to next step")
+                                    // Proceed to next step (for resumed requests only)
+                                    println("✅ No inspection needed - proceeding to next step (resumed request)")
                                 }
                                 is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                                     println("❌ Review step failed: ${result.message}")

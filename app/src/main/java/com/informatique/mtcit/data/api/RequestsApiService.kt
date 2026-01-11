@@ -142,7 +142,7 @@ class RequestsApiService @Inject constructor(
      * Dynamically constructs endpoint based on request type
      *
      * @param requestId The request ID
-     * @param endpointPath The endpoint path (e.g., "registration-requests", "perm_registration-requests")
+     * @param endpointPath The endpoint path (e.g., "registration-requests", "perm-registration-requests")
      * @return Result with RequestDetailResponse containing dynamic data
      * @throws ApiException for HTTP error codes
      */

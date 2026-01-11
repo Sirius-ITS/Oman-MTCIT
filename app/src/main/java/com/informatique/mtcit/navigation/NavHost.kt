@@ -413,10 +413,31 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             )
         }
 
-        composable(NavRoutes.RequestForInspection.route) {
+        composable(
+            route = NavRoutes.RequestForInspection.routeWithParams,
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.IntType
+                    defaultValue = -1
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getInt("lastCompletedStep")
+            val lastCompletedStep = if (lastCompletedStepString != null && lastCompletedStepString != -1) {
+                lastCompletedStepString
+            } else null
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.REQUEST_FOR_INSPECTION
+                transactionType = TransactionType.REQUEST_FOR_INSPECTION,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
         composable(
@@ -475,17 +496,57 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         }
 
         // Navigation Forms
-        composable(NavRoutes.IssueNavigationPermitRoute.route) {
+        composable(
+            route = "${NavRoutes.IssueNavigationPermitRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.ISSUE_NAVIGATION_PERMIT
+                transactionType = TransactionType.ISSUE_NAVIGATION_PERMIT,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 
-        composable(NavRoutes.RenewNavigationPermitRoute.route) {
+        composable(
+            route = "${NavRoutes.RenewNavigationPermitRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.RENEW_NAVIGATION_PERMIT
+                transactionType = TransactionType.RENEW_NAVIGATION_PERMIT,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 

@@ -22,6 +22,8 @@ import com.informatique.mtcit.ui.components.localizedApp
 import androidx.core.net.toUri
 import com.informatique.mtcit.ui.screens.RequestDetail
 import com.informatique.mtcit.util.UriPermissionManager
+import com.informatique.mtcit.ui.components.SuccessDialog
+import com.informatique.mtcit.ui.components.SuccessDialogItem
 
 
 /**
@@ -51,6 +53,9 @@ fun MarineRegistrationScreen(
     val isResuming by viewModel.isResuming.collectAsStateWithLifecycle()
     val showToast by viewModel.showToastEvent.collectAsStateWithLifecycle()
 
+    // ✅ NEW: Observe request submission success for showing success dialog
+    val requestSubmissionSuccess by viewModel.requestSubmissionSuccess.collectAsStateWithLifecycle()
+
     // ✅ NEW: Observe file viewer dialog state
     val fileViewerState by viewModel.fileViewerState.collectAsStateWithLifecycle()
 
@@ -72,10 +77,10 @@ fun MarineRegistrationScreen(
             // ✅ If lastCompletedStep is provided, use direct resume (no API call)
             if (lastCompletedStep != null) {
                 println("✅ Using direct resume with lastCompletedStep from navigation (avoiding API call)")
-                viewModel.resumeDirectlyWithStep(requestId, lastCompletedStep)
+                viewModel.resumeDirectlyWithStep(requestId, lastCompletedStep, transactionType)
             } else {
                 println("⚠️ No lastCompletedStep provided, falling back to API call")
-                viewModel.setRequestIdAndCompleteResume(requestId)
+                viewModel.setRequestIdAndCompleteResume(requestId, transactionType)
             }
         } else {
             println("🎬 MarineRegistrationScreen mounted - no requestId provided")
@@ -258,27 +263,32 @@ fun MarineRegistrationScreen(
     }
 
     // Main UI - Use TransactionFormContent for ALL steps including review
-    TransactionFormContent(
-        navController = navController,
-        uiState = uiState,
-        submissionState = submissionState,
-        transactionTitle = getMarineRegistrationTitle(transactionType),
-        onFieldValueChange = viewModel::onFieldValueChange,
-        onFieldFocusLost = viewModel::onFieldFocusLost,
-        isFieldLoading = viewModel::isFieldLoading,
-        onOpenFilePicker = { fieldId, allowedTypes ->
-            currentFilePickerField = fieldId
-            currentFilePickerTypes = allowedTypes
-            filePickerLauncher.launch(arrayOf("*/*"))
-        },
-        onViewFile = viewModel::viewFile,
-        onRemoveFile = viewModel::removeFile,
-        goToStep = viewModel::goToStep,
-        previousStep = viewModel::previousStep,
-        nextStep = viewModel::nextStep,
-        submitForm = viewModel::submitForm,
-        viewModel = viewModel
-    )
+    // Note: Error banner is handled inside TransactionFormContent (below stepper)
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // Form content
+        TransactionFormContent(
+            navController = navController,
+            uiState = uiState,
+            submissionState = submissionState,
+            transactionTitle = getMarineRegistrationTitle(transactionType),
+            onFieldValueChange = viewModel::onFieldValueChange,
+            onFieldFocusLost = viewModel::onFieldFocusLost,
+            isFieldLoading = viewModel::isFieldLoading,
+            onOpenFilePicker = { fieldId, allowedTypes ->
+                currentFilePickerField = fieldId
+                currentFilePickerTypes = allowedTypes
+                filePickerLauncher.launch(arrayOf("*/*"))
+            },
+            onViewFile = viewModel::viewFile,
+            onRemoveFile = viewModel::removeFile,
+            goToStep = viewModel::goToStep,
+            previousStep = viewModel::previousStep,
+            nextStep = viewModel::nextStep,
+            submitForm = viewModel::submitForm,
+            viewModel = viewModel
+        )
+    }
 
     // ✅ NEW: File Viewer Dialog - Preserves form state
     com.informatique.mtcit.ui.components.FileViewerDialog(
@@ -288,6 +298,38 @@ fun MarineRegistrationScreen(
         mimeType = fileViewerState.mimeType,
         onDismiss = viewModel::closeFileViewerDialog
     )
+
+    // ✅ NEW: Request Submission Success Dialog
+    requestSubmissionSuccess?.let { result ->
+        val isArabic = java.util.Locale.getDefault().language == "ar"
+
+        SuccessDialog(
+            title = result.message,
+            items = listOf(
+                SuccessDialogItem(
+                    label = if (isArabic) "رقم الطلب" else "Request Number",
+                    value = result.requestNumber,
+                    icon = "📄"
+                ),
+                SuccessDialogItem(
+                    label = if (isArabic) "الحالة" else "Status",
+                    value = if (isArabic) "تم الإرسال بنجاح" else "Submitted Successfully",
+                    icon = "✅"
+                ),
+                SuccessDialogItem(
+                    label = if (isArabic) "الخطوة التالية" else "Next Step",
+                    value = if (isArabic) "راجع 'طلباتي' في الملف الشخصي للمتابعة" else "Check 'My Requests' in your profile to continue",
+                    icon = "👉"
+                )
+            ),
+            qrCode = null,
+            onDismiss = {
+                viewModel.clearRequestSubmissionSuccess()
+                // Navigate back to profile screen
+                navController.popBackStack()
+            }
+        )
+    }
 }
 
 @Composable

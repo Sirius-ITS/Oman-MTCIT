@@ -148,7 +148,8 @@ class ShipSelectionManager @Inject constructor(
 
                     ShipSelectionResult.Error(
                         message = error.message ?: "فشل في متابعة الطلب",
-                        shouldBlockNavigation = true
+                        shouldBlockNavigation = true,
+                        originalException = error  // ✅ Preserve original exception for error code handling
                     )
                 }
             )
@@ -159,7 +160,8 @@ class ShipSelectionManager @Inject constructor(
 
             ShipSelectionResult.Error(
                 message = e.message ?: "حدث خطأ غير متوقع",
-                shouldBlockNavigation = true
+                shouldBlockNavigation = true,
+                originalException = e  // ✅ Preserve original exception
             )
         }
     }
@@ -197,9 +199,11 @@ sealed class ShipSelectionResult {
      *
      * @param message Error message to display to user
      * @param shouldBlockNavigation Whether to prevent navigation to next step (usually true)
+     * @param originalException The original exception (if any) for proper error code handling
      */
     data class Error(
         val message: String,
-        val shouldBlockNavigation: Boolean = true
+        val shouldBlockNavigation: Boolean = true,
+        val originalException: Throwable? = null  // ✅ Preserve original exception for 401 handling
     ) : ShipSelectionResult()
 }

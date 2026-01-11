@@ -58,6 +58,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
     private val requestTypeId = TransactionType.RENEW_NAVIGATION_PERMIT.toRequestTypeId()
+    private val transactionContext: TransactionContext = TransactionType.ISSUE_NAVIGATION_PERMIT.context
 
 
     private var navigationRequestId: Long? = null // ✅ Store created request ID
@@ -488,6 +489,123 @@ class RenewNavigationPermitStrategy @Inject constructor(
             // ✅ For now, continue normal flow
             return step
         }
+
+        // ✅ REVIEW STEP - Use inspection-preview as the final submission API
+        val reviewStepData = getSteps().getOrNull(step)
+        if (reviewStepData?.titleRes == R.string.review) {
+            println("📋 REVIEW STEP - Processing for Renew Navigation Permit")
+
+            try {
+                // ✅ STEP 1: Check inspection status using inspection-preview API
+                val shipInfoIdString = accumulatedFormData["shipInfoId"]
+                    ?: accumulatedFormData["coreShipsInfoId"]
+                    ?: accumulatedFormData["selectedMarineUnit"]
+                    ?: throw com.informatique.mtcit.common.ApiException(400, "معرف السفينة غير موجود")
+
+                println("🔍 Extracted shipInfoId from formData: $shipInfoIdString")
+
+                // ✅ Clean the ship ID (remove array brackets if present)
+                val shipInfoId = when {
+                    shipInfoIdString.startsWith("[\"") && shipInfoIdString.endsWith("\"]") -> {
+                        // Array format: ["1674"] -> extract the number
+                        shipInfoIdString.substring(2, shipInfoIdString.length - 2).toIntOrNull()
+                            ?: throw com.informatique.mtcit.common.ApiException(400, "تنسيق معرف السفينة غير صحيح")
+                    }
+                    shipInfoIdString.startsWith("[") -> {
+                        // Array format: ["1674"] -> extract the number
+                        shipInfoIdString.trim('[', ']', '"').toIntOrNull()
+                            ?: throw com.informatique.mtcit.common.ApiException(400, "تنسيق معرف السفينة غير صحيح")
+                    }
+                    else -> {
+                        // Single value: "1674"
+                        shipInfoIdString.toIntOrNull()
+                            ?: throw com.informatique.mtcit.common.ApiException(400, "معرف السفينة غير صحيح")
+                    }
+                }
+
+                val requestId = navigationRequestId
+                if (requestId == null) {
+                    throw Exception("No navigation request ID available. Ship selection might have failed.")
+                }
+
+                println("   Calling checkInspectionPreview with shipInfoId: $requestId")
+                val inspectionResult = marineUnitRepository.checkInspectionPreview(requestId.toInt(), transactionContext.inspectionPreviewBaseContext)
+
+                // ✅ Handle inspection status - inspection-preview IS the send-request for navigation licenses
+                inspectionResult.fold(
+                    onSuccess = { inspectionStatus ->
+                        println("✅ Inspection preview check successful")
+                        println("   Inspection status: $inspectionStatus (0=no inspection, 1=has inspection)")
+
+                        if (inspectionStatus == 0) {
+                            // ✅ Ship requires inspection - Show inspection dialog
+                            println("⚠️ Ship requires inspection - showing inspection dialog")
+
+                            // Show inspection required dialog
+                            accumulatedFormData["showInspectionDialog"] = "true"
+                            accumulatedFormData["inspectionMessage"] =
+                                "السفينة تحتاج إلى معاينة قبل إكمال الإجراءات. يرجى تقديم طلب معاينة أولاً."
+
+                            return -1 // Block navigation
+
+                        } else {
+                            // ✅ Inspection done (data=1) - Show success dialog
+                            println("✅ Ship has inspection completed - request submitted successfully")
+
+                            // ✅ For navigation licenses, inspection-preview IS the send-request API
+                            // No need to call separate send-request endpoint
+
+                            val requestNumber = accumulatedFormData["requestSerial"]
+                                ?: accumulatedFormData["requestId"]
+                                ?: "N/A"
+
+                            // ✅ NEW: Check if this is a NEW request (not resumed)
+                            val isNewRequest = accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                            println("🔍 isNewRequest check:")
+                            println("   - isResumedTransaction flag: ${accumulatedFormData["isResumedTransaction"]}")
+                            println("   - isNewRequest result: $isNewRequest")
+
+                            if (isNewRequest) {
+                                println("🎉 NEW request submitted - showing success dialog and stopping")
+
+                                // Set success flags for ViewModel to show dialog
+                                accumulatedFormData["requestSubmitted"] = "true"
+                                accumulatedFormData["requestNumber"] = requestNumber
+                                accumulatedFormData["successMessage"] = "تم إرسال الطلب بنجاح"
+                                accumulatedFormData["needInspection"] = "false"
+
+                                // Return -2 to indicate: success but show dialog and stop
+                                return -2
+                            }
+
+                            // ✅ For resumed requests: Show success dialog
+                            println("✅ Showing success dialog for resumed request")
+                            accumulatedFormData["showSuccessAlert"] = "true"
+                            accumulatedFormData["successAlertMessage"] = "تم إرسال الطلب بنجاح"
+
+                            return step // Stay on current step to show alert
+                        }
+                    },
+                    onFailure = { error ->
+                        println("❌ Failed to check inspection preview: ${error.message}")
+                        // On error, show error message and block
+                        accumulatedFormData["apiError"] =
+                            "حدث خطأ أثناء التحقق من المعاينة: ${error.message}"
+                        return -1 // Block navigation
+                    }
+                )
+
+                // ✅ Unreachable - kept for compilation
+            } catch (e: Exception) {
+                println("❌ Exception in review step: ${e.message}")
+                e.printStackTrace()
+                accumulatedFormData["apiError"] =
+                    "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                return -1
+            }
+        }
+
         return step
     }
 

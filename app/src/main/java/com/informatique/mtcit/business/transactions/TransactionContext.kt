@@ -6,6 +6,7 @@ package com.informatique.mtcit.business.transactions
  * This allows submitOnReview() to be completely generic across all transactions
  */
 data class TransactionContext(
+    val inspectionPreviewBaseContext: String,
     /**
      * Transaction display name (e.g., "طلب رهن سفينة", "طلب فك رهن")
      */

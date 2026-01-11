@@ -528,15 +528,11 @@ class MarineUnitsApiService @Inject constructor(
      * @return Result with inspection status (data field: 0 = no inspection, 1 = has inspection)
      */
     suspend fun checkInspectionPreview(
-        shipInfoId: Int
+        id: Int,
+        baseContext: String
     ): Result<Int> {
         return try {
-            println("=".repeat(80))
-            println("🔍 Checking Inspection Preview...")
-            println("=".repeat(80))
-            println("   Ship Info ID: $shipInfoId")
-
-            val endpoint = "perm-registration-requests/$shipInfoId/inspection-preview"
+            val endpoint = "$baseContext/$id/inspection-preview"
             println("   Endpoint: $endpoint")
 
             val response = repo.onGet(endpoint)
@@ -659,12 +655,16 @@ class MarineUnitsApiService @Inject constructor(
                     )
                 }
                 is RepoServiceState.Error -> {
-                    val errorMsg = response.error ?: "Failed to send $transactionType request (code: ${response.code})"
+                    val errorCode = response.code ?: 0
+                    val errorMsg: String = when (errorCode) {
+                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        else -> response.error?.toString() ?: "Failed to send $transactionType request (code: $errorCode)"
+                    }
                     println("❌ $errorMsg")
                     println("=".repeat(80))
 
-                    // Throw exception to be caught by repository
-                    throw Exception(errorMsg as String?)
+                    // ✅ Throw ApiException with proper code so ViewModel can handle 401 specially
+                    throw com.informatique.mtcit.common.ApiException(errorCode, errorMsg)
                 }
             }
         } catch (e: Exception) {
@@ -815,7 +815,6 @@ class MarineUnitsApiService @Inject constructor(
             Result.failure(Exception("Failed to proceed with $transactionType request: ${e.message}"))
         }
     }
-
     /**
      * Add maritime identification (IMO, MMSI, Call Sign) to a ship
      * PATCH /api/v1/perm-registration-requests/{shipId}/add-ship-identity

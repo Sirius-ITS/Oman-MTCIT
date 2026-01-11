@@ -629,7 +629,31 @@ class TemporaryRegistrationStrategy @Inject constructor(
                                     accumulatedFormData["needInspection"] = result.needInspection.toString()
                                     accumulatedFormData["sendRequestMessage"] = result.message
 
-                                    // ✅ Strategy decides: show inspection dialog or proceed
+                                    // ✅ Extract request number from additionalData
+                                    val requestNumber = result.additionalData?.get("requestNumber")?.toString()
+                                        ?: result.additionalData?.get("requestSerial")?.toString()
+                                        ?: accumulatedFormData["requestSerial"]
+                                        ?: "N/A"
+
+                                    // ✅ NEW: Check if this is a NEW request (not resumed)
+                                    // If requestId was provided at start, this is a resume - allow normal flow
+                                    // If no requestId at start, this is NEW - show success dialog and stop
+                                    val isNewRequest = accumulatedFormData["requestId"] == null ||
+                                                      accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                                    if (isNewRequest) {
+                                        println("🎉 NEW request submitted - showing success dialog and stopping")
+
+                                        // Set success flags for ViewModel to show dialog
+                                        accumulatedFormData["requestSubmitted"] = "true"
+                                        accumulatedFormData["requestNumber"] = requestNumber
+                                        accumulatedFormData["successMessage"] = result.message
+
+                                        // Return -2 to indicate: success but show dialog and stop
+                                        return -2
+                                    }
+
+                                    // ✅ Strategy decides: show inspection dialog or proceed (for resumed requests)
                                     if (result.needInspection) {
                                         println("🔍 Inspection required - showing dialog")
                                         accumulatedFormData["showInspectionDialog"] = "true"
@@ -638,7 +662,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
                                     }
 
                                     // Proceed to next step (could be payment, marine name, etc.)
-                                    println("✅ No inspection needed - proceeding to next step")
+                                    println("✅ No inspection needed - proceeding to next step (resumed request)")
                                 }
                                 is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                                     println("❌ Review step failed: ${result.message}")
@@ -660,7 +684,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
             val paymentResult = paymentManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
-                requestTypeId = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.typeId, // 1 = Temporary Registration
+                requestTypeId = requestTypeId.toInt(), // 1 = Temporary Registration
                 context = transactionContext // ✅ Pass TransactionContext
             )
 

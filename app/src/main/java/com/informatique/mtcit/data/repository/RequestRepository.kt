@@ -29,16 +29,29 @@ class RequestRepository @Inject constructor(
     /**
      * Get request status by ID - Calls real API
      *
-     * API: GET /api/v1/registration-requests/{requestId}
+     * API: GET /api/v1/{endpoint}/{requestId}
      * @param requestId Request ID (e.g., "1844")
+     * @param transactionType Transaction type to determine correct API endpoint
      * @return Result with UserRequest containing latest status and data
      */
-    suspend fun getRequestStatus(requestId: String): Result<UserRequest> {
+    suspend fun getRequestStatus(requestId: String, transactionType: TransactionType): Result<UserRequest> {
         return try {
             println("🌐 RequestRepository: Fetching request $requestId from API")
 
-            // Determine endpoint path based on request type
-            val endpointPath = "/api/v1/registration-requests"
+            // ✅ Determine endpoint path based on transaction type
+            val endpointPath = when (transactionType) {
+                TransactionType.REQUEST_FOR_INSPECTION -> "/api/v1/inspection-requests"
+                TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE -> "/api/v1/registration-requests"
+                TransactionType.PERMANENT_REGISTRATION_CERTIFICATE -> "/api/v1/perm-registration-requests"
+                TransactionType.ISSUE_NAVIGATION_PERMIT -> "/api/v1/ship-navigation-license-request"
+                TransactionType.RENEW_NAVIGATION_PERMIT -> "/api/v1/navigation-license-renewal-request"
+                TransactionType.MORTGAGE_CERTIFICATE -> "/api/v1/mortgage-request"
+                TransactionType.RELEASE_MORTGAGE -> "/api/v1/mortgage-redemption-request"
+                TransactionType.CANCEL_PERMANENT_REGISTRATION -> "/api/v1/deletion-requests"
+                else -> ""
+            }
+
+            println("📡 Using endpoint: $endpointPath for transactionType: $transactionType")
 
             // Call real API
             val result = userRequestsRepository.getRequestDetail(
@@ -52,7 +65,8 @@ class RequestRepository @Inject constructor(
 
                     // Parse the JSON response to extract data
                     val jsonData = response.data
-                    val mappedRequest = parseApiResponseToUserRequest(jsonData, requestId)
+                    // ✅ Pass transactionType to parser so it doesn't try to extract it from JSON
+                    val mappedRequest = parseApiResponseToUserRequest(jsonData, requestId, transactionType)
 
                     println("✅ RequestRepository: Mapped to UserRequest with statusId ${mappedRequest.statusId}")
                     Result.success(mappedRequest)
@@ -97,10 +111,14 @@ class RequestRepository @Inject constructor(
 
     /**
      * Parse API JSON response to UserRequest model
+     * @param jsonData JSON data from API response
+     * @param requestId Request ID
+     * @param knownTransactionType Transaction type (known from navigation context)
      */
     private fun parseApiResponseToUserRequest(
         jsonData: kotlinx.serialization.json.JsonElement,
-        requestId: String
+        requestId: String,
+        knownTransactionType: TransactionType
     ): UserRequest {
         val jsonObject = jsonData.jsonObject
 
@@ -108,14 +126,13 @@ class RequestRepository @Inject constructor(
         val id = jsonObject["id"]?.jsonPrimitive?.intOrNull ?: 0
         val requestSerial = jsonObject["requestSerial"]?.jsonPrimitive?.intOrNull ?: 0
 
-        // Extract status
-        val statusObject = jsonObject["status"]?.jsonObject
+        // Extract status (handle both "status" and "requestStatus" keys for inspection requests)
+        val statusObject = (jsonObject["status"] ?: jsonObject["requestStatus"])?.jsonObject
         val statusId = statusObject?.get("id")?.jsonPrimitive?.intOrNull ?: 5
 
-        // Extract request type
-        val requestTypeObject = jsonObject["requestType"]?.jsonObject
-        val requestTypeId = requestTypeObject?.get("id")?.jsonPrimitive?.intOrNull ?: 1
-        val transactionType = TransactionType.fromTypeId(requestTypeId) ?: TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE
+        // ✅ Use the known transaction type from parameter (don't try to parse from JSON)
+        // Inspection requests don't have "requestType" field, so we use the known type
+        val transactionType = knownTransactionType
 
         // Extract ship info
         val shipInfoObject = jsonObject["shipInfo"]?.jsonObject

@@ -11,18 +11,36 @@ object RequestDetailParser {
 
     /**
      * Parse RequestDetailResponse into UI-friendly model
+     * @param response API response containing request data
+     * @param knownRequestTypeId Optional request type ID (used when API doesn't return requestType field)
      */
-    fun parseToUiModel(response: RequestDetailResponse): RequestDetailUiModel {
+    fun parseToUiModel(response: RequestDetailResponse, knownRequestTypeId: Int? = null): RequestDetailUiModel {
         val dataObject = response.data.jsonObject
 
         // Extract core fields
         val requestId = dataObject["id"]?.jsonPrimitive?.intOrNull ?: 0
-        val requestSerial = dataObject["requestSerial"]?.jsonPrimitive?.intOrNull ?: 0
-        val requestYear = dataObject["requestYear"]?.jsonPrimitive?.intOrNull ?: 0
         val message = dataObject["message"]?.jsonPrimitive?.contentOrNull
         val messageDetails = dataObject["messageDetails"]?.jsonPrimitive?.contentOrNull
 
-        // Extract request type info
+        // ✅ Handle both formats:
+        // 1. Registration: separate "requestSerial" and "requestYear" fields
+        // 2. Inspection: combined "requestNumber" field (e.g., "180/2026")
+        val requestSerial: String
+        val requestYear: Int
+
+        val requestNumber = dataObject["requestNumber"]?.jsonPrimitive?.contentOrNull
+        if (requestNumber != null) {
+            // Format: "180/2026" - split and parse
+            val parts = requestNumber.split("/")
+            requestSerial = parts.getOrNull(0) ?: "0"
+            requestYear = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        } else {
+            // Separate fields
+            requestSerial = dataObject["requestSerial"]?.jsonPrimitive?.intOrNull?.toString() ?: "0"
+            requestYear = dataObject["requestYear"]?.jsonPrimitive?.intOrNull ?: 0
+        }
+
+        // Extract request type info (or use known type ID if not in response)
         val requestType = dataObject["requestType"]?.jsonObject?.let { rt ->
             RequestTypeInfo(
                 id = rt["id"]?.jsonPrimitive?.intOrNull ?: 0,
@@ -30,10 +48,20 @@ object RequestDetailParser {
                 nameAr = rt["nameAr"]?.jsonPrimitive?.contentOrNull,
                 nameEn = rt["nameEn"]?.jsonPrimitive?.contentOrNull
             )
-        } ?: RequestTypeInfo(0, "Unknown", null, null)
+        } ?: if (knownRequestTypeId != null) {
+            // ✅ Use known request type ID when API doesn't provide it (e.g., inspection requests)
+            RequestTypeInfo(
+                id = knownRequestTypeId,
+                name = getRequestTypeName(knownRequestTypeId),
+                nameAr = null,
+                nameEn = null
+            )
+        } else {
+            RequestTypeInfo(0, "Unknown", null, null)
+        }
 
-        // Extract status info
-        val status = dataObject["status"]?.jsonObject?.let { st ->
+        // Extract status info (handle both "status" and "requestStatus" keys)
+        val status = (dataObject["status"] ?: dataObject["requestStatus"])?.jsonObject?.let { st ->
             RequestStatusInfo(
                 id = st["id"]?.jsonPrimitive?.intOrNull ?: 0,
                 name = getLocalizedValue(st, "name"),
@@ -70,20 +98,24 @@ object RequestDetailParser {
         return when {
             isArabic -> jsonObject["nameAr"]?.jsonPrimitive?.contentOrNull
             else -> jsonObject["nameEn"]?.jsonPrimitive?.contentOrNull
-        } ?: jsonObject[fallbackKey]?.jsonPrimitive?.contentOrNull ?: "Unknown"
+        } ?: jsonObject[fallbackKey]?.jsonPrimitive?.contentOrNull ?: "N/A"
     }
 
     /**
-     * Format field names for display (convert camelCase to readable text)
+     * Get request type name from ID
      */
-    private fun formatFieldName(fieldName: String): String {
-        // Convert camelCase to words
-        val words = fieldName.replace(Regex("([a-z])([A-Z])"), "$1 $2")
-
-        // Capitalize first letter
-        return words.replaceFirstChar {
-            if (it.isLowerCase()) it.titlecase(Locale.getDefault())
-            else it.toString()
+    private fun getRequestTypeName(typeId: Int): String {
+        val isArabic = Locale.getDefault().language == "ar"
+        return when (typeId) {
+            1 -> if (isArabic) "شهادة تسجيل مؤقتة" else "Temporary Registration"
+            2 -> if (isArabic) "شهادة تسجيل دائمة" else "Permanent Registration"
+            3 -> if (isArabic) "إصدار رخصة ملاحية" else "Issue Navigation Permit"
+            4 -> if (isArabic) "شهادة رهن" else "Mortgage Certificate"
+            5 -> if (isArabic) "فك الرهن" else "Release Mortgage"
+            6 -> if (isArabic) "تجديد رخصة ملاحية" else "Renew Navigation Permit"
+            7 -> if (isArabic) "إلغاء تسجيل دائم" else "Cancel Permanent Registration"
+            8 -> if (isArabic) "طلب معاينة" else "Request for Inspection"
+            else -> if (isArabic) "نوع غير معروف" else "Unknown Type"
         }
     }
 }

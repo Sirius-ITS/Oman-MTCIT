@@ -55,7 +55,14 @@ sealed class NavRoutes(val route: String) {
 
     data object PermanentRegistrationRoute : NavRoutes("8"/*"permanent_registration_form"*/)
 
-    data object RequestForInspection : NavRoutes("21")
+    data object RequestForInspection : NavRoutes("21") {
+        // ✅ Support requestId and lastCompletedStep for payment resumption
+        const val routeWithParams = "21?requestId={requestId}&lastCompletedStep={lastCompletedStep}"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int): String {
+            return "21?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+        }
+    }
 
     data object SuspendRegistrationRoute : NavRoutes("suspend_registration_form")
 

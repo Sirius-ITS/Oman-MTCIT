@@ -20,15 +20,15 @@ enum class RequestTypeEndpoint(
     // 2. Permanent Registration
     PERM_REGISTRATION(
         requestTypeId = 2,
-        endpointPath = "registration-requests",
+        endpointPath = "perm-registration-requests",
         issuanceEndpoint = "perm-registration-requests/{requestId}/issuance-provisional-registration-certificate"
     ),
 
     // 3. Issue Navigation Permit
     ISSUE_NAVIGATION_PERMIT(
         requestTypeId = 3,
-        endpointPath = "navigation-permit",
-        issuanceEndpoint = "navigation-permit/{requestId}/issuance-certificate"
+        endpointPath = "ship-navigation-license-request",
+        issuanceEndpoint = "ship-navigation-license-request/{requestId}/issuance"
     ),
 
     // 4. Mortgage Certificate
@@ -48,8 +48,8 @@ enum class RequestTypeEndpoint(
     // 6. Renew Navigation Permit
     RENEW_NAVIGATION_PERMIT(
         requestTypeId = 6,
-        endpointPath = "navigation-permit",
-        issuanceEndpoint = "navigation-permit/{requestId}/issuance-renewal-certificate"
+        endpointPath = "navigation-license-renewal-request",
+        issuanceEndpoint = "navigation-license-renewal-request/{requestId}/issuance"
     ),
 
     // 7. Cancel Permanent Registration (Change Name)

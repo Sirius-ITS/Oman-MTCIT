@@ -8,6 +8,7 @@ import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.managers.NavigationLicenseManager
 import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.business.transactions.shared.PaymentManager
+import com.informatique.mtcit.common.ApiException  // ✅ Import ApiException for error handling
 import com.informatique.mtcit.data.model.NavigationArea
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
@@ -22,16 +23,18 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import android.content.Context
+import com.informatique.mtcit.business.transactions.shared.ReviewManager
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
 import io.ktor.utils.io.streams.asInput
+import androidx.core.net.toUri
 
 /**
  * Strategy for Issue Navigation Permit
  * Uses NavigationLicenseManager for all navigation license operations
  */
 class IssueNavigationPermitStrategy @Inject constructor(
-    private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
     private val marineUnitRepository: MarineUnitRepository,
@@ -51,6 +54,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private var sailingRegionsOptions: List<NavigationArea> = emptyList()
     private var crewJobTitles: List<String> = emptyList()
 
+    private val requestTypeId = TransactionType.ISSUE_NAVIGATION_PERMIT.toRequestTypeId()
+    private val transactionContext: TransactionContext = TransactionType.ISSUE_NAVIGATION_PERMIT.context
     // Cache for accumulated form data (used to decide steps like other strategies)
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
@@ -144,6 +149,31 @@ class IssueNavigationPermitStrategy @Inject constructor(
     // Load lookups when a step is opened (lazy loading)
     override suspend fun onStepOpened(stepIndex: Int) {
         val step = getSteps().getOrNull(stepIndex) ?: return
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+        }
         if (step.requiredLookups.isEmpty()) return
 
         step.requiredLookups.forEach { lookupKey ->
@@ -209,8 +239,19 @@ class IssueNavigationPermitStrategy @Inject constructor(
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
 
-        // Payment Details Step - pass accumulated form data
-        // steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+        // ✅ NEW: Payment Steps - Only show if we have requestId from review step
+        val hasRequestId = accumulatedFormData["requestId"] != null
+
+        if (hasRequestId) {
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+
+            // Payment Success Step - Only show if payment was successful
+            val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() == true
+            if (paymentSuccessful) {
+                steps.add(SharedSteps.paymentSuccessStep())
+            }
+        }
 
         println("📋 Total steps count: ${steps.size}")
         return steps
@@ -227,74 +268,237 @@ class IssueNavigationPermitStrategy @Inject constructor(
         accumulatedFormData.putAll(data)
 
         val stepData = getSteps().getOrNull(step)
+        if (stepData != null) {
+            println("🔵 Processing Step ${step + 1}/${getSteps().size} - Type: ${stepData.stepType}, TitleRes: ${stepData.titleRes}")
+            val stepType = stepData.stepType
 
-        // ✅ Handle marine unit selection - call createIssueRequest after successful ship selection
-        if (stepData?.titleRes == R.string.owned_ships) {
-            val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() ?: false
-            val selectedUnitsJson = data["selectedMarineUnits"]
-            val hasSelectedExistingShip = !selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNew
+            // ✅ Handle marine unit selection - call createIssueRequest after successful ship selection
+            if (stepData.titleRes == R.string.owned_ships) {
+                val isAddingNew = accumulatedFormData["isAddingNewUnit"]?.toBoolean() == true
+                val selectedUnitsJson = data["selectedMarineUnits"]
+                val hasSelectedExistingShip = !selectedUnitsJson.isNullOrEmpty() && selectedUnitsJson != "[]" && !isAddingNew
 
-            if (hasSelectedExistingShip) {
-                try {
-                    // ✅ Step 1: Call selectships (proceed-request) - just for validation
-                    val selectionResult = shipSelectionManager.handleShipSelection(
-                        shipId = selectedUnitsJson,
-                        context = TransactionType.ISSUE_NAVIGATION_PERMIT.context
-                    )
+                if (hasSelectedExistingShip) {
+                    try {
+                        // ✅ Step 1: Call selectships (proceed-request) - just for validation
+                        val selectionResult = shipSelectionManager.handleShipSelection(
+                            shipId = selectedUnitsJson,
+                            context = TransactionType.ISSUE_NAVIGATION_PERMIT.context
+                        )
 
-                    when (selectionResult) {
-                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
-                            // ✅ Step 2: After successful selection, create the navigation license request
-                            println("✅ Ship selection successful, now creating navigation license request...")
+                        when (selectionResult) {
+                            is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                                // ✅ Step 2: After successful selection, create the navigation license request
+                                println("✅ Ship selection successful, now creating navigation license request...")
 
-                            // Extract shipInfoId from selectedUnitsJson
-                            val shipInfoId = extractShipInfoId(selectedUnitsJson)
-
-                            if (shipInfoId != null) {
-                                // ✅ Call createIssueRequest API to get the real requestId
-                                val createResult = navigationLicenseManager.createIssueRequest(shipInfoId)
-
-                                createResult.fold(
-                                    onSuccess = { requestId ->
-                                        // ✅ Store the requestId from createIssueRequest (not from selectships)
-                                        navigationRequestId = requestId
-                                        accumulatedFormData["requestId"] = requestId.toString()
-                                        println("✅ Navigation license request created with ID: $requestId")
-                                    },
-                                    onFailure = { error ->
-                                        println("❌ Failed to create navigation license request: ${error.message}")
-                                        accumulatedFormData["apiError"] = error.message ?: "فشل في إنشاء طلب رخصة الملاحة"
-                                        return -1
+                                // Extract and persist selected shipInfoId (clean first element)
+                                val selectedUnits = selectedUnitsJson.let { sel ->
+                                    try {
+                                        val cleanJson = sel.trim().removeSurrounding("[", "]")
+                                        val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                        shipIds.firstOrNull()
+                                    } catch (_: Exception) {
+                                        null
                                     }
-                                )
-                            } else {
-                                accumulatedFormData["apiError"] = "فشل في استخراج معرف السفينة"
-                                return -1
+                                }
+
+                                selectedUnits?.let { firstShipId ->
+                                    accumulatedFormData["shipInfoId"] = firstShipId
+                                    accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                    // ensureRequestCreated expects selectedMarineUnit (singular)
+                                    accumulatedFormData["selectedMarineUnit"] = firstShipId
+                                }
+                                // Extract shipInfoId from selectedUnitsJson
+                                val shipInfoId = extractShipInfoId(selectedUnitsJson)
+
+                                if (shipInfoId != null) {
+                                    // ✅ Call createIssueRequest API to get the real requestId
+                                    val createResult = navigationLicenseManager.createIssueRequest(shipInfoId)
+
+                                    createResult.fold(
+                                        onSuccess = { requestId ->
+                                            // ✅ Store the requestId from createIssueRequest (not from selectships)
+                                            navigationRequestId = requestId
+                                            accumulatedFormData["requestId"] = requestId.toString()
+                                            println("✅ Navigation license request created with ID: $requestId")
+                                        },
+                                        onFailure = { error ->
+                                            println("❌ Failed to create navigation license request: ${error.message}")
+                                            accumulatedFormData["apiError"] = error.message ?: "فشل في إنشاء طلب رخصة الملاحة"
+                                            return -1
+                                        }
+                                    )
+                                } else {
+                                    accumulatedFormData["apiError"] = "فشل في استخراج معرف السفينة"
+                                    return -1
+                                }
+                            }
+                            is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                                println("❌ Ship selection failed: ${selectionResult.message}")
+                                accumulatedFormData["apiError"] = selectionResult.message
+                                // ✅ Re-throw original exception if it's an ApiException to preserve error code (401, 406, etc.)
+                                val originalException = selectionResult.originalException
+                                if (originalException is ApiException) {
+                                    println("🔄 Re-throwing original ApiException with code ${originalException.code}")
+                                    throw originalException
+                                } else {
+                                    throw ApiException(500, selectionResult.message)
+                                }
                             }
                         }
-                        is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
-                            accumulatedFormData["apiError"] = selectionResult.message
-                            return -1
-                        }
+                    } catch (e: Exception) {
+                        accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
+                        return -1
                     }
-                } catch (e: Exception) {
-                    accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
-                    return -1
                 }
             }
-        }
 
-        // ✅ Use stepType instead of checking field IDs
-        when (stepData?.stepType) {
-            StepType.NAVIGATION_AREAS -> {
-                val hasError = handleNavigationAreasSubmission(data)
-                if (hasError) return -1 // ✅ Block navigation if error occurred
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = stepType,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext // ✅ Pass TransactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Check if payment was successful and trigger step rebuild
+                    if (stepType == StepType.PAYMENT_CONFIRMATION) {
+                        val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() == true
+                        if (paymentSuccessful) {
+                            println("✅ Payment successful - triggering step rebuild")
+                            onStepsNeedRebuild?.invoke()
+                        }
+                    }
+
+                    // Check if we loaded payment details and trigger step rebuild
+                    if (stepType == StepType.PAYMENT) {
+                        println("✅ Payment details loaded - triggering step rebuild")
+                        onStepsNeedRebuild?.invoke()
+                    }
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed for this step")
+                }
             }
-            StepType.CREW_MANAGEMENT -> {
-                val hasError = handleCrewSubmission(data)
-                if (hasError) return -1 // ✅ Block navigation if error occurred
+
+            // ✅ Use stepType instead of checking field IDs
+            when (stepData.stepType) {
+                StepType.NAVIGATION_AREAS -> {
+                    val hasError = handleNavigationAreasSubmission(data)
+                    if (hasError) return -1 // ✅ Block navigation if error occurred
+                }
+                StepType.CREW_MANAGEMENT -> {
+                    val hasError = handleCrewSubmission(data)
+                    if (hasError) return -1 // ✅ Block navigation if error occurred
+                }
+                StepType.REVIEW -> {
+                    println("📋 Handling Review Step using ReviewManager")
+
+                    val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
+                    if (requestIdInt == null) {
+                        println("❌ No requestId available for review step")
+                        accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                        return -1
+                    }
+
+                    try {
+                        // ✅ STEP 1: Check inspection preview first
+                        println("🔍 STEP 1: Checking inspection preview...")
+
+                        // ✅ Use the navigationRequestId that was created after ship selection
+                        val requestId = navigationRequestId
+                        if (requestId == null) {
+                            throw Exception("No navigation request ID available. Ship selection might have failed.")
+                        }
+
+                        println("   Calling checkInspectionPreview with shipInfoId: $requestId")
+                        val inspectionResult = marineUnitRepository.checkInspectionPreview(requestId.toInt(), transactionContext.inspectionPreviewBaseContext)
+
+                        // ✅ Handle inspection status - inspection-preview IS the send-request for navigation licenses
+                        inspectionResult.fold(
+                            onSuccess = { inspectionStatus ->
+                                println("✅ Inspection preview check successful")
+                                println("   Inspection status: $inspectionStatus (0=no inspection, 1=has inspection)")
+
+                                if (inspectionStatus == 0) {
+                                    // ✅ Ship requires inspection - Show inspection dialog
+                                    println("⚠️ Ship requires inspection - showing inspection dialog")
+
+                                    // Show inspection required dialog
+                                    accumulatedFormData["showInspectionDialog"] = "true"
+                                    accumulatedFormData["inspectionMessage"] =
+                                        "السفينة تحتاج إلى معاينة قبل إكمال الإجراءات. يرجى تقديم طلب معاينة أولاً."
+
+                                    return -1 // Block navigation
+
+                                } else {
+                                    // ✅ Inspection done (data=1) - Show success dialog
+                                    println("✅ Ship has inspection completed - request submitted successfully")
+
+                                    // ✅ For navigation licenses, inspection-preview IS the send-request API
+                                    // No need to call separate send-request endpoint
+
+                                    val requestNumber = accumulatedFormData["requestSerial"]
+                                        ?: accumulatedFormData["requestId"]
+                                        ?: "N/A"
+
+                                    // ✅ NEW: Check if this is a NEW request (not resumed)
+                                    val isNewRequest = accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                                    println("🔍 isNewRequest check:")
+                                    println("   - isResumedTransaction flag: ${accumulatedFormData["isResumedTransaction"]}")
+                                    println("   - isNewRequest result: $isNewRequest")
+
+                                    if (isNewRequest) {
+                                        println("🎉 NEW request submitted - showing success dialog and stopping")
+
+                                        // Set success flags for ViewModel to show dialog
+                                        accumulatedFormData["requestSubmitted"] = "true"
+                                        accumulatedFormData["requestNumber"] = requestNumber
+                                        accumulatedFormData["successMessage"] = "تم إرسال الطلب بنجاح"
+                                        accumulatedFormData["needInspection"] = "false"
+
+                                        // Return -2 to indicate: success but show dialog and stop
+                                        return -2
+                                    }
+
+                                    // ✅ For resumed requests: Show success dialog
+                                    println("✅ Showing success dialog for resumed request")
+                                    accumulatedFormData["showSuccessAlert"] = "true"
+                                    accumulatedFormData["successAlertMessage"] = "تم إرسال الطلب بنجاح"
+
+                                    return step // Stay on current step to show alert
+                                }
+                            },
+                            onFailure = { error ->
+                                println("❌ Failed to check inspection preview: ${error.message}")
+                                // On error, show error message and block
+                                accumulatedFormData["apiError"] =
+                                    "حدث خطأ أثناء التحقق من المعاينة: ${error.message}"
+                                return -1 // Block navigation
+                            }
+                        )
+
+                        // ✅ Code above handles both data=0 (inspection required) and data=1 (success)
+                        // No additional code needed here - function returns early in both cases
+                    } catch (e: Exception) {
+                        println("❌ Exception in review step: ${e.message}")
+                        e.printStackTrace()
+                        accumulatedFormData["apiError"] =
+                            "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                        return -1
+                    }
+                }
+                else -> {}
             }
-            else -> {}
+        } else {
+            println("🔵 Processing Step ${step + 1}/${getSteps().size} - Step data not found!")
         }
 
         return step
@@ -311,7 +515,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         return try {
             // First try: simple array of strings/numbers ["132435445"]
-            val simpleArrayRegex = """\["?(\d+)"?\]""".toRegex()
+            val simpleArrayRegex = """\["?(\d+)"?]""".toRegex()
             val simpleMatch = simpleArrayRegex.find(selectedUnitsJson)
 
             if (simpleMatch != null) {
@@ -403,7 +607,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
             try {
                 // Convert URI to PartData
-                val uri = android.net.Uri.parse(excelFileUri)
+                val uri = excelFileUri.toUri()
                 val contentResolver = appContext.contentResolver
 
                 val inputStream = contentResolver.openInputStream(uri)

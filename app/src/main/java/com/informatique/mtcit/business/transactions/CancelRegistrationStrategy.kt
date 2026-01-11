@@ -428,9 +428,32 @@ class CancelRegistrationStrategy @Inject constructor(
                         println("   Message: ${result.message}")
 
                         // Store response in formData
-                        accumulatedFormData["requestId"] = result.message
+                        accumulatedFormData["sendRequestMessage"] = result.message
 
+                        // ✅ Extract request number
+                        val requestNumber = result.additionalData?.get("requestNumber")?.toString()
+                            ?: result.additionalData?.get("requestSerial")?.toString()
+                            ?: accumulatedFormData["requestSerial"]
+                            ?: "N/A"
 
+                        // ✅ NEW: Check if this is a NEW request
+                        val isNewRequest = accumulatedFormData["requestId"] == null ||
+                                          accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                        if (isNewRequest) {
+                            println("🎉 NEW cancel registration request submitted - showing success dialog and stopping")
+
+                            // Set success flags for ViewModel to show dialog
+                            accumulatedFormData["requestSubmitted"] = "true"
+                            accumulatedFormData["requestNumber"] = requestNumber
+                            accumulatedFormData["successMessage"] = result.message
+
+                            // Return -2 to indicate: success but show dialog and stop
+                            return -2
+                        }
+
+                        // For resumed requests, continue normal flow
+                        println("✅ Cancel registration request submitted successfully (resumed)")
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${result.message}")

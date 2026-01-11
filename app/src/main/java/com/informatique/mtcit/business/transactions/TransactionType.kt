@@ -18,6 +18,7 @@ enum class TransactionType(
     TEMPORARY_REGISTRATION_CERTIFICATE(
         typeId = 1,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "registration-requests",
             displayName = "شهادة تسجيل مؤقتة",
             createEndpoint = "registration-requests",
             updateStatusEndpoint = "registration-requests/{requestId}/update-status",
@@ -33,6 +34,7 @@ enum class TransactionType(
     PERMANENT_REGISTRATION_CERTIFICATE(
         typeId = 2,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "perm-registration-requests",
             displayName = "شهادة تسجيل دائمة",
             createEndpoint = "perm-registration-requests/create-permanent",
             updateStatusEndpoint = "perm-registration-requests/{requestId}/update-status",
@@ -48,6 +50,7 @@ enum class TransactionType(
     SUSPEND_PERMANENT_REGISTRATION(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "registration",
             displayName = "تعليق تسجيل دائم",
             createEndpoint = "registration/suspend",
             updateStatusEndpoint = "registration/{requestId}/update-status",
@@ -60,6 +63,7 @@ enum class TransactionType(
     CANCEL_PERMANENT_REGISTRATION(
         typeId = 7,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "deletion-requests",
             displayName = "إلغاء تسجيل دائم",
             createEndpoint = "deletion-requests/cancel",
             updateStatusEndpoint = "deletion-requests/{requestId}/update-status",
@@ -75,6 +79,7 @@ enum class TransactionType(
     MORTGAGE_CERTIFICATE(
         typeId = 4,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "mortgage-requests",
             displayName = "طلب شهادة رهن",
             createEndpoint = "mortgage-request/create-mortgage-request",
             updateStatusEndpoint = "mortgage-request/{requestId}/update-status",
@@ -90,6 +95,7 @@ enum class TransactionType(
     RELEASE_MORTGAGE(
         typeId = 5,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "mortgage-redemption-requests",
             displayName = "طلب فك رهن",
             createEndpoint = "mortgage-redemption-request/create-mortgage-redemption-request",
             updateStatusEndpoint = "mortgage-redemption-request/{requestId}/update-status",
@@ -105,10 +111,11 @@ enum class TransactionType(
     REQUEST_FOR_INSPECTION(
         typeId = 8,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "inspection-requests",
             displayName = "طلب معاينة",
             createEndpoint = "inspection-requests/create",
             updateStatusEndpoint = "inspection-requests/{requestId}/update-status",
-            sendRequestEndpoint = "inspection-requests/{requestId}/send-request",
+            sendRequestEndpoint = "inspection-requests/{requestId}/send",
             sendRequestPostOrPut = "POST",
              paymentReceiptEndpoint = "inspection-requests/payment",
             paymentSubmitEndpoint = "inspection-requests/add-payment",
@@ -120,6 +127,7 @@ enum class TransactionType(
     SHIP_NAME_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير اسم السفينة",
             createEndpoint = "ship-modifications/name-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -132,6 +140,7 @@ enum class TransactionType(
     CAPTAIN_NAME_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير اسم الربان",
             createEndpoint = "ship-modifications/captain-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -144,6 +153,7 @@ enum class TransactionType(
     SHIP_ACTIVITY_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير نشاط السفينة",
             createEndpoint = "ship-modifications/activity-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -156,6 +166,7 @@ enum class TransactionType(
     SHIP_DIMENSIONS_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير أبعاد السفينة",
             createEndpoint = "ship-modifications/dimensions-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -168,6 +179,7 @@ enum class TransactionType(
     SHIP_ENGINE_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير محرك السفينة",
             createEndpoint = "ship-modifications/engine-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -180,6 +192,7 @@ enum class TransactionType(
     SHIP_PORT_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير ميناء السفينة",
             createEndpoint = "ship-modifications/port-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -192,6 +205,7 @@ enum class TransactionType(
     SHIP_OWNERSHIP_CHANGE(
         typeId = 0,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير ملكية السفينة",
             createEndpoint = "ship-modifications/ownership-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
@@ -206,26 +220,28 @@ enum class TransactionType(
     ISSUE_NAVIGATION_PERMIT(
         typeId = 3,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "ship-navigation-license-request",
             displayName = "إصدار تصريح إبحار",
-            createEndpoint = "navigation-permit/issue",
-            updateStatusEndpoint = "navigation-permit/{requestId}/update-status",
-            sendRequestEndpoint = "navigation-permit/{requestId}/send-request",
+            createEndpoint = "ship-navigation-license-request/issue",
+            updateStatusEndpoint = "ship-navigation-license-request/{requestId}/update-status",
+            sendRequestEndpoint = "ship-navigation-license-request/{requestId}/send-request",
             sendRequestPostOrPut = "PUT",
-            paymentReceiptEndpoint = "navigation-permit/payment",
-            paymentSubmitEndpoint = "navigation-permit/add-payment",
+            paymentReceiptEndpoint = "ship-navigation-license-request/payment",
+            paymentSubmitEndpoint = "ship-navigation-license-request/add-payment",
             proceedRequestEndpoint = "ship-navigation-license-request/ship-info/{shipInfoId}/proceed-request"
         )
     ),
     RENEW_NAVIGATION_PERMIT(
         typeId = 6,
         context = TransactionContext(
+            inspectionPreviewBaseContext = "navigation-license-renewal-request",
             displayName = "تجديد تصريح إبحار",
-            createEndpoint = "navigation-permit/renew",
-            updateStatusEndpoint = "navigation-permit/{requestId}/update-status",
-            sendRequestEndpoint = "navigation-permit/{requestId}/send-request",
+            createEndpoint = "navigation-license-renewal-request/renew",
+            updateStatusEndpoint = "navigation-license-renewal-request/{requestId}/update-status",
+            sendRequestEndpoint = "navigation-license-renewal-request/{requestId}/send-request",
             sendRequestPostOrPut = "PUT",
-            paymentReceiptEndpoint = "navigation-permit/payment",
-            paymentSubmitEndpoint = "navigation-permit/add-payment",
+            paymentReceiptEndpoint = "navigation-license-renewal-request/payment",
+            paymentSubmitEndpoint = "navigation-license-renewal-request/add-payment",
             proceedRequestEndpoint = "navigation-license-renewal-request/ship-info/{shipInfoId}/proceed-request"
         )
     );

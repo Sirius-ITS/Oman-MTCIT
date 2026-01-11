@@ -566,12 +566,23 @@ class NavigationLicenseApiService @Inject constructor(
 // REQUEST DTOs
 // ========================================
 
+/**
+ * Simple DTO for navigation area lookup data returned in responses
+ * This matches the API response structure for licMdNavAreasResDto
+ */
+@Serializable
+data class NavigationAreaLookupDto(
+    val id: Int,
+    val nameAr: String,
+    val nameEn: String
+)
+
 @Serializable
 data class NavigationRequestResDto(
     val id: Long,
     val requestSerial: Int? = null,
     val requestYear: Int? = null,
-    val licMdNavAreasResDto: List<NavigationAreaResDto>? = null,
+    val licMdNavAreasResDto: List<NavigationAreaLookupDto>? = null,  // ✅ Use simple lookup DTO
     val crewList: List<CrewResDto>? = null,
     val lastNavLicId: Long? = null
 )

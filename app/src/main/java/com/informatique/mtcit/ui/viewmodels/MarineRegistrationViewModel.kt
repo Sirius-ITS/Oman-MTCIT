@@ -59,6 +59,22 @@ class MarineRegistrationViewModel @Inject constructor(
     private val authRepository: com.informatique.mtcit.data.repository.AuthRepository  // ✅ NEW: Inject AuthRepository for token refresh
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
+    init {
+        // ✅ Observe formData changes to detect request submission success
+        viewModelScope.launch {
+            uiState.collect { state ->
+                // Check if strategy has set success flags in formData
+                val formData = state.formData
+                val requestSubmitted = formData["requestSubmitted"]?.toBoolean() ?: false
+
+                if (requestSubmitted) {
+                    println("🔔 Detected requestSubmitted flag in formData")
+                    checkForRequestSubmissionSuccess()
+                }
+            }
+        }
+    }
+
     // NEW: Validation state for marine unit selection
     private val _validationState = MutableStateFlow<ValidationState>(ValidationState.Idle)
     val validationState: StateFlow<ValidationState> = _validationState.asStateFlow()
@@ -74,6 +90,10 @@ class MarineRegistrationViewModel @Inject constructor(
     private val _requestSaved = MutableStateFlow<String?>(null)
     val requestSaved: StateFlow<String?> = _requestSaved.asStateFlow()
 
+    // ✅ NEW: Request submission success (for showing success dialog after review step)
+    private val _requestSubmissionSuccess = MutableStateFlow<RequestSubmissionResult?>(null)
+    val requestSubmissionSuccess: StateFlow<RequestSubmissionResult?> = _requestSubmissionSuccess.asStateFlow()
+
     // ✅ NEW: Trigger navigation to transaction screen after resuming
     private val _navigateToTransactionScreen = MutableStateFlow(false)
     val navigateToTransactionScreen: StateFlow<Boolean> = _navigateToTransactionScreen.asStateFlow()
@@ -84,6 +104,14 @@ class MarineRegistrationViewModel @Inject constructor(
     // ✅ NEW: Flag to prevent normal initialization during resume
     private val _isResuming = MutableStateFlow(false)
     val isResuming: StateFlow<Boolean> = _isResuming.asStateFlow()
+
+    /**
+     * Data class for request submission result
+     */
+    data class RequestSubmissionResult(
+        val requestNumber: String,
+        val message: String
+    )
 
     /**
      * Check if there's a pending resume request
@@ -267,10 +295,61 @@ class MarineRegistrationViewModel @Inject constructor(
             super.nextStep()
             return
 //        }
+    }
 
-        // Check validation state
-        val state = _validationState.value
-        println("🔘 Validation state: ${state::class.simpleName}")
+    /**
+     * Check if request submission was successful and show success dialog
+     * Called after super.nextStep() to check if review step was completed
+     */
+    private fun checkForRequestSubmissionSuccess() {
+        println("🔍🔍🔍 checkForRequestSubmissionSuccess() called")
+        val currentState = uiState.value
+        val formData = currentState.formData
+
+        println("🔍 FormData keys: ${formData.keys}")
+        println("🔍 FormData size: ${formData.size}")
+
+        // Check if review step set success flag
+        val requestSubmitted = formData["requestSubmitted"]?.toBoolean() ?: false
+        val requestNumber = formData["requestNumber"]
+        val successMessage = formData["successMessage"]
+
+        println("🔍 requestSubmitted flag: $requestSubmitted")
+        println("🔍 requestNumber value: $requestNumber")
+        println("🔍 successMessage value: $successMessage")
+        println("🔍 Condition check: requestSubmitted=$requestSubmitted, requestNumber.isNullOrEmpty()=${requestNumber.isNullOrEmpty()}")
+
+        if (requestSubmitted && !requestNumber.isNullOrEmpty()) {
+            println("✅✅✅ Request submitted successfully!")
+            println("   Request Number: $requestNumber")
+            println("   Message: $successMessage")
+
+            // Set success dialog data
+            _requestSubmissionSuccess.value = RequestSubmissionResult(
+                requestNumber = requestNumber,
+                message = successMessage?.toString() ?: "تم إرسال الطلب بنجاح"
+            )
+
+            println("✅ _requestSubmissionSuccess.value set to: ${_requestSubmissionSuccess.value}")
+
+            // Clear flags from formData
+            val cleanedFormData = formData.toMutableMap().apply {
+                remove("requestSubmitted")
+                remove("requestNumber")
+                remove("successMessage")
+            }
+
+            updateUiState { currentState.copy(formData = cleanedFormData) }
+        } else {
+            println("❌ Condition NOT met - dialog will NOT show")
+            if (!requestSubmitted) {
+                println("   ❌ requestSubmitted is false")
+            }
+            if (requestNumber.isNullOrEmpty()) {
+                println("   ❌ requestNumber is null or empty")
+            }
+        }
+    }
 
 //        when (state) {
 //            is ValidationState.Valid -> {
@@ -335,7 +414,6 @@ class MarineRegistrationViewModel @Inject constructor(
 //                super.nextStep()
 //            }
 //        }
-    }
 
     /**
      * Clear compliance detail navigation after navigation is done
@@ -351,6 +429,11 @@ class MarineRegistrationViewModel @Inject constructor(
         _requestSaved.value = null
     }
 
+    // ✅ NEW: Clear request submission success dialog
+    fun clearRequestSubmissionSuccess() {
+        _requestSubmissionSuccess.value = null
+    }
+
     // ✅ NEW: Clear navigation flag after navigation is handled
     fun clearNavigationFlag() {
         _navigateToTransactionScreen.value = false
@@ -360,7 +443,7 @@ class MarineRegistrationViewModel @Inject constructor(
      * ✅ NEW: Complete the resume after navigation to transaction screen
      * Called by MarineRegistrationScreen when it detects a pending resume
      */
-    fun completeResumeAfterNavigation() {
+    fun completeResumeAfterNavigation(transactionType: TransactionType) {
         val requestId = _pendingResumeRequestId ?: return
 
         println("🔄 Completing resume for request: $requestId")
@@ -371,7 +454,7 @@ class MarineRegistrationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // Fetch request again
-                val result = requestRepository.getRequestStatus(requestId)
+                val result = requestRepository.getRequestStatus(requestId, transactionType)
 
                 result.onSuccess { request ->
                     println("✅ Request VERIFIED - Resuming transaction")
@@ -517,10 +600,10 @@ class MarineRegistrationViewModel @Inject constructor(
      * Called by MarineRegistrationScreen when requestId is passed as navigation argument
      * This is the NEW approach that works across ViewModel recreation
      */
-    fun setRequestIdAndCompleteResume(requestId: String) {
+    fun setRequestIdAndCompleteResume(requestId: String, transactionType: TransactionType) {
         println("🔄 setRequestIdAndCompleteResume called with requestId: $requestId")
         _pendingResumeRequestId = requestId
-        completeResumeAfterNavigation()
+        completeResumeAfterNavigation(transactionType)
     }
 
     /**
@@ -528,8 +611,8 @@ class MarineRegistrationViewModel @Inject constructor(
      * Called when lastCompletedStep is passed through navigation from ApiRequestDetailScreen
      * This avoids duplicate API calls since ApiRequestDetailScreen already fetched the data
      */
-    fun resumeDirectlyWithStep(requestId: String, lastCompletedStep: Int) {
-        println("🔄 resumeDirectlyWithStep called with requestId: $requestId, lastCompletedStep: $lastCompletedStep")
+    fun resumeDirectlyWithStep(requestId: String, lastCompletedStep: Int, transactionType: TransactionType) {
+        println("🔄 resumeDirectlyWithStep called with requestId: $requestId, lastCompletedStep: $lastCompletedStep, transactionType: $transactionType")
 
         // ✅ Set resuming flag to prevent normal initialization
         _isResuming.value = true
@@ -538,7 +621,7 @@ class MarineRegistrationViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // ✅ Fetch request data from API to get form data and transaction type
-                val result = requestRepository.getRequestStatus(requestId)
+                val result = requestRepository.getRequestStatus(requestId, transactionType)
 
                 result.onSuccess { request ->
                     println("✅ Request data fetched - Resuming transaction WITHOUT recalculating step")
@@ -1035,6 +1118,31 @@ class MarineRegistrationViewModel @Inject constructor(
             } else {
                 println("❌ Token refresh failed - user needs to login again")
                 // Error will be shown via _error state flow
+            }
+        }
+    }
+
+    /**
+     * ✅ Dismiss error banner (called when user clicks X on error banner)
+     */
+    fun dismissError() {
+        clearError() // Call base class method
+    }
+
+    /**
+     * ✅ NEW: Refresh token and clear error (called when user clicks refresh button on 401 error banner)
+     */
+    fun refreshTokenAndRetry() {
+        viewModelScope.launch {
+            val success = handleTokenRefresh(authRepository)
+
+            if (success) {
+                println("✅ Token refreshed successfully - clearing error banner")
+                clearError() // Call base class method to clear the error
+                // User can now retry their action (click Next button again)
+            } else {
+                println("❌ Token refresh failed - keeping error banner")
+                // Keep the error banner showing
             }
         }
     }

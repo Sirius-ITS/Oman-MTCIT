@@ -350,21 +350,24 @@ fun TransactionFormContent(
                             ErrorBanner(
                                 message = error.message,
                                 onDismiss = {
-                                    viewModel.clearError()
+                                    (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.dismissError()
+                                        ?: viewModel.clearError()
                                 }
                             )
                         }
                         is com.informatique.mtcit.common.AppError.Unauthorized -> {
-                            // ✅ NEW: Special handling for 401 errors - show refresh token button
+                            // ✅ Special handling for 401 errors - show refresh token button
                             ErrorBanner(
                                 message = error.message,
                                 showRefreshButton = true,
                                 onRefreshToken = {
-                                    // Cast viewModel to MarineRegistrationViewModel to access refreshToken()
-                                    (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.refreshToken()
+                                    // Call refreshTokenAndRetry() which refreshes token and clears error on success
+                                    (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.refreshTokenAndRetry()
                                 },
                                 onDismiss = {
-                                    viewModel.clearError()
+                                    // Call dismissError() to manually dismiss the banner
+                                    (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.dismissError()
+                                        ?: viewModel.clearError()
                                 }
                             )
                         }
@@ -372,7 +375,8 @@ fun TransactionFormContent(
                             ErrorBanner(
                                 message = error.message,
                                 onDismiss = {
-                                    viewModel.clearError()
+                                    (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.dismissError()
+                                        ?: viewModel.clearError()
                                 }
                             )
                         }

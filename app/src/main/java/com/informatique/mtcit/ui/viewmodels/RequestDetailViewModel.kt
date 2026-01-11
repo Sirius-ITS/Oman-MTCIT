@@ -86,8 +86,8 @@ class RequestDetailViewModel @Inject constructor(
                     onSuccess = { response ->
                         println("✅ RequestDetailViewModel: Detail fetched successfully")
 
-                        // Parse dynamic JSON to UI model
-                        val uiModel = RequestDetailParser.parseToUiModel(response)
+                        // Parse dynamic JSON to UI model (pass known requestTypeId for inspection requests)
+                        val uiModel = RequestDetailParser.parseToUiModel(response, requestTypeId)
                         _requestDetail.value = uiModel
 
                         println("✅ RequestDetailViewModel: Parsed ${uiModel.sections.size} sections")
