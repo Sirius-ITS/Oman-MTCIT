@@ -255,7 +255,6 @@ enum class TransactionType(
         fun fromTypeId(typeId: Int): TransactionType? {
             return entries.firstOrNull { it.typeId == typeId }
         }
-
         /**
          * Get display name for a request type ID
          */

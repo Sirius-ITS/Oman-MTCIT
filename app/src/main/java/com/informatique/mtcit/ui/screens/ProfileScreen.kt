@@ -1,16 +1,23 @@
 package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.outlined.Dehaze
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +50,11 @@ fun ProfileScreen(
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
+
+    // States for search and filter
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf<FilterType?>(FilterType.ALL) }
+    var sortOrder by remember { mutableStateOf<SortOrder>(SortOrder.DESCENDING) }
 
     LaunchedEffect(window) {
         window?.let {
@@ -96,30 +108,46 @@ fun ProfileScreen(
                 .fillMaxWidth()
                 .height(220.dp + statusBarHeight)
         ) {
+            // Gradient background
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
-                        Brush.verticalGradient(
-                            colors = listOf(extraColors.blue1, extraColors.blue2)
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                extraColors.blue1,
+                                extraColors.iconBlueGrey
+                            )
                         )
                     )
             )
+            // Subtle whiteInDarkMode wave overlay (like the Swift Path overlay)
             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
                 val w = size.width
                 val h = size.height
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.72f)
-                    quadraticBezierTo(w * 0.5f, h * 0.5f, w, h * 0.62f)
+                    // Quadratic bezier to create a smooth wave
+                    quadraticTo(
+                        x1 =  w * 0.5f,
+                        y1 = h * 0.5f,
+                        x2 = w,
+                        y2 = h * 0.62f
+                    )
                     lineTo(w, h)
                     lineTo(0f, h)
                     close()
                 }
-                drawPath(path, color = Color.White.copy(alpha = 0.06f))
 
+                drawPath(
+                    path = path,
+                    color = Color.White.copy(alpha = 0.06f)
+                )
+
+                // Optional: add a second subtle wave for depth
                 val path2 = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, h * 0.82f)
-                    quadraticBezierTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
+                    quadraticTo(w * 0.5f, h * 0.7f, w, h * 0.78f)
                     lineTo(w, h)
                     lineTo(0f, h)
                     close()
@@ -127,7 +155,6 @@ fun ProfileScreen(
                 drawPath(path2, color = Color.White.copy(alpha = 0.03f))
             }
         }
-
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = { TopProfileBar(navController = navController) },
@@ -140,9 +167,30 @@ fun ProfileScreen(
                     .padding(bottom = 16.dp)
             ) {
                 item {
-                    RequestStatisticsSection()
+                    Spacer(modifier = Modifier.height(32.dp))
+                    UserProfileHeader(
+                        onFilterSelected = { filterType ->
+                            selectedFilter = filterType
+                            println("Selected filter: $filterType")
+                        },
+                        onSearchQueryChanged = { query ->
+                            searchQuery = query
+                            println("Search query: $query")
+                        },
+                        onSortOrderChanged = { order ->
+                            sortOrder = order
+                            println("Sort order: $order")
+                        },
+                        currentSortOrder = sortOrder
+                    )
                     Spacer(modifier = Modifier.height(24.dp))
-                    FormsSection(navController = navController, viewModel = viewModel)
+                    FormsSection(
+                        navController = navController,
+                        viewModel = viewModel,
+                        searchQuery = searchQuery,
+                        selectedFilter = selectedFilter,
+                        sortOrder = sortOrder
+                    )
                     Spacer(modifier = Modifier.height(50.dp))
                 }
             }
@@ -389,7 +437,10 @@ fun LegendItem(
 @Composable
 fun FormsSection(
     navController: NavController,
-    viewModel: MarineRegistrationViewModel = hiltViewModel()
+    viewModel: MarineRegistrationViewModel = hiltViewModel(),
+    searchQuery: String = "",
+    selectedFilter: FilterType? = null,
+    sortOrder: SortOrder = SortOrder.DESCENDING
 ) {
     val extraColors = LocalExtraColors.current
 
@@ -401,6 +452,60 @@ fun FormsSection(
     val isLoadingMore by requestsViewModel.isLoadingMore.collectAsState()
     val paginationState by requestsViewModel.paginationState.collectAsState()
     val appError by requestsViewModel.appError.collectAsState()
+
+    // ✅ Filter and sort requests based on search query, selected filter, and sort order
+    val filteredRequests = remember(requests, searchQuery, selectedFilter, sortOrder) {
+        var result = requests
+
+        // Apply search filter (search in request serial or ship name)
+        if (searchQuery.isNotBlank()) {
+            result = result.filter { request ->
+                request.requestSerial.contains(searchQuery, ignoreCase = true) ||
+                request.shipName.contains(searchQuery, ignoreCase = true)
+            }
+        }
+
+        // Apply status filter
+        if (selectedFilter != null && selectedFilter != FilterType.ALL) {
+            result = result.filter { request ->
+                when (selectedFilter) {
+                    FilterType.COMPLETED -> request.statusName.contains("مكتمل", ignoreCase = true) ||
+                                           request.statusName.contains("completed", ignoreCase = true)
+                    FilterType.IN_PROGRESS -> request.statusName.contains("قيد المعالجة", ignoreCase = true) ||
+                                             request.statusName.contains("in progress", ignoreCase = true) ||
+                                             request.statusName.contains("processing", ignoreCase = true)
+                    FilterType.NEEDS_ACTION -> request.statusName.contains("يحتاج إجراء", ignoreCase = true) ||
+                                              request.statusName.contains("needs action", ignoreCase = true) ||
+                                              request.statusName.contains("action needed", ignoreCase = true)
+                    FilterType.DRAFT -> request.statusName.contains("مسودة", ignoreCase = true) ||
+                                       request.statusName.contains("draft", ignoreCase = true)
+                    FilterType.REJECTED -> request.statusName.contains("مرفوض", ignoreCase = true) ||
+                                          request.statusName.contains("rejected", ignoreCase = true)
+                    FilterType.PENDING -> request.statusName.contains("معلق", ignoreCase = true) ||
+                                         request.statusName.contains("pending", ignoreCase = true)
+                    FilterType.ACCEPTED -> request.statusName.contains("مقبول", ignoreCase = true) ||
+                                          request.statusName.contains("accepted", ignoreCase = true)
+                    FilterType.CONFIRMED -> request.statusName.contains("مؤكد", ignoreCase = true) ||
+                                           request.statusName.contains("confirmed", ignoreCase = true)
+                    FilterType.SEND -> request.statusName.contains("تم الإرسال", ignoreCase = true) ||
+                                      request.statusName.contains("sent", ignoreCase = true)
+                    FilterType.SCHEDULED -> request.statusName.contains("مجدول", ignoreCase = true) ||
+                                           request.statusName.contains("scheduled", ignoreCase = true)
+                    FilterType.IN_REVIEW -> request.statusName.contains("قيد المراجعة", ignoreCase = true) ||
+                                           request.statusName.contains("in review", ignoreCase = true)
+                    FilterType.ISSUED -> request.statusName.contains("تم الإصدار", ignoreCase = true) ||
+                                        request.statusName.contains("issued", ignoreCase = true)
+                    else -> true
+                }
+            }
+        }
+
+        // Apply sort order (sort by modification date)
+        when (sortOrder) {
+            SortOrder.ASCENDING -> result.sortedBy { it.modificationDate }
+            SortOrder.DESCENDING -> result.sortedByDescending { it.modificationDate }
+        }
+    }
 
     // ✅ NEW: Collect navigation trigger for request detail
     val navigationToRequestDetail by requestsViewModel.navigationToRequestDetail.collectAsState()
@@ -531,7 +636,7 @@ fun FormsSection(
             ) {
                 CircularProgressIndicator(color = extraColors.whiteInDarkMode)
             }
-        } else if (requests.isEmpty()) {
+        } else if (filteredRequests.isEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -550,22 +655,30 @@ fun FormsSection(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = localizedApp(R.string.no_forms_available),
+                        text = if (searchQuery.isNotBlank() || selectedFilter != null) {
+                            if (Locale.getDefault().language == "ar") "لا توجد نتائج" else "No results found"
+                        } else {
+                            localizedApp(R.string.no_forms_available)
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Normal,
                         letterSpacing = 1.sp,
                         color = extraColors.whiteInDarkMode
                     )
                     Text(
-                        text = localizedApp(R.string.forms_will_appear_here),
+                        text = if (searchQuery.isNotBlank() || selectedFilter != null) {
+                            if (Locale.getDefault().language == "ar") "جرب البحث بكلمات مختلفة" else "Try different search terms"
+                        } else {
+                            localizedApp(R.string.forms_will_appear_here)
+                        },
                         fontSize = 14.sp,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                     )
                 }
             }
         } else {
-            // Display requests from API
-            requests.forEach { request ->
+            // Display filtered requests from API
+            filteredRequests.forEach { request ->
                 NewRequestCard(
                     request = request,
                     onClick = {
@@ -851,3 +964,771 @@ private fun buildComplianceDetailData(
         appendLine(action.rejectionReason)
     }
 }
+//@Composable
+//fun UserProfileHeader(
+//    onFilterSelected: (FilterType) -> Unit = {}
+//) {
+//    val extraColors = LocalExtraColors.current
+//    var selectedFilter by remember { mutableStateOf<FilterType?>(null) }
+//
+//    Column(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(horizontal = 20.dp)
+//    ) {
+//        // User Info Row
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            // Profile Avatar
+//            Box(
+//                modifier = Modifier
+//                    .size(50.dp)
+//                    .background(
+//                        color = Color(0xFF2196F3),
+//                        shape = CircleShape
+//                    ),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Person,
+//                    contentDescription = "Profile",
+//                    tint = Color.White,
+//                    modifier = Modifier.size(28.dp)
+//                )
+//            }
+//            Spacer(modifier = Modifier.width(16.dp))
+//            Column {
+//                Text(
+//                    text = "أحمد محمد",
+//                    fontSize = 22.sp,
+//                    fontWeight = FontWeight.Bold,
+//                    color = Color.White
+//                )
+//                Spacer(modifier = Modifier.height(2.dp))
+//                Text(
+//                    text = "Civil ID: 123456789",
+//                    fontSize = 13.sp,
+//                    fontWeight = FontWeight.Normal,
+//                    color = Color.White.copy(alpha = 0.7f)
+//                )
+//            }
+//        }
+//        Spacer(modifier = Modifier.height(20.dp))
+//        // Search Bar - شكل الصورة بالظبط
+//        Card(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .height(48.dp),
+//            shape = RoundedCornerShape(18.dp),
+//            colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+//            elevation = CardDefaults.cardElevation(0.dp)
+//        ) {
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .padding(horizontal = 16.dp),
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.spacedBy(10.dp)
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Search,
+//                    contentDescription = "Search",
+//                    tint = Color(0xFF9E9E9E),
+//                    modifier = Modifier.size(20.dp)
+//                )
+//                Text(
+//                    text = "ابحث برقم الطلب أو اسم السفينة",
+//                    fontSize = 14.sp,
+//                    color = Color(0xFFBDBDBD)
+//                )
+//            }
+//        }
+//
+//        Spacer(modifier = Modifier.height(20.dp))
+//
+//        // Statistics Grid
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.spacedBy(10.dp)
+//        ) {
+//            // Total Requests Card (Pink)
+//            StatCard(
+//                number = "671",
+//                label = "عدد الطلبات",
+//                numberColor = Color(0xFFE91E63),
+//                accentColor = Color(0xFFE91E63),
+//                isSelected = selectedFilter == FilterType.ALL,
+//                modifier = Modifier.weight(1f),
+//                onClick = {
+//                    selectedFilter = if (selectedFilter == FilterType.ALL) null else FilterType.ALL
+//                    onFilterSelected(FilterType.ALL)
+//                }
+//            )
+//            // Completed Card (Green)
+//            StatCard(
+//                number = "52",
+//                label = "مكتمل",
+//                numberColor = Color(0xFF4CAF50),
+//                accentColor = Color(0xFF4CAF50),
+//                isSelected = selectedFilter == FilterType.COMPLETED,
+//                modifier = Modifier.weight(1f),
+//                onClick = {
+//                    selectedFilter = if (selectedFilter == FilterType.COMPLETED) null else FilterType.COMPLETED
+//                    onFilterSelected(FilterType.COMPLETED)
+//                }
+//            )
+//        }
+//
+//        Spacer(modifier = Modifier.height(10.dp))
+//
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.spacedBy(10.dp)
+//        ) {
+//            // In Progress Card (Blue)
+//            StatCard(
+//                number = "356",
+//                label = "قيد المعالجة",
+//                numberColor = Color(0xFF2196F3),
+//                accentColor = Color(0xFF2196F3),
+//                isSelected = selectedFilter == FilterType.IN_PROGRESS,
+//                modifier = Modifier.weight(1f),
+//                onClick = {
+//                    selectedFilter = if (selectedFilter == FilterType.IN_PROGRESS) null else FilterType.IN_PROGRESS
+//                    onFilterSelected(FilterType.IN_PROGRESS)
+//                }
+//            )
+//            // Needs Action Card (Orange)
+//            StatCard(
+//                number = "263",
+//                label = "يحتاج إجراء",
+//                numberColor = Color(0xFFFF9800),
+//                accentColor = Color(0xFFFF9800),
+//                isSelected = selectedFilter == FilterType.NEEDS_ACTION,
+//                modifier = Modifier.weight(1f),
+//                onClick = {
+//                    selectedFilter = if (selectedFilter == FilterType.NEEDS_ACTION) null else FilterType.NEEDS_ACTION
+//                    onFilterSelected(FilterType.NEEDS_ACTION)
+//                }
+//            )
+//        }
+//    }
+//}
+//
+//@Composable
+//fun StatCard(
+//    number: String,
+//    label: String,
+//    numberColor: Color,
+//    accentColor: Color,
+//    isSelected: Boolean = false,
+//    modifier: Modifier = Modifier,
+//    onClick: () -> Unit
+//) {
+//    val extraColors = LocalExtraColors.current
+//    Card(
+//        modifier = modifier
+//            .height(92.dp)
+//            .clickable(onClick = onClick),
+//        shape = RoundedCornerShape(18.dp),
+//        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+//        border = if (isSelected) {
+//            BorderStroke(2.5.dp, accentColor)
+//        } else {
+//            BorderStroke(0.dp, Color(0xFFE0E0E0))
+//        },
+//        elevation = CardDefaults.cardElevation(if (isSelected) 2.dp else 0.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .padding(12.dp),
+//            horizontalAlignment = Alignment.CenterHorizontally,
+//            verticalArrangement = Arrangement.Center
+//        ) {
+//            Text(
+//                text = number,
+//                fontSize = 32.sp,
+//                fontWeight = FontWeight.Bold,
+//                color = numberColor,
+//                lineHeight = 32.sp
+//            )
+//            Spacer(modifier = Modifier.height(2.dp))
+//            Text(
+//                text = label,
+//                fontSize = 13.sp,
+//                fontWeight = FontWeight.Normal,
+//                color = Color(0xFF757575),
+//                textAlign = TextAlign.Center
+//            )
+//        }
+//    }
+//}
+//
+//// Filter Types
+//enum class FilterType {
+//    ALL,
+//    COMPLETED,
+//    NEEDS_ACTION,
+//    IN_PROGRESS
+//}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserProfileHeader(
+    onFilterSelected: (FilterType?) -> Unit = {},
+    onSearchQueryChanged: (String) -> Unit = {},
+    onSortOrderChanged: (SortOrder) -> Unit = {},
+    currentSortOrder: SortOrder = SortOrder.DESCENDING
+) {
+    val extraColors = LocalExtraColors.current
+    var selectedFilter by remember { mutableStateOf<FilterType?>(FilterType.ALL) }
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var searchQuery by remember { mutableStateOf("") }
+
+    // Set "All Requests" as selected by default on first composition
+    LaunchedEffect(Unit) {
+        onFilterSelected(FilterType.ALL)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+    ) {
+//        // User Info Row
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            // Profile Avatar
+//            Box(
+//                modifier = Modifier
+//                    .size(50.dp)
+//                    .background(
+//                        color = Color(0xFF2196F3),
+//                        shape = CircleShape
+//                    ),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Person,
+//                    contentDescription = "Profile",
+//                    tint = Color.White,
+//                    modifier = Modifier.size(28.dp)
+//                )
+//            }
+//            Spacer(modifier = Modifier.width(16.dp))
+//            Column {
+//                Text(
+//                    text = "أحمد محمد",
+//                    fontSize = 22.sp,
+//                    fontWeight = FontWeight.Bold,
+//                    color = Color.White
+//                )
+//                Spacer(modifier = Modifier.height(2.dp))
+//                Text(
+//                    text = "Civil ID: 123456789",
+//                    fontSize = 13.sp,
+//                    fontWeight = FontWeight.Normal,
+//                    color = Color.White.copy(alpha = 0.7f)
+//                )
+//            }
+//        }
+//        Spacer(modifier = Modifier.height(20.dp))
+
+        // Search Bar with Filter Icon - Functional TextField
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+            elevation = CardDefaults.cardElevation(0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color(0xFF9E9E9E),
+                        modifier = Modifier.size(20.dp)
+                    )
+
+                    // Functional TextField for search
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { newQuery ->
+                                searchQuery = newQuery
+                                onSearchQueryChanged(newQuery)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 14.sp,
+                                color = extraColors.whiteInDarkMode
+                            ),
+                            singleLine = true,
+                            decorationBox = { innerTextField ->
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "ابحث برقم الطلب أو اسم السفينة",
+                                        fontSize = 14.sp,
+                                        color = Color(0xFFBDBDBD)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        )
+                    }
+                }
+
+                // Filter Icon Button
+                IconButton(
+                    onClick = { showFilterBottomSheet = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Dehaze,
+                        contentDescription = "Filter",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Statistics Grid - 4 Main Cards
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatCard(
+                number = "671",
+                label = "عدد الطلبات",
+                numberColor = Color(0xFFE91E63),
+                accentColor = Color(0xFFE91E63),
+                isSelected = selectedFilter == FilterType.ALL,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    selectedFilter = if (selectedFilter == FilterType.ALL) null else FilterType.ALL
+                    onFilterSelected(selectedFilter)
+                }
+            )
+            StatCard(
+                number = "52",
+                label = "مكتمل",
+                numberColor = Color(0xFF4CAF50),
+                accentColor = Color(0xFF4CAF50),
+                isSelected = selectedFilter == FilterType.COMPLETED,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    selectedFilter = if (selectedFilter == FilterType.COMPLETED) null else FilterType.COMPLETED
+                    onFilterSelected(selectedFilter)
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatCard(
+                number = "356",
+                label = "قيد المعالجة",
+                numberColor = Color(0xFF2196F3),
+                accentColor = Color(0xFF2196F3),
+                isSelected = selectedFilter == FilterType.IN_PROGRESS,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    selectedFilter = if (selectedFilter == FilterType.IN_PROGRESS) null else FilterType.IN_PROGRESS
+                    onFilterSelected(selectedFilter)
+                }
+            )
+            StatCard(
+                number = "263",
+                label = "يحتاج إجراء",
+                numberColor = Color(0xFFFF9800),
+                accentColor = Color(0xFFFF9800),
+                isSelected = selectedFilter == FilterType.NEEDS_ACTION,
+                modifier = Modifier.weight(1f),
+                onClick = {
+                    selectedFilter = if (selectedFilter == FilterType.NEEDS_ACTION) null else FilterType.NEEDS_ACTION
+                    onFilterSelected(selectedFilter)
+                }
+            )
+        }
+    }
+
+    // Filter Bottom Sheet
+    if (showFilterBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showFilterBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = extraColors.background,
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .padding(vertical = 12.dp)
+                        .width(40.dp)
+                        .height(4.dp)
+                        .background(Color(0xFFE0E0E0), RoundedCornerShape(2.dp))
+                )
+            }
+        ) {
+            FilterBottomSheetContent(
+                selectedFilter = selectedFilter,
+                currentSortOrder = currentSortOrder,
+                onFilterSelected = { filter ->
+                    selectedFilter = filter
+                    onFilterSelected(filter)
+                    showFilterBottomSheet = false
+                },
+                onSortOrderChanged = { order ->
+                    onSortOrderChanged(order)
+                    showFilterBottomSheet = false
+                },
+                onClearFilter = {
+                    selectedFilter = null
+                    onFilterSelected(null)
+                    showFilterBottomSheet = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun FilterBottomSheetContent(
+    selectedFilter: FilterType?,
+    currentSortOrder: SortOrder,
+    onFilterSelected: (FilterType) -> Unit,
+    onSortOrderChanged: (SortOrder) -> Unit,
+    onClearFilter: () -> Unit
+) {
+    val extraColors = LocalExtraColors.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 40.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "تصفية وترتيب",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = extraColors.whiteInDarkMode
+            )
+
+            TextButton(onClick = onClearFilter) {
+                Text(
+                    text = "مسح الكل",
+                    fontSize = 14.sp,
+                    color = Color(0xFF2196F3)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Sort Order Section
+        Text(
+            text = "الترتيب",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = extraColors.whiteInDarkMode
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Ascending Card
+            SortOrderCard(
+                label = "تصاعدي",
+                icon = "↑",
+                isSelected = currentSortOrder == SortOrder.ASCENDING,
+                onClick = { onSortOrderChanged(SortOrder.ASCENDING) },
+                modifier = Modifier.weight(1f)
+            )
+
+            // Descending Card
+            SortOrderCard(
+                label = "تنازلي",
+                icon = "↓",
+                isSelected = currentSortOrder == SortOrder.DESCENDING,
+                onClick = { onSortOrderChanged(SortOrder.DESCENDING) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Status Filter Section
+        Text(
+            text = "تصفية حسب الحالة",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = extraColors.whiteInDarkMode
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // All Status Cards in Grid
+        val statusList = listOf(
+            StatusFilterItem(FilterType.ALL, "عدد الطلبات", "671", Color(0xFFE91E63)),
+            StatusFilterItem(FilterType.DRAFT, "مسودة", "0", Color(0xFF9E9E9E)),
+            StatusFilterItem(FilterType.REJECTED, "مرفوض", "0", Color(0xFFF44336)),
+            StatusFilterItem(FilterType.SEND, "تم الإرسال", "0", Color(0xFFFF9800)),
+            StatusFilterItem(FilterType.SCHEDULED, "مجدول", "0", Color(0xFF2196F3)),
+            StatusFilterItem(FilterType.ACCEPTED, "مقبول", "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.COMPLETED, "مكتمل", "52", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.IN_REVIEW, "قيد المراجعة", "0", Color(0xFF4A90E2)),
+            StatusFilterItem(FilterType.REVIEW_RTA, "مراجعة RTA", "0", Color(0xFF673AB7)),
+            StatusFilterItem(FilterType.REJECT_AUTHORITIES, "مرفوض", "0", Color(0xFFE91E63)),
+            StatusFilterItem(FilterType.APPROVED_FINAL, "موافقة نهائية", "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.ISSUED, "تم الإصدار", "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.WAITING_INSPECTION, "في انتظار الفحص", "0", Color(0xFF4CAF50)),
+        )
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.heightIn(max = 500.dp)
+        ) {
+            items(statusList.chunked(2)) { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    rowItems.forEach{ item ->
+                        FilterStatusCard(
+                            item = item,
+                            isSelected = selectedFilter == item.type,
+                            onClick = { onFilterSelected(item.type) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    // Fill empty space if odd number of items
+                    if (rowItems.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class StatusFilterItem(
+    val type: FilterType,
+    val label: String,
+    val count: String,
+    val color: Color
+)
+
+@Composable
+fun FilterStatusCard(
+    item: StatusFilterItem,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val extraColors = LocalExtraColors.current
+
+    Card(
+        modifier = modifier
+            .height(80.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        border = if (isSelected) {
+            BorderStroke(2.5.dp, item.color)
+        } else {
+            BorderStroke(0.dp, Color.Transparent)
+        },
+        elevation = CardDefaults.cardElevation(if (isSelected) 2.dp else 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = item.count,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = item.color,
+                lineHeight = 26.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = item.label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
+                color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun SortOrderCard(
+    label: String,
+    icon: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val extraColors = LocalExtraColors.current
+    val accentColor = Color(0xFF2196F3)
+
+    Card(
+        modifier = modifier
+            .height(80.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) accentColor.copy(alpha = 0.1f) else extraColors.cardBackground
+        ),
+        border = if (isSelected) {
+            BorderStroke(2.5.dp, accentColor)
+        } else {
+            BorderStroke(1.dp, Color(0xFFE0E0E0))
+        },
+        elevation = CardDefaults.cardElevation(if (isSelected) 2.dp else 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = icon,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isSelected) accentColor else extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                fontSize = 16.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (isSelected) accentColor else extraColors.whiteInDarkMode.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
+@Composable
+fun StatCard(
+    number: String,
+    label: String,
+    numberColor: Color,
+    accentColor: Color,
+    isSelected: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val extraColors = LocalExtraColors.current
+    Card(
+        modifier = modifier
+            .height(92.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        border = if (isSelected) {
+            BorderStroke(2.5.dp, accentColor)
+        } else {
+            BorderStroke(0.dp, Color.Transparent)
+        },
+        elevation = CardDefaults.cardElevation(if (isSelected) 2.dp else 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = number,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                color = numberColor,
+                lineHeight = 32.sp
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color(0xFF757575),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+// Filter Types - All Status
+enum class FilterType {
+    ALL,
+    DRAFT,
+    REJECTED,
+    CONFIRMED,
+    SEND,
+    PENDING,
+    SCHEDULED,
+    ACCEPTED,
+    COMPLETED,
+    IN_REVIEW,
+    REVIEW_RTA,
+    REJECT_AUTHORITIES,
+    APPROVED_AUTHORITIES,
+    APPROVED_FINAL,
+    ACTION_TAKEN,
+    ISSUED,
+    WAITING_INSPECTION,
+    IN_PROGRESS,
+    NEEDS_ACTION
+}
+
+// Sort Order Types
+enum class SortOrder {
+    ASCENDING,
+    DESCENDING
+}
+

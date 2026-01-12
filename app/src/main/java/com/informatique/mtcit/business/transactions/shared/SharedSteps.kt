@@ -93,33 +93,37 @@ object SharedSteps {
 
     fun sailorInfoStep(
         jobs: List<String>,
+        includeUploadFile: Boolean = true,
+        includeDownloadFile: Boolean = true,
         nationalities: List<String> = emptyList()
     ): StepData {
         val fields = mutableListOf<FormField>()
 
-        // Excel file upload for crew
-        fields.add(
-            FormField.FileUpload(
-                id = "crewExcelFile",
-                labelRes = R.string.sailor_documents,
-                allowedTypes = listOf("xls", "xlsx"),
-                maxSizeMB = 5,
-                mandatory = false
+        if(includeUploadFile) {
+            // Excel file upload for crew
+            fields.add(
+                FormField.FileUpload(
+                    id = "crewExcelFile",
+                    labelRes = R.string.sailor_documents,
+                    allowedTypes = listOf("xls", "xlsx"),
+                    maxSizeMB = 5,
+                    mandatory = false
+                )
             )
-        )
-
-        // Manual sailor entry
-        fields.add(
-            FormField.SailorList(
-                id = "sailors",
-                labelRes = R.string.sailor_info,
-                value = "[]",
-                jobs = jobs,
-                nationalities = nationalities,
-                mandatory = false
+        }
+        if (includeDownloadFile) {
+            // Manual sailor entry
+            fields.add(
+                FormField.SailorList(
+                    id = "sailors",
+                    labelRes = R.string.sailor_info,
+                    value = "[]",
+                    jobs = jobs,
+                    nationalities = nationalities,
+                    mandatory = false
+                )
             )
-        )
-
+        }
         return StepData(
             stepType = StepType.CREW_MANAGEMENT,
             titleRes = R.string.sailor_info,

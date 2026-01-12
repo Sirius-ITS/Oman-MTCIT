@@ -2,7 +2,6 @@ package com.informatique.mtcit.business.transactions
 
 import android.content.Context
 import com.informatique.mtcit.R
-import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.RegistrationRequestManager
@@ -21,10 +20,6 @@ import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
 import com.informatique.mtcit.ui.viewmodels.StepData
 import com.informatique.mtcit.ui.components.DropdownSection
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.ReviewManager
@@ -50,10 +45,8 @@ class RequestInspectionStrategy @Inject constructor(
     private val inspectionRequestManager: com.informatique.mtcit.business.transactions.shared.InspectionRequestManager,  // ✅ NEW: Inspection manager
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : TransactionStrategy, MarineUnitValidatable {
-
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.REQUEST_FOR_INSPECTION.context
-
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
@@ -67,30 +60,23 @@ class RequestInspectionStrategy @Inject constructor(
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
-
     // ✅ NEW: Inspection request lookups
     private var inspectionPurposeOptions: List<String> = emptyList()
     private var inspectionAuthorityOptions: Map<String, List<String>> = emptyMap()
-
     // NEW: Store filtered ship types based on selected category
     private var filteredShipTypeOptions: List<String> = emptyList()
     private var isShipTypeFiltered: Boolean = false
-
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
     // ✅ NEW: Store required documents from API
     private var requiredDocuments: List<RequiredDocumentItem> = emptyList()
-
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
     private val requestTypeId = TransactionType.REQUEST_FOR_INSPECTION.toRequestTypeId()
-
     // ✅ Override the callback property from TransactionStrategy interface
     override var onStepsNeedRebuild: (() -> Unit)? = null
-
     // ✅ NEW: Override the per-lookup callbacks for loading indicators
     override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
     override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
-
     /**
      * ✅ Get the transaction context with all API endpoints
      */
