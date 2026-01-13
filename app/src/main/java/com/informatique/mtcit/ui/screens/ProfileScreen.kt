@@ -1303,9 +1303,9 @@ fun UserProfileHeader(
                     onFilterSelected(selectedFilter)
                 }
             )
-            // Accepted Card (statusId = 7)
+            // Accepted Card (statusId = ACCEPTED_STATUS_ID)
             StatCard(
-                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == 7 }?.count?.toString() ?: "0"),
+                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == StatusIds.ACCEPTED }?.count?.toString() ?: "0"),
                 label = "مقبول",
                 numberColor = Color(0xFF4CAF50),
                 accentColor = Color(0xFF4CAF50),
@@ -1324,9 +1324,9 @@ fun UserProfileHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Send Card (statusId = 4)
+            // Send Card (statusId = SEND_STATUS_ID)
             StatCard(
-                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == 4 }?.count?.toString() ?: "0"),
+                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == StatusIds.SEND }?.count?.toString() ?: "0"),
                 label = "تم الإرسال",
                 numberColor = Color(0xFF2196F3),
                 accentColor = Color(0xFF2196F3),
@@ -1337,9 +1337,9 @@ fun UserProfileHeader(
                     onFilterSelected(selectedFilter)
                 }
             )
-            // Rejected Card (statusId = 2)
+            // Rejected Card (statusId = REJECTED_STATUS_ID)
             StatCard(
-                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == 2 }?.count?.toString() ?: "0"),
+                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == StatusIds.REJECTED }?.count?.toString() ?: "0"),
                 label = "مرفوض",
                 numberColor = Color(0xFFFF9800),
                 accentColor = Color(0xFFFF9800),
@@ -1390,6 +1390,15 @@ fun UserProfileHeader(
             )
         }
     }
+}
+
+/**
+ * Constants for status IDs used in API responses
+ */
+private object StatusIds {
+    const val REJECTED = 2
+    const val SEND = 4
+    const val ACCEPTED = 7
 }
 
 @Composable
@@ -1482,10 +1491,10 @@ fun FilterBottomSheetContent(
         val statusList = listOf(
             StatusFilterItem(FilterType.ALL, "عدد الطلبات", statusCountData?.totalCount?.toString() ?: "0", Color(0xFFE91E63)),
             StatusFilterItem(FilterType.DRAFT, "مسودة", "0", Color(0xFF9E9E9E)),
-            StatusFilterItem(FilterType.REJECTED, "مرفوض", statusCountData?.statusCounts?.find { it.statusId == 2 }?.count?.toString() ?: "0", Color(0xFFF44336)),
-            StatusFilterItem(FilterType.SEND, "تم الإرسال", statusCountData?.statusCounts?.find { it.statusId == 4 }?.count?.toString() ?: "0", Color(0xFFFF9800)),
+            StatusFilterItem(FilterType.REJECTED, "مرفوض", statusCountData?.statusCounts?.find { it.statusId == StatusIds.REJECTED }?.count?.toString() ?: "0", Color(0xFFF44336)),
+            StatusFilterItem(FilterType.SEND, "تم الإرسال", statusCountData?.statusCounts?.find { it.statusId == StatusIds.SEND }?.count?.toString() ?: "0", Color(0xFFFF9800)),
             StatusFilterItem(FilterType.SCHEDULED, "مجدول", "0", Color(0xFF2196F3)),
-            StatusFilterItem(FilterType.ACCEPTED, "مقبول", statusCountData?.statusCounts?.find { it.statusId == 7 }?.count?.toString() ?: "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.ACCEPTED, "مقبول", statusCountData?.statusCounts?.find { it.statusId == StatusIds.ACCEPTED }?.count?.toString() ?: "0", Color(0xFF4CAF50)),
             StatusFilterItem(FilterType.COMPLETED, "مكتمل", "0", Color(0xFF4CAF50)),
             StatusFilterItem(FilterType.IN_REVIEW, "قيد المراجعة", "0", Color(0xFF4A90E2)),
             StatusFilterItem(FilterType.REVIEW_RTA, "مراجعة RTA", "0", Color(0xFF673AB7)),
