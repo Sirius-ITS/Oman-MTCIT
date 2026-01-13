@@ -35,6 +35,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
+import com.informatique.mtcit.data.model.requests.StatusCountData
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.CustomToolbar
 import com.informatique.mtcit.ui.components.localizedApp
@@ -1184,14 +1185,23 @@ fun UserProfileHeader(
     currentSortOrder: SortOrder = SortOrder.DESCENDING
 ) {
     val extraColors = LocalExtraColors.current
+    
+    // Get RequestsViewModel
+    val requestsViewModel: com.informatique.mtcit.ui.viewmodels.RequestsViewModel = hiltViewModel()
+    
+    // Collect status counts state from ViewModel
+    val statusCountData by requestsViewModel.statusCountData.collectAsState()
+    val isLoadingStatusCounts by requestsViewModel.isLoadingStatusCounts.collectAsState()
+    
     var selectedFilter by remember { mutableStateOf<FilterType?>(FilterType.ALL) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var searchQuery by remember { mutableStateOf("") }
 
-    // Set "All Requests" as selected by default on first composition
+    // Fetch status counts on first composition
     LaunchedEffect(Unit) {
         onFilterSelected(FilterType.ALL)
+        requestsViewModel.getStatusCounts()
     }
 
     Column(
@@ -1199,47 +1209,6 @@ fun UserProfileHeader(
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
     ) {
-//        // User Info Row
-//        Row(
-//            modifier = Modifier.fillMaxWidth(),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            // Profile Avatar
-//            Box(
-//                modifier = Modifier
-//                    .size(50.dp)
-//                    .background(
-//                        color = Color(0xFF2196F3),
-//                        shape = CircleShape
-//                    ),
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Default.Person,
-//                    contentDescription = "Profile",
-//                    tint = Color.White,
-//                    modifier = Modifier.size(28.dp)
-//                )
-//            }
-//            Spacer(modifier = Modifier.width(16.dp))
-//            Column {
-//                Text(
-//                    text = "أحمد محمد",
-//                    fontSize = 22.sp,
-//                    fontWeight = FontWeight.Bold,
-//                    color = Color.White
-//                )
-//                Spacer(modifier = Modifier.height(2.dp))
-//                Text(
-//                    text = "Civil ID: 123456789",
-//                    fontSize = 13.sp,
-//                    fontWeight = FontWeight.Normal,
-//                    color = Color.White.copy(alpha = 0.7f)
-//                )
-//            }
-//        }
-//        Spacer(modifier = Modifier.height(20.dp))
-
         // Search Bar with Filter Icon - Functional TextField
         Card(
             modifier = Modifier
@@ -1316,13 +1285,14 @@ fun UserProfileHeader(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Statistics Grid - 4 Main Cards
+        // Statistics Grid - 4 Main Cards with API data
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Total Count Card
             StatCard(
-                number = "671",
+                number = if (isLoadingStatusCounts) "..." else statusCountData?.totalCount?.toString() ?: "0",
                 label = "عدد الطلبات",
                 numberColor = Color(0xFFE91E63),
                 accentColor = Color(0xFFE91E63),
@@ -1333,15 +1303,16 @@ fun UserProfileHeader(
                     onFilterSelected(selectedFilter)
                 }
             )
+            // Accepted Card (statusId = ACCEPTED_STATUS_ID)
             StatCard(
-                number = "52",
-                label = "مكتمل",
+                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == StatusIds.ACCEPTED }?.count?.toString() ?: "0"),
+                label = "مقبول",
                 numberColor = Color(0xFF4CAF50),
                 accentColor = Color(0xFF4CAF50),
-                isSelected = selectedFilter == FilterType.COMPLETED,
+                isSelected = selectedFilter == FilterType.ACCEPTED,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.COMPLETED) null else FilterType.COMPLETED
+                    selectedFilter = if (selectedFilter == FilterType.ACCEPTED) null else FilterType.ACCEPTED
                     onFilterSelected(selectedFilter)
                 }
             )
@@ -1353,27 +1324,29 @@ fun UserProfileHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Send Card (statusId = SEND_STATUS_ID)
             StatCard(
-                number = "356",
-                label = "قيد المعالجة",
+                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == StatusIds.SEND }?.count?.toString() ?: "0"),
+                label = "تم الإرسال",
                 numberColor = Color(0xFF2196F3),
                 accentColor = Color(0xFF2196F3),
-                isSelected = selectedFilter == FilterType.IN_PROGRESS,
+                isSelected = selectedFilter == FilterType.SEND,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.IN_PROGRESS) null else FilterType.IN_PROGRESS
+                    selectedFilter = if (selectedFilter == FilterType.SEND) null else FilterType.SEND
                     onFilterSelected(selectedFilter)
                 }
             )
+            // Rejected Card (statusId = REJECTED_STATUS_ID)
             StatCard(
-                number = "263",
-                label = "يحتاج إجراء",
+                number = if (isLoadingStatusCounts) "..." else (statusCountData?.statusCounts?.find { it.statusId == StatusIds.REJECTED }?.count?.toString() ?: "0"),
+                label = "مرفوض",
                 numberColor = Color(0xFFFF9800),
                 accentColor = Color(0xFFFF9800),
-                isSelected = selectedFilter == FilterType.NEEDS_ACTION,
+                isSelected = selectedFilter == FilterType.REJECTED,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.NEEDS_ACTION) null else FilterType.NEEDS_ACTION
+                    selectedFilter = if (selectedFilter == FilterType.REJECTED) null else FilterType.REJECTED
                     onFilterSelected(selectedFilter)
                 }
             )
@@ -1399,6 +1372,7 @@ fun UserProfileHeader(
             FilterBottomSheetContent(
                 selectedFilter = selectedFilter,
                 currentSortOrder = currentSortOrder,
+                statusCountData = statusCountData,
                 onFilterSelected = { filter ->
                     selectedFilter = filter
                     onFilterSelected(filter)
@@ -1418,10 +1392,20 @@ fun UserProfileHeader(
     }
 }
 
+/**
+ * Constants for status IDs used in API responses
+ */
+private object StatusIds {
+    const val REJECTED = 2
+    const val SEND = 4
+    const val ACCEPTED = 7
+}
+
 @Composable
 fun FilterBottomSheetContent(
     selectedFilter: FilterType?,
     currentSortOrder: SortOrder,
+    statusCountData: StatusCountData? = null,
     onFilterSelected: (FilterType) -> Unit,
     onSortOrderChanged: (SortOrder) -> Unit,
     onClearFilter: () -> Unit
@@ -1503,15 +1487,15 @@ fun FilterBottomSheetContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // All Status Cards in Grid
+        // All Status Cards in Grid - use API data when available
         val statusList = listOf(
-            StatusFilterItem(FilterType.ALL, "عدد الطلبات", "671", Color(0xFFE91E63)),
+            StatusFilterItem(FilterType.ALL, "عدد الطلبات", statusCountData?.totalCount?.toString() ?: "0", Color(0xFFE91E63)),
             StatusFilterItem(FilterType.DRAFT, "مسودة", "0", Color(0xFF9E9E9E)),
-            StatusFilterItem(FilterType.REJECTED, "مرفوض", "0", Color(0xFFF44336)),
-            StatusFilterItem(FilterType.SEND, "تم الإرسال", "0", Color(0xFFFF9800)),
+            StatusFilterItem(FilterType.REJECTED, "مرفوض", statusCountData?.statusCounts?.find { it.statusId == StatusIds.REJECTED }?.count?.toString() ?: "0", Color(0xFFF44336)),
+            StatusFilterItem(FilterType.SEND, "تم الإرسال", statusCountData?.statusCounts?.find { it.statusId == StatusIds.SEND }?.count?.toString() ?: "0", Color(0xFFFF9800)),
             StatusFilterItem(FilterType.SCHEDULED, "مجدول", "0", Color(0xFF2196F3)),
-            StatusFilterItem(FilterType.ACCEPTED, "مقبول", "0", Color(0xFF4CAF50)),
-            StatusFilterItem(FilterType.COMPLETED, "مكتمل", "52", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.ACCEPTED, "مقبول", statusCountData?.statusCounts?.find { it.statusId == StatusIds.ACCEPTED }?.count?.toString() ?: "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.COMPLETED, "مكتمل", "0", Color(0xFF4CAF50)),
             StatusFilterItem(FilterType.IN_REVIEW, "قيد المراجعة", "0", Color(0xFF4A90E2)),
             StatusFilterItem(FilterType.REVIEW_RTA, "مراجعة RTA", "0", Color(0xFF673AB7)),
             StatusFilterItem(FilterType.REJECT_AUTHORITIES, "مرفوض", "0", Color(0xFFE91E63)),

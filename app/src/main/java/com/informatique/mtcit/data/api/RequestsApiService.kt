@@ -3,6 +3,7 @@ package com.informatique.mtcit.data.api
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.model.requests.RequestsApiResponse
 import com.informatique.mtcit.data.model.requests.RequestDetailResponse
+import com.informatique.mtcit.data.model.requests.StatusCountResponse
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
 import kotlinx.serialization.json.Json
@@ -298,6 +299,96 @@ class RequestsApiService @Inject constructor(
             throw e
         } catch (e: Exception) {
             println("❌ Exception in issueCertificate: ${e.message}")
+            e.printStackTrace()
+            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+        }
+    }
+
+    /**
+     * Get status counts by customer ID (civil ID)
+     * Endpoint: GET /api/v1/registration-request-view/customer/count-by-status/{customerId}
+     *
+     * @param civilId User's civil ID (from token)
+     * @return Result with StatusCountResponse
+     * @throws ApiException for HTTP error codes
+     */
+    suspend fun getStatusCounts(
+        civilId: String
+    ): Result<StatusCountResponse> {
+        return try {
+            println("🔍 Fetching status counts for civilId: $civilId")
+
+            val endpoint = "registration-request-view/customer/count-by-status/$civilId"
+            println("📡 API Call: $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Status counts response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            // Parse the full response using kotlinx.serialization
+                            val statusCountResponse: StatusCountResponse = json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Parsed status counts successfully")
+                            println("📄 Total Count: ${statusCountResponse.data?.totalCount}")
+                            statusCountResponse.data?.statusCounts?.forEach { statusCount ->
+                                println("📋 StatusId=${statusCount.statusId}: count=${statusCount.count}")
+                            }
+
+                            Result.success(statusCountResponse)
+                        } else {
+                            // Handle specific error codes
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "حدث خطأ في الخادم"
+
+                            println("❌ API Error: Status code $statusCode - $message")
+
+                            when (statusCode) {
+                                401 -> throw ApiException(401, message)
+                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
+                                404 -> throw ApiException(404, "البيانات غير موجودة")
+                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                else -> throw ApiException(statusCode, message)
+                            }
+                        }
+                    } else {
+                        println("❌ Empty JSON response")
+                        throw ApiException(500, "استجابة فارغة من الخادم")
+                    }
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    val errorMessage = response.error?.toString() ?: "حدث خطأ في الخادم"
+
+                    val errorCode = when {
+                        errorMessage.contains("401", ignoreCase = true) -> 401
+                        errorMessage.contains("403", ignoreCase = true) -> 403
+                        errorMessage.contains("404", ignoreCase = true) -> 404
+                        errorMessage.contains("500", ignoreCase = true) -> 500
+                        else -> extractStatusCode(errorMessage) ?: 500
+                    }
+
+                    val friendlyMessage = when (errorCode) {
+                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        403 -> "ليس لديك صلاحية للوصول"
+                        404 -> "البيانات غير موجودة"
+                        else -> errorMessage
+                    }
+
+                    throw ApiException(errorCode, friendlyMessage)
+                }
+            }
+        } catch (e: ApiException) {
+            println("❌ ApiException in getStatusCounts: ${e.code} - ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in getStatusCounts: ${e.message}")
             e.printStackTrace()
             throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
         }

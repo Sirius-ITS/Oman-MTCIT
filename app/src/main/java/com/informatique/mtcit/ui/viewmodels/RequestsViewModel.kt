@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.informatique.mtcit.business.requests.RequestsStrategy
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.AppError
+import com.informatique.mtcit.data.api.RequestsApiService
 import com.informatique.mtcit.data.model.requests.PaginationState
+import com.informatique.mtcit.data.model.requests.StatusCountData
 import com.informatique.mtcit.data.model.requests.UserRequestUiModel
 import com.informatique.mtcit.data.repository.AuthRepository
 import com.informatique.mtcit.util.UserHelper
@@ -24,6 +26,7 @@ import javax.inject.Inject
 @HiltViewModel
 class RequestsViewModel @Inject constructor(
     private val requestsStrategy: RequestsStrategy,
+    private val requestsApiService: RequestsApiService, // ✅ NEW: Inject RequestsApiService
     private val authRepository: AuthRepository, // ✅ NEW: Inject AuthRepository for token refresh
     @ApplicationContext private val appContext: Context
 ) : BaseViewModel() {
@@ -48,6 +51,13 @@ class RequestsViewModel @Inject constructor(
     // ✅ NEW: Navigation to login trigger (like MainCategoriesViewModel)
     private val _shouldNavigateToLogin = MutableStateFlow(false)
     val shouldNavigateToLogin: StateFlow<Boolean> = _shouldNavigateToLogin.asStateFlow()
+
+    // ✅ NEW: Status counts state
+    private val _statusCountData = MutableStateFlow<StatusCountData?>(null)
+    val statusCountData: StateFlow<StatusCountData?> = _statusCountData.asStateFlow()
+
+    private val _isLoadingStatusCounts = MutableStateFlow(false)
+    val isLoadingStatusCounts: StateFlow<Boolean> = _isLoadingStatusCounts.asStateFlow()
 
     private var currentCivilId: String? = null
     private val pageSize = 10
@@ -284,5 +294,52 @@ class RequestsViewModel @Inject constructor(
      */
     fun clearNavigationTrigger() {
         _navigationToRequestDetail.value = null
+    }
+
+    /**
+     * ✅ NEW: Get status counts by customer ID
+     * Fetches status counts from API for the current user
+     */
+    fun getStatusCounts() {
+        viewModelScope.launch {
+            try {
+                _isLoadingStatusCounts.value = true
+
+                val civilId = currentCivilId ?: UserHelper.getOwnerCivilId(appContext)
+
+                if (civilId == null) {
+                    println("⚠️ RequestsViewModel: No token found when fetching status counts")
+                    _isLoadingStatusCounts.value = false
+                    return@launch
+                }
+
+                println("📱 RequestsViewModel: Fetching status counts for civilId=$civilId")
+
+                val result = requestsApiService.getStatusCounts(civilId)
+
+                result.fold(
+                    onSuccess = { response ->
+                        println("✅ RequestsViewModel: Status counts loaded successfully")
+                        _statusCountData.value = response.data
+                        println("📊 Total Count: ${response.data?.totalCount}")
+                        response.data?.statusCounts?.forEach { statusCount ->
+                            println("📋 StatusId=${statusCount.statusId}: count=${statusCount.count}")
+                        }
+                    },
+                    onFailure = { error ->
+                        println("❌ RequestsViewModel: Failed to load status counts: ${error.message}")
+                        // Don't show error to user, just use fallback values
+                    }
+                )
+            } catch (e: ApiException) {
+                println("❌ API Error in getStatusCounts: ${e.code} - ${e.message}")
+                // Don't show error to user for status counts
+            } catch (e: Exception) {
+                println("❌ Exception in getStatusCounts: ${e.message}")
+                // Don't show error to user for status counts
+            } finally {
+                _isLoadingStatusCounts.value = false
+            }
+        }
     }
 }
