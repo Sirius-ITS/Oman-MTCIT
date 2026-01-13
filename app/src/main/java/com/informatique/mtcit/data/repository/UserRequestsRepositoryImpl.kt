@@ -16,18 +16,37 @@ class UserRequestsRepositoryImpl @Inject constructor(
     override suspend fun getUserRequests(
         civilId: String,
         size: Int,
-        page: Int
+        page: Int,
+        sort: String
     ): Result<RequestsApiResponse> = withContext(Dispatchers.IO) {
         try {
-            println("📦 UserRequestsRepository: Fetching requests for civilId=$civilId, page=$page, size=$size")
+            println("📦 UserRequestsRepository: Fetching requests for civilId=$civilId, page=$page, size=$size, sort=$sort")
 
             requestsApiService.getUserRequests(
                 civilId = civilId,
                 size = size,
-                page = page
+                page = page,
+                sort = sort  // ✅ Use dynamic sort parameter
             )
         } catch (e: Exception) {
             println("❌ UserRequestsRepository: Error fetching requests: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getFilteredUserRequests(
+        civilId: String,
+        filter: com.informatique.mtcit.data.model.requests.RequestFilterDto
+    ): Result<RequestsApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            println("📦 UserRequestsRepository: Fetching filtered requests for civilId=$civilId with statusId=${filter.statusId}")
+
+            requestsApiService.getFilteredUserRequests(
+                civilId = civilId,
+                filter = filter
+            )
+        } catch (e: Exception) {
+            println("❌ UserRequestsRepository: Error fetching filtered requests: ${e.message}")
             Result.failure(e)
         }
     }

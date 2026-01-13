@@ -14,11 +14,24 @@ interface UserRequestsRepository {
      * @param civilId User's civil ID
      * @param size Number of items per page
      * @param page Page number (0-based)
+     * @param sort Sort order (e.g., "lastChange,desc" or "lastChange,asc")
      */
     suspend fun getUserRequests(
         civilId: String,
         size: Int = 10,
-        page: Int = 0
+        page: Int = 0,
+        sort: String = "lastChange,desc"
+    ): Result<RequestsApiResponse>
+
+    /**
+     * Get filtered user requests with pagination
+     * Uses Base64 encoded filter parameter
+     * @param civilId User's civil ID
+     * @param filter RequestFilterDto containing filter criteria
+     */
+    suspend fun getFilteredUserRequests(
+        civilId: String,
+        filter: com.informatique.mtcit.data.model.requests.RequestFilterDto
     ): Result<RequestsApiResponse>
 
     /**

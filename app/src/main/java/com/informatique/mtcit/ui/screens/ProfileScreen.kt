@@ -1,25 +1,59 @@
+@file:Suppress("DEPRECATION")
+
 package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBackIosNew
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.TrendingUp
-import androidx.compose.material.icons.outlined.Dehaze
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -40,8 +74,8 @@ import com.informatique.mtcit.ui.components.CustomToolbar
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
-
 import java.util.Locale
+
 @Composable
 fun ProfileScreen(
     navController: NavController,
@@ -52,9 +86,27 @@ fun ProfileScreen(
     val window = (context as? Activity)?.window
 
     // States for search and filter
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf<FilterType?>(FilterType.ALL) }
-    var sortOrder by remember { mutableStateOf<SortOrder>(SortOrder.DESCENDING) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedFilter by rememberSaveable { mutableStateOf<FilterType?>(FilterType.ALL) }
+    var sortOrder by rememberSaveable { mutableStateOf(SortOrder.DESCENDING) }
+
+    // ✅ Fetch status counts from API
+    val statusCounts by viewModel.statusCounts.collectAsState()
+    val statusCountsLoading by viewModel.statusCountsLoading.collectAsState()
+    val statusCountsError by viewModel.statusCountsError.collectAsState()
+
+    // ✅ Fetch status counts on screen load
+    LaunchedEffect(Unit) {
+        viewModel.getStatusCounts()
+    }
+
+    // ✅ Show error if any
+    LaunchedEffect(statusCountsError) {
+        statusCountsError?.let { error ->
+            println("❌ Status counts error: $error")
+            // You can show a Snackbar here if needed
+        }
+    }
 
     LaunchedEffect(window) {
         window?.let {
@@ -157,43 +209,44 @@ fun ProfileScreen(
         }
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            topBar = { TopProfileBar(navController = navController) },
-            containerColor = Color.Transparent
-        ){
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(it)
-                    .padding(bottom = 16.dp)
-            ) {
-                item {
-                    Spacer(modifier = Modifier.height(32.dp))
-                    UserProfileHeader(
+            topBar = {
+                Column{
+                    TopProfileBar(navController = navController)
+                    Search(
                         onFilterSelected = { filterType ->
                             selectedFilter = filterType
                             println("Selected filter: $filterType")
                         },
-                        onSearchQueryChanged = { query ->
-                            searchQuery = query
-                            println("Search query: $query")
-                        },
                         onSortOrderChanged = { order ->
                             sortOrder = order
-                            println("Sort order: $order")
+                            println("🔄 Sort order changed: $order")
                         },
-                        currentSortOrder = sortOrder
-                    )
-                    Spacer(modifier = Modifier.height(24.dp))
-                    FormsSection(
-                        navController = navController,
-                        viewModel = viewModel,
-                        searchQuery = searchQuery,
+                        currentSortOrder = sortOrder,
                         selectedFilter = selectedFilter,
-                        sortOrder = sortOrder
-                    )
-                    Spacer(modifier = Modifier.height(50.dp))
+                        onSearchQueryChanged = { query ->
+                        searchQuery = query
+                        println("Search query: $query")
+                    }, )
                 }
-            }
+                },
+            containerColor = Color.Transparent
+        ){
+            FormsSectionWithLazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(it)
+                    .padding(bottom = 16.dp),
+                navController = navController,
+                searchQuery = searchQuery,
+                selectedFilter = selectedFilter,
+                sortOrder = sortOrder,
+                onFilterSelected = { filterType ->
+                    selectedFilter = filterType
+                    println("Selected filter: $filterType")
+                },
+                statusCounts = statusCounts,
+                statusCountsLoading = statusCountsLoading
+            )
         }
         Box(
             modifier = Modifier
@@ -214,238 +267,253 @@ fun ProfileScreen(
     }
 }
 
+//@Composable
+//fun RequestStatisticsSection() {
+//    val extraColors = LocalExtraColors.current
+//
+//    Card(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(horizontal = 20.dp),
+//        shape = RoundedCornerShape(20.dp),
+//        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+//        elevation = CardDefaults.cardElevation(0.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(20.dp)
+//        ) {
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.TrendingUp,
+//                    contentDescription = null,
+//                    tint = extraColors.whiteInDarkMode,
+//                    modifier = Modifier.size(24.dp)
+//                )
+//                Spacer(modifier = Modifier.width(8.dp))
+//                Text(
+//                    text = localizedApp(R.string.request_statistics_title),
+//                    fontSize = 18.sp,
+//                    fontWeight = FontWeight.Normal,
+//                    letterSpacing = 1.sp,
+//                    color = extraColors.whiteInDarkMode
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.height(24.dp))
+//
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(200.dp),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                DonutChart(
+//                    totalRequests = 54,
+//                    completedRequests = 40,
+//                    processingRequests = 5,
+//                    actionNeededRequests = 5,
+//                    rejectedRequests = 4
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.height(42.dp))
+//
+//            Column(
+//                modifier = Modifier.fillMaxWidth(),
+//                verticalArrangement = Arrangement.spacedBy(12.dp)
+//            ) {
+//                LegendItem(
+//                    label = localizedApp(R.string.completed_requests),
+//                    value = 40,
+//                    percentage = 1.47f,
+//                    color = Color(0xFF6B7FD7)
+//                )
+//                LegendItem(
+//                    label = localizedApp(R.string.processing_requests),
+//                    value = 5,
+//                    percentage = 4.17f,
+//                    color = Color(0xFF5DD7A7)
+//                )
+//                LegendItem(
+//                    label = localizedApp(R.string.action_needed_requests),
+//                    value = 5,
+//                    percentage = 4.48f,
+//                    color = Color(0xFFFF9F6E)
+//                )
+//                LegendItem(
+//                    label = localizedApp(R.string.rejected_requests),
+//                    value = 4,
+//                    percentage = 10.35f,
+//                    color = Color(0xFFFF6B8A)
+//                )
+//            }
+//        }
+//    }
+//}
+
+//@Composable
+//fun DonutChart(
+//    totalRequests: Int,
+//    completedRequests: Int,
+//    processingRequests: Int,
+//    actionNeededRequests: Int,
+//    rejectedRequests: Int
+//) {
+//    val extraColors = LocalExtraColors.current
+//
+//    Box(
+//        modifier = Modifier.size(200.dp),
+//        contentAlignment = Alignment.Center
+//    ) {
+//        androidx.compose.foundation.Canvas(
+//            modifier = Modifier.fillMaxSize()
+//        ) {
+//            val strokeWidth = 45.dp.toPx()
+//            val total = totalRequests.toFloat()
+//            var startAngle = -90f
+//
+//            val completedSweep = (completedRequests / total) * 360f
+//            drawArc(
+//                color = Color(0xFF6B7FD7),
+//                startAngle = startAngle,
+//                sweepAngle = completedSweep,
+//                useCenter = false,
+//                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+//            )
+//            startAngle += completedSweep
+//
+//            val processingSweep = (processingRequests / total) * 360f
+//            drawArc(
+//                color = Color(0xFF5DD7A7),
+//                startAngle = startAngle,
+//                sweepAngle = processingSweep,
+//                useCenter = false,
+//                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+//            )
+//            startAngle += processingSweep
+//
+//            val actionSweep = (actionNeededRequests / total) * 360f
+//            drawArc(
+//                color = Color(0xFFFF9F6E),
+//                startAngle = startAngle,
+//                sweepAngle = actionSweep,
+//                useCenter = false,
+//                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+//            )
+//            startAngle += actionSweep
+//
+//            val rejectedSweep = (rejectedRequests / total) * 360f
+//            drawArc(
+//                color = Color(0xFFFF6B8A),
+//                startAngle = startAngle,
+//                sweepAngle = rejectedSweep,
+//                useCenter = false,
+//                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
+//            )
+//        }
+//
+//        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//            Text(
+//                text = "$totalRequests",
+//                fontSize = 36.sp,
+//                fontWeight = FontWeight.SemiBold,
+//                letterSpacing = 1.sp,
+//                color = extraColors.whiteInDarkMode
+//            )
+//            Text(
+//                text = localizedApp(R.string.total_requests_label),
+//                fontSize = 14.sp,
+//                color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+//            )
+//        }
+//    }
+//}
+
+//@Composable
+//fun LegendItem(
+//    label: String,
+//    value: Int,
+//    percentage: Float,
+//    color: Color
+//) {
+//    val extraColors = LocalExtraColors.current
+//
+//    Row(
+//        modifier = Modifier.fillMaxWidth(),
+//        horizontalArrangement = Arrangement.SpaceBetween,
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//        Row(
+//            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Box(
+//                modifier = Modifier
+//                    .size(16.dp)
+//                    .background(color, shape = CircleShape)
+//            )
+//            Text(
+//                text = label,
+//                fontSize = 14.sp,
+//                color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
+//            )
+//        }
+//        Row(
+//            horizontalArrangement = Arrangement.spacedBy(8.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Text(
+//                text = "$value",
+//                fontSize = 14.sp,
+//                fontWeight = FontWeight.Normal,
+//                letterSpacing = 1.sp,
+//                color = extraColors.whiteInDarkMode,
+//                maxLines = 1
+//            )
+//            Text(
+//                text = "(%.2f%%)".format(percentage),
+//                fontSize = 14.sp,
+//                fontWeight = FontWeight.Normal,
+//                letterSpacing = 1.sp,
+//                color = extraColors.whiteInDarkMode,
+//                maxLines = 1
+//            )
+//        }
+//    }
+//}
+
 @Composable
-fun RequestStatisticsSection() {
-    val extraColors = LocalExtraColors.current
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.TrendingUp,
-                    contentDescription = null,
-                    tint = extraColors.whiteInDarkMode,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = localizedApp(R.string.request_statistics_title),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal,
-                    letterSpacing = 1.sp,
-                    color = extraColors.whiteInDarkMode
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                DonutChart(
-                    totalRequests = 54,
-                    completedRequests = 40,
-                    processingRequests = 5,
-                    actionNeededRequests = 5,
-                    rejectedRequests = 4
-                )
-            }
-
-            Spacer(modifier = Modifier.height(42.dp))
-
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                LegendItem(
-                    label = localizedApp(R.string.completed_requests),
-                    value = 40,
-                    percentage = 1.47f,
-                    color = Color(0xFF6B7FD7)
-                )
-                LegendItem(
-                    label = localizedApp(R.string.processing_requests),
-                    value = 5,
-                    percentage = 4.17f,
-                    color = Color(0xFF5DD7A7)
-                )
-                LegendItem(
-                    label = localizedApp(R.string.action_needed_requests),
-                    value = 5,
-                    percentage = 4.48f,
-                    color = Color(0xFFFF9F6E)
-                )
-                LegendItem(
-                    label = localizedApp(R.string.rejected_requests),
-                    value = 4,
-                    percentage = 10.35f,
-                    color = Color(0xFFFF6B8A)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun DonutChart(
-    totalRequests: Int,
-    completedRequests: Int,
-    processingRequests: Int,
-    actionNeededRequests: Int,
-    rejectedRequests: Int
-) {
-    val extraColors = LocalExtraColors.current
-
-    Box(
-        modifier = Modifier.size(200.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        androidx.compose.foundation.Canvas(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val strokeWidth = 45.dp.toPx()
-            val total = totalRequests.toFloat()
-            var startAngle = -90f
-
-            val completedSweep = (completedRequests / total) * 360f
-            drawArc(
-                color = Color(0xFF6B7FD7),
-                startAngle = startAngle,
-                sweepAngle = completedSweep,
-                useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-            )
-            startAngle += completedSweep
-
-            val processingSweep = (processingRequests / total) * 360f
-            drawArc(
-                color = Color(0xFF5DD7A7),
-                startAngle = startAngle,
-                sweepAngle = processingSweep,
-                useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-            )
-            startAngle += processingSweep
-
-            val actionSweep = (actionNeededRequests / total) * 360f
-            drawArc(
-                color = Color(0xFFFF9F6E),
-                startAngle = startAngle,
-                sweepAngle = actionSweep,
-                useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-            )
-            startAngle += actionSweep
-
-            val rejectedSweep = (rejectedRequests / total) * 360f
-            drawArc(
-                color = Color(0xFFFF6B8A),
-                startAngle = startAngle,
-                sweepAngle = rejectedSweep,
-                useCenter = false,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-            )
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = "$totalRequests",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp,
-                color = extraColors.whiteInDarkMode
-            )
-            Text(
-                text = localizedApp(R.string.total_requests_label),
-                fontSize = 14.sp,
-                color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
-
-@Composable
-fun LegendItem(
-    label: String,
-    value: Int,
-    percentage: Float,
-    color: Color
-) {
-    val extraColors = LocalExtraColors.current
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .background(color, shape = CircleShape)
-            )
-            Text(
-                text = label,
-                fontSize = 14.sp,
-                color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "$value",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = 1.sp,
-                color = extraColors.whiteInDarkMode,
-                maxLines = 1
-            )
-            Text(
-                text = "(%.2f%%)".format(percentage),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = 1.sp,
-                color = extraColors.whiteInDarkMode,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-fun FormsSection(
+fun FormsSectionWithLazyColumn(
+    modifier: Modifier = Modifier,
     navController: NavController,
-    viewModel: MarineRegistrationViewModel = hiltViewModel(),
     searchQuery: String = "",
     selectedFilter: FilterType? = null,
-    sortOrder: SortOrder = SortOrder.DESCENDING
+    sortOrder: SortOrder = SortOrder.DESCENDING,
+    onFilterSelected: (FilterType?) -> Unit = {},
+    statusCounts: com.informatique.mtcit.data.model.requests.StatusCountResponse?,
+    statusCountsLoading: Boolean
 ) {
     val extraColors = LocalExtraColors.current
-
-    // ✅ Use the correct RequestsViewModel (not UserRequestsViewModel)
     val requestsViewModel: com.informatique.mtcit.ui.viewmodels.RequestsViewModel = hiltViewModel()
+
+    // ✅ Listen to sortOrder changes and trigger API call
+    LaunchedEffect(sortOrder) {
+        val ascending = sortOrder == SortOrder.ASCENDING
+        println("🔄 Sort order changed in FormsSectionWithLazyColumn: $sortOrder (ascending=$ascending)")
+        requestsViewModel.changeSortOrder(ascending)
+    }
+
+    // ✅ NEW: Listen to filter changes and trigger API call with filter
+    LaunchedEffect(selectedFilter) {
+        val statusId = selectedFilter?.getStatusId()
+        println("🔍 Filter changed in FormsSectionWithLazyColumn: $selectedFilter (statusId=$statusId)")
+        requestsViewModel.applyFilter(statusId)
+    }
 
     val requests by requestsViewModel.requests.collectAsState()
     val isLoading by requestsViewModel.isLoading.collectAsState()
@@ -453,15 +521,15 @@ fun FormsSection(
     val paginationState by requestsViewModel.paginationState.collectAsState()
     val appError by requestsViewModel.appError.collectAsState()
 
-    // ✅ Filter and sort requests based on search query, selected filter, and sort order
-    val filteredRequests = remember(requests, searchQuery, selectedFilter, sortOrder) {
+    // ✅ Filter requests based on search query ONLY (status filter now handled by API)
+    val filteredRequests = remember(requests, searchQuery) {
         var result = requests
 
-        // Apply search filter (search in request serial or ship name)
+        // Apply search filter (client-side filtering for search query)
         if (searchQuery.isNotBlank()) {
             result = result.filter { request ->
                 request.requestSerial.contains(searchQuery, ignoreCase = true) ||
-                request.shipName.contains(searchQuery, ignoreCase = true)
+                        request.shipName.contains(searchQuery, ignoreCase = true)
             }
         }
 
@@ -470,37 +538,36 @@ fun FormsSection(
             result = result.filter { request ->
                 when (selectedFilter) {
                     FilterType.COMPLETED -> request.statusName.contains("مكتمل", ignoreCase = true) ||
-                                           request.statusName.contains("completed", ignoreCase = true)
+                            request.statusName.contains("completed", ignoreCase = true)
                     FilterType.IN_PROGRESS -> request.statusName.contains("قيد المعالجة", ignoreCase = true) ||
-                                             request.statusName.contains("in progress", ignoreCase = true) ||
-                                             request.statusName.contains("processing", ignoreCase = true)
+                            request.statusName.contains("in progress", ignoreCase = true) ||
+                            request.statusName.contains("processing", ignoreCase = true)
                     FilterType.NEEDS_ACTION -> request.statusName.contains("يحتاج إجراء", ignoreCase = true) ||
-                                              request.statusName.contains("needs action", ignoreCase = true) ||
-                                              request.statusName.contains("action needed", ignoreCase = true)
+                            request.statusName.contains("needs action", ignoreCase = true) ||
+                            request.statusName.contains("action needed", ignoreCase = true)
                     FilterType.DRAFT -> request.statusName.contains("مسودة", ignoreCase = true) ||
-                                       request.statusName.contains("draft", ignoreCase = true)
+                            request.statusName.contains("draft", ignoreCase = true)
                     FilterType.REJECTED -> request.statusName.contains("مرفوض", ignoreCase = true) ||
-                                          request.statusName.contains("rejected", ignoreCase = true)
+                            request.statusName.contains("rejected", ignoreCase = true)
                     FilterType.PENDING -> request.statusName.contains("معلق", ignoreCase = true) ||
-                                         request.statusName.contains("pending", ignoreCase = true)
+                            request.statusName.contains("pending", ignoreCase = true)
                     FilterType.ACCEPTED -> request.statusName.contains("مقبول", ignoreCase = true) ||
-                                          request.statusName.contains("accepted", ignoreCase = true)
+                            request.statusName.contains("accepted", ignoreCase = true)
                     FilterType.CONFIRMED -> request.statusName.contains("مؤكد", ignoreCase = true) ||
-                                           request.statusName.contains("confirmed", ignoreCase = true)
+                            request.statusName.contains("confirmed", ignoreCase = true)
                     FilterType.SEND -> request.statusName.contains("تم الإرسال", ignoreCase = true) ||
-                                      request.statusName.contains("sent", ignoreCase = true)
+                            request.statusName.contains("sent", ignoreCase = true)
                     FilterType.SCHEDULED -> request.statusName.contains("مجدول", ignoreCase = true) ||
-                                           request.statusName.contains("scheduled", ignoreCase = true)
+                            request.statusName.contains("scheduled", ignoreCase = true)
                     FilterType.IN_REVIEW -> request.statusName.contains("قيد المراجعة", ignoreCase = true) ||
-                                           request.statusName.contains("in review", ignoreCase = true)
+                            request.statusName.contains("in review", ignoreCase = true)
                     FilterType.ISSUED -> request.statusName.contains("تم الإصدار", ignoreCase = true) ||
-                                        request.statusName.contains("issued", ignoreCase = true)
+                            request.statusName.contains("issued", ignoreCase = true)
                     else -> true
                 }
             }
         }
 
-        // Apply sort order (sort by modification date)
         when (sortOrder) {
             SortOrder.ASCENDING -> result.sortedBy { it.modificationDate }
             SortOrder.DESCENDING -> result.sortedByDescending { it.modificationDate }
@@ -509,39 +576,35 @@ fun FormsSection(
 
     // ✅ NEW: Collect navigation trigger for request detail
     val navigationToRequestDetail by requestsViewModel.navigationToRequestDetail.collectAsState()
-
-    // ✅ NEW: Collect navigation trigger (like MainCategoriesScreen)
     val shouldNavigateToLogin by requestsViewModel.shouldNavigateToLogin.collectAsState()
 
-    // ✅ NEW: Handle navigation to request detail screen
+    // ✅ Handle navigation to request detail screen
     LaunchedEffect(navigationToRequestDetail) {
         navigationToRequestDetail?.let { (requestId, requestTypeId) ->
-            println("🔍 ProfileScreen: Navigating to request detail - ID: $requestId, TypeID: $requestTypeId")
+            println("🔍 FormsSectionWithLazyColumn: Navigating to request detail - ID: $requestId, TypeID: $requestTypeId")
             navController.navigate(NavRoutes.ApiRequestDetailRoute.createRoute(requestId, requestTypeId))
             requestsViewModel.clearNavigationTrigger()
         }
     }
 
-    // ✅ NEW: Handle navigation to login (like MainCategoriesScreen)
+    // ✅ Handle navigation to login
     LaunchedEffect(shouldNavigateToLogin) {
         if (shouldNavigateToLogin) {
-            println("🔑 ProfileScreen: Navigating to login - token refresh failed")
+            println("🔑 FormsSectionWithLazyColumn: Navigating to login - token refresh failed")
             navController.navigate(NavRoutes.OAuthWebViewRoute.route)
             requestsViewModel.resetNavigationTrigger()
         }
     }
 
-    // ✅ FIXED: Use DisposableEffect like MainCategoriesScreen to properly observe login completion
+    // ✅ Observe login completion
     DisposableEffect(navController.currentBackStackEntry) {
         val handle = navController.currentBackStackEntry?.savedStateHandle
 
         val observer = androidx.lifecycle.Observer<Boolean> { loginCompleted ->
-            if (loginCompleted == true) {
-                println("✅ ProfileScreen: Login completed detected, reloading requests...")
-                // User returned from successful login, reload requests
+            if (loginCompleted) {
+                println("✅ FormsSectionWithLazyColumn: Login completed detected, reloading requests...")
                 requestsViewModel.clearAppError()
                 requestsViewModel.loadRequests()
-                // Clear the flag
                 handle?.set("login_completed", false)
             }
         }
@@ -558,171 +621,498 @@ fun FormsSection(
         requestsViewModel.loadRequests()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+    LazyColumn(
+        modifier = modifier
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_documentation),
-                contentDescription = null,
-                tint = extraColors.whiteInDarkMode,
-                modifier = Modifier.size(24.dp)
+        // Header section
+        item {
+            UserProfileHeader(
+                onFilterSelected = onFilterSelected,
+                selectedFilter = selectedFilter,  // ✅ Pass selected filter from parent
+                statusCounts = statusCounts,
+                isLoading = statusCountsLoading
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = localizedApp(R.string.forms_section_title),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = 1.sp,
-                color = extraColors.whiteInDarkMode
-            )
-        }
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ✅ Show error banner using the same component as other screens
-        appError?.let { error ->
-            when (error) {
-                is com.informatique.mtcit.common.AppError.Unauthorized -> {
-                    // 401 Error - Show banner with refresh token button
-                    com.informatique.mtcit.ui.components.ErrorBanner(
-                        message = error.message,
-                        onDismiss = { requestsViewModel.clearAppError() },
-                        showRefreshButton = true,
-                        onRefreshToken = { requestsViewModel.refreshToken() }
-                    )
-                }
-                is com.informatique.mtcit.common.AppError.ApiError -> {
-                    // Other API errors
-                    com.informatique.mtcit.ui.components.ErrorBanner(
-                        message = "${if (Locale.getDefault().language == "ar") "خطأ" else "Error"} ${error.code}: ${error.message}",
-                        onDismiss = { requestsViewModel.clearAppError() }
-                    )
-                }
-                is com.informatique.mtcit.common.AppError.Unknown -> {
-                    // ✅ Token refresh failed - Show with "Go to Login" button
-                    com.informatique.mtcit.ui.components.ErrorBanner(
-                        message = error.message,
-                        showRefreshButton = true,
-                        onRefreshToken = {
-                            // Navigate to login when refresh token is expired
-                            requestsViewModel.navigateToLogin()
-                        },
-                        onDismiss = { requestsViewModel.clearAppError() }
-                    )
-                }
-                else -> {
-                    // Other error types
-                    com.informatique.mtcit.ui.components.ErrorBanner(
-                        message = if (Locale.getDefault().language == "ar") "حدث خطأ" else "An error occurred",
-                        onDismiss = { requestsViewModel.clearAppError() }
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        if (isLoading && requests.isEmpty()) {
-            Box(
+            // Section title and icon
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 20.dp)
             ) {
-                CircularProgressIndicator(color = extraColors.whiteInDarkMode)
-            }
-        } else if (filteredRequests.isEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = localizedApp(R.string.empty_state_icon),
-                        fontSize = 48.sp
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_documentation),
+                        contentDescription = null,
+                        tint = extraColors.whiteInDarkMode,
+                        modifier = Modifier.size(24.dp)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (searchQuery.isNotBlank() || selectedFilter != null) {
-                            if (Locale.getDefault().language == "ar") "لا توجد نتائج" else "No results found"
-                        } else {
-                            localizedApp(R.string.no_forms_available)
-                        },
-                        fontSize = 16.sp,
+                        text = localizedApp(R.string.forms_section_title),
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         letterSpacing = 1.sp,
                         color = extraColors.whiteInDarkMode
                     )
-                    Text(
-                        text = if (searchQuery.isNotBlank() || selectedFilter != null) {
-                            if (Locale.getDefault().language == "ar") "جرب البحث بكلمات مختلفة" else "Try different search terms"
-                        } else {
-                            localizedApp(R.string.forms_will_appear_here)
-                        },
-                        fontSize = 14.sp,
-                        color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Error banner
+                appError?.let { error ->
+                    when (error) {
+                        is com.informatique.mtcit.common.AppError.Unauthorized -> {
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                onDismiss = { requestsViewModel.clearAppError() },
+                                showRefreshButton = true,
+                                onRefreshToken = { requestsViewModel.refreshToken() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.ApiError -> {
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = "${if (Locale.getDefault().language == "ar") "خطأ" else "Error"} ${error.code}: ${error.message}",
+                                onDismiss = { requestsViewModel.clearAppError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.Unknown -> {
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                showRefreshButton = true,
+                                onRefreshToken = {
+                                    requestsViewModel.navigateToLogin()
+                                },
+                                onDismiss = { requestsViewModel.clearAppError() }
+                            )
+                        }
+                        else -> {
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = if (Locale.getDefault().language == "ar") "حدث خطأ" else "An error occurred",
+                                onDismiss = { requestsViewModel.clearAppError() }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
-        } else {
-            // Display filtered requests from API
-            filteredRequests.forEach { request ->
-                NewRequestCard(
-                    request = request,
-                    onClick = {
-                        println("🔘 User clicked request: ID=${request.id}, Status=${request.statusName}")
-                        requestsViewModel.onRequestClick(request)
-                    }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-            }
+        }
 
-            // Load More Button (if more pages available)
-            if (paginationState.hasMore) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { requestsViewModel.loadMoreRequests() },
+        // Loading state
+        if (isLoading && requests.isEmpty()) {
+            item {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    enabled = !isLoadingMore,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = extraColors.blue1,
-                        disabledContainerColor = extraColors.blue1.copy(alpha = 0.5f)
-                    )
+                        .height(200.dp)
+                        .padding(horizontal = 20.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (isLoadingMore) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
+                    CircularProgressIndicator(color = extraColors.whiteInDarkMode)
+                }
+            }
+        }
+        // Empty state
+        else if (filteredRequests.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+                    elevation = CardDefaults.cardElevation(0.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
-                            text = if (Locale.getDefault().language == "ar") "تحميل المزيد" else "Load More",
+                            text = localizedApp(R.string.empty_state_icon),
+                            fontSize = 48.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (searchQuery.isNotBlank() || selectedFilter != null) {
+                                if (Locale.getDefault().language == "ar") "لا توجد نتائج" else "No results found"
+                            } else {
+                                localizedApp(R.string.no_forms_available)
+                            },
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Normal,
+                            letterSpacing = 1.sp,
+                            color = extraColors.whiteInDarkMode
+                        )
+                        Text(
+                            text = if (searchQuery.isNotBlank() || selectedFilter != null) {
+                                if (Locale.getDefault().language == "ar") "جرب البحث بكلمات مختلفة" else "Try different search terms"
+                            } else {
+                                localizedApp(R.string.forms_will_appear_here)
+                            },
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White
+                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                         )
                     }
                 }
             }
         }
+        // Request items using LazyColumn items for proper lazy loading
+        else {
+            itemsIndexed(filteredRequests) { index, request ->
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    NewRequestCard(
+                        request = request,
+                        onClick = {
+                            println("🔘 User clicked request: ID=${request.id}, Status=${request.statusName}")
+                            requestsViewModel.onRequestClick(request)
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // ✅ Trigger load more when user scrolls to the last item
+                if (index == filteredRequests.lastIndex &&
+                    paginationState.hasMore &&
+                    !isLoadingMore) {
+                    LaunchedEffect(Unit) {
+                        println("📜 Scroll-based Load More: User reached last item, loading more...")
+                        requestsViewModel.loadMoreRequests()
+                    }
+                }
+            }
+
+            // Loading indicator for pagination
+            if (isLoadingMore && paginationState.hasMore) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = extraColors.blue1,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                }
+            }
+        }
+
+        // Bottom spacer
+        item {
+            Spacer(modifier = Modifier.height(50.dp))
+        }
     }
 }
+
+//@Composable
+//fun FormsSection(
+//    navController: NavController,
+//    viewModel: MarineRegistrationViewModel = hiltViewModel(),
+//    searchQuery: String = "",
+//    selectedFilter: FilterType? = null,
+//    sortOrder: SortOrder = SortOrder.DESCENDING,
+//    onSortOrderChanged: (SortOrder) -> Unit = {}
+//) {
+//    val extraColors = LocalExtraColors.current
+//
+//    // ✅ Use the correct RequestsViewModel (not UserRequestsViewModel)
+//    val requestsViewModel: com.informatique.mtcit.ui.viewmodels.RequestsViewModel = hiltViewModel()
+//
+//    // ✅ Listen to sortOrder changes and trigger API call
+//    LaunchedEffect(sortOrder) {
+//        val ascending = sortOrder == SortOrder.ASCENDING
+//        println("🔄 Sort order changed in FormsSection: $sortOrder (ascending=$ascending)")
+//        requestsViewModel.changeSortOrder(ascending)
+//    }
+//
+//    val requests by requestsViewModel.requests.collectAsState()
+//    val isLoading by requestsViewModel.isLoading.collectAsState()
+//    val isLoadingMore by requestsViewModel.isLoadingMore.collectAsState()
+//    val paginationState by requestsViewModel.paginationState.collectAsState()
+//    val appError by requestsViewModel.appError.collectAsState()
+//
+//    // ✅ Filter requests based on search query and selected filter (sorting handled by API)
+//    val filteredRequests = remember(requests, searchQuery, selectedFilter) {
+//        var result = requests
+//
+//        // Apply search filter (search in request serial or ship name)
+//        if (searchQuery.isNotBlank()) {
+//            result = result.filter { request ->
+//                request.requestSerial.contains(searchQuery, ignoreCase = true) ||
+//                request.shipName.contains(searchQuery, ignoreCase = true)
+//            }
+//        }
+//
+//        // Apply status filter
+//        if (selectedFilter != null && selectedFilter != FilterType.ALL) {
+//            result = result.filter { request ->
+//                when (selectedFilter) {
+//                    FilterType.COMPLETED -> request.statusName.contains("مكتمل", ignoreCase = true) ||
+//                                           request.statusName.contains("completed", ignoreCase = true)
+//                    FilterType.IN_PROGRESS -> request.statusName.contains("قيد المعالجة", ignoreCase = true) ||
+//                                             request.statusName.contains("in progress", ignoreCase = true) ||
+//                                             request.statusName.contains("processing", ignoreCase = true)
+//                    FilterType.NEEDS_ACTION -> request.statusName.contains("يحتاج إجراء", ignoreCase = true) ||
+//                                              request.statusName.contains("needs action", ignoreCase = true) ||
+//                                              request.statusName.contains("action needed", ignoreCase = true)
+//                    FilterType.DRAFT -> request.statusName.contains("مسودة", ignoreCase = true) ||
+//                                       request.statusName.contains("draft", ignoreCase = true)
+//                    FilterType.REJECTED -> request.statusName.contains("مرفوض", ignoreCase = true) ||
+//                                          request.statusName.contains("rejected", ignoreCase = true)
+//                    FilterType.PENDING -> request.statusName.contains("معلق", ignoreCase = true) ||
+//                                         request.statusName.contains("pending", ignoreCase = true)
+//                    FilterType.ACCEPTED -> request.statusName.contains("مقبول", ignoreCase = true) ||
+//                                          request.statusName.contains("accepted", ignoreCase = true)
+//                    FilterType.CONFIRMED -> request.statusName.contains("مؤكد", ignoreCase = true) ||
+//                                           request.statusName.contains("confirmed", ignoreCase = true)
+//                    FilterType.SEND -> request.statusName.contains("تم الإرسال", ignoreCase = true) ||
+//                                      request.statusName.contains("sent", ignoreCase = true)
+//                    FilterType.SCHEDULED -> request.statusName.contains("مجدول", ignoreCase = true) ||
+//                                           request.statusName.contains("scheduled", ignoreCase = true)
+//                    FilterType.IN_REVIEW -> request.statusName.contains("قيد المراجعة", ignoreCase = true) ||
+//                                           request.statusName.contains("in review", ignoreCase = true)
+//                    FilterType.ISSUED -> request.statusName.contains("تم الإصدار", ignoreCase = true) ||
+//                                        request.statusName.contains("issued", ignoreCase = true)
+//                    else -> true
+//                }
+//            }
+//        }
+//
+//        // ❌ DISABLED: Sort order (sort by modification date)
+//        // Keep the original order from API without sorting
+//        when (sortOrder) {
+//            SortOrder.ASCENDING -> result.sortedBy { it.modificationDate }
+//            SortOrder.DESCENDING -> result.sortedByDescending { it.modificationDate }
+//        }
+//    }
+//
+//    // ✅ Track the last size when load more was triggered to prevent automatic loading
+//    var lastLoadTriggeredSize by remember { mutableStateOf(-1) }
+//
+//    // ✅ NEW: Collect navigation trigger for request detail
+//    val navigationToRequestDetail by requestsViewModel.navigationToRequestDetail.collectAsState()
+//
+//    // ✅ NEW: Collect navigation trigger (like MainCategoriesScreen)
+//    val shouldNavigateToLogin by requestsViewModel.shouldNavigateToLogin.collectAsState()
+//
+//    // ✅ NEW: Handle navigation to request detail screen
+//    LaunchedEffect(navigationToRequestDetail) {
+//        navigationToRequestDetail?.let { (requestId, requestTypeId) ->
+//            println("🔍 ProfileScreen: Navigating to request detail - ID: $requestId, TypeID: $requestTypeId")
+//            navController.navigate(NavRoutes.ApiRequestDetailRoute.createRoute(requestId, requestTypeId))
+//            requestsViewModel.clearNavigationTrigger()
+//        }
+//    }
+//
+//    // ✅ NEW: Handle navigation to login (like MainCategoriesScreen)
+//    LaunchedEffect(shouldNavigateToLogin) {
+//        if (shouldNavigateToLogin) {
+//            println("🔑 ProfileScreen: Navigating to login - token refresh failed")
+//            navController.navigate(NavRoutes.OAuthWebViewRoute.route)
+//            requestsViewModel.resetNavigationTrigger()
+//        }
+//    }
+//
+//    // ✅ FIXED: Use DisposableEffect like MainCategoriesScreen to properly observe login completion
+//    DisposableEffect(navController.currentBackStackEntry) {
+//        val handle = navController.currentBackStackEntry?.savedStateHandle
+//
+//        val observer = androidx.lifecycle.Observer<Boolean> { loginCompleted ->
+//            if (loginCompleted == true) {
+//                println("✅ ProfileScreen: Login completed detected, reloading requests...")
+//                // User returned from successful login, reload requests
+//                requestsViewModel.clearAppError()
+//                requestsViewModel.loadRequests()
+//                // Clear the flag
+//                handle?.set("login_completed", false)
+//            }
+//        }
+//
+//        handle?.getLiveData<Boolean>("login_completed")?.observeForever(observer)
+//
+//        onDispose {
+//            handle?.getLiveData<Boolean>("login_completed")?.removeObserver(observer)
+//        }
+//    }
+//
+//    // Load requests on first composition
+//    LaunchedEffect(Unit) {
+//        requestsViewModel.loadRequests()
+//    }
+//
+//    Column(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(horizontal = 20.dp)
+//    ) {
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Icon(
+//                painter = painterResource(id = R.drawable.ic_documentation),
+//                contentDescription = null,
+//                tint = extraColors.whiteInDarkMode,
+//                modifier = Modifier.size(24.dp)
+//            )
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text(
+//                text = localizedApp(R.string.forms_section_title),
+//                fontSize = 18.sp,
+//                fontWeight = FontWeight.Normal,
+//                letterSpacing = 1.sp,
+//                color = extraColors.whiteInDarkMode
+//            )
+//        }
+//
+//        Spacer(modifier = Modifier.height(16.dp))
+//
+//        // ✅ Show error banner using the same component as other screens
+//        appError?.let { error ->
+//            when (error) {
+//                is com.informatique.mtcit.common.AppError.Unauthorized -> {
+//                    // 401 Error - Show banner with refresh token button
+//                    com.informatique.mtcit.ui.components.ErrorBanner(
+//                        message = error.message,
+//                        onDismiss = { requestsViewModel.clearAppError() },
+//                        showRefreshButton = true,
+//                        onRefreshToken = { requestsViewModel.refreshToken() }
+//                    )
+//                }
+//                is com.informatique.mtcit.common.AppError.ApiError -> {
+//                    // Other API errors
+//                    com.informatique.mtcit.ui.components.ErrorBanner(
+//                        message = "${if (Locale.getDefault().language == "ar") "خطأ" else "Error"} ${error.code}: ${error.message}",
+//                        onDismiss = { requestsViewModel.clearAppError() }
+//                    )
+//                }
+//                is com.informatique.mtcit.common.AppError.Unknown -> {
+//                    // ✅ Token refresh failed - Show with "Go to Login" button
+//                    com.informatique.mtcit.ui.components.ErrorBanner(
+//                        message = error.message,
+//                        showRefreshButton = true,
+//                        onRefreshToken = {
+//                            // Navigate to login when refresh token is expired
+//                            requestsViewModel.navigateToLogin()
+//                        },
+//                        onDismiss = { requestsViewModel.clearAppError() }
+//                    )
+//                }
+//                else -> {
+//                    // Other error types
+//                    com.informatique.mtcit.ui.components.ErrorBanner(
+//                        message = if (Locale.getDefault().language == "ar") "حدث خطأ" else "An error occurred",
+//                        onDismiss = { requestsViewModel.clearAppError() }
+//                    )
+//                }
+//            }
+//            Spacer(modifier = Modifier.height(16.dp))
+//        }
+//
+//        if (isLoading && requests.isEmpty()) {
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(200.dp),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                CircularProgressIndicator(color = extraColors.whiteInDarkMode)
+//            }
+//        } else if (filteredRequests.isEmpty()) {
+//            Card(
+//                modifier = Modifier.fillMaxWidth(),
+//                shape = RoundedCornerShape(16.dp),
+//                colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+//                elevation = CardDefaults.cardElevation(0.dp)
+//            ) {
+//                Column(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(32.dp),
+//                    horizontalAlignment = Alignment.CenterHorizontally
+//                ) {
+//                    Text(
+//                        text = localizedApp(R.string.empty_state_icon),
+//                        fontSize = 48.sp
+//                    )
+//                    Spacer(modifier = Modifier.height(8.dp))
+//                    Text(
+//                        text = if (searchQuery.isNotBlank() || selectedFilter != null) {
+//                            if (Locale.getDefault().language == "ar") "لا توجد نتائج" else "No results found"
+//                        } else {
+//                            localizedApp(R.string.no_forms_available)
+//                        },
+//                        fontSize = 16.sp,
+//                        fontWeight = FontWeight.Normal,
+//                        letterSpacing = 1.sp,
+//                        color = extraColors.whiteInDarkMode
+//                    )
+//                    Text(
+//                        text = if (searchQuery.isNotBlank() || selectedFilter != null) {
+//                            if (Locale.getDefault().language == "ar") "جرب البحث بكلمات مختلفة" else "Try different search terms"
+//                        } else {
+//                            localizedApp(R.string.forms_will_appear_here)
+//                        },
+//                        fontSize = 14.sp,
+//                        color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+//                    )
+//                }
+//            }
+//        } else {
+//            // Display filtered requests from API
+//             filteredRequests.forEachIndexed { index, request ->
+//                NewRequestCard(
+//                    request = request,
+//                    onClick = {
+//                        println("🔘 User clicked request: ID=${request.id}, Status=${request.statusName}")
+//                        requestsViewModel.onRequestClick(request)
+//                    }
+//                )
+//                Spacer(modifier = Modifier.height(12.dp))
+//
+//                // ✅ Load more ONLY when user reaches the actual LAST item
+//                // This triggers when the last card is composed (i.e., visible on screen)
+//                if (index == filteredRequests.lastIndex &&
+//                    paginationState.hasMore &&
+//                    !isLoadingMore &&
+//                    requests.size > 0 &&
+//                    requests.size != lastLoadTriggeredSize) {
+//
+//                    // This LaunchedEffect runs when the last item becomes visible
+//                    LaunchedEffect(requests.size) {
+//                        println("📜 Load More: User reached last item (${requests.size} total), loading more...")
+//                        lastLoadTriggeredSize = requests.size
+//                        requestsViewModel.loadMoreRequests()
+//                    }
+//                }
+//            }
+//
+//            // Loading indicator for pagination
+//            if (isLoadingMore && paginationState.hasMore) {
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(vertical = 16.dp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    CircularProgressIndicator(
+//                        modifier = Modifier.size(24.dp),
+//                        color = extraColors.blue1,
+//                        strokeWidth = 2.dp
+//                    )
+//                }
+//            }
+//        }
+//    }
+//}
 
 // ✅ NEW: Request Card using API data with localized status
 @Composable
@@ -878,22 +1268,22 @@ fun formatDateArabic(isoDate: String): String {
             .ofPattern("dd-MM-yyyy")
             .withZone(java.time.ZoneId.systemDefault())
         formatter.format(instant)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         isoDate.take(10)
     }
 }
 
-fun formatDate(isoDate: String): String {
-    return try {
-        val instant = java.time.Instant.parse(isoDate)
-        val formatter = java.time.format.DateTimeFormatter
-            .ofPattern("dd MMMM yyyy")
-            .withZone(java.time.ZoneId.systemDefault())
-        formatter.format(instant)
-    } catch (e: Exception) {
-        isoDate.take(10)
-    }
-}
+//fun formatDate(isoDate: String): String {
+//    return try {
+//        val instant = java.time.Instant.parse(isoDate)
+//        val formatter = java.time.format.DateTimeFormatter
+//            .ofPattern("dd MMMM yyyy")
+//            .withZone(java.time.ZoneId.systemDefault())
+//        formatter.format(instant)
+//    } catch (e: Exception) {
+//        isoDate.take(10)
+//    }
+//}
 
 private fun buildComplianceDetailData(
     action: com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen,
@@ -1177,22 +1567,144 @@ private fun buildComplianceDetailData(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserProfileHeader(
-    onFilterSelected: (FilterType?) -> Unit = {},
+fun Search(
     onSearchQueryChanged: (String) -> Unit = {},
     onSortOrderChanged: (SortOrder) -> Unit = {},
-    currentSortOrder: SortOrder = SortOrder.DESCENDING
-) {
+    onFilterSelected: (FilterType?) -> Unit = {},
+    currentSortOrder: SortOrder = SortOrder.DESCENDING,
+    selectedFilter: FilterType? = FilterType.ALL,  // ✅ NEW: Receive selected filter from parent
+){
+    var searchQuery by remember { mutableStateOf("") }
     val extraColors = LocalExtraColors.current
-    var selectedFilter by remember { mutableStateOf<FilterType?>(FilterType.ALL) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var searchQuery by remember { mutableStateOf("") }
+    // Search Bar with Filter Icon - Functional TextField
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 6.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = Color(0xFF9E9E9E),
+                    modifier = Modifier.size(20.dp)
+                )
 
-    // Set "All Requests" as selected by default on first composition
-    LaunchedEffect(Unit) {
-        onFilterSelected(FilterType.ALL)
+                // Functional TextField for search
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { newQuery ->
+                            searchQuery = newQuery
+                            onSearchQueryChanged(newQuery)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            color = extraColors.whiteInDarkMode
+                        ),
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "ابحث برقم الطلب أو اسم السفينة",
+                                    fontSize = 14.sp,
+                                    color = Color(0xFFBDBDBD)
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                }
+            }
+            // Filter Icon Button
+            IconButton(
+                onClick = { showFilterBottomSheet = true },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.FilterList,
+                    contentDescription = "Filter",
+                    tint = Color(0xFF2196F3),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            // Filter Bottom Sheet
+            if (showFilterBottomSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showFilterBottomSheet = false },
+                    sheetState = sheetState,
+                    containerColor = extraColors.background,
+                    dragHandle = {
+                        Box(
+                            modifier = Modifier
+                                .padding(vertical = 12.dp)
+                                .width(40.dp)
+                                .height(4.dp)
+                                .background(Color(0xFFE0E0E0), RoundedCornerShape(2.dp))
+                        )
+                    }
+                ) {
+                    FilterBottomSheetContent(
+                        selectedFilter = selectedFilter,
+                        currentSortOrder = currentSortOrder,
+                        onFilterSelected = { filter ->
+                            onFilterSelected(filter)
+                            showFilterBottomSheet = false
+                        },
+                        onSortOrderChanged = { order ->
+                            onSortOrderChanged(order)
+                            showFilterBottomSheet = false
+                        },
+                        onClearFilter = {
+                            onFilterSelected(null)
+                            showFilterBottomSheet = false
+                        }
+                    )
+                }
+            }
+        }
     }
+
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserProfileHeader(
+    onFilterSelected: (FilterType?) -> Unit = {},
+    selectedFilter: FilterType? = FilterType.ALL,  // ✅ NEW: Receive selected filter from parent
+    statusCounts: com.informatique.mtcit.data.model.requests.StatusCountResponse? = null,
+    isLoading: Boolean = false
+) {
+    // ✅ Extract counts from API response
+    val totalCount = statusCounts?.data?.totalCount ?: 0
+    val acceptedCount = statusCounts?.data?.statusCounts?.find { it.statusId == 7 }?.count ?: 0
+    val sendCount = statusCounts?.data?.statusCounts?.find { it.statusId == 4 }?.count ?: 0
+    val rejectedCount = statusCounts?.data?.statusCounts?.find { it.statusId == 2 }?.count ?: 0
+
+    // ✅ REMOVED: LaunchedEffect that was resetting filter on recomposition
 
     Column(
         modifier = Modifier
@@ -1239,110 +1751,35 @@ fun UserProfileHeader(
 //            }
 //        }
 //        Spacer(modifier = Modifier.height(20.dp))
+//        Spacer(modifier = Modifier.height(20.dp))
 
-        // Search Bar with Filter Icon - Functional TextField
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-            elevation = CardDefaults.cardElevation(0.dp)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 16.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = Color(0xFF9E9E9E),
-                        modifier = Modifier.size(20.dp)
-                    )
-
-                    // Functional TextField for search
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = { newQuery ->
-                                searchQuery = newQuery
-                                onSearchQueryChanged(newQuery)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = androidx.compose.ui.text.TextStyle(
-                                fontSize = 14.sp,
-                                color = extraColors.whiteInDarkMode
-                            ),
-                            singleLine = true,
-                            decorationBox = { innerTextField ->
-                                if (searchQuery.isEmpty()) {
-                                    Text(
-                                        text = "ابحث برقم الطلب أو اسم السفينة",
-                                        fontSize = 14.sp,
-                                        color = Color(0xFFBDBDBD)
-                                    )
-                                }
-                                innerTextField()
-                            }
-                        )
-                    }
-                }
-
-                // Filter Icon Button
-                IconButton(
-                    onClick = { showFilterBottomSheet = true },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Dehaze,
-                        contentDescription = "Filter",
-                        tint = Color(0xFF2196F3),
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Statistics Grid - 4 Main Cards
+        // Statistics Grid - 4 Main Cards (Using API Data)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                number = "671",
+                number = if (isLoading) "..." else totalCount.toString(),
                 label = "عدد الطلبات",
                 numberColor = Color(0xFFE91E63),
                 accentColor = Color(0xFFE91E63),
                 isSelected = selectedFilter == FilterType.ALL,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.ALL) null else FilterType.ALL
-                    onFilterSelected(selectedFilter)
+                    val newFilter = if (selectedFilter == FilterType.ALL) null else FilterType.ALL
+                    onFilterSelected(newFilter)
                 }
             )
             StatCard(
-                number = "52",
-                label = "مكتمل",
+                number = if (isLoading) "..." else acceptedCount.toString(),
+                label = "مقبول",
                 numberColor = Color(0xFF4CAF50),
                 accentColor = Color(0xFF4CAF50),
-                isSelected = selectedFilter == FilterType.COMPLETED,
+                isSelected = selectedFilter == FilterType.ACCEPTED,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.COMPLETED) null else FilterType.COMPLETED
-                    onFilterSelected(selectedFilter)
+                    val newFilter = if (selectedFilter == FilterType.ACCEPTED) null else FilterType.ACCEPTED
+                    onFilterSelected(newFilter)
                 }
             )
         }
@@ -1354,64 +1791,27 @@ fun UserProfileHeader(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                number = "356",
-                label = "قيد المعالجة",
+                number = if (isLoading) "..." else sendCount.toString(),
+                label = "تم الارسال",
                 numberColor = Color(0xFF2196F3),
                 accentColor = Color(0xFF2196F3),
-                isSelected = selectedFilter == FilterType.IN_PROGRESS,
+                isSelected = selectedFilter == FilterType.SEND,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.IN_PROGRESS) null else FilterType.IN_PROGRESS
-                    onFilterSelected(selectedFilter)
+                    val newFilter = if (selectedFilter == FilterType.SEND) null else FilterType.SEND
+                    onFilterSelected(newFilter)
                 }
             )
             StatCard(
-                number = "263",
-                label = "يحتاج إجراء",
+                number = if (isLoading) "..." else rejectedCount.toString(),
+                label = "مرفوض",
                 numberColor = Color(0xFFFF9800),
                 accentColor = Color(0xFFFF9800),
-                isSelected = selectedFilter == FilterType.NEEDS_ACTION,
+                isSelected = selectedFilter == FilterType.REJECTED,
                 modifier = Modifier.weight(1f),
                 onClick = {
-                    selectedFilter = if (selectedFilter == FilterType.NEEDS_ACTION) null else FilterType.NEEDS_ACTION
-                    onFilterSelected(selectedFilter)
-                }
-            )
-        }
-    }
-
-    // Filter Bottom Sheet
-    if (showFilterBottomSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showFilterBottomSheet = false },
-            sheetState = sheetState,
-            containerColor = extraColors.background,
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(Color(0xFFE0E0E0), RoundedCornerShape(2.dp))
-                )
-            }
-        ) {
-            FilterBottomSheetContent(
-                selectedFilter = selectedFilter,
-                currentSortOrder = currentSortOrder,
-                onFilterSelected = { filter ->
-                    selectedFilter = filter
-                    onFilterSelected(filter)
-                    showFilterBottomSheet = false
-                },
-                onSortOrderChanged = { order ->
-                    onSortOrderChanged(order)
-                    showFilterBottomSheet = false
-                },
-                onClearFilter = {
-                    selectedFilter = null
-                    onFilterSelected(null)
-                    showFilterBottomSheet = false
+                    val newFilter = if (selectedFilter == FilterType.REJECTED) null else FilterType.REJECTED
+                    onFilterSelected(newFilter)
                 }
             )
         }
@@ -1723,7 +2123,35 @@ enum class FilterType {
     ISSUED,
     WAITING_INSPECTION,
     IN_PROGRESS,
-    NEEDS_ACTION
+    NEEDS_ACTION;
+
+    /**
+     * Get the statusId for API filtering
+     * Returns null for ALL (no filter)
+     */
+    fun getStatusId(): Int? {
+        return when (this) {
+            ALL -> null
+            DRAFT -> 1
+            REJECTED -> 2
+            CONFIRMED -> 3
+            SEND -> 4
+            PENDING -> 5
+            SCHEDULED -> 6
+            ACCEPTED -> 7
+            IN_REVIEW -> 8
+            REVIEW_RTA -> 9
+            REJECT_AUTHORITIES -> 10
+            APPROVED_AUTHORITIES -> 11
+            APPROVED_FINAL -> 12
+            ACTION_TAKEN -> 13
+            ISSUED -> 14
+            WAITING_INSPECTION -> 16
+            IN_PROGRESS -> 5 // Map to PENDING
+            NEEDS_ACTION -> 5 // Map to PENDING
+            COMPLETED -> 14 // Map to ISSUED
+        }
+    }
 }
 
 // Sort Order Types

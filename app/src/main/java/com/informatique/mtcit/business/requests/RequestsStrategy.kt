@@ -27,12 +27,13 @@ class RequestsStrategy @Inject constructor(
     suspend fun loadUserRequests(
         civilId: String,
         size: Int = 10,
-        page: Int = 0
+        page: Int = 0,
+        sort : String = "lastChange,desc"
     ): Result<RequestsResult> {
         return try {
-            println("🎯 RequestsStrategy: Loading requests for civilId=$civilId, page=$page")
+            println("🎯 RequestsStrategy: Loading requests for civilId=$civilId, page=$page, sort=$sort")
 
-            val result = repository.getUserRequests(civilId, size, page)
+            val result = repository.getUserRequests(civilId, size, page, sort)  // ✅ Pass sort parameter
 
             result.fold(
                 onSuccess = { apiResponse ->
@@ -60,6 +61,48 @@ class RequestsStrategy @Inject constructor(
             )
         } catch (e: Exception) {
             println("❌ RequestsStrategy: Exception: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Load filtered user requests with pagination
+     */
+    suspend fun loadFilteredUserRequests(
+        civilId: String,
+        filter: com.informatique.mtcit.data.model.requests.RequestFilterDto
+    ): Result<RequestsResult> {
+        return try {
+            println("🎯 RequestsStrategy: Loading filtered requests - statusId=${filter.statusId}, page=${filter.page}")
+
+            val result = repository.getFilteredUserRequests(civilId, filter)
+
+            result.fold(
+                onSuccess = { apiResponse ->
+                    val uiModels = apiResponse.data?.content?.map { item ->
+                        mapToUiModel(item)
+                    } ?: emptyList()
+
+                    val paginationState = PaginationState(
+                        currentPage = apiResponse.data?.number ?: 0,
+                        totalPages = apiResponse.data?.totalPages ?: 0,
+                        totalElements = apiResponse.data?.totalElements ?: 0,
+                        isLastPage = apiResponse.data?.last ?: true,
+                        isFirstPage = apiResponse.data?.first ?: true,
+                        hasMore = !(apiResponse.data?.last ?: true)
+                    )
+
+                    println("✅ RequestsStrategy: Mapped ${uiModels.size} filtered requests to UI models")
+
+                    Result.success(RequestsResult(uiModels, paginationState))
+                },
+                onFailure = { error ->
+                    println("❌ RequestsStrategy: Failed to load filtered requests: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ RequestsStrategy: Exception in filtered requests: ${e.message}")
             Result.failure(e)
         }
     }

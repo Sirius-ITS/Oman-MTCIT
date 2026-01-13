@@ -27,6 +27,21 @@ class RequestRepository @Inject constructor(
 ) {
 
     /**
+     * Get filtered user requests with pagination
+     * Uses the new filtered API endpoint
+     *
+     * @param civilId User's civil ID
+     * @param filter RequestFilterDto containing filter criteria and pagination
+     * @return Result with RequestsApiResponse
+     */
+    suspend fun getFilteredUserRequests(
+        civilId: String,
+        filter: com.informatique.mtcit.data.model.requests.RequestFilterDto
+    ): Result<com.informatique.mtcit.data.model.requests.RequestsApiResponse> {
+        return userRequestsRepository.getFilteredUserRequests(civilId, filter)
+    }
+
+    /**
      * Get request status by ID - Calls real API
      *
      * API: GET /api/v1/{endpoint}/{requestId}
