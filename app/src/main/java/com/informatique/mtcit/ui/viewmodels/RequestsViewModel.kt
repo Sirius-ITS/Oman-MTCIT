@@ -49,6 +49,18 @@ class RequestsViewModel @Inject constructor(
     private val _shouldNavigateToLogin = MutableStateFlow(false)
     val shouldNavigateToLogin: StateFlow<Boolean> = _shouldNavigateToLogin.asStateFlow()
 
+    // ✅ NEW: Sort order state (default: descending by lastChange)
+    private val _sortOrder = MutableStateFlow("lastChange,desc")
+    val sortOrder: StateFlow<String> = _sortOrder.asStateFlow()
+
+    // ✅ NEW: Loading state when changing sort order
+    private val _isSortChanging = MutableStateFlow(false)
+    val isSortChanging: StateFlow<Boolean> = _isSortChanging.asStateFlow()
+
+    // ✅ NEW: Current filter state (null = no filter, use normal API)
+    private val _currentFilter = MutableStateFlow<Int?>(null)
+    val currentFilter: StateFlow<Int?> = _currentFilter.asStateFlow()
+
     private var currentCivilId: String? = null
     private val pageSize = 10
 
@@ -74,11 +86,13 @@ class RequestsViewModel @Inject constructor(
                 currentCivilId = civilId
 
                 println("📱 RequestsViewModel: Loading first page for civilId=$civilId")
+                println("🔄 Sort Order: ${_sortOrder.value}")
 
                 val result = requestsStrategy.loadUserRequests(
                     civilId = civilId,
                     size = pageSize,
-                    page = 0
+                    page = 0,
+                    sort = _sortOrder.value  // ✅ Use dynamic sort order
                 )
 
                 result.fold(
@@ -136,12 +150,35 @@ class RequestsViewModel @Inject constructor(
                 }
 
                 val nextPage = _paginationState.value.currentPage + 1
+                val currentFilterStatusId = _currentFilter.value
 
-                val result = requestsStrategy.loadUserRequests(
-                    civilId = civilId,
-                    size = pageSize,
-                    page = nextPage
-                )
+                // Determine sort direction from current sort order
+                val sortDirection = if (_sortOrder.value.contains("asc")) "ASC" else "DESC"
+
+                val result = if (currentFilterStatusId == null) {
+                    // No filter - use normal API
+                    println("📡 Loading more (page $nextPage) using normal API")
+                    requestsStrategy.loadUserRequests(
+                        civilId = civilId,
+                        size = pageSize,
+                        page = nextPage,
+                        sort = _sortOrder.value
+                    )
+                } else {
+                    // With filter - use filtered API
+                    println("📡 Loading more (page $nextPage) using filtered API with statusId=$currentFilterStatusId")
+                    val filter = com.informatique.mtcit.data.model.requests.RequestFilterDto(
+                        statusId = currentFilterStatusId,
+                        page = nextPage,
+                        size = pageSize,
+                        sortBy = "lastChange",
+                        sortDirection = sortDirection
+                    )
+                    requestsStrategy.loadFilteredUserRequests(
+                        civilId = civilId,
+                        filter = filter
+                    )
+                }
 
                 result.fold(
                     onSuccess = { requestsResult ->
@@ -149,6 +186,7 @@ class RequestsViewModel @Inject constructor(
                         currentRequests.addAll(requestsResult.requests)
                         _requests.value = currentRequests
                         _paginationState.value = requestsResult.pagination
+                        println("✅ Loaded ${requestsResult.requests.size} more requests")
                     },
                     onFailure = { error ->
                         println("❌ RequestsViewModel: Failed to load more: ${error.message}")
@@ -185,6 +223,133 @@ class RequestsViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("❌ Exception in refreshRequests: ${e.message}")
                 _appError.value = AppError.Unknown(e.message ?: "فشل التحديث")
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Change sort order and reload requests from first page
+     * @param ascending true for ascending (lastChange,asc), false for descending (lastChange,desc)
+     */
+    fun changeSortOrder(ascending: Boolean) {
+        viewModelScope.launch {
+            try {
+                val newSortOrder = if (ascending) "lastChange,asc" else "lastChange,desc"
+
+                // Check if sort order is actually changing
+                if (_sortOrder.value == newSortOrder) {
+                    println("⚠️ Sort order unchanged: $newSortOrder")
+                    return@launch
+                }
+
+                println("🔄 Changing sort order to: $newSortOrder")
+                _sortOrder.value = newSortOrder
+
+                // ✅ Show loading animation and clear old data
+                _isSortChanging.value = true
+                _requests.value = emptyList()  // Clear old data to avoid lag/flash
+
+                // Reload requests from first page with new sort order
+                loadRequests()
+            } catch (e: Exception) {
+                println("❌ Exception in changeSortOrder: ${e.message}")
+                _appError.value = AppError.Unknown(e.message ?: "فشل تغيير الترتيب")
+            } finally {
+                _isSortChanging.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Apply filter (null = no filter, use normal API)
+     * When filter is applied, uses the /filtered endpoint
+     * When filter is null, uses the normal endpoint
+     */
+    fun applyFilter(statusId: Int?) {
+        viewModelScope.launch {
+            try {
+                println("🔍 Applying filter: statusId=$statusId")
+                _currentFilter.value = statusId
+
+                setLoading(true)
+                _appError.value = null
+                _requests.value = emptyList() // Clear old data
+
+                val civilId = UserHelper.getOwnerCivilId(appContext)
+
+                if (civilId == null) {
+                    println("⚠️ RequestsViewModel: No token found")
+                    setLoading(false)
+                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول")
+                    return@launch
+                }
+
+                currentCivilId = civilId
+
+                // Determine sort direction from current sort order
+                val sortDirection = if (_sortOrder.value.contains("asc")) "ASC" else "DESC"
+
+                if (statusId == null) {
+                    // No filter - use normal API
+                    println("📡 Using normal API (no filter)")
+                    val result = requestsStrategy.loadUserRequests(
+                        civilId = civilId,
+                        size = pageSize,
+                        page = 0,
+                        sort = _sortOrder.value
+                    )
+
+                    result.fold(
+                        onSuccess = { requestsResult ->
+                            _requests.value = requestsResult.requests
+                            _paginationState.value = requestsResult.pagination
+                            println("✅ Loaded ${requestsResult.requests.size} requests (no filter)")
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to load requests: ${error.message}")
+                            handleError(error)
+                        }
+                    )
+                } else {
+                    // With filter - use filtered API
+                    println("📡 Using filtered API with statusId=$statusId")
+                    val filter = com.informatique.mtcit.data.model.requests.RequestFilterDto(
+                        statusId = statusId,
+                        page = 0,
+                        size = pageSize,
+                        sortBy = "lastChange",
+                        sortDirection = sortDirection
+                    )
+
+                    val result = requestsStrategy.loadFilteredUserRequests(
+                        civilId = civilId,
+                        filter = filter
+                    )
+
+                    result.fold(
+                        onSuccess = { requestsResult ->
+                            _requests.value = requestsResult.requests
+                            _paginationState.value = requestsResult.pagination
+                            println("✅ Loaded ${requestsResult.requests.size} filtered requests")
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to load filtered requests: ${error.message}")
+                            handleError(error)
+                        }
+                    )
+                }
+            } catch (e: ApiException) {
+                println("❌ API Error in applyFilter: ${e.code} - ${e.message}")
+                if (e.code == 401) {
+                    _appError.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة")
+                } else {
+                    _appError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                }
+            } catch (e: Exception) {
+                println("❌ Exception in applyFilter: ${e.message}")
+                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء تطبيق الفلتر")
+            } finally {
+                setLoading(false)
             }
         }
     }

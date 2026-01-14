@@ -58,7 +58,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
     private val requestTypeId = TransactionType.RENEW_NAVIGATION_PERMIT.toRequestTypeId()
-    private val transactionContext: TransactionContext = TransactionType.ISSUE_NAVIGATION_PERMIT.context
+    private val transactionContext: TransactionContext = TransactionType.RENEW_NAVIGATION_PERMIT.context
 
 
     private var navigationRequestId: Long? = null // ✅ Store created request ID
@@ -314,6 +314,8 @@ class RenewNavigationPermitStrategy @Inject constructor(
             steps.add(sailingStep)
         }
         steps.add( SharedSteps.sailorInfoStep(
+            includeUploadFile = false,
+            includeDownloadFile = false,
             jobs = crewJobTitles
         ))
 

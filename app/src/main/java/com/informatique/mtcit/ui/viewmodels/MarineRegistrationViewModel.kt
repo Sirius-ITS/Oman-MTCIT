@@ -24,6 +24,7 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.business.transactions.shared.ShipType
 import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.data.model.requests.StatusCountResponse
 import kotlinx.coroutines.delay
 
 /**
@@ -56,7 +57,9 @@ class MarineRegistrationViewModel @Inject constructor(
     private val strategyFactory: TransactionStrategyFactory,
     private val requestRepository: RequestRepository,
     private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService,  // ✅ Use generic API service
-    private val authRepository: com.informatique.mtcit.data.repository.AuthRepository  // ✅ NEW: Inject AuthRepository for token refresh
+    private val authRepository: com.informatique.mtcit.data.repository.AuthRepository,  // ✅ NEW: Inject AuthRepository for token refresh
+    private val requestsApiService: com.informatique.mtcit.data.api.RequestsApiService,  // ✅ NEW: For status counts
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context  // ✅ NEW: For UserHelper
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
 
     init {
@@ -104,6 +107,16 @@ class MarineRegistrationViewModel @Inject constructor(
     // ✅ NEW: Flag to prevent normal initialization during resume
     private val _isResuming = MutableStateFlow(false)
     val isResuming: StateFlow<Boolean> = _isResuming.asStateFlow()
+
+    // ✅ NEW: Status counts for profile screen
+    private val _statusCounts = MutableStateFlow<StatusCountResponse?>(null)
+    val statusCounts: StateFlow<StatusCountResponse?> = _statusCounts.asStateFlow()
+
+    private val _statusCountsLoading = MutableStateFlow(false)
+    val statusCountsLoading: StateFlow<Boolean> = _statusCountsLoading.asStateFlow()
+
+    private val _statusCountsError = MutableStateFlow<String?>(null)
+    val statusCountsError: StateFlow<String?> = _statusCountsError.asStateFlow()
 
     /**
      * Data class for request submission result
@@ -437,6 +450,54 @@ class MarineRegistrationViewModel @Inject constructor(
     // ✅ NEW: Clear navigation flag after navigation is handled
     fun clearNavigationFlag() {
         _navigateToTransactionScreen.value = false
+    }
+
+    /**
+     * ✅ NEW: Get status counts for profile screen
+     * Fetches total count and breakdown by status (Accepted, Send, Rejected)
+     */
+    fun getStatusCounts() {
+        viewModelScope.launch {
+            try {
+                _statusCountsLoading.value = true
+                _statusCountsError.value = null
+
+                // Get customerId from token using UserHelper
+                val customerId = com.informatique.mtcit.util.UserHelper.getOwnerCivilId(appContext)
+                if (customerId == null) {
+                    println("❌ No customerId found in token")
+                    _statusCountsError.value = "لم يتم العثور على معرف المستخدم"
+                    _statusCountsLoading.value = false
+                    return@launch
+                }
+
+                println("🔍 Fetching status counts for customerId: $customerId")
+
+                val result = requestsApiService.getStatusCounts(customerId)
+
+                result.onSuccess { response ->
+                    println("✅ Status counts fetched successfully")
+                    _statusCounts.value = response
+                    _statusCountsLoading.value = false
+                }.onFailure { exception ->
+                    println("❌ Failed to fetch status counts: ${exception.message}")
+                    _statusCountsError.value = exception.message ?: "فشل في جلب الإحصائيات"
+                    _statusCountsLoading.value = false
+                }
+            } catch (e: Exception) {
+                println("❌ Exception in getStatusCounts: ${e.message}")
+                e.printStackTrace()
+                _statusCountsError.value = "حدث خطأ غير متوقع"
+                _statusCountsLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Clear status counts error
+     */
+    fun clearStatusCountsError() {
+        _statusCountsError.value = null
     }
 
     /**
