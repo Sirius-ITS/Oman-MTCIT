@@ -49,7 +49,7 @@ class RequestInspectionStrategy @Inject constructor(
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val inspectionRequestManager: com.informatique.mtcit.business.transactions.shared.InspectionRequestManager,  // ✅ NEW: Inspection manager
     @ApplicationContext private val appContext: Context  // ✅ Injected context
-) : TransactionStrategy, MarineUnitValidatable {
+) : BaseTransactionStrategy(), MarineUnitValidatable {
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.REQUEST_FOR_INSPECTION.context
@@ -544,9 +544,6 @@ class RequestInspectionStrategy @Inject constructor(
                 println("🔍 hasSelectedExistingShip: $hasSelectedExistingShip")
 
                 if (hasSelectedExistingShip) {
-                    println("🚢 User selected EXISTING ship - calling ShipSelectionManager...")
-//                     ✅ WORKAROUND: Simulate successful API call for existing ship selection
-                    accumulatedFormData["requestId"] = "25"
 
                     try {
                         val result = shipSelectionManager.handleShipSelection(
@@ -1218,5 +1215,18 @@ class RequestInspectionStrategy @Inject constructor(
 
     override fun getSendRequestEndpoint(requestId: Int): String {
         return transactionContext.buildSendRequestUrl(requestId)
+    }
+
+    // ================================================================================
+    // 🎯 DRAFT TRACKING: Extract completed steps from API response
+    // ================================================================================
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the inspection request API response and determine which steps are completed
+        val completedSteps = mutableSetOf<StepType>()
+
+        println("⚠️ RequestInspectionStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
     }
 }

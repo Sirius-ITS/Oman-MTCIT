@@ -43,7 +43,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val paymentManager: PaymentManager,
     @ApplicationContext private val appContext: Context
- ) : TransactionStrategy {
+ ) : BaseTransactionStrategy() {
 
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
@@ -742,5 +742,18 @@ class IssueNavigationPermitStrategy @Inject constructor(
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
         }
+    }
+
+    // ================================================================================
+    // 🎯 DRAFT TRACKING: Extract completed steps from API response
+    // ================================================================================
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the navigation permit API response and determine which steps are completed
+        val completedSteps = mutableSetOf<StepType>()
+
+        println("⚠️ IssueNavigationPermitStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
     }
 }

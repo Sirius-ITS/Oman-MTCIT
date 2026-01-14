@@ -251,8 +251,9 @@ fun MarineRegistrationScreen(
         }
     }
 
-    // ✅ NEW: Show loading during resume OR during ViewModel initialization
-    if (uiState.isLoading || !uiState.isInitialized || (isResuming && requestId != null)) {
+    // ✅ Show loading ONLY when actually loading data
+    // Don't show loading just because requestId exists - show it only during the actual resume process
+    if (uiState.isLoading || !uiState.isInitialized || isResuming) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center

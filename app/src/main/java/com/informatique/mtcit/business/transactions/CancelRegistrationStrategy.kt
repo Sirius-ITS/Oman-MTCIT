@@ -44,7 +44,7 @@ class CancelRegistrationStrategy @Inject constructor(
     private val reviewManager: ReviewManager,
     private val paymentManager: PaymentManager,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
-) : TransactionStrategy {
+) : BaseTransactionStrategy() {
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.CANCEL_PERMANENT_REGISTRATION.context
@@ -768,4 +768,16 @@ class CancelRegistrationStrategy @Inject constructor(
         return deletionRequestId
     }
 
+    // ================================================================================
+    // 🎯 DRAFT TRACKING: Extract completed steps from API response
+    // ================================================================================
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the cancel registration API response
+        val completedSteps = mutableSetOf<StepType>()
+
+        println("⚠️ CancelRegistrationStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
+    }
 }

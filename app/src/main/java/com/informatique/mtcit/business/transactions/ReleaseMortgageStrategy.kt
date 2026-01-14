@@ -46,7 +46,7 @@ class ReleaseMortgageStrategy @Inject constructor(
     private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
-) : TransactionStrategy {
+) : BaseTransactionStrategy() {
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.RELEASE_MORTGAGE.context
@@ -71,6 +71,7 @@ class ReleaseMortgageStrategy @Inject constructor(
     private val context: TransactionContext = TransactionType.RELEASE_MORTGAGE.context
     private var lastApiError: String? = null
     private val requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId()
+
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -693,5 +694,63 @@ class ReleaseMortgageStrategy @Inject constructor(
      */
     override fun getApiResponse(apiName: String): Any? {
         return apiResponses[apiName]
+    }
+
+    /**
+     * ✅ DRAFT TRACKING: Extract completed steps from API response
+     * Used when resuming a draft request to initialize posted steps
+     */
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        println("🔍 ReleaseMortgageStrategy: Extracting completed steps from API response")
+
+        val completedSteps = mutableSetOf<StepType>()
+
+        try {
+            // Release Mortgage has minimal steps:
+            // 1. PERSON_TYPE (always completed if request exists)
+            // 2. MARINE_UNIT_SELECTION (if mortgaged ship selected)
+            // 3. DOCUMENTS (if documents uploaded)
+            // 4. REVIEW (if request sent)
+
+            if (response is Map<*, *>) {
+                val data = response["data"] as? Map<*, *>
+
+                if (data != null) {
+                    // ✅ PERSON_TYPE always completed if request exists
+                    completedSteps.add(StepType.PERSON_TYPE)
+                    println("   ✅ PERSON_TYPE completed")
+
+                    // ✅ MARINE_UNIT_SELECTION if shipInfo exists
+                    val shipInfo = data["shipInfo"]
+                    if (shipInfo != null) {
+                        completedSteps.add(StepType.MARINE_UNIT_SELECTION)
+                        println("   ✅ MARINE_UNIT_SELECTION completed")
+                    }
+
+                    // ✅ DOCUMENTS if documents array exists and not empty
+                    val documents = data["documents"] as? List<*>
+                    if (documents != null && documents.isNotEmpty()) {
+                        completedSteps.add(StepType.DOCUMENTS)
+                        println("   ✅ DOCUMENTS completed (${documents.size} document(s))")
+                    }
+
+                    // ✅ REVIEW if status is not DRAFT
+                    val status = data["status"] as? Map<*, *>
+                    val statusId = (status?.get("id") as? Number)?.toInt()
+                    if (statusId != null && statusId != 1) { // 1 = DRAFT
+                        completedSteps.add(StepType.REVIEW)
+                        println("   ✅ REVIEW completed (status: $statusId)")
+                    }
+                }
+            }
+
+            println("📊 Total completed steps: ${completedSteps.size}")
+            return completedSteps
+
+        } catch (e: Exception) {
+            println("⚠️ Error extracting completed steps: ${e.message}")
+            e.printStackTrace()
+            return emptySet()
+        }
     }
 }

@@ -23,6 +23,11 @@ import androidx.core.net.toUri
 /**
  * Shared manager for handling registration request API calls
  * Used by all strategies to avoid duplicating API call logic
+ *
+ * ✅ NEW: Smart Draft Management
+ * - Tracks which steps have been POSTed to avoid duplicate API calls
+ * - Compares data to detect changes before calling PUT
+ * - Supports draft resume from profile
  */
 @Singleton
 class RegistrationRequestManager @Inject constructor(
@@ -30,6 +35,160 @@ class RegistrationRequestManager @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val mapper: RegistrationRequestMapper
 ) {
+    // ✅ Smart Draft Management: Track which steps have been POSTed
+    private val postedSteps = mutableSetOf<StepType>()
+
+    // ✅ Smart Draft Management: Store original data for each step to detect changes
+    private val stepOriginalData = mutableMapOf<StepType, Map<String, String>>()
+
+    // ✅ Smart Draft Management: Track if this is a draft resume
+    private var isDraftResume = false
+
+    /**
+     * ✅ Mark a step as already posted (used when loading draft from API)
+     * @param stepType The step type to mark
+     * @param data The original data from API
+     */
+    fun markStepAsPosted(stepType: StepType, data: Map<String, String>) {
+        postedSteps.add(stepType)
+        stepOriginalData[stepType] = data.toMap()
+        println("✅ Marked step $stepType as already posted")
+    }
+
+    /**
+     * ✅ Check if step data has changed compared to original
+     * @param stepType The step type to check
+     * @param currentData The current form data
+     * @return true if data changed, false if unchanged
+     */
+    private fun hasDataChanged(stepType: StepType, currentData: Map<String, String>): Boolean {
+        val original = stepOriginalData[stepType]
+        if (original == null) {
+            println("🔍 No original data for $stepType, treating as changed")
+            return true
+        }
+
+        // Debug: Show what we're comparing
+        println("🔍 Comparing data for $stepType:")
+        println("   📦 Original data: $original")
+        println("   📦 Current data:  $currentData")
+        println("   📊 Original size: ${original.size}, Current size: ${currentData.size}")
+
+        // Deep equality check - compare all key-value pairs
+        val changed = currentData != original
+
+        if (changed) {
+            println("🔄 Step $stepType data CHANGED")
+            // Show what changed
+            val allKeys = (original.keys + currentData.keys).toSet()
+            allKeys.forEach { key ->
+                val originalValue = original[key]
+                val currentValue = currentData[key]
+                if (originalValue != currentValue) {
+                    println("   🔸 Key '$key': '$originalValue' → '$currentValue'")
+                }
+            }
+        } else {
+            println("⏭️ Step $stepType data UNCHANGED, will skip API call")
+        }
+        return changed
+    }
+
+    /**
+     * ✅ Reset tracking for new transaction
+     * Should be called when starting a new transaction (not resuming draft)
+     */
+    fun resetTracking() {
+        postedSteps.clear()
+        stepOriginalData.clear()
+        isDraftResume = false
+        println("🔄 RegistrationRequestManager: Tracking reset")
+    }
+
+    /**
+     * ✅ Enable draft resume mode
+     * Should be called when loading a draft request from profile
+     */
+    fun enableDraftResume() {
+        isDraftResume = true
+        println("📝 RegistrationRequestManager: Draft resume mode enabled")
+    }
+
+    /**
+     * ✅ Initialize tracking from API response when loading a draft
+     * This populates postedSteps and stepOriginalData so comparison logic works
+     *
+     * @param formData The restored form data from API response
+     */
+    fun initializeFromDraft(formData: Map<String, String>) {
+        println("📝 RegistrationRequestManager: Initializing from draft data...")
+        println("   Form data keys: ${formData.keys}")
+
+        // Determine which steps have data (and thus were posted before)
+        // MARINE_UNIT_DATA - Check for unit type (main indicator)
+        if (formData.containsKey("unitType") && formData["unitType"]?.isNotEmpty() == true) {
+            postedSteps.add(StepType.MARINE_UNIT_DATA)
+            // ✅ FIX: Track the same fields we compare in processStepIfNeeded
+            val relevantFields = listOf(
+                "unitType", "unitClassification", "callSign", "imoNumber", "mmsiNumber",
+                "registrationPort", "manufacturerYear", "maritimeActivity",
+                "proofType", "constructionEndDate", "firstRegistrationDate",
+                "registrationCountry", "officialNumber", "buildingMaterial"
+            )
+            stepOriginalData[StepType.MARINE_UNIT_DATA] = formData.filterKeys {
+                it in relevantFields
+            }.mapValues { it.value.toString() }.toMutableMap()
+            println("   ✅ MARINE_UNIT_DATA marked as posted (has unitType)")
+        }
+
+        // SHIP_DIMENSIONS
+        if (formData.containsKey("overallLength") && formData["overallLength"]?.isNotEmpty() == true) {
+            postedSteps.add(StepType.SHIP_DIMENSIONS)
+            stepOriginalData[StepType.SHIP_DIMENSIONS] = formData.filterKeys {
+                it in listOf("overallLength", "overallWidth", "depth", "height", "decksCount")
+            }.mapValues { it.value.toString() }.toMutableMap()
+            println("   ✅ SHIP_DIMENSIONS marked as posted (has overallLength)")
+        }
+
+        // SHIP_WEIGHTS
+        if (formData.containsKey("grossTonnage") && formData["grossTonnage"]?.isNotEmpty() == true) {
+            postedSteps.add(StepType.SHIP_WEIGHTS)
+            stepOriginalData[StepType.SHIP_WEIGHTS] = formData.filterKeys {
+                it in listOf("grossTonnage", "netTonnage", "staticLoad", "maxPermittedLoad")
+            }.mapValues { it.value.toString() }.toMutableMap()
+            println("   ✅ SHIP_WEIGHTS marked as posted (has grossTonnage)")
+        }
+
+        // ENGINE_INFO
+        if (formData.containsKey("engines") && formData["engines"]?.isNotEmpty() == true) {
+            postedSteps.add(StepType.ENGINE_INFO)
+            stepOriginalData[StepType.ENGINE_INFO] = formData.filterKeys {
+                it == "engines"
+            }.mapValues { it.value.toString() }.toMutableMap()
+            println("   ✅ ENGINE_INFO marked as posted (has engines)")
+        }
+
+        // OWNER_INFO
+        if (formData.containsKey("owners") && formData["owners"]?.isNotEmpty() == true) {
+            postedSteps.add(StepType.OWNER_INFO)
+            stepOriginalData[StepType.OWNER_INFO] = formData.filterKeys {
+                it == "owners"
+            }.mapValues { it.value.toString() }.toMutableMap()
+            println("   ✅ OWNER_INFO marked as posted (has owners)")
+        }
+
+        // ✅ DOCUMENTS - Mark as posted if documents were uploaded in the draft
+        if (formData.containsKey("hasDocuments") && formData["hasDocuments"] == "true") {
+            postedSteps.add(StepType.DOCUMENTS)
+            // No need to track document data for comparison
+            stepOriginalData[StepType.DOCUMENTS] = mapOf("hasDocuments" to "true")
+            println("   ✅ DOCUMENTS marked as posted (documents already uploaded)")
+        }
+
+        println("📝 Draft initialization complete:")
+        println("   Posted steps: ${postedSteps.map { it.name }}")
+        println("   Tracked step data: ${stepOriginalData.keys.map { it.name }}")
+    }
 
     /**
      * Create OR update registration request based on whether requestId exists
@@ -764,32 +923,88 @@ class RegistrationRequestManager @Inject constructor(
                     val selectedUnitsJson = formData["selectedMarineUnits"]
                     val isAddingNewUnit = formData["isAddingNewUnit"]?.toBoolean() ?: false
 
-                    if (isAddingNewUnit || selectedUnitsJson == "[]") {
-                        println("🔍 Creating registration request for NEW ship...")
+                    when {
+                        isAddingNewUnit || selectedUnitsJson == "[]" -> {
+                            // ✅ SMART DRAFT: Check if step already posted
+                            if (postedSteps.contains(StepType.MARINE_UNIT_DATA)) {
+                                println("🔍 Step MARINE_UNIT_DATA already posted, checking for changes...")
 
-                        val result = createOrUpdateRegistrationRequest(formData, requestTypeId.toInt())
+                                // Extract only relevant fields for comparison
+                                // ✅ FIX: Only compare fields that are actually in this step's form
+                                val relevantFields = listOf(
+                                    "unitType", "unitClassification", "callSign", "imoNumber", "mmsiNumber",
+                                    "registrationPort", "manufacturerYear", "maritimeActivity",
+                                    "proofType", "constructionEndDate", "firstRegistrationDate",
+                                    "registrationCountry", "officialNumber", "buildingMaterial"
+                                )
 
-                        when (result) {
-                            is RegistrationRequestResult.Success -> {
-                                println("✅ Registration request created/updated successfully")
-                                formData["requestId"] = result.requestId
-                                result.shipInfoId?.let { formData["shipInfoId"] = it }
-                                result.shipId?.let { formData["shipId"] = it }
-                                StepProcessResult.Success("Registration request created: ${result.requestId}")
-                            }
-                            is RegistrationRequestResult.Error -> {
-                                println("❌ Failed to create registration request: ${result.message}")
-                                StepProcessResult.Error(result.message)
+                                val currentStepData = formData.filterKeys { key ->
+                                    key in relevantFields
+                                }.mapValues { it.value.toString() } // Ensure string values
+
+                                if (!hasDataChanged(StepType.MARINE_UNIT_DATA, currentStepData)) {
+                                    // Data unchanged → Skip API call
+                                    println("⏭️ MARINE_UNIT_DATA unchanged, skipping API call")
+                                    return StepProcessResult.NoAction
+                                }
+
+                                // Data changed → Call API (will use PUT because requestId exists)
+                                println("🔄 Updating registration request (data changed)...")
+                                val result = createOrUpdateRegistrationRequest(formData, requestTypeId.toInt())
+
+                                when (result) {
+                                    is RegistrationRequestResult.Success -> {
+                                        println("✅ Registration request updated successfully")
+                                        formData["requestId"] = result.requestId
+                                        result.shipInfoId?.let { formData["shipInfoId"] = it }
+                                        result.shipId?.let { formData["shipId"] = it }
+
+                                        // Update original data
+                                        stepOriginalData[StepType.MARINE_UNIT_DATA] = currentStepData.toMap()
+
+                                        StepProcessResult.Success("Registration request updated: ${result.requestId}")
+                                    }
+                                    is RegistrationRequestResult.Error -> {
+                                        println("❌ Failed to update registration request: ${result.message}")
+                                        StepProcessResult.Error(result.message)
+                                    }
+                                }
+                            } else {
+                                // First time → POST
+                                println("🔍 Creating registration request for NEW ship (POST)...")
+
+                                val result = createOrUpdateRegistrationRequest(formData, requestTypeId.toInt())
+
+                                when (result) {
+                                    is RegistrationRequestResult.Success -> {
+                                        println("✅ Registration request created successfully")
+                                        formData["requestId"] = result.requestId
+                                        result.shipInfoId?.let { formData["shipInfoId"] = it }
+                                        result.shipId?.let { formData["shipId"] = it }
+
+                                        // Mark as posted and save original data
+                                        postedSteps.add(StepType.MARINE_UNIT_DATA)
+                                        val relevantFields = listOf(
+                                            "unitType", "unitClassification", "callSign", "imoNumber", "mmsiNumber",
+                                            "registrationPort", "manufacturerYear", "maritimeActivity",
+                                            "proofType", "constructionEndDate", "firstRegistrationDate",
+                                            "registrationCountry", "officialNumber", "buildingMaterial"
+                                        )
+                                        val currentStepData = formData.filterKeys { key ->
+                                            key in relevantFields
+                                        }.mapValues { it.value.toString() }
+                                        stepOriginalData[StepType.MARINE_UNIT_DATA] = currentStepData.toMap()
+
+                                        StepProcessResult.Success("Registration request created: ${result.requestId}")
+                                    }
+                                    is RegistrationRequestResult.Error -> {
+                                        println("❌ Failed to create registration request: ${result.message}")
+                                        StepProcessResult.Error(result.message)
+                                    }
+                                }
                             }
                         }
-                        // For testing without API, uncomment below:
-                        /*formData["requestId"] = "1812"
-                        formData["shipInfoId"] = "1733"
-                        formData["shipId"] = "1832"
-                        StepProcessResult.Success("Registration request created: ${requestId}")*/
-
-                    } else {
-                        StepProcessResult.NoAction
+                        else -> StepProcessResult.NoAction
                     }
                 } else {
                     StepProcessResult.NoAction
@@ -805,11 +1020,38 @@ class RegistrationRequestManager @Inject constructor(
                     return StepProcessResult.NoAction
                 }
 
+                // ✅ SMART DRAFT: Check if step already posted
+                if (postedSteps.contains(StepType.SHIP_DIMENSIONS)) {
+                    println("🔍 Step SHIP_DIMENSIONS already posted, checking for changes...")
+
+                    // Extract only dimension fields for comparison
+                    val currentStepData = formData.filterKeys { key ->
+                        key in listOf("overallLength", "overallWidth", "depth", "height", "decksCount")
+                    }
+
+                    if (!hasDataChanged(StepType.SHIP_DIMENSIONS, currentStepData)) {
+                        // Data unchanged → Skip API call
+                        println("⏭️ SHIP_DIMENSIONS unchanged, skipping API call")
+                        return StepProcessResult.NoAction
+                    }
+
+                    // Data changed → Update via API
+                    println("🔄 Updating dimensions (data changed)...")
+                }
+
                 val result = updateDimensions(requestId, formData)
 
                 when (result) {
                     is UpdateResult.Success -> {
                         println("✅ Dimensions updated successfully")
+
+                        // ✅ SMART DRAFT: Mark as posted and save original data
+                        postedSteps.add(StepType.SHIP_DIMENSIONS)
+                        val currentStepData = formData.filterKeys { key ->
+                            key in listOf("overallLength", "overallWidth", "depth", "height", "decksCount")
+                        }
+                        stepOriginalData[StepType.SHIP_DIMENSIONS] = currentStepData.toMap()
+
                         StepProcessResult.Success("Dimensions updated")
                     }
                     is UpdateResult.Error -> {
@@ -828,11 +1070,47 @@ class RegistrationRequestManager @Inject constructor(
                     return StepProcessResult.NoAction
                 }
 
+                // ✅ SMART DRAFT: Check if step already posted
+                if (postedSteps.contains(StepType.SHIP_WEIGHTS)) {
+                    println("🔍 Step SHIP_WEIGHTS already posted, checking for changes...")
+
+                    println("🔍 DEBUG: Raw formData for SHIP_WEIGHTS:")
+                    formData.forEach { (k, v) ->
+                        if (k in listOf("grossTonnage", "netTonnage", "staticLoad", "maxPermittedLoad")) {
+                            println("   - $k = '$v' (type: ${v::class.simpleName})")
+                        }
+                    }
+
+                    // Extract only weight fields for comparison
+                    val currentStepData = formData.filterKeys { key ->
+                        key in listOf("grossTonnage", "netTonnage", "staticLoad", "maxPermittedLoad")
+                    }
+
+                    println("🔍 DEBUG: Filtered currentStepData: $currentStepData")
+
+                    if (!hasDataChanged(StepType.SHIP_WEIGHTS, currentStepData)) {
+                        // Data unchanged → Skip API call
+                        println("⏭️ SHIP_WEIGHTS unchanged, skipping API call")
+                        return StepProcessResult.NoAction
+                    }
+
+                    // Data changed → Update via API
+                    println("🔄 Updating weights (data changed)...")
+                }
+
                 val result = updateWeights(requestId, formData)
 
                 when (result) {
                     is UpdateResult.Success -> {
                         println("✅ Weights updated successfully")
+
+                        // ✅ SMART DRAFT: Mark as posted and save original data
+                        postedSteps.add(StepType.SHIP_WEIGHTS)
+                        val currentStepData = formData.filterKeys { key ->
+                            key in listOf("grossTonnage", "netTonnage", "staticLoad", "maxPermittedLoad")
+                        }
+                        stepOriginalData[StepType.SHIP_WEIGHTS] = currentStepData.toMap()
+
                         StepProcessResult.Success("Weights updated")
                     }
                     is UpdateResult.Error -> {
@@ -843,6 +1121,9 @@ class RegistrationRequestManager @Inject constructor(
             }
 
             // ✅ Engine Info Step - Add engine
+            // NOTE: Engines are arrays - user can add multiple
+            // We don't skip API calls here because user might want to add more engines
+            // Each engine addition is a separate POST request
             StepType.ENGINE_INFO -> {
                 println("🔧 Engine Info step detected")
 
@@ -871,6 +1152,9 @@ class RegistrationRequestManager @Inject constructor(
             }
 
             // ✅ Owner Info Step - Add owner
+            // NOTE: Owners are arrays - user can add multiple
+            // We don't skip API calls here because user might want to add more owners
+            // Each owner addition is a separate POST request
             StepType.OWNER_INFO -> {
                 println("👤 Owner Info step detected")
 
@@ -989,6 +1273,12 @@ class RegistrationRequestManager @Inject constructor(
             // ✅ Documents Step - Upload dynamic documents
             StepType.DOCUMENTS -> {
                 println("📄 Documents step detected")
+
+                // ✅ SMART DRAFT: Check if documents already uploaded
+                if (postedSteps.contains(StepType.DOCUMENTS)) {
+                    println("⏭️ DOCUMENTS already uploaded in draft, skipping API call")
+                    return StepProcessResult.NoAction
+                }
 
                 if (requestId == null) {
                     println("⚠️ No requestId - skipping document upload")

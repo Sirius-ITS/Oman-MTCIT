@@ -60,7 +60,7 @@ class MortgageCertificateStrategy @Inject constructor(
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
     private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
     @ApplicationContext private val appContext: Context
-) : TransactionStrategy {
+) : BaseTransactionStrategy() {
 
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
@@ -1207,5 +1207,16 @@ class MortgageCertificateStrategy @Inject constructor(
         return apiResponses[apiName]
     }
 
+    // ================================================================================
+    // 🎯 DRAFT TRACKING: Extract completed steps from API response
+    // ================================================================================
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the mortgage certificate API response
+        val completedSteps = mutableSetOf<StepType>()
 
+        println("⚠️ MortgageCertificateStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
+    }
 }

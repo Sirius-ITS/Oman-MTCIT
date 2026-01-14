@@ -246,31 +246,166 @@ class RequestRepository @Inject constructor(
         }
 
         shipObject?.let { ship ->
-            ship["callSign"]?.jsonPrimitive?.contentOrNull?.let { formData["callSign"] = it }
-            ship["imoNumber"]?.jsonPrimitive?.intOrNull?.let { formData["imoNumber"] = it.toString() }
-            ship["mmsiNumber"]?.jsonPrimitive?.longOrNull?.let { formData["mmsiNumber"] = it.toString() }
-            ship["officialNumber"]?.jsonPrimitive?.contentOrNull?.let { formData["officialNumber"] = it }
-            ship["vesselLengthOverall"]?.jsonPrimitive?.intOrNull?.let { formData["length"] = it.toString() }
-            ship["vesselBeam"]?.jsonPrimitive?.intOrNull?.let { formData["width"] = it.toString() }
-            ship["vesselHeight"]?.jsonPrimitive?.intOrNull?.let { formData["height"] = it.toString() }
-            ship["decksNumber"]?.jsonPrimitive?.intOrNull?.let { formData["decksCount"] = it.toString() }
-            ship["grossTonnage"]?.jsonPrimitive?.intOrNull?.let { formData["grossTonnage"] = it.toString() }
-            ship["netTonnage"]?.jsonPrimitive?.intOrNull?.let { formData["netTonnage"] = it.toString() }
-            ship["maxLoadCapacity"]?.jsonPrimitive?.intOrNull?.let { formData["maxPermittedLoad"] = it.toString() }
+            println("🔍 DEBUG - Parsing ship data from draft...")
+            println("   Current language: ${java.util.Locale.getDefault().language}")
+
+            // ✅ Basic ship identification fields
+            ship["callSign"]?.jsonPrimitive?.contentOrNull?.let {
+                formData["callSign"] = it
+                println("   ✅ callSign: $it")
+            }
+            ship["imoNumber"]?.jsonPrimitive?.intOrNull?.let {
+                formData["imoNumber"] = it.toString()
+                println("   ✅ imoNumber: $it")
+            }
+
+            // ✅ FIX: MMSI uses "mmsi" in the form, not "mmsiNumber"
+            ship["mmsiNumber"]?.jsonPrimitive?.longOrNull?.let {
+                formData["mmsi"] = it.toString()
+                println("   ✅ mmsi (from mmsiNumber): $it")
+            }
+
+            ship["officialNumber"]?.jsonPrimitive?.contentOrNull?.let {
+                formData["officialNumber"] = it
+                println("   ✅ officialNumber: $it")
+            }
+
+            // ✅ Dimensions - using correct field names
+            ship["vesselLengthOverall"]?.jsonPrimitive?.intOrNull?.let {
+                formData["overallLength"] = it.toString()
+                println("   ✅ overallLength: $it")
+            }
+            ship["vesselBeam"]?.jsonPrimitive?.intOrNull?.let {
+                formData["overallWidth"] = it.toString()
+                println("   ✅ overallWidth: $it")
+            }
+            ship["vesselDraft"]?.jsonPrimitive?.intOrNull?.let {
+                formData["depth"] = it.toString()
+                println("   ✅ depth: $it")
+            }
+            ship["vesselHeight"]?.jsonPrimitive?.intOrNull?.let {
+                formData["height"] = it.toString()
+                println("   ✅ height: $it")
+            }
+            ship["decksNumber"]?.jsonPrimitive?.intOrNull?.let {
+                formData["decksCount"] = it.toString()
+                println("   ✅ decksCount: $it")
+            }
+
+            // ✅ Weights
+            ship["grossTonnage"]?.jsonPrimitive?.intOrNull?.let {
+                formData["grossTonnage"] = it.toString()
+                println("   ✅ grossTonnage: $it")
+            }
+            ship["netTonnage"]?.jsonPrimitive?.intOrNull?.let {
+                formData["netTonnage"] = it.toString()
+                println("   ✅ netTonnage: $it")
+            }
+            ship["deadweightTonnage"]?.jsonPrimitive?.intOrNull?.let {
+                formData["staticLoad"] = it.toString()
+                println("   ✅ staticLoad (from deadweightTonnage): $it")
+            }
+            ship["maxLoadCapacity"]?.jsonPrimitive?.intOrNull?.let {
+                formData["maxPermittedLoad"] = it.toString()
+                println("   ✅ maxPermittedLoad: $it")
+            }
+
+            // ✅ Dates
+            ship["shipBuildYear"]?.jsonPrimitive?.intOrNull?.let {
+                formData["manufacturerYear"] = it.toString()
+                println("   ✅ manufacturerYear: $it")
+            }
+            ship["buildEndDate"]?.jsonPrimitive?.contentOrNull?.let {
+                formData["constructionEndDate"] = it
+                println("   ✅ constructionEndDate: $it")
+            }
+            ship["firstRegistrationDate"]?.jsonPrimitive?.contentOrNull?.let {
+                formData["firstRegistrationDate"] = it
+                println("   ✅ firstRegistrationDate: $it")
+            }
+
+            // ✅ FIX: Use LOCALIZED names (getLocalizedName) so dropdowns can find them
+            // This matches how LookupRepository returns data
+            val currentLanguage = java.util.Locale.getDefault().language
 
             val portObject = ship["portOfRegistry"]?.jsonObject
-            portObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["registrationPort"] = it }
+            portObject?.let { port ->
+                val nameAr = port["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = port["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["registrationPort"] = it
+                    println("   ✅ registrationPort: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
 
             val shipTypeObject = ship["shipType"]?.jsonObject
-            shipTypeObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["unitType"] = it }
+            shipTypeObject?.let { type ->
+                val nameAr = type["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = type["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["unitType"] = it
+                    println("   ✅ unitType: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
+
+            val shipCategoryObject = ship["shipCategory"]?.jsonObject
+            shipCategoryObject?.let { category ->
+                val nameAr = category["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = category["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["unitClassification"] = it
+                    println("   ✅ unitClassification: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
 
             val activityObject = ship["marineActivity"]?.jsonObject
-            activityObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["maritimeactivity"] = it }
+            activityObject?.let { activity ->
+                val nameAr = activity["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = activity["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["maritimeActivity"] = it
+                    println("   ✅ maritimeActivity: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
 
             val buildCountryObject = ship["buildCountry"]?.jsonObject
-            buildCountryObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["buildCountry"] = it }
+            buildCountryObject?.let { country ->
+                val nameAr = country["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = country["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["registrationCountry"] = it
+                    println("   ✅ registrationCountry: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
 
-            ship["shipBuildYear"]?.jsonPrimitive?.intOrNull?.let { formData["constructionDate"] = it.toString() }
+            val proofTypeObject = ship["proofType"]?.jsonObject
+            proofTypeObject?.let { proof ->
+                val nameAr = proof["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = proof["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["proofType"] = it
+                    println("   ✅ proofType: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
+
+            val buildMaterialObject = ship["buildMaterial"]?.jsonObject
+            buildMaterialObject?.let { material ->
+                val nameAr = material["nameAr"]?.jsonPrimitive?.contentOrNull
+                val nameEn = material["nameEn"]?.jsonPrimitive?.contentOrNull
+                val localizedName = if (currentLanguage == "ar") nameAr else nameEn
+                localizedName?.let {
+                    formData["buildingMaterial"] = it
+                    println("   ✅ buildingMaterial: $it (ar=$nameAr, en=$nameEn)")
+                }
+            }
+
+            println("✅ Draft parsing complete - ${formData.size} fields mapped")
         }
 
         // Extract engine data
@@ -301,6 +436,13 @@ class RequestRepository @Inject constructor(
                 owner["ownerEmail"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerEmail"] = it }
                 owner["ownerAddress"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerAddress"] = it }
             }
+        }
+
+        // ✅ Extract documents data - Check if documents exist and are not empty
+        val documentsArray = jsonObject["documents"]?.jsonArray
+        if (!documentsArray.isNullOrEmpty()) {
+            formData["hasDocuments"] = "true"
+            println("✅ Draft has ${documentsArray.size} documents uploaded")
         }
 
         return formData

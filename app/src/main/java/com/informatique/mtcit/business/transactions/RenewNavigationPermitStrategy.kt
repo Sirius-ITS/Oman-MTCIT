@@ -48,7 +48,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private val navigationLicenseManager: NavigationLicenseManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context
-    ) : TransactionStrategy {
+    ) : BaseTransactionStrategy() {
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
@@ -818,5 +818,18 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
     override fun getApiResponse(apiName: String): Any? {
         return apiResponses[apiName]
+    }
+
+    // ================================================================================
+    // 🎯 DRAFT TRACKING: Extract completed steps from API response
+    // ================================================================================
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the renew navigation permit API response and determine which steps are completed
+        val completedSteps = mutableSetOf<StepType>()
+
+        println("⚠️ RenewNavigationPermitStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
     }
 }

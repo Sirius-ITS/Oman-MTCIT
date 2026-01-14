@@ -50,7 +50,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
     private val reviewManager: ReviewManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
-) : TransactionStrategy, MarineUnitValidatable {
+) : BaseTransactionStrategy(), MarineUnitValidatable {
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE.context
@@ -93,6 +93,63 @@ class TemporaryRegistrationStrategy @Inject constructor(
      */
     override fun getContext(): TransactionContext {
         return transactionContext
+    }
+
+    /**
+     * ✅ Get the RegistrationRequestManager for draft tracking
+     */
+    fun getRegistrationRequestManager(): RegistrationRequestManager {
+        return registrationRequestManager
+    }
+
+    /**
+     * ✅ DRAFT SUPPORT: Extract completed steps from API response
+     * Called when loading a draft request from profile
+     */
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        println("🔍 TemporaryRegistrationStrategy: Extracting completed steps from API response")
+
+        return try {
+            // Response should be UserRequest (from RequestRepository.fetchRequest)
+            val steps = mutableSetOf<StepType>()
+
+            // TODO: Parse response and check which fields are populated
+            // For now, return empty set - will be implemented when we have the response structure
+
+            // Example implementation (uncomment when response structure is clear):
+            /*
+            when (response) {
+                is UserRequest -> {
+                    // Check marine unit data
+                    if (response.formData["callSign"] != null) {
+                        steps.add(StepType.MARINE_UNIT_DATA)
+                    }
+                    // Check dimensions
+                    if (response.formData["overallLength"] != null) {
+                        steps.add(StepType.SHIP_DIMENSIONS)
+                    }
+                    // Check weights
+                    if (response.formData["grossTonnage"] != null) {
+                        steps.add(StepType.SHIP_WEIGHTS)
+                    }
+                    // Check engines
+                    if (response.engines?.isNotEmpty() == true) {
+                        steps.add(StepType.ENGINE_INFO)
+                    }
+                    // Check owners
+                    if (response.owners?.isNotEmpty() == true) {
+                        steps.add(StepType.OWNER_INFO)
+                    }
+                }
+            }
+            */
+
+            println("✅ Extracted ${steps.size} completed steps: $steps")
+            steps
+        } catch (e: Exception) {
+            println("❌ Failed to extract completed steps: ${e.message}")
+            emptySet()
+        }
     }
 
     // ✅ NEW: Payment state tracking
@@ -340,16 +397,14 @@ class TemporaryRegistrationStrategy @Inject constructor(
                     documents = requiredDocuments  // ✅ Pass documents from API
                 )
             )
+        }else{
+            steps.add(
+                SharedSteps.dynamicDocumentsStep(
+                    documents = requiredDocuments  // ✅ Pass documents from API
+                )
+            )
         }
-
-        // ✅ Review Step - ALWAYS show for BOTH new and existing ships
-        // For NEW ships: Review data AND call send-request API (creates registration request)
-        // For EXISTING ships: Review data ONLY (skip send-request API - no registration needed)
-        if (isAddingNewUnit && !hasSelectedExistingUnit) {
-            println("✅ Adding Review Step (for NEW ship - will call send-request API)")
-        } else if (hasSelectedExistingUnit) {
-            println("✅ Adding Review Step (for EXISTING ship - will skip send-request API)")
-        }
+        // Review Step
         steps.add(SharedSteps.reviewStep())
 
         // Marine Unit Name Selection Step (with "Proceed to Payment" button that triggers name API and invoice type ID API)
@@ -1353,5 +1408,30 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
     override fun getSendRequestEndpoint(requestId: Int): String {
         return transactionContext.buildSendRequestUrl(requestId)
+    }
+
+    /**
+     * ✅ NEW: Load draft data from existing request
+     * This is called when user resumes a draft request from profile
+     *
+     * TODO: Implementation will be completed in Phase 3 after we determine
+     * the correct API response structure for draft requests
+     */
+    suspend fun loadDraftData(requestId: Int) {
+        println("===============================================================================")
+        println("📝 LOADING DRAFT REQUEST")
+        println("===============================================================================")
+        println("📋 Request ID: $requestId")
+        println("⚠️ Draft loading not yet implemented - will be completed in Phase 3")
+        println("===============================================================================")
+
+        // Enable draft resume mode in RegistrationRequestManager
+        registrationRequestManager.enableDraftResume()
+
+        // Store requestId so subsequent API calls use PUT instead of POST
+        accumulatedFormData["requestId"] = requestId.toString()
+
+        // TODO: Fetch draft data from API and populate accumulatedFormData
+        // TODO: Call registrationRequestManager.markStepAsPosted() for completed steps
     }
 }

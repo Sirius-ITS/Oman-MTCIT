@@ -376,9 +376,44 @@ private fun BottomActionButtons(
             ) {
                 when (statusId) {
                     1 -> {
-                        // Draft - Continue Editing
+                        // ✅ Draft - Continue Editing
                         Button(
-                            onClick = { /* TODO: Navigate to transaction screen */ },
+                            onClick = {
+                                // Extract required values from requestDetail
+                                val requestId = requestDetail.requestId
+                                val requestTypeId = requestDetail.requestType.id
+                                // For drafts, default to lastCompletedStep = 0 (start from beginning)
+                                val lastCompletedStep = 0
+
+                                println("===============================================================================")
+                                println("📝 CONTINUE EDITING DRAFT")
+                                println("===============================================================================")
+                                println("📋 Request ID: $requestId")
+                                println("📋 Request Type ID: $requestTypeId")
+                                println("📋 Last Completed Step: $lastCompletedStep (default for drafts)")
+                                println("===============================================================================")
+
+                                // ✅ Navigate using transaction ID routes (7, 8, 4, 5, 21)
+                                // These match the NavRoutes configuration in NavGraph
+                                val route = when (requestTypeId) {
+                                    1 -> NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId.toString(), lastCompletedStep)  // "7?requestId=X&lastCompletedStep=0"
+                                    2 -> "${NavRoutes.PermanentRegistrationRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"  // "8?requestId=X&lastCompletedStep=0"
+                                    3 -> "${NavRoutes.IssueNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"  // "4?requestId=X&lastCompletedStep=0"
+                                    4 -> "${NavRoutes.RenewNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"  // "5?requestId=X&lastCompletedStep=0"
+                                    8 -> NavRoutes.RequestForInspection.createRouteWithResume(requestId.toString(), lastCompletedStep)  // "21?requestId=X&lastCompletedStep=0"
+                                    else -> {
+                                        println("⚠️ Unknown request type: $requestTypeId")
+                                        null
+                                    }
+                                }
+
+                                if (route != null) {
+                                    println("🚀 Navigating to: $route")
+                                    navController.navigate(route)
+                                } else {
+                                    println("❌ Cannot navigate - unknown request type")
+                                }
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp),

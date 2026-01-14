@@ -626,6 +626,8 @@ class MarineRegistrationViewModel @Inject constructor(
                 result.onSuccess { request ->
                     println("✅ Request data fetched - Resuming transaction WITHOUT recalculating step")
                     println("📋 Transaction type: ${request.type}")
+                    println("📋 Status ID: ${request.statusId}")
+                    println("📋 Is Draft: ${request.statusId == 1}")
                     // ✅ USE the lastCompletedStep from RequestRepository (which is smart-calculated based on status)
                     // NOT the one from navigation arguments!
                     println("📋 Using lastCompletedStep from RequestRepository: ${request.lastCompletedStep} (navigation had: $lastCompletedStep)")
@@ -648,10 +650,46 @@ class MarineRegistrationViewModel @Inject constructor(
 
                     println("🔧 Restoring form data to strategy...")
 
+                    // ✅ NEW: If this is a draft request, enable draft resume mode
+                    if (request.statusId == 1) {
+                        println("📝 DRAFT REQUEST DETECTED - Enabling draft resume mode")
+
+                        // Enable draft resume in RegistrationRequestManager
+                        if (strategy is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ||
+                            strategy is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy) {
+
+                            println("📝 Initializing draft tracking from API response...")
+
+                            // Access the RegistrationRequestManager through the strategy
+                            val registrationManager = when (strategy) {
+                                is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ->
+                                    strategy.getRegistrationRequestManager()
+                                is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ->
+                                    strategy.getRegistrationRequestManager()
+                                else -> null
+                            }
+
+                            if (registrationManager != null) {
+                                registrationManager.enableDraftResume()
+                                registrationManager.initializeFromDraft(request.formData)
+                                println("✅ Draft tracking initialized successfully")
+                            } else {
+                                println("⚠️ Could not access RegistrationRequestManager")
+                            }
+                        }
+                    }
+
                     // Call processStepData to update strategy's accumulatedFormData
+                    // This MUST happen before loadDynamicOptions() so the strategy knows what options to load
                     strategy.processStepData(0, request.formData)
 
                     println("✅ Strategy's internal state updated")
+
+                    // ✅ CRITICAL FIX: Reload dynamic options AFTER form data is restored
+                    // This ensures dropdowns get populated with the correct options based on the draft data
+                    println("🔄 Reloading dynamic options with restored form data...")
+                    strategy.loadDynamicOptions()
+                    println("✅ Dynamic options reloaded")
 
                     // ✅ Step 3: Rebuild steps based on restored state
                     val rebuiltSteps = strategy.getSteps()
@@ -674,23 +712,61 @@ class MarineRegistrationViewModel @Inject constructor(
                     // ✅ Step 4: Find the correct resume step using StepType-based logic
                     // USE request.lastCompletedStep from RequestRepository (not navigation parameter)
                     val totalSteps = uiState.value.steps.size
-                    val resumeStep = findResumeStepByType(rebuiltSteps, request.lastCompletedStep)
 
-                    println("🎯 Mapped lastCompletedStep=${request.lastCompletedStep} to resumeStep=$resumeStep using StepType logic")
+                    // ✅ NEW: Handle DRAFT vs APPROVED requests differently
+                    val (resumeStep, lockedSteps, isResumedTransaction) = if (request.statusId == 1) {
+                        // DRAFT: Calculate which step to resume at based on available data
+                        // The backend doesn't track step completion for drafts, so we must infer it
+                        val calculatedLastCompletedStep = calculateDraftLastCompletedStep(request.formData, rebuiltSteps)
 
-                    // Lock all previous steps (user cannot go back)
-                    val lockedSteps = (0 until resumeStep).toSet()
+                        val draftResumeStep = if (calculatedLastCompletedStep >= 0 && calculatedLastCompletedStep < totalSteps - 1) {
+                            calculatedLastCompletedStep + 1  // Resume at next step after last completed
+                        } else {
+                            0  // Start from beginning if no steps completed
+                        }
+                        println("📝 DRAFT: Calculated last completed step: $calculatedLastCompletedStep")
+                        println("📝 DRAFT: Resuming at step $draftResumeStep")
+                        println("📝 DRAFT: All previous steps are UNLOCKED (user can edit)")
 
+                        Triple(
+                            draftResumeStep,
+                            emptySet<Int>(),  // No locked steps for drafts
+                            false  // Not a "resumed transaction" (user can navigate freely)
+                        )
+                    } else {
+                        // APPROVED: Resume at payment step, lock all previous steps
+                        val approvedResumeStep = findResumeStepByType(rebuiltSteps, request.lastCompletedStep)
+                        val approvedLockedSteps = (0 until approvedResumeStep).toSet()
+
+                        println("✅ APPROVED: Resuming at step $approvedResumeStep (last completed: ${request.lastCompletedStep})")
+                        println("🔒 APPROVED: Locked steps: $approvedLockedSteps")
+
+                        Triple(
+                            approvedResumeStep,
+                            approvedLockedSteps,
+                            true  // This is a "resumed transaction" (locked previous steps)
+                        )
+                    }
+
+                    println("🎯 Mapped lastCompletedStep=${request.lastCompletedStep} to resumeStep=$resumeStep")
                     println("🎯 Resume from step: $resumeStep (last completed was ${request.lastCompletedStep})")
                     println("🎯 Total steps: $totalSteps")
                     println("🔒 Locked steps: $lockedSteps")
 
-                    // ✅ Step 5: Mark as resumed transaction and lock previous steps
+                    // ✅ Step 5: Mark as resumed transaction and lock previous steps (or not, for drafts)
+                    val completedStepsSet = if (request.statusId == 1) {
+                        // For drafts, mark steps up to lastCompletedStep as completed
+                        (0..request.lastCompletedStep.coerceAtMost(totalSteps - 1)).toSet()
+                    } else {
+                        // For approved requests, mark locked steps as completed
+                        lockedSteps
+                    }
+
                     updateUiState { currentState ->
                         currentState.copy(
-                            isResumedTransaction = true,
+                            isResumedTransaction = isResumedTransaction,
                             lockedSteps = lockedSteps,
-                            completedSteps = lockedSteps // Mark locked steps as completed
+                            completedSteps = completedStepsSet
                         )
                     }
 
@@ -722,15 +798,31 @@ class MarineRegistrationViewModel @Inject constructor(
                         }
                     }
 
-                    // ✅ IMPORTANT: Wait for UI state to actually update
-                    delay(300)
-                    println("✅ Final currentStep: ${uiState.value.currentStep}")
+                    println("✅ Final currentStep: $finalStep")
 
                     // ✅ CRITICAL FIX: Trigger onStepOpened for the resume step to load payment details
                     if (finalStep >= 0) {
-                        println("🔄 Triggering onStepOpened for step $finalStep to load step-specific data (e.g., payment details)")
-                        strategy.onStepOpened(finalStep)
-                        delay(200) // Give time for async loading
+                        println("🔄 Triggering onStepOpened for step $finalStep to load step-specific data (dropdown options, payment details, etc.)")
+
+                        // ✅ CRITICAL: For drafts, we need to load dropdown options for ALL steps with data
+                        // so when user navigates to those steps, the dropdowns show the correct selected values
+                        if (request.statusId == 1 && finalStep > 0) {
+                            println("📝 DRAFT: Loading dropdown options for all steps with data...")
+
+                            // Load lookups for all steps that have required lookups (async, no delays needed)
+                            for (stepIdx in 0..finalStep) {
+                                val stepData = rebuiltSteps.getOrNull(stepIdx)
+                                if (stepData != null && stepData.requiredLookups.isNotEmpty()) {
+                                    println("   📥 Loading lookups for step $stepIdx (${stepData.titleRes}): ${stepData.requiredLookups}")
+                                    strategy.onStepOpened(stepIdx)
+                                }
+                            }
+                            println("✅ DRAFT: All step lookups loading initiated (async)")
+                        } else {
+                            // For non-draft requests, just load the current step's data
+                            strategy.onStepOpened(finalStep)
+                        }
+
 
                         // ✅ CRITICAL FIX #2: Recalculate canProceedToNext after loading payment details
                         // This ensures the "Pay" button is enabled when payment data is loaded
@@ -1313,5 +1405,84 @@ class MarineRegistrationViewModel @Inject constructor(
                 return nextStepIndex
             }
         }
+    }
+
+    /**
+     * ✅ NEW: Calculate which step was last completed in a draft based on available data
+     * The backend doesn't track step completion for drafts, so we infer it from formData
+     *
+     * IMPORTANT: Backend only returns ship-related data (callSign, dimensions, etc.)
+     * It does NOT return Person Type or Commercial Registration selections
+     * So we automatically mark those as completed if ANY ship data exists
+     */
+    private fun calculateDraftLastCompletedStep(formData: Map<String, String>, steps: List<StepData>): Int {
+        println("🔍 Calculating last completed step for draft...")
+        println("📊 Available data keys: ${formData.keys.joinToString(", ")}")
+
+        // ✅ FIX: Backend doesn't return Person Type or Commercial Registration
+        // If ANY ship data exists, those early steps must have been completed
+        val hasAnyShipData = formData.containsKey("callSign") ||
+                            formData.containsKey("imoNumber") ||
+                            formData.containsKey("shipInfoId") ||
+                            formData.containsKey("isAddingNewUnit")
+
+        // Check which ship-related data points exist (these ARE returned by backend)
+        val hasMarineUnitSelection = formData.containsKey("isAddingNewUnit") && formData["isAddingNewUnit"] == "true"
+        val hasBasicShipData = formData.containsKey("callSign") || formData.containsKey("imoNumber")
+        val hasDimensions = formData.containsKey("overallLength") || formData.containsKey("overallWidth") || formData.containsKey("depth")
+        val hasWeights = formData.containsKey("grossTonnage") || formData.containsKey("netTonnage") || formData.containsKey("staticLoad")
+        val hasEngineData = formData.containsKey("engineManufacturer") || formData.containsKey("engines")
+        val hasOwnerData = formData.containsKey("ownerName") || formData.containsKey("owners")
+        val hasDocuments = formData["hasDocuments"]?.toString()?.toBoolean() == true
+
+        println("📊 Data completeness:")
+        println("   - Has Any Ship Data: $hasAnyShipData (if true, Person Type & Commercial Reg are auto-completed)")
+        println("   - Marine Unit Selection: $hasMarineUnitSelection")
+        println("   - Basic Ship Data: $hasBasicShipData")
+        println("   - Dimensions: $hasDimensions")
+        println("   - Weights: $hasWeights")
+        println("   - Engine Data: $hasEngineData")
+        println("   - Owner Data: $hasOwnerData")
+        println("   - Documents Uploaded: $hasDocuments")
+
+        // Find the last completed step by checking data availability
+        // We map data availability to step types
+        var lastCompletedStep = -1
+
+        for ((index, step) in steps.withIndex()) {
+            val isStepCompleted = when (step.stepType) {
+                // ✅ FIX: Auto-complete these if ANY ship data exists (backend doesn't return them)
+                StepType.PERSON_TYPE -> hasAnyShipData
+                StepType.COMMERCIAL_REGISTRATION -> hasAnyShipData
+
+                // These ARE returned by backend, so check actual data
+                StepType.MARINE_UNIT_SELECTION -> hasMarineUnitSelection
+                StepType.MARINE_UNIT_DATA -> hasBasicShipData
+                StepType.SHIP_DIMENSIONS -> hasDimensions
+                StepType.SHIP_WEIGHTS -> hasWeights
+                StepType.ENGINE_INFO -> hasEngineData
+                StepType.OWNER_INFO -> hasOwnerData
+                StepType.DOCUMENTS -> hasDocuments  // ✅ Check if documents uploaded
+
+                StepType.CUSTOM -> {
+                    // Custom steps could be Marine Unit Selection (before ship data steps)
+                    // Check if we have "isAddingNewUnit" flag
+                    hasMarineUnitSelection
+                }
+
+                else -> false  // Unknown steps are not completed
+            }
+
+            if (isStepCompleted) {
+                lastCompletedStep = index
+                println("   ✅ Step $index (${step.stepType}) has data")
+            } else {
+                println("   ❌ Step $index (${step.stepType}) missing data - stopping here")
+                break  // Stop at first incomplete step
+            }
+        }
+
+        println("📝 Calculated last completed step: $lastCompletedStep")
+        return lastCompletedStep
     }
 }

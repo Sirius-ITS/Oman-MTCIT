@@ -46,7 +46,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val registrationApiService: com.informatique.mtcit.data.api.RegistrationApiService,
     @ApplicationContext private val appContext: Context  // ✅ Injected context
-) : TransactionStrategy {
+) : BaseTransactionStrategy() {
 
     // ✅ Transaction context with all API endpoints
     private val transactionContext: TransactionContext = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE.context
@@ -277,6 +277,13 @@ class PermanentRegistrationStrategy @Inject constructor(
 
     override fun getContext(): TransactionContext {
         return transactionContext
+    }
+
+    /**
+     * ✅ Get the RegistrationRequestManager for draft tracking
+     */
+    fun getRegistrationRequestManager(): RegistrationRequestManager {
+        return registrationRequestManager
     }
 
     override fun getSteps(): List<StepData> {
@@ -1095,5 +1102,32 @@ class PermanentRegistrationStrategy @Inject constructor(
         } catch (e: Exception) {
             FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
         }
+    }
+
+    // ================================================================================
+    // 🎯 DRAFT TRACKING: Extract completed steps from API response
+    // ================================================================================
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the permanent registration API response and determine which steps are completed
+        // Example structure based on API response:
+        // {
+        //   "data": {
+        //     "id": 2072,
+        //     "shipInfo": { ... },  // → MARINE_UNIT_DATA, SHIP_DIMENSIONS, SHIP_WEIGHTS
+        //     "engines": [...],     // → ENGINE_INFO
+        //     "owners": [...],      // → OWNER_INFO
+        //     "documents": [...],   // → DOCUMENTS
+        //     "insurance": {...},   // → INSURANCE_INFO
+        //     "status": {...}
+        //   }
+        // }
+
+        val completedSteps = mutableSetOf<StepType>()
+
+        // For now, return empty set - this will be populated when we have the actual response structure
+        println("⚠️ PermanentRegistrationStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
     }
 }
