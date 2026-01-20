@@ -35,6 +35,21 @@ interface UserRequestsRepository {
     ): Result<RequestsApiResponse>
 
     /**
+     * Get engineer inspection requests with pagination
+     * Uses Base64 encoded filter parameter with simplified structure
+     * @param page Page number (0-based)
+     * @param size Number of items per page
+     * @param searchText Optional search text
+     * @param columnName Column to search in
+     */
+    suspend fun getEngineerInspectionRequests(
+        page: Int = 0,
+        size: Int = 10,
+        searchText: String = "",
+        columnName: String = "requestNumber"
+    ): Result<RequestsApiResponse>
+
+    /**
      * Get request detail by ID and type
      * @param requestId Request ID
      * @param endpointPath API endpoint path for this request type

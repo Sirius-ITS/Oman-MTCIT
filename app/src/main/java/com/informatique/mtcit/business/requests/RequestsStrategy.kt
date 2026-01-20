@@ -102,6 +102,50 @@ class RequestsStrategy @Inject constructor(
                 }
             )
         } catch (e: Exception) {
+            println("❌ RequestsStrategy: Exception: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Load engineer inspection requests with pagination
+     */
+    suspend fun loadEngineerInspectionRequests(
+        page: Int = 0,
+        size: Int = 10,
+        searchText: String = "",
+        columnName: String = "requestNumber"
+    ): Result<RequestsResult> {
+        return try {
+            println("🎯 RequestsStrategy: Loading engineer inspection requests - page=$page")
+
+            val result = repository.getEngineerInspectionRequests(page, size, searchText, columnName)
+
+            result.fold(
+                onSuccess = { apiResponse ->
+                    val uiModels = apiResponse.data?.content?.map { item ->
+                        mapToUiModel(item)
+                    } ?: emptyList()
+
+                    val paginationState = PaginationState(
+                        currentPage = apiResponse.data?.number ?: 0,
+                        totalPages = apiResponse.data?.totalPages ?: 0,
+                        totalElements = apiResponse.data?.totalElements ?: 0,
+                        isLastPage = apiResponse.data?.last ?: true,
+                        isFirstPage = apiResponse.data?.first ?: true,
+                        hasMore = !(apiResponse.data?.last ?: true)
+                    )
+
+                    println("✅ RequestsStrategy: Mapped ${uiModels.size} engineer inspection requests to UI models")
+
+                    Result.success(RequestsResult(uiModels, paginationState))
+                },
+                onFailure = { error ->
+                    println("❌ RequestsStrategy: Failed to load engineer inspection requests: ${error.message}")
+                    Result.failure(error)
+                }
+            )
+        } catch (e: Exception) {
             println("❌ RequestsStrategy: Exception in filtered requests: ${e.message}")
             Result.failure(e)
         }
@@ -111,29 +155,39 @@ class RequestsStrategy @Inject constructor(
      * Map API RequestItem to UI Model with localized status
      */
     private fun mapToUiModel(item: RequestItem): UserRequestUiModel {
-        val statusEnum = RequestStatus.fromStatusId(item.statusId)
+        // ✅ Use helper methods to get actual values from either flat fields or nested objects
+        val statusId = item.getActualStatusId()
+        val statusName = item.getActualStatusName()
+        val shipName = item.getActualShipName()
+        val requestNumber = item.getDisplayRequestNumber()
+
+        val statusEnum = RequestStatus.fromStatusId(statusId)
         val localizedStatusName = statusEnum?.getLocalizedName()
-            ?: RequestStatus.getStatusName(item.statusId)
+            ?: statusName
+            ?: RequestStatus.getStatusName(statusId)
 
-        val (statusColor, statusBgColor) = getStatusColors(item.statusId)
+        val (statusColor, statusBgColor) = getStatusColors(statusId)
 
-        // Use TransactionType mapping to get the correct Arabic name
+        // ✅ Use improved method that handles all cases
         val requestTypeName = item.getRequestTypeDisplayName()
+        val requestTypeId = item.requestTypeId ?: item.requestType?.id ?: 8 // Default to inspection (8)
+
+        println("🔍 Mapping request: id=${item.id}, requestNumber=$requestNumber, statusId=$statusId, statusName=$localizedStatusName, shipName=$shipName, requestType=$requestTypeName")
 
         return UserRequestUiModel(
-            id = item.requestId ?: item.id, // ✅ FIX: Use requestId (actual backend ID) instead of id (view table ID)
-            requestSerial = item.requestSerial ?: "#${item.id}", // Use requestSerial (e.g., "1252/2025") or fallback to id
-            requestTypeId = item.requestTypeId,
+            id = item.requestId ?: item.id,
+            requestSerial = requestNumber,
+            requestTypeId = requestTypeId,
             requestTypeName = requestTypeName,
-            shipId = item.shipId,
-            shipName = item.shipName ?: getLocalizedText("no_ship"),
+            shipId = item.shipId ?: item.ship?.id ?: item.shipInfo?.ship?.id,
+            shipName = shipName ?: getLocalizedText("no_ship"),
             shipNumber = item.shipNumber ?: "",
-            statusId = item.statusId,
+            statusId = statusId,
             statusName = localizedStatusName,
             statusColor = statusColor,
             statusBgColor = statusBgColor,
             creationDate = item.createdAt ?: item.creationDate ?: "",
-            modificationDate = item.lastChange ?: item.modificationDate ?: item.createdAt ?: item.creationDate ?: "", // Use lastChange for modification date
+            modificationDate = item.lastChange ?: item.modificationDate ?: item.createdAt ?: item.creationDate ?: "",
             rejectionReason = item.rejectionReason
         )
     }

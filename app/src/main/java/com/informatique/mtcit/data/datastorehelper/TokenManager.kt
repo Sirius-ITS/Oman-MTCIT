@@ -218,6 +218,58 @@ object TokenManager {
     }
 
     /**
+     * Get user role from JWT token (realm_access.roles)
+     */
+    suspend fun getUserRole(context: Context): String? {
+        val token = getAccessToken(context) ?: run {
+            Log.w("TokenManager", "⚠️ No access token found when getting user role")
+            return null
+        }
+
+        val payload = decodeJwtPayload(token)
+        if (payload == null) {
+            Log.e("TokenManager", "❌ Failed to decode JWT payload for role extraction")
+            return null
+        }
+
+        return try {
+            // Extract realm_access.roles from JWT
+            val realmAccess = payload.optJSONObject("realm_access")
+            if (realmAccess != null) {
+                val rolesArray = realmAccess.optJSONArray("roles")
+                if (rolesArray != null && rolesArray.length() > 0) {
+                    // Return the first role (typically "client" or "engineer")
+                    val role = rolesArray.getString(0)
+                    Log.d("TokenManager", "✅ Found user role: $role")
+                    return role
+                }
+            }
+
+            Log.w("TokenManager", "⚠️ No realm_access.roles found in token")
+            null
+        } catch (e: Exception) {
+            Log.e("TokenManager", "❌ Failed to extract user role: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * Check if user is an engineer
+     */
+    suspend fun isEngineer(context: Context): Boolean {
+        val role = getUserRole(context)
+        return role?.equals("engineer", ignoreCase = true) == true
+    }
+
+    /**
+     * Check if user is a client
+     */
+    suspend fun isClient(context: Context): Boolean {
+        val role = getUserRole(context)
+        return role?.equals("client", ignoreCase = true) == true
+    }
+
+    /**
      * Data class to hold user information from JWT token
      */
     data class UserData(

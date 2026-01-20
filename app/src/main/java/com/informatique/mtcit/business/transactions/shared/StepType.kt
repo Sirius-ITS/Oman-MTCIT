@@ -103,6 +103,12 @@ enum class StepType {
     OTP_VERIFICATION,
 
     /**
+     * Login method selection step (Mobile Phone vs Civil ID)
+     * ✅ NEW: Forces "Next" button instead of "Accept & Send"
+     */
+    LOGIN_METHOD_SELECTION,
+
+    /**
      * Maritime identification fields step (IMO, MMSI, Call Sign)
      * Used when these fields are missing after ship selection
      */
