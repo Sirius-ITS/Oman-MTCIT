@@ -3,6 +3,7 @@ package com.informatique.mtcit.navigation
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.compose.runtime.Composable
@@ -56,10 +57,29 @@ import java.net.URLDecoder
 fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManagerImpl){
 
     val sharedUserViewModel: SharedUserViewModel = hiltViewModel()
+    val context = LocalContext.current
 
     val navController = rememberNavController()
 
     val categories = LocalCategories.current
+
+    // ✅ NEW: Check user role on app start and load it into SharedUserViewModel
+    LaunchedEffect(Unit) {
+        val role = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+        if (role != null) {
+            sharedUserViewModel.setUserRole(role)
+            Log.d("NavHost", "✅ User role loaded: $role")
+
+            // ✅ If user is engineer, navigate directly to profile
+            if (role.equals("engineer", ignoreCase = true)) {
+                Log.d("NavHost", "🔧 Engineer detected, navigating to profile...")
+                navController.navigate(NavRoutes.ProfileScreenRoute.route) {
+                    popUpTo(NavRoutes.HomeRoute.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     LaunchedEffect(navController) {
         navigationManager.navigationCommands.collect { command ->
@@ -224,12 +244,33 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
 
                             result.fold(
                                 onSuccess = {
-                                    println("✅ Token exchanged successfully - navigating back")
-                                    // Set flag so the calling screen knows login completed
-                                    navController.previousBackStackEntry
-                                        ?.savedStateHandle
-                                        ?.set("login_completed", true)
-                                    navController.popBackStack()
+                                    println("✅ Token exchanged successfully - checking user role")
+
+                                    // ✅ NEW: Check user role and navigate accordingly
+                                    val userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+                                    sharedUserViewModel.setUserRole(userRole)
+
+                                    if (userRole?.equals("engineer", ignoreCase = true) == true) {
+                                        println("🔧 Engineer detected - navigating to profile")
+                                        // Set flag so the calling screen knows login completed
+                                        navController.previousBackStackEntry
+                                            ?.savedStateHandle
+                                            ?.set("login_completed", true)
+
+                                        // Navigate to profile and clear back stack
+                                        navController.navigate(NavRoutes.ProfileScreenRoute.route) {
+                                            popUpTo(NavRoutes.HomeRoute.route) { inclusive = false }
+                                            launchSingleTop = true
+                                        }
+                                    } else {
+                                        println("👤 Client detected - navigating back normally")
+                                        // Set flag so the calling screen knows login completed
+                                        navController.previousBackStackEntry
+                                            ?.savedStateHandle
+                                            ?.set("login_completed", true)
+                                        navController.popBackStack()
+                                    }
+
                                 },
                                 onFailure = { error ->
                                     println("❌ Token exchange failed: ${error.message}")

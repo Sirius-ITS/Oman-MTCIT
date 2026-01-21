@@ -38,13 +38,28 @@ fun OAuthWebViewScreen(
 ) {
     var isLoading by remember { mutableStateOf(true) }
     var loadError by remember { mutableStateOf<String?>(null) }
+    var authCompleted by remember { mutableStateOf(false) }
+
+    // ✅ NEW: Set oauth_cancelled flag when leaving without completing auth
+    DisposableEffect(Unit) {
+        onDispose {
+            if (!authCompleted) {
+                println("🔙 OAuthWebView: User left without completing auth")
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.set("oauth_cancelled", true)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("تسجيل الدخول") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        navController.popBackStack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "رجوع"
@@ -105,6 +120,7 @@ fun OAuthWebViewScreen(
 
                                     if (code != null) {
                                         Log.d("OAuthWebView", "✅ Authorization code extracted: $code")
+                                        authCompleted = true // ✅ Mark as completed
                                         onAuthCodeReceived(code)
                                         return true
                                     } else {

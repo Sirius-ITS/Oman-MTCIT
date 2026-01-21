@@ -1421,6 +1421,7 @@ object SharedSteps {
         )
 
         return StepData(
+            stepType = StepType.LOGIN_METHOD_SELECTION, // ✅ NEW: Special type to force "Next" button
             titleRes = R.string.login_registration_title, // "تسجيل الدخول"
             descriptionRes = R.string.login_registration_description,
             fields = fields

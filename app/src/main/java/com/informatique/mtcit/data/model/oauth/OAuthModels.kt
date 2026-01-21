@@ -39,3 +39,31 @@ data class OAuthErrorResponse(
     val errorDescription: String? = null
 )
 
+/**
+ * Realm Access with Roles
+ */
+@Serializable
+data class RealmAccess(
+    @SerialName("roles")
+    val roles: List<String> = emptyList()
+)
+
+/**
+ * User Role enum
+ */
+enum class UserRole {
+    CLIENT,
+    ENGINEER,
+    UNKNOWN;
+
+    companion object {
+        fun fromString(role: String): UserRole {
+            return when (role.lowercase()) {
+                "client" -> CLIENT
+                "engineer" -> ENGINEER
+                else -> UNKNOWN
+            }
+        }
+    }
+}
+

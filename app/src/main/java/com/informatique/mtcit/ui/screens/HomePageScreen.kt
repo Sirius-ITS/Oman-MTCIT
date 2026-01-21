@@ -84,6 +84,15 @@ fun HomePageScreen(navController: NavController) {
     val context = LocalContext.current
     val window = (context as? Activity)?.window
 
+    // ✅ NEW: Check user role to hide bottom bar for engineers
+    var userRole by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+    }
+
+    val isEngineer = userRole?.equals("engineer", ignoreCase = true) == true
+
     // Allow drawing behind system bars and make status bar transparent so the gradient can extend into it
     LaunchedEffect(window) {
         window?.let {
@@ -194,20 +203,23 @@ fun HomePageScreen(navController: NavController) {
                 }
             }
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(  bottom = WindowInsets.navigationBars
-                    .asPaddingValues()
-                    .calculateBottomPadding() + 4.dp
+        // ✅ UPDATED: Only show bottom bar if user is NOT an engineer
+        if (!isEngineer) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(  bottom = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding() + 4.dp
+                    )
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CustomToolbar(
+                    navController = navController ,
+                    currentRoute = "homepage"
                 )
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            CustomToolbar(
-                navController = navController ,
-                currentRoute = "homepage"
-            )
+            }
         }
     }
 }

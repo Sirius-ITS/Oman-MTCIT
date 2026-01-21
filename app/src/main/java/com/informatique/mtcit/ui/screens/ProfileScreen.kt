@@ -3,6 +3,7 @@
 package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -84,6 +85,21 @@ fun ProfileScreen(
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
+
+    // ✅ NEW: Check user role to hide bottom bar for engineers
+    var userRole by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+    }
+
+    val isEngineer = userRole?.equals("engineer", ignoreCase = true) == true
+
+    // ✅ Handle back press for engineers - exit app instead of navigating back
+    BackHandler(enabled = isEngineer) {
+        // For engineers, exit the app when back is pressed from Profile
+        (context as? Activity)?.finish()
+    }
 
     // States for search and filter
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -248,21 +264,24 @@ fun ProfileScreen(
                 statusCountsLoading = statusCountsLoading
             )
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    bottom = WindowInsets.navigationBars
-                        .asPaddingValues()
-                        .calculateBottomPadding() + 4.dp
+        // ✅ UPDATED: Only show bottom bar if user is NOT an engineer
+        if (!isEngineer) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        bottom = WindowInsets.navigationBars
+                            .asPaddingValues()
+                            .calculateBottomPadding() + 4.dp
+                    )
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                CustomToolbar(
+                    navController = navController,
+                    currentRoute = "profileScreen"
                 )
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            CustomToolbar(
-                navController = navController,
-                currentRoute = "profileScreen"
-            )
+            }
         }
     }
 }

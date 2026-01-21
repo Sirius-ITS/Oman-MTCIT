@@ -46,4 +46,31 @@ object UserHelper {
             TokenManager.getUserData(context)
         }
     }
+
+    /**
+     * Get user role from token (e.g., "engineer", "client")
+     */
+    suspend fun getUserRole(context: Context): String? {
+        return withContext(Dispatchers.IO) {
+            TokenManager.getUserRole(context)
+        }
+    }
+
+    /**
+     * Check if user is an engineer
+     */
+    suspend fun isEngineer(context: Context): Boolean {
+        return withContext(Dispatchers.IO) {
+            TokenManager.isEngineer(context)
+        }
+    }
+
+    /**
+     * Check if user is a client
+     */
+    suspend fun isClient(context: Context): Boolean {
+        return withContext(Dispatchers.IO) {
+            TokenManager.isClient(context)
+        }
+    }
 }

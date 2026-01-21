@@ -30,6 +30,97 @@ class InspectionApiService @Inject constructor(
 ) {
 
     /**
+     * Get filtered inspection requests for engineer
+     * GET api/v1/inspection-requests/filtered/engineer?filter={base64EncodedFilter}
+     *
+     * Filter structure: {"searchText":"","columnName":"requestNumber","page":0,"size":10}
+     *
+     * @param page Page number (0-based)
+     * @param size Number of items per page
+     * @param searchText Optional search text
+     * @param columnName Column to search in (default: "requestNumber")
+     * @return Result with RequestsApiResponse
+     */
+    suspend fun getEngineerInspectionRequests(
+        page: Int = 0,
+        size: Int = 10,
+        searchText: String = "",
+        columnName: String = "requestNumber"
+    ): Result<com.informatique.mtcit.data.model.requests.RequestsApiResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🔍 InspectionApiService: Getting engineer inspection requests...")
+            println("=".repeat(80))
+
+            // Create simplified filter
+            val filter = com.informatique.mtcit.data.model.requests.EngineerRequestFilterDto(
+                searchText = searchText,
+                columnName = columnName,
+                page = page,
+                size = size
+            )
+
+            // Encode filter to Base64
+            val filterJson = json.encodeToString(filter)
+            println("📤 Filter JSON: $filterJson")
+
+            val base64Filter = android.util.Base64.encodeToString(
+                filterJson.toByteArray(Charsets.UTF_8),
+                android.util.Base64.NO_WRAP or android.util.Base64.URL_SAFE
+            )
+            println("🔐 Base64 Filter: $base64Filter")
+
+            val endpoint = "inspection-requests/filtered/engineer?filter=$base64Filter"
+            println("📡 API Call: $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Engineer Inspection API Response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            val apiResponse: com.informatique.mtcit.data.model.requests.RequestsApiResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Parsed ${apiResponse.data?.content?.size ?: 0} engineer inspection requests")
+                            println("📄 Total Elements: ${apiResponse.data?.totalElements}")
+                            println("📄 Total Pages: ${apiResponse.data?.totalPages}")
+                            println("=".repeat(80))
+
+                            Result.success(apiResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "فشل في جلب طلبات المعاينة"
+                            println("❌ API returned error: $message")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    println("   HTTP Code: ${response.code}")
+                    println("=".repeat(80))
+                    Result.failure(Exception("Failed to get engineer inspection requests: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getEngineerInspectionRequests: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to get engineer inspection requests: ${e.message}"))
+        }
+    }
+
+    /**
      * Submit inspection request with documents
      * POST api/v1/inspection-requests
      * Content-Type: multipart/form-data

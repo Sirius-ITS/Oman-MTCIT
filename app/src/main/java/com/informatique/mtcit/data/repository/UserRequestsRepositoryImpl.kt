@@ -1,5 +1,6 @@
 package com.informatique.mtcit.data.repository
 
+import com.informatique.mtcit.data.api.InspectionApiService
 import com.informatique.mtcit.data.api.RequestsApiService
 import com.informatique.mtcit.data.model.requests.RequestsApiResponse
 import com.informatique.mtcit.data.model.requests.RequestDetailResponse
@@ -10,7 +11,8 @@ import javax.inject.Singleton
 
 @Singleton
 class UserRequestsRepositoryImpl @Inject constructor(
-    private val requestsApiService: RequestsApiService
+    private val requestsApiService: RequestsApiService,
+    private val inspectionApiService: InspectionApiService
 ) : UserRequestsRepository {
 
     override suspend fun getUserRequests(
@@ -47,6 +49,27 @@ class UserRequestsRepositoryImpl @Inject constructor(
             )
         } catch (e: Exception) {
             println("❌ UserRequestsRepository: Error fetching filtered requests: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getEngineerInspectionRequests(
+        page: Int,
+        size: Int,
+        searchText: String,
+        columnName: String
+    ): Result<RequestsApiResponse> = withContext(Dispatchers.IO) {
+        try {
+            println("📦 UserRequestsRepository: Fetching engineer inspection requests - page=$page, size=$size")
+
+            inspectionApiService.getEngineerInspectionRequests(
+                page = page,
+                size = size,
+                searchText = searchText,
+                columnName = columnName
+            )
+        } catch (e: Exception) {
+            println("❌ UserRequestsRepository: Error fetching engineer inspection requests: ${e.message}")
             Result.failure(e)
         }
     }

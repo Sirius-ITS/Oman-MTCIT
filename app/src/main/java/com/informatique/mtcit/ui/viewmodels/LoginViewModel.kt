@@ -35,6 +35,9 @@ class LoginViewModel @Inject constructor(
     private val _navigateToOAuth = MutableSharedFlow<Unit>()
     val navigateToOAuth = _navigateToOAuth.asSharedFlow()
 
+    // ✅ NEW: Track previous OAuth trigger state to prevent re-triggering
+    private var previousOAuthTriggerState = false
+
     // OAuth URLs
     companion object {
         const val OAUTH_AUTH_URL = "https://omankeycloak.isfpegypt.com/realms/oman/protocol/openid-connect/auth?client_id=front&redirect_uri=https%3A%2F%2Fomankeycloak.isfpegypt.com%2Fstarter&response_type=code&scope=openid"
@@ -69,12 +72,30 @@ class LoginViewModel @Inject constructor(
         // ✅ PROPER SOLUTION: Observe uiState changes and trigger OAuth when flag is set
         viewModelScope.launch {
             uiState.collect { state ->
-                if (state.formData["_triggerOAuthFlow"] == "true") {
-                    println("🚀 LoginViewModel: OAuth trigger flag detected in uiState")
-                    // Clear the flag to avoid re-triggering
-                    state.formData.toMutableMap().remove("_triggerOAuthFlow")
+                val currentOAuthTriggerState = state.formData["_triggerOAuthFlow"] == "true"
+
+                // ✅ CRITICAL: Only trigger if flag changed from false to true
+                // This prevents re-triggering when formData changes for other reasons
+                if (currentOAuthTriggerState && !previousOAuthTriggerState) {
+                    println("🚀 LoginViewModel: OAuth trigger flag detected in uiState (changed from false to true)")
+
+                    // Update previous state
+                    previousOAuthTriggerState = true
+
+                    // ✅ Clear the flag from the strategy's accumulated data to avoid re-triggering
+                    (currentStrategy as? LoginStrategy)?.getFormData()?.let { formData ->
+                        if (formData is MutableMap) {
+                            formData.remove("_triggerOAuthFlow")
+                            println("✅ OAuth trigger flag cleared from strategy")
+                        }
+                    }
+
                     // Trigger navigation to OAuth WebView
                     _navigateToOAuth.emit(Unit)
+                } else if (!currentOAuthTriggerState && previousOAuthTriggerState) {
+                    // Reset previous state when flag is cleared
+                    previousOAuthTriggerState = false
+                    println("🔄 OAuth trigger flag cleared, resetting previous state")
                 }
             }
         }
@@ -126,5 +147,36 @@ class LoginViewModel @Inject constructor(
                 false // Return failure
             }
         )
+    }
+
+    /**
+     * ✅ NEW: Reset OAuth trigger flags when user returns from OAuth without completing login
+     */
+    fun resetOAuthFlags() {
+        viewModelScope.launch {
+            // ✅ CRITICAL: Reset strategy first (this clears registrationMethod and OAuth flags)
+            (currentStrategy as? LoginStrategy)?.resetOAuthTrigger()
+            previousOAuthTriggerState = false
+            println("✅ OAuth flags reset in LoginViewModel")
+
+            // ✅ CRITICAL: Reload steps from strategy (will return only step 0 since registrationMethod is cleared)
+            val steps = currentStrategy?.getSteps() ?: emptyList()
+            println("🔄 Reloaded steps after reset: ${steps.size} steps")
+
+            // ✅ CRITICAL: Force complete UI state reset
+            // This will clear formData, fieldErrors, and reload step 0
+            updateUiState { currentState ->
+                currentState.copy(
+                    currentStep = 0,
+                    steps = steps, // Update steps to reflect cleared selection
+                    formData = emptyMap(), // Clear all form data (including registrationMethod)
+                    fieldErrors = emptyMap(),
+                    isLoading = false,
+                    canProceedToNext = false // Disable Next button until user selects again
+                )
+            }
+
+            println("✅ UI state completely reset - user must select registration method again")
+        }
     }
 }

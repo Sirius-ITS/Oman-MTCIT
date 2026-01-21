@@ -1,18 +1,20 @@
 package com.informatique.mtcit.ui.screens
 
-import android.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Login/Registration Screen
@@ -36,6 +38,7 @@ fun LoginScreen(
     val viewModel: LoginViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val submissionState by viewModel.submissionState.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // ✅ CRITICAL: Observe savedStateHandle for OAuth login completion
     DisposableEffect(navController.currentBackStackEntry) {
@@ -44,34 +47,51 @@ fun LoginScreen(
         val observer = androidx.lifecycle.Observer<Boolean> { completed ->
             if (completed == true) {
                 println("✅ OAuth login completed detected via savedStateHandle!")
-                println("✅ Navigating to transaction: $targetTransactionType")
 
                 // Clear the flag
                 handle?.set("oauth_login_completed", false)
 
-                // Navigate to the target transaction screen
-                val route = when (targetTransactionType) {
-                    "TEMPORARY_REGISTRATION_CERTIFICATE", "SHIP_REGISTRATION" -> NavRoutes.ShipRegistrationRoute.route
-                    "PERMANENT_REGISTRATION_CERTIFICATE", "PERMANENT_REGISTRATION" -> NavRoutes.PermanentRegistrationRoute.route
-                    "REQUEST_FOR_INSPECTION", "REQUEST_INSPECTION" -> NavRoutes.RequestForInspection.route
-                    "SUSPEND_REGISTRATION", "SUSPEND_PERMANENT_REGISTRATION" -> NavRoutes.SuspendRegistrationRoute.route
-                    "CANCEL_REGISTRATION", "CANCEL_PERMANENT_REGISTRATION" -> NavRoutes.CancelRegistrationRoute.route
-                    "MORTGAGE_CERTIFICATE" -> NavRoutes.MortgageCertificateRoute.route
-                    "RELEASE_MORTGAGE" -> NavRoutes.ReleaseMortgageRoute.route
-                    "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
-                    "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
-                    "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
-                    "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
-                    "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
-                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
-                    "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
-                    "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
-                    else -> NavRoutes.ShipRegistrationRoute.route
-                }
+                // ✅ NEW: Check user role before navigation
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                    val userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
 
-                navController.navigate(route) {
-                    // Remove login screen from back stack
-                    popUpTo(NavRoutes.LoginRoute.route) { inclusive = true }
+                    if (userRole?.equals("engineer", ignoreCase = true) == true) {
+                        // ✅ ENGINEER: Exit transaction flow and go to Profile
+                        println("🔧 Engineer detected in LoginScreen - navigating to Profile instead of transaction")
+
+                        navController.navigate(NavRoutes.ProfileScreenRoute.route) {
+                            // Clear entire back stack so pressing back will exit the app
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        // ✅ CLIENT: Continue normal flow to transaction
+                        println("👤 Client detected - continuing to transaction: $targetTransactionType")
+
+                        val route = when (targetTransactionType) {
+                            "TEMPORARY_REGISTRATION_CERTIFICATE", "SHIP_REGISTRATION" -> NavRoutes.ShipRegistrationRoute.route
+                            "PERMANENT_REGISTRATION_CERTIFICATE", "PERMANENT_REGISTRATION" -> NavRoutes.PermanentRegistrationRoute.route
+                            "REQUEST_FOR_INSPECTION", "REQUEST_INSPECTION" -> NavRoutes.RequestForInspection.route
+                            "SUSPEND_REGISTRATION", "SUSPEND_PERMANENT_REGISTRATION" -> NavRoutes.SuspendRegistrationRoute.route
+                            "CANCEL_REGISTRATION", "CANCEL_PERMANENT_REGISTRATION" -> NavRoutes.CancelRegistrationRoute.route
+                            "MORTGAGE_CERTIFICATE" -> NavRoutes.MortgageCertificateRoute.route
+                            "RELEASE_MORTGAGE" -> NavRoutes.ReleaseMortgageRoute.route
+                            "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
+                            "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
+                            "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
+                            "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
+                            "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
+                            "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
+                            "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
+                            "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
+                            else -> NavRoutes.ShipRegistrationRoute.route
+                        }
+
+                        navController.navigate(route) {
+                            // Remove login screen from back stack
+                            popUpTo(NavRoutes.LoginRoute.route) { inclusive = true }
+                        }
+                    }
                 }
             }
         }
@@ -88,6 +108,27 @@ fun LoginScreen(
         viewModel.navigateToOAuth.collect {
             println("🚀 Navigating to OAuth WebView...")
             navController.navigate(NavRoutes.OAuthWebViewRoute.route)
+        }
+    }
+
+    // ✅ NEW: Detect when user returns from OAuth without completing login
+    DisposableEffect(navController.currentBackStackEntry) {
+        val handle = navController.currentBackStackEntry?.savedStateHandle
+
+        val observer = androidx.lifecycle.Observer<Boolean> { cancelled ->
+            if (cancelled == true) {
+                println("🔙 User returned from OAuth without completing login")
+                // Reset OAuth trigger flags
+                viewModel.resetOAuthFlags()
+                // Clear the flag
+                handle?.set("oauth_cancelled", false)
+            }
+        }
+
+        handle?.getLiveData<Boolean>("oauth_cancelled")?.observeForever(observer)
+
+        onDispose {
+            handle?.getLiveData<Boolean>("oauth_cancelled")?.removeObserver(observer)
         }
     }
 

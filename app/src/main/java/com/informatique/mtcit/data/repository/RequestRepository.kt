@@ -44,6 +44,25 @@ class RequestRepository @Inject constructor(
     }
 
     /**
+     * Get engineer inspection requests with pagination
+     * Uses the engineer-specific filtered API endpoint with simplified filter structure
+     *
+     * @param page Page number (0-based)
+     * @param size Number of items per page
+     * @param searchText Optional search text
+     * @param columnName Column to search in
+     * @return Result with RequestsApiResponse
+     */
+    suspend fun getEngineerInspectionRequests(
+        page: Int = 0,
+        size: Int = 10,
+        searchText: String = "",
+        columnName: String = "requestNumber"
+    ): Result<com.informatique.mtcit.data.model.requests.RequestsApiResponse> {
+        return userRequestsRepository.getEngineerInspectionRequests(page, size, searchText, columnName)
+    }
+
+    /**
      * Get request status by ID - Calls real API
      *
      * API: GET /api/v1/{endpoint}/{requestId}

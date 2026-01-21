@@ -73,6 +73,10 @@ class RequestsViewModel @Inject constructor(
                 setLoading(true)
                 _appError.value = null
 
+                // ✅ Check if user is engineer
+                val isEngineer = UserHelper.isEngineer(appContext)
+                println("👷 User role check in loadRequests: isEngineer=$isEngineer")
+
                 val civilId = UserHelper.getOwnerCivilId(appContext)
 
                 // ✅ NEW: Check if civil ID is null (no token available)
@@ -88,12 +92,25 @@ class RequestsViewModel @Inject constructor(
                 println("📱 RequestsViewModel: Loading first page for civilId=$civilId")
                 println("🔄 Sort Order: ${_sortOrder.value}")
 
-                val result = requestsStrategy.loadUserRequests(
-                    civilId = civilId,
-                    size = pageSize,
-                    page = 0,
-                    sort = _sortOrder.value  // ✅ Use dynamic sort order
-                )
+                val result = if (isEngineer) {
+                    // ✅ Engineer - use engineer inspection API
+                    println("📡 Using ENGINEER API in loadRequests")
+                    requestsStrategy.loadEngineerInspectionRequests(
+                        page = 0,
+                        size = pageSize,
+                        searchText = "",
+                        columnName = "requestNumber"
+                    )
+                } else {
+                    // ✅ Client - use customer API
+                    println("📡 Using CUSTOMER API in loadRequests")
+                    requestsStrategy.loadUserRequests(
+                        civilId = civilId,
+                        size = pageSize,
+                        page = 0,
+                        sort = _sortOrder.value
+                    )
+                }
 
                 result.fold(
                     onSuccess = { requestsResult ->
@@ -139,6 +156,9 @@ class RequestsViewModel @Inject constructor(
                 _isLoadingMore.value = true
                 _appError.value = null
 
+                // ✅ Check if user is engineer
+                val isEngineer = UserHelper.isEngineer(appContext)
+
                 val civilId = currentCivilId ?: UserHelper.getOwnerCivilId(appContext)
 
                 // ✅ Check if civil ID is null
@@ -155,7 +175,16 @@ class RequestsViewModel @Inject constructor(
                 // Determine sort direction from current sort order
                 val sortDirection = if (_sortOrder.value.contains("asc")) "ASC" else "DESC"
 
-                val result = if (currentFilterStatusId == null) {
+                val result = if (isEngineer) {
+                    // ✅ Engineer role - use engineer inspection API with simplified filter
+                    println("📡 Loading more (page $nextPage) using ENGINEER API")
+                    requestsStrategy.loadEngineerInspectionRequests(
+                        page = nextPage,
+                        size = pageSize,
+                        searchText = "",
+                        columnName = "requestNumber"
+                    )
+                } else if (currentFilterStatusId == null) {
                     // No filter - use normal API
                     println("📡 Loading more (page $nextPage) using normal API")
                     requestsStrategy.loadUserRequests(
@@ -264,6 +293,7 @@ class RequestsViewModel @Inject constructor(
      * ✅ NEW: Apply filter (null = no filter, use normal API)
      * When filter is applied, uses the /filtered endpoint
      * When filter is null, uses the normal endpoint
+     * For engineer role, uses the /inspection-requests/filtered/engineer endpoint
      */
     fun applyFilter(statusId: Int?) {
         viewModelScope.launch {
@@ -274,6 +304,10 @@ class RequestsViewModel @Inject constructor(
                 setLoading(true)
                 _appError.value = null
                 _requests.value = emptyList() // Clear old data
+
+                // ✅ Check if user is engineer
+                val isEngineer = UserHelper.isEngineer(appContext)
+                println("👷 User role check: isEngineer=$isEngineer")
 
                 val civilId = UserHelper.getOwnerCivilId(appContext)
 
@@ -289,8 +323,30 @@ class RequestsViewModel @Inject constructor(
                 // Determine sort direction from current sort order
                 val sortDirection = if (_sortOrder.value.contains("asc")) "ASC" else "DESC"
 
-                if (statusId == null) {
-                    // No filter - use normal API
+                if (isEngineer) {
+                    // ✅ Engineer role - use engineer inspection API with simplified filter
+                    println("📡 Using ENGINEER API")
+
+                    val result = requestsStrategy.loadEngineerInspectionRequests(
+                        page = 0,
+                        size = pageSize,
+                        searchText = "",
+                        columnName = "requestNumber"
+                    )
+
+                    result.fold(
+                        onSuccess = { requestsResult ->
+                            _requests.value = requestsResult.requests
+                            _paginationState.value = requestsResult.pagination
+                            println("✅ Loaded ${requestsResult.requests.size} engineer inspection requests")
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to load engineer inspection requests: ${error.message}")
+                            handleError(error)
+                        }
+                    )
+                } else if (statusId == null) {
+                    // No filter - use normal API (client)
                     println("📡 Using normal API (no filter)")
                     val result = requestsStrategy.loadUserRequests(
                         civilId = civilId,
@@ -311,7 +367,7 @@ class RequestsViewModel @Inject constructor(
                         }
                     )
                 } else {
-                    // With filter - use filtered API
+                    // With filter - use filtered API (client)
                     println("📡 Using filtered API with statusId=$statusId")
                     val filter = com.informatique.mtcit.data.model.requests.RequestFilterDto(
                         statusId = statusId,

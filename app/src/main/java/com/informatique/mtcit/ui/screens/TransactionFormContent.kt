@@ -583,6 +583,19 @@ fun GenericNavigationBottomBar(
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
+                        // ✅ NEW: Force "Next" button for LOGIN_METHOD_SELECTION
+                        currentStepType == com.informatique.mtcit.business.transactions.shared.StepType.LOGIN_METHOD_SELECTION -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = localizedApp(R.string.next_button),
+                                    fontWeight = FontWeight.Normal,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                        }
                         isReviewStep || currentStep >= totalSteps - 1 -> {
                             // Show "Accept & Send" on review step or last step
                             Text(localizedApp(R.string.accept_and_send) , fontWeight = FontWeight.Normal,
