@@ -9,6 +9,7 @@ import com.informatique.mtcit.data.model.OwnerFileUpload
 import com.informatique.mtcit.data.model.OwnerSubmissionRequest
 import com.informatique.mtcit.data.model.UpdateDimensionsRequest
 import com.informatique.mtcit.data.model.UpdateWeightsRequest
+import com.informatique.mtcit.ui.components.EngineData
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import kotlinx.coroutines.Dispatchers
@@ -16,9 +17,15 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.put
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.core.net.toUri
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 
 /**
  * Shared manager for handling registration request API calls
@@ -74,16 +81,24 @@ class RegistrationRequestManager @Inject constructor(
         println("   📦 Current data:  $currentData")
         println("   📊 Original size: ${original.size}, Current size: ${currentData.size}")
 
+        // ✅ FIX: Normalize both maps for comparison
+        // Remove null/empty values and trim strings
+        val normalizedOriginal = original.filterValues { it != null && it.toString().isNotBlank() }
+            .mapValues { it.value.toString().trim() }
+        val normalizedCurrent = currentData
+            .filterValues { value -> value != null && value.toString().isNotBlank() }
+            .mapValues { (_, value) -> value.toString().trim() }
+
         // Deep equality check - compare all key-value pairs
-        val changed = currentData != original
+        val changed = normalizedCurrent != normalizedOriginal
 
         if (changed) {
             println("🔄 Step $stepType data CHANGED")
             // Show what changed
-            val allKeys = (original.keys + currentData.keys).toSet()
+            val allKeys = (normalizedOriginal.keys + normalizedCurrent.keys).toSet()
             allKeys.forEach { key ->
-                val originalValue = original[key]
-                val currentValue = currentData[key]
+                val originalValue = normalizedOriginal[key]
+                val currentValue = normalizedCurrent[key]
                 if (originalValue != currentValue) {
                     println("   🔸 Key '$key': '$originalValue' → '$currentValue'")
                 }
@@ -128,10 +143,11 @@ class RegistrationRequestManager @Inject constructor(
         // MARINE_UNIT_DATA - Check for unit type (main indicator)
         if (formData.containsKey("unitType") && formData["unitType"]?.isNotEmpty() == true) {
             postedSteps.add(StepType.MARINE_UNIT_DATA)
-            // ✅ FIX: Track the same fields we compare in processStepIfNeeded
+            // ✅ FIX: Track the EXACT same fields we compare in processStepIfNeeded
+            // ⚠️ IMPORTANT: Use the actual form field names (e.g., "mmsi" not "mmsiNumber")
             val relevantFields = listOf(
-                "unitType", "unitClassification", "callSign", "imoNumber", "mmsiNumber",
-                "registrationPort", "manufacturerYear", "maritimeActivity",
+                "unitType", "unitClassification", "callSign", "imoNumber", "mmsi",
+                "registrationPort", "manufacturerYear", "maritimeactivity",
                 "proofType", "constructionEndDate", "firstRegistrationDate",
                 "registrationCountry", "officialNumber", "buildingMaterial"
             )
@@ -139,6 +155,7 @@ class RegistrationRequestManager @Inject constructor(
                 it in relevantFields
             }.mapValues { it.value.toString() }.toMutableMap()
             println("   ✅ MARINE_UNIT_DATA marked as posted (has unitType)")
+            println("   📦 Tracked fields: ${stepOriginalData[StepType.MARINE_UNIT_DATA]?.keys}")
         }
 
         // SHIP_DIMENSIONS
@@ -648,6 +665,258 @@ class RegistrationRequestManager @Inject constructor(
     }
 
     /**
+     * Update engine immediately (for engines with dbId)
+     * PUT /api/v1/registration-requests/{requestId}/engines/{engineId}
+     *
+     * @param context Android context for file operations
+     * @param requestId The registration request ID
+     * @param engine Engine data with dbId
+     * @return Success or error result
+     */
+    suspend fun updateEngineImmediate(
+        context: Context,
+        requestId: Int,
+        engine: EngineData
+    ): UpdateResult {
+        return try {
+            val engineId = engine.dbId ?: return UpdateResult.Error("Engine ID not found for update")
+
+            println("🔄 RegistrationRequestManager: Updating engine immediately...")
+            println("   - requestId: $requestId")
+            println("   - engineId: $engineId")
+            println("   - number: ${engine.number}")
+
+            // Parse engine to submission request
+            val enginesJson = org.json.JSONArray().apply {
+                val jsonObj = org.json.JSONObject()
+                jsonObj.put("id", engine.id)
+                jsonObj.put("dbId", engine.dbId)
+                jsonObj.put("number", engine.number)
+                jsonObj.put("type", engine.type)
+                jsonObj.put("power", engine.power)
+                jsonObj.put("cylinder", engine.cylinder)
+                jsonObj.put("manufacturer", engine.manufacturer)
+                jsonObj.put("model", engine.model)
+                jsonObj.put("manufactureYear", engine.manufactureYear)
+                jsonObj.put("productionCountry", engine.productionCountry)
+                jsonObj.put("fuelType", engine.fuelType)
+                jsonObj.put("condition", engine.condition)
+                jsonObj.put("documentUri", engine.documentUri)
+                jsonObj.put("documentName", engine.documentName)
+                engine.documentRefNum?.let { jsonObj.put("documentRefNum", it) }
+                engine.documentFileName?.let { jsonObj.put("documentFileName", it) }
+                put(jsonObj)
+            }.toString()
+
+            // ✅ Create formData map for parsing
+            val formData = mapOf("engines" to enginesJson)
+
+            val engines = parseEnginesFromJson(enginesJson, formData, context)
+
+            // ✅ Parse files from engine data - handles both new uploads and draft documents
+            val files = parseEngineFilesFromFormData(context, formData)
+
+            if (engines.isEmpty()) {
+                return UpdateResult.Error("Failed to parse engine data")
+            }
+
+            val result = repository.updateEngine(context, requestId, engineId, engines[0], files)
+
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
+                        println("✅ Engine updated immediately!")
+                        UpdateResult.Success
+                    } else {
+                        println("❌ API returned error: ${response.message}")
+                        UpdateResult.Error(response.message)
+                    }
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to update engine: ${exception.message}")
+                    exception.printStackTrace()
+                    UpdateResult.Error(exception.message ?: "Unknown error")
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception in updateEngineImmediate: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Delete engine immediately (for engines with dbId)
+     * DELETE /api/v1/registration-requests/{requestId}/engines/{engineId}
+     *
+     * @param requestId The registration request ID
+     * @param engineId Engine database ID
+     * @return Success or error result
+     */
+    suspend fun deleteEngineImmediate(
+        requestId: Int,
+        engineId: Int
+    ): UpdateResult {
+        return try {
+            println("🗑️ RegistrationRequestManager: Deleting engine immediately...")
+            println("   - requestId: $requestId")
+            println("   - engineId: $engineId")
+
+            val result = repository.deleteEngine(requestId, engineId)
+
+            result.fold(
+                onSuccess = {
+                    println("✅ Engine deleted immediately!")
+                    UpdateResult.Success
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to delete engine: ${exception.message}")
+                    exception.printStackTrace()
+                    UpdateResult.Error(exception.message ?: "Unknown error")
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception in deleteEngineImmediate: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Update owner immediately (for owners with dbId)
+     * PUT /api/v1/registration-requests/{requestId}/owners/{ownerId}
+     *
+     * @param context Android context for file operations
+     * @param requestId The registration request ID
+     * @param owner Owner data to update
+     * @return Success or error result
+     */
+    suspend fun updateOwnerImmediate(
+        context: Context,
+        requestId: Int,
+        owner: com.informatique.mtcit.ui.components.OwnerData
+    ): UpdateResult {
+        return try {
+            val ownerId = owner.dbId ?: return UpdateResult.Error("Owner ID not found for update")
+
+            println("🔄 RegistrationRequestManager: Updating owner immediately...")
+            println("   - requestId: $requestId")
+            println("   - ownerId: $ownerId")
+            println("   - name: ${owner.ownerName}")
+
+            // Parse owner to submission request
+            val ownersJson = org.json.JSONArray().apply {
+                val jsonObj = org.json.JSONObject()
+                jsonObj.put("id", owner.id)
+                jsonObj.put("dbId", owner.dbId)
+                jsonObj.put("fullName", owner.fullName)
+                jsonObj.put("ownerName", owner.ownerName)
+                jsonObj.put("ownerNameEn", owner.ownerNameEn)
+                jsonObj.put("nationality", owner.nationality)
+                jsonObj.put("idNumber", owner.idNumber)
+                jsonObj.put("ownerShipPercentage", owner.ownerShipPercentage)
+                jsonObj.put("email", owner.email)
+                jsonObj.put("mobile", owner.mobile)
+                jsonObj.put("address", owner.address)
+                jsonObj.put("city", owner.city)
+                jsonObj.put("country", owner.country)
+                jsonObj.put("postalCode", owner.postalCode)
+                jsonObj.put("isCompany", owner.isCompany)
+                jsonObj.put("companyRegistrationNumber", owner.companyRegistrationNumber)
+                jsonObj.put("companyName", owner.companyName)
+                jsonObj.put("companyType", owner.companyType)
+                jsonObj.put("isRepresentative", owner.isRepresentative)
+
+                // Add document info
+                if (owner.ownershipProofDocument.isNotEmpty()) {
+                    val documentsArray = org.json.JSONArray()
+                    val docObj = org.json.JSONObject()
+                    docObj.put("documentUri", owner.ownershipProofDocument)
+                    owner.ownershipProofDocumentRefNum?.let { docObj.put("documentRefNum", it) }
+                    owner.ownershipProofDocumentFileName?.let { docObj.put("documentFileName", it) }
+                    docObj.put("docId", 1) // Default document type
+                    documentsArray.put(docObj)
+                    jsonObj.put("documents", documentsArray)
+                }
+
+                put(jsonObj)
+            }.toString()
+
+            // ✅ Create formData map for parsing
+            val formData = mapOf("owners" to ownersJson)
+
+            val owners = parseOwnersFromJson(ownersJson, formData, context)
+
+            // ✅ Parse files from owner data - handles both new uploads and draft documents
+            val files = parseOwnerFilesFromFormData(context, formData)
+
+            if (owners.isEmpty()) {
+                return UpdateResult.Error("Failed to parse owner data")
+            }
+
+            val result = repository.updateOwner(context, requestId, ownerId, owners[0], files)
+
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success && response.statusCode == 200) {
+                        println("✅ Owner updated immediately!")
+                        UpdateResult.Success
+                    } else {
+                        println("❌ API returned error: ${response.message}")
+                        UpdateResult.Error(response.message)
+                    }
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to update owner: ${exception.message}")
+                    exception.printStackTrace()
+                    UpdateResult.Error(exception.message ?: "Unknown error")
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception in updateOwnerImmediate: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
+     * Delete owner immediately (for owners with dbId)
+     * DELETE /api/v1/registration-requests/{requestId}/owners/{ownerId}
+     *
+     * @param requestId The registration request ID
+     * @param ownerId Owner database ID
+     * @return Success or error result
+     */
+    suspend fun deleteOwnerImmediate(
+        requestId: Int,
+        ownerId: Int
+    ): UpdateResult {
+        return try {
+            println("🗑️ RegistrationRequestManager: Deleting owner immediately...")
+            println("   - requestId: $requestId")
+            println("   - ownerId: $ownerId")
+
+            val result = repository.deleteOwner(requestId, ownerId)
+
+            result.fold(
+                onSuccess = {
+                    println("✅ Owner deleted immediately!")
+                    UpdateResult.Success
+                },
+                onFailure = { exception ->
+                    println("❌ Failed to delete owner: ${exception.message}")
+                    exception.printStackTrace()
+                    UpdateResult.Error(exception.message ?: "Unknown error")
+                }
+            )
+        } catch (e: Exception) {
+            println("❌ Exception in deleteOwnerImmediate: ${e.message}")
+            e.printStackTrace()
+            UpdateResult.Error(e.message ?: "Unknown error")
+        }
+    }
+
+    /**
      * Validate build status documents (NEW - multipart/form-data with files)
      * Called after documents step when user has uploaded shipbuilding certificate and/or inspection documents
      *
@@ -930,10 +1199,10 @@ class RegistrationRequestManager @Inject constructor(
                                 println("🔍 Step MARINE_UNIT_DATA already posted, checking for changes...")
 
                                 // Extract only relevant fields for comparison
-                                // ✅ FIX: Only compare fields that are actually in this step's form
+                                // ✅ FIX: Use the EXACT form field names (mmsi not mmsiNumber, maritimeactivity not maritimeActivity)
                                 val relevantFields = listOf(
-                                    "unitType", "unitClassification", "callSign", "imoNumber", "mmsiNumber",
-                                    "registrationPort", "manufacturerYear", "maritimeActivity",
+                                    "unitType", "unitClassification", "callSign", "imoNumber", "mmsi",
+                                    "registrationPort", "manufacturerYear", "maritimeactivity",
                                     "proofType", "constructionEndDate", "firstRegistrationDate",
                                     "registrationCountry", "officialNumber", "buildingMaterial"
                                 )
@@ -941,6 +1210,9 @@ class RegistrationRequestManager @Inject constructor(
                                 val currentStepData = formData.filterKeys { key ->
                                     key in relevantFields
                                 }.mapValues { it.value.toString() } // Ensure string values
+
+                                println("🔍 DEBUG: Current step data keys: ${currentStepData.keys}")
+                                println("🔍 DEBUG: Current step data: $currentStepData")
 
                                 if (!hasDataChanged(StepType.MARINE_UNIT_DATA, currentStepData)) {
                                     // Data unchanged → Skip API call
@@ -985,8 +1257,8 @@ class RegistrationRequestManager @Inject constructor(
                                         // Mark as posted and save original data
                                         postedSteps.add(StepType.MARINE_UNIT_DATA)
                                         val relevantFields = listOf(
-                                            "unitType", "unitClassification", "callSign", "imoNumber", "mmsiNumber",
-                                            "registrationPort", "manufacturerYear", "maritimeActivity",
+                                            "unitType", "unitClassification", "callSign", "imoNumber", "mmsi",
+                                            "registrationPort", "manufacturerYear", "maritimeactivity",
                                             "proofType", "constructionEndDate", "firstRegistrationDate",
                                             "registrationCountry", "officialNumber", "buildingMaterial"
                                         )
@@ -994,6 +1266,7 @@ class RegistrationRequestManager @Inject constructor(
                                             key in relevantFields
                                         }.mapValues { it.value.toString() }
                                         stepOriginalData[StepType.MARINE_UNIT_DATA] = currentStepData.toMap()
+                                        println("✅ Saved original data for MARINE_UNIT_DATA: ${stepOriginalData[StepType.MARINE_UNIT_DATA]?.keys}")
 
                                         StepProcessResult.Success("Registration request created: ${result.requestId}")
                                     }
@@ -1120,10 +1393,11 @@ class RegistrationRequestManager @Inject constructor(
                 }
             }
 
-            // ✅ Engine Info Step - Add engine
-            // NOTE: Engines are arrays - user can add multiple
-            // We don't skip API calls here because user might want to add more engines
-            // Each engine addition is a separate POST request
+            // ✅ Engine Info Step - Smart handling: Add NEW / Update EXISTING / Delete
+            // When step is already posted (from draft or previous visit):
+            // - POST NEW engines (no dbId)
+            // - PUT EXISTING engines (has dbId) if data changed
+            // - DELETE removed engines (handled by comparing with API)
             StepType.ENGINE_INFO -> {
                 println("🔧 Engine Info step detected")
 
@@ -1137,24 +1411,89 @@ class RegistrationRequestManager @Inject constructor(
                     return StepProcessResult.Error("Context required for engine file upload")
                 }
 
-                val result = submitEngine(formData, requestId.toInt(), context)
+                // ✅ Parse engines from form data
+                val enginesJsonStr = formData["engines"] ?: "[]"
+                val allEnginesList = parseEnginesFromFormData(enginesJsonStr)
 
+                // ✅ Check if engines data has changed since last submission
+                val originalEnginesJson = stepOriginalData[StepType.ENGINE_INFO]?.get("engines") ?: "[]"
+                val hasChanged = enginesJsonStr != originalEnginesJson
+
+                println("📊 Engine submission:")
+                println("   - Total engines in form: ${allEnginesList.size}")
+                println("   - Data changed since last submit: $hasChanged")
+
+                // ✅ Skip API call if data hasn't changed
+                if (!hasChanged && postedSteps.contains(StepType.ENGINE_INFO)) {
+                    println("⏭️ Engine data unchanged - skipping API call")
+                    return StepProcessResult.NoAction
+                }
+
+                println("   - All engines will be POSTED (new and edited)")
+
+                // ✅ POST ALL engines (both new and edited)
+                // Delete is handled via immediate API calls from UI buttons
+                if (allEnginesList.isEmpty()) {
+                    println("✅ No engines to submit, proceeding to next step")
+                    return StepProcessResult.NoAction
+                }
+
+                println("➕ Posting ${allEnginesList.size} engine(s)...")
+                val enginesJson = org.json.JSONArray().apply {
+                    allEnginesList.forEach { engine ->
+                        val jsonObj = org.json.JSONObject()
+                        val dbId = engine["dbId"] // Get dbId if it exists
+
+                        engine.forEach { (key, value) ->
+                            if (key != "dbId") { // Exclude dbId from submission
+                                jsonObj.put(key, value)
+                            }
+                        }
+
+                        // ✅ For edited engines, add "id" field with dbId value
+                        if (dbId != null) {
+                            val idValue = when (dbId) {
+                                is String -> dbId.toIntOrNull()
+                                is Int -> dbId
+                                is Number -> dbId.toInt()
+                                else -> null
+                            }
+                            if (idValue != null) {
+                                jsonObj.put("id", idValue)
+                                println("   ✅ Engine with id=$idValue (edited)")
+                            }
+                        } else {
+                            println("   ➕ New engine (no id)")
+                        }
+
+                        put(jsonObj)
+                    }
+                }.toString()
+
+                val newFormData = formData.toMutableMap().apply {
+                    put("engines", enginesJson)
+                }
+
+                val result = submitEngine(newFormData, requestId.toInt(), context)
                 when (result) {
                     is UpdateResult.Success -> {
-                        println("✅ Engine submitted successfully")
-                        StepProcessResult.Success("Engine added")
+                        println("✅ New engine(s) submitted successfully")
+                        // ✅ Save original data for change detection
+                        stepOriginalData[StepType.ENGINE_INFO] = mapOf("engines" to enginesJson)
+                        postedSteps.add(StepType.ENGINE_INFO)
+                        println("✅ Saved original engine data for change detection")
+                        StepProcessResult.Success("Engine(s) added")
                     }
                     is UpdateResult.Error -> {
-                        println("❌ Failed to submit engine: ${result.message}")
+                        println("❌ Failed to submit new engines: ${result.message}")
                         StepProcessResult.Error(result.message)
                     }
                 }
             }
 
-            // ✅ Owner Info Step - Add owner
-            // NOTE: Owners are arrays - user can add multiple
-            // We don't skip API calls here because user might want to add more owners
-            // Each owner addition is a separate POST request
+            // ✅ Owner Info Step - Simplified: Only POST new owners
+            // Edit/Delete are handled via immediate API calls from UI buttons
+            // Documents are loaded from draft via RequestDataConverter
             StepType.OWNER_INFO -> {
                 println("👤 Owner Info step detected")
 
@@ -1168,15 +1507,85 @@ class RegistrationRequestManager @Inject constructor(
                     return StepProcessResult.Error("Context required for owner file upload")
                 }
 
-                val result = submitOwner(formData, requestId.toInt(), context)
+                // Parse owners from form data
+                val ownersJsonStr = formData["owners"] ?: "[]"
+                val allOwnersList = if (ownersJsonStr.isNotEmpty() && ownersJsonStr != "[]") {
+                    parseOwnersFromFormData(ownersJsonStr)
+                } else {
+                    emptyList()
+                }
 
+                // ✅ Check if owners data has changed since last submission
+                val originalOwnersJson = stepOriginalData[StepType.OWNER_INFO]?.get("owners") ?: "[]"
+                val hasChanged = ownersJsonStr != originalOwnersJson
+
+                println("📊 Owner submission:")
+                println("   - Total owners in form: ${allOwnersList.size}")
+                println("   - Data changed since last submit: $hasChanged")
+
+                // ✅ Skip API call if data hasn't changed
+                if (!hasChanged && postedSteps.contains(StepType.OWNER_INFO)) {
+                    println("⏭️ Owner data unchanged - skipping API call")
+                    return StepProcessResult.NoAction
+                }
+
+                println("   - All owners will be POSTED (new and edited)")
+
+                // ✅ POST ALL owners (both new and edited)
+                // Delete is handled via immediate API calls from UI buttons
+                if (allOwnersList.isEmpty()) {
+                    println("✅ No owners to submit, proceeding to next step")
+                    return StepProcessResult.NoAction
+                }
+
+                println("➕ Posting ${allOwnersList.size} owner(s)...")
+                val ownersJson = org.json.JSONArray().apply {
+                    allOwnersList.forEach { owner ->
+                        val jsonObj = org.json.JSONObject()
+                        val dbId = owner["dbId"] // Get dbId if it exists
+
+                        owner.forEach { (key, value) ->
+                            if (key != "dbId") { // Exclude dbId from submission
+                                jsonObj.put(key, value)
+                            }
+                        }
+
+                        // ✅ For edited owners, add "id" field with dbId value
+                        if (dbId != null) {
+                            val idValue = when (dbId) {
+                                is String -> dbId.toIntOrNull()
+                                is Int -> dbId
+                                is Number -> dbId.toInt()
+                                else -> null
+                            }
+                            if (idValue != null) {
+                                jsonObj.put("id", idValue)
+                                println("   ✅ Owner with id=$idValue (edited)")
+                            }
+                        } else {
+                            println("   ➕ New owner (no id)")
+                        }
+
+                        put(jsonObj)
+                    }
+                }.toString()
+
+                val newFormData = formData.toMutableMap().apply {
+                    put("owners", ownersJson)
+                }
+
+                val result = submitOwner(newFormData, requestId.toInt(), context)
                 when (result) {
                     is UpdateResult.Success -> {
-                        println("✅ Owner submitted successfully")
-                        StepProcessResult.Success("Owner added")
+                        println("✅ New owner(s) submitted successfully")
+                        // ✅ Save original data for change detection
+                        stepOriginalData[StepType.OWNER_INFO] = mapOf("owners" to ownersJson)
+                        postedSteps.add(StepType.OWNER_INFO)
+                        println("✅ Saved original owner data for change detection")
+                        StepProcessResult.Success("Owner(s) added")
                     }
                     is UpdateResult.Error -> {
-                        println("❌ Failed to submit owner: ${result.message}")
+                        println("❌ Failed to submit new owners: ${result.message}")
                         StepProcessResult.Error(result.message)
                     }
                 }
@@ -1213,8 +1622,9 @@ class RegistrationRequestManager @Inject constructor(
                 }
 
                 // Extract the values from form data
+                // ✅ FIX: Use "mmsi" not "mmsiNumber" - matches the form field name
                 val imoNumber = formData["imoNumber"]?.takeIf { it.isNotBlank() && it != "null" }
-                val mmsiNumber = formData["mmsiNumber"]?.takeIf { it.isNotBlank() && it != "null" }
+                val mmsiNumber = formData["mmsi"]?.takeIf { it.isNotBlank() && it != "null" }
                 val callSign = formData["callSign"]?.takeIf { it.isNotBlank() && it != "null" }
 
                 println("📝 Maritime identity fields:")
@@ -1411,6 +1821,15 @@ class RegistrationRequestManager @Inject constructor(
                     val engineObj = engineElement.jsonObject
                     val docOwnerId = "engine-${index + 1}"
 
+                    // ✅ Extract id or dbId for PUT requests (will be null for POST)
+                    // Check both "id" (new format) and "dbId" (internal format) fields
+                    val dbId = engineObj["id"]?.jsonPrimitive?.intOrNull
+                        ?: engineObj["dbId"]?.jsonPrimitive?.intOrNull
+
+                    if (dbId != null) {
+                        println("   ✅ Engine $index: Extracted id=$dbId from JSON")
+                    }
+
                     // Extract values from JSON
                     val engineSerialNumber = engineObj["number"]?.jsonPrimitive?.content ?: ""
                     val engineTypeArabic = engineObj["type"]?.jsonPrimitive?.content ?: ""
@@ -1431,10 +1850,63 @@ class RegistrationRequestManager @Inject constructor(
                         documentsArray.forEach { docElement ->
                             val docObj = docElement.jsonObject
                             val documentUri = docObj["documentUri"]?.jsonPrimitive?.content ?: ""
+                            val documentRefNum = docObj["documentRefNum"]?.jsonPrimitive?.content
+                            val documentFileName = docObj["documentFileName"]?.jsonPrimitive?.content
                             val docId = docObj["docId"]?.jsonPrimitive?.content?.toIntOrNull() ?: 1
 
                             if (documentUri.isNotEmpty()) {
-                                val uri = android.net.Uri.parse(documentUri)
+                                // ✅ Check if this is a draft document (format: "draft:refNum")
+                                if (documentUri.startsWith("draft:") && documentRefNum != null) {
+                                    // Draft document - include docRefNum AND file will be downloaded & re-uploaded
+                                    println("📎 Engine draft document detected: $documentRefNum")
+                                    val metadata = com.informatique.mtcit.data.model.EngineDocumentMetadata(
+                                        fileName = documentFileName ?: "document.jpg",
+                                        docOwnerId = docOwnerId,
+                                        docId = docId,
+                                        docRefNum = documentRefNum // ✅ Include actual refNum
+                                    )
+                                    println("📎 Created engine metadata with docRefNum: $documentRefNum (will also re-upload file)")
+                                    documents.add(metadata)
+                                } else {
+                                    // New document - get fileName from URI
+                                    val uri = android.net.Uri.parse(documentUri)
+                                    val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
+                                    val fileName = fileUpload?.fileName ?: ""
+
+                                    if (fileName.isNotEmpty()) {
+                                        documents.add(
+                                            com.informatique.mtcit.data.model.EngineDocumentMetadata(
+                                                fileName = fileName,
+                                                docOwnerId = docOwnerId,
+                                                docId = docId
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // ✅ BACKWARD COMPATIBILITY: Support old format with single documentUri
+                        val documentUri = engineObj["documentUri"]?.jsonPrimitive?.content ?: ""
+                        val documentRefNum = engineObj["documentRefNum"]?.jsonPrimitive?.content
+                        val documentFileName = engineObj["documentFileName"]?.jsonPrimitive?.content
+
+                        if (documentUri.isNotEmpty()) {
+                            // ✅ Check if this is a draft document (format: "draft:refNum")
+                            if (documentUri.startsWith("draft:") && documentRefNum != null) {
+                                // Draft document - include docRefNum AND file will be downloaded & re-uploaded
+                                println("📎 Draft document detected: $documentRefNum")
+                                val metadata = com.informatique.mtcit.data.model.EngineDocumentMetadata(
+                                    fileName = documentFileName ?: "document.jpg",
+                                    docOwnerId = docOwnerId,
+                                    docId = 1,
+                                    docRefNum = documentRefNum // ✅ Include actual refNum
+                                )
+                                println("📎 Created metadata with docRefNum: $documentRefNum (will also re-upload file)")
+                                documents.add(metadata)
+                            } else {
+                                // New document - upload file
+                                val uri = documentUri.toUri()
                                 val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
                                 val fileName = fileUpload?.fileName ?: ""
 
@@ -1443,28 +1915,10 @@ class RegistrationRequestManager @Inject constructor(
                                         com.informatique.mtcit.data.model.EngineDocumentMetadata(
                                             fileName = fileName,
                                             docOwnerId = docOwnerId,
-                                            docId = docId
+                                            docId = 1 // Default docId for backward compatibility
                                         )
                                     )
                                 }
-                            }
-                        }
-                    } else {
-                        // ✅ BACKWARD COMPATIBILITY: Support old format with single documentUri
-                        val documentUri = engineObj["documentUri"]?.jsonPrimitive?.content ?: ""
-                        if (documentUri.isNotEmpty()) {
-                            val uri = android.net.Uri.parse(documentUri)
-                            val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
-                            val fileName = fileUpload?.fileName ?: ""
-
-                            if (fileName.isNotEmpty()) {
-                                documents.add(
-                                    com.informatique.mtcit.data.model.EngineDocumentMetadata(
-                                        fileName = fileName,
-                                        docOwnerId = docOwnerId,
-                                        docId = 1 // Default docId for backward compatibility
-                                    )
-                                )
                             }
                         }
                     }
@@ -1476,6 +1930,7 @@ class RegistrationRequestManager @Inject constructor(
                     val status = engineStatuses.find { it.nameAr == engineConditionArabic }
 
                     EngineSubmissionRequest(
+                        id = dbId, // ✅ Include engine ID for PUT requests (null for POST)
                         engineSerialNumber = engineSerialNumber,
                         engineType = com.informatique.mtcit.data.model.EngineTypeRef(
                             id = engineType?.id?.toString() ?: engineTypeArabic,
@@ -1572,21 +2027,78 @@ class RegistrationRequestManager @Inject constructor(
                         val documentUri = engineObj["documentUri"]?.jsonPrimitive?.content
 
                         if (!documentUri.isNullOrEmpty() && documentUri != "") {
-                            val uri = android.net.Uri.parse(documentUri)
-                            val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
+                            if (documentUri.startsWith("draft:")) {
+                                // ✅ Draft document in UPDATE - need to download and re-upload it
+                                // Extract refNum from "draft:refNum"
+                                val refNum = documentUri.removePrefix("draft:")
+                                println("📎 Draft document in UPDATE: $refNum - downloading to re-upload...")
 
-                            if (fileUpload != null) {
-                                files.add(
-                                    EngineFileUpload(
-                                        fileName = fileUpload.fileName,
-                                        fileUri = fileUpload.fileUri,
-                                        fileBytes = fileUpload.fileBytes,
-                                        mimeType = fileUpload.mimeType,
-                                        docOwnerId = docOwnerId,
-                                        docId = 1 // Default docId for backward compatibility
+                                try {
+                                    // Get file URL from API
+                                    val fileUrlResult = repository.getFilePreview(refNum)
+                                    fileUrlResult.fold(
+                                        onSuccess = { fileUrl ->
+                                            println("✅ Got file URL: $fileUrl")
+
+                                            // Download file from URL
+                                            val url = java.net.URL(fileUrl)
+                                            val connection = url.openConnection() as java.net.HttpURLConnection
+                                            connection.connect()
+
+                                            val fileBytes = connection.inputStream.use { it.readBytes() }
+                                            println("✅ Downloaded ${fileBytes.size} bytes")
+
+                                            // Get filename from engine data or URL
+                                            val fileName = engineObj["documentFileName"]?.jsonPrimitive?.contentOrNull
+                                                ?: android.net.Uri.parse(fileUrl).lastPathSegment?.substringBefore('?')
+                                                ?: "document.jpg"
+
+                                            // Detect MIME type from filename
+                                            val mimeType = when {
+                                                fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                                                fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                                                fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                                                else -> "application/octet-stream"
+                                            }
+
+                                            files.add(
+                                                EngineFileUpload(
+                                                    fileName = fileName,
+                                                    fileUri = fileUrl, // URL as reference
+                                                    fileBytes = fileBytes, // Actual bytes
+                                                    mimeType = mimeType,
+                                                    docOwnerId = docOwnerId,
+                                                    docId = 1
+                                                )
+                                            )
+                                            println("📎 Re-uploaded draft document: $fileName (${fileBytes.size} bytes)")
+                                        },
+                                        onFailure = { error ->
+                                            println("❌ Failed to download draft document: ${error.message}")
+                                        }
                                     )
-                                )
-                                println("📎 Added engine file: ${fileUpload.fileName} (docOwnerId=$docOwnerId, docId=1)")
+                                } catch (e: Exception) {
+                                    println("❌ Exception downloading draft document: ${e.message}")
+                                    e.printStackTrace()
+                                }
+                            } else {
+                                // New document - upload file normally
+                                val uri = android.net.Uri.parse(documentUri)
+                                val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
+
+                                if (fileUpload != null) {
+                                    files.add(
+                                        EngineFileUpload(
+                                            fileName = fileUpload.fileName,
+                                            fileUri = fileUpload.fileUri,
+                                            fileBytes = fileUpload.fileBytes,
+                                            mimeType = fileUpload.mimeType,
+                                            docOwnerId = docOwnerId,
+                                            docId = 1 // Default docId for backward compatibility
+                                        )
+                                    )
+                                    println("📎 Added engine file: ${fileUpload.fileName} (docOwnerId=$docOwnerId, docId=1)")
+                                }
                             }
                         }
                     }
@@ -1618,6 +2130,10 @@ class RegistrationRequestManager @Inject constructor(
                     val ownerObj = ownerElement.jsonObject
                     val docOwnerId = "owner${index + 1}"
 
+                    // ✅ Extract id for PUT requests (will be null for POST)
+                    // Note: We look for "id" not "dbId" because that's what's added to JSON in processStepIfNeeded
+                    val dbId = ownerObj["id"]?.jsonPrimitive?.intOrNull
+
                     // Extract values from JSON - map form field names to API field names
                     val ownerName = ownerObj["ownerName"]?.jsonPrimitive?.content ?: ""
                     val ownerNameEn = ownerObj["ownerNameEn"]?.jsonPrimitive?.content
@@ -1645,11 +2161,63 @@ class RegistrationRequestManager @Inject constructor(
                         documentsArray.forEach { docElement ->
                             val docObj = docElement.jsonObject
                             val documentUri = docObj["documentUri"]?.jsonPrimitive?.content ?: ""
+                            val documentRefNum = docObj["documentRefNum"]?.jsonPrimitive?.content
+                            val documentFileName = docObj["documentFileName"]?.jsonPrimitive?.content
                             val docId = docObj["docId"]?.jsonPrimitive?.content?.toIntOrNull() ?: 1
 
-                            // Extract actual file name from document URI
                             if (documentUri.isNotEmpty()) {
-                                val uri = documentUri.toUri()
+                                // ✅ Check if this is a draft document
+                                if (documentUri.startsWith("draft:") && documentRefNum != null) {
+                                    // Draft document - include metadata with docRefNum
+                                    println("📎 Owner draft document detected: $documentRefNum")
+                                    documents.add(
+                                        com.informatique.mtcit.data.model.OwnerDocumentMetadata(
+                                            fileName = documentFileName ?: "document.jpg",
+                                            docOwnerId = docOwnerId,
+                                            docId = docId,
+                                            docRefNum = documentRefNum // ✅ Include refNum
+                                        )
+                                    )
+                                } else {
+                                    // New document - will be uploaded
+                                    val uri = documentUri.toUri()
+                                    val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
+                                    val fileName = fileUpload?.fileName ?: ""
+
+                                    if (fileName.isNotEmpty()) {
+                                        documents.add(
+                                            com.informatique.mtcit.data.model.OwnerDocumentMetadata(
+                                                fileName = fileName,
+                                                docOwnerId = docOwnerId,
+                                                docId = docId
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Check for single ownershipProofDocument field (backward compatibility)
+                        val ownershipProofDocument = ownerObj["ownershipProofDocument"]?.jsonPrimitive?.content
+                        val ownershipProofDocumentRefNum = ownerObj["ownershipProofDocumentRefNum"]?.jsonPrimitive?.content
+                        val ownershipProofDocumentFileName = ownerObj["ownershipProofDocumentFileName"]?.jsonPrimitive?.content
+
+                        if (!ownershipProofDocument.isNullOrEmpty()) {
+                            // Check if this is a draft document
+                            if (ownershipProofDocument.startsWith("draft:") && !ownershipProofDocumentRefNum.isNullOrBlank()) {
+                                // Draft document - include metadata with docRefNum
+                                println("📎 Owner draft document (single field) detected: $ownershipProofDocumentRefNum")
+                                documents.add(
+                                    com.informatique.mtcit.data.model.OwnerDocumentMetadata(
+                                        fileName = ownershipProofDocumentFileName ?: "document.jpg",
+                                        docOwnerId = docOwnerId,
+                                        docId = 1, // Default document type
+                                        docRefNum = ownershipProofDocumentRefNum // ✅ Include refNum
+                                    )
+                                )
+                            } else {
+                                // New local document - will be uploaded
+                                val uri = ownershipProofDocument.toUri()
                                 val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
                                 val fileName = fileUpload?.fileName ?: ""
 
@@ -1658,33 +2226,26 @@ class RegistrationRequestManager @Inject constructor(
                                         com.informatique.mtcit.data.model.OwnerDocumentMetadata(
                                             fileName = fileName,
                                             docOwnerId = docOwnerId,
-                                            docId = docId
+                                            docId = 1 // Default document type
                                         )
                                     )
                                 }
                             }
                         }
-                    } else {
-                        // Check for single ownershipProofDocument field (backward compatibility)
-                        val ownershipProofDocument = ownerObj["ownershipProofDocument"]?.jsonPrimitive?.content
-                        if (!ownershipProofDocument.isNullOrEmpty()) {
-                            val uri = ownershipProofDocument.toUri()
-                            val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
-                            val fileName = fileUpload?.fileName ?: ""
+                    }
 
-                            if (fileName.isNotEmpty()) {
-                                documents.add(
-                                    com.informatique.mtcit.data.model.OwnerDocumentMetadata(
-                                        fileName = fileName,
-                                        docOwnerId = docOwnerId,
-                                        docId = 1 // Default document type
-                                    )
-                                )
-                            }
-                        }
+                    // ✅ Log final owner submission data
+                    println("📋 Creating OwnerSubmissionRequest:")
+                    println("   - dbId: $dbId")
+                    println("   - ownerName: ${if (ownerName.isNotEmpty()) ownerName else fullName}")
+                    println("   - ownershipPercentage: $ownerShipPercentage")
+                    println("   - documents: ${documents.size}")
+                    documents.forEach { doc ->
+                        println("     📎 Doc: ${doc.fileName}, refNum: ${doc.docRefNum}")
                     }
 
                     OwnerSubmissionRequest(
+                        id = dbId, // ✅ Include owner ID for PUT requests (null for POST)
                         isCompany = isCompany,
                         ownerName = if (ownerName.isNotEmpty()) ownerName else fullName, // Use new field or fallback to fullName
                         ownerNameEn = ownerNameEn,
@@ -1737,8 +2298,141 @@ class RegistrationRequestManager @Inject constructor(
                             val docId = docObj["docId"]?.jsonPrimitive?.content?.toIntOrNull() ?: 1
 
                             if (!documentUri.isNullOrEmpty() && documentUri != "") {
-                                // Convert URI to OwnerFileUpload
-                                val uri = android.net.Uri.parse(documentUri)
+                                if (documentUri.startsWith("draft:")) {
+                                    // ✅ Draft document in UPDATE - download and re-upload
+                                    val refNum = documentUri.removePrefix("draft:")
+                                    println("📎 Owner draft document in UPDATE: $refNum - downloading to re-upload...")
+
+                                    try {
+                                        // Get file URL from API
+                                        val fileUrlResult = repository.getFilePreview(refNum)
+                                        fileUrlResult.fold(
+                                            onSuccess = { fileUrl ->
+                                                println("✅ Got owner file URL: $fileUrl")
+
+                                                // Download file from URL
+                                                val url = java.net.URL(fileUrl)
+                                                val connection = url.openConnection() as java.net.HttpURLConnection
+                                                connection.connect()
+
+                                                val fileBytes = connection.inputStream.use { it.readBytes() }
+                                                println("✅ Downloaded ${fileBytes.size} bytes")
+
+                                                // Get filename
+                                                val fileName = docObj["documentFileName"]?.jsonPrimitive?.contentOrNull
+                                                    ?: android.net.Uri.parse(fileUrl).lastPathSegment?.substringBefore('?')
+                                                    ?: "document.jpg"
+
+                                                // Detect MIME type
+                                                val mimeType = when {
+                                                    fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                                                    fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                                                    fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                                                    else -> "application/octet-stream"
+                                                }
+
+                                                files.add(
+                                                    OwnerFileUpload(
+                                                        fileName = fileName,
+                                                        fileUri = fileUrl,
+                                                        fileBytes = fileBytes,
+                                                        mimeType = mimeType,
+                                                        docOwnerId = docOwnerId,
+                                                        docId = docId
+                                                    )
+                                                )
+                                                println("📎 Re-uploaded owner draft document: $fileName (${fileBytes.size} bytes)")
+                                            },
+                                            onFailure = { error ->
+                                                println("❌ Failed to download owner draft document: ${error.message}")
+                                            }
+                                        )
+                                    } catch (e: Exception) {
+                                        println("❌ Exception downloading owner draft document: ${e.message}")
+                                        e.printStackTrace()
+                                    }
+                                } else {
+                                    // New document - upload file normally
+                                    val uri = android.net.Uri.parse(documentUri)
+                                    val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
+
+                                    if (fileUpload != null) {
+                                        files.add(
+                                            OwnerFileUpload(
+                                                fileName = fileUpload.fileName,
+                                                fileUri = fileUpload.fileUri,
+                                                fileBytes = fileUpload.fileBytes,
+                                                mimeType = fileUpload.mimeType,
+                                                docOwnerId = docOwnerId,
+                                                docId = docId
+                                            )
+                                        )
+                                        println("📎 Added owner file: ${fileUpload.fileName} (docOwnerId=$docOwnerId, docId=$docId)")
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // ✅ BACKWARD COMPATIBILITY: Support single ownershipProofDocument field
+                        val ownershipProofDocument = ownerObj["ownershipProofDocument"]?.jsonPrimitive?.content
+                        val ownershipProofDocumentRefNum = ownerObj["ownershipProofDocumentRefNum"]?.jsonPrimitive?.content
+
+                        if (!ownershipProofDocument.isNullOrEmpty() && ownershipProofDocument != "") {
+                            // Check if this is a draft document
+                            if (ownershipProofDocument.startsWith("draft:") && !ownershipProofDocumentRefNum.isNullOrBlank()) {
+                                // Draft document - download and re-upload
+                                println("📎 Owner draft document (single field): $ownershipProofDocumentRefNum - downloading to re-upload...")
+
+                                try {
+                                    val fileUrlResult = repository.getFilePreview(ownershipProofDocumentRefNum)
+                                    fileUrlResult.fold(
+                                        onSuccess = { fileUrl ->
+                                            println("✅ Got owner file URL: $fileUrl")
+
+                                            // Download file from URL
+                                            val url = java.net.URL(fileUrl)
+                                            val connection = url.openConnection() as java.net.HttpURLConnection
+                                            connection.connect()
+
+                                            val fileBytes = connection.inputStream.use { it.readBytes() }
+                                            println("✅ Downloaded ${fileBytes.size} bytes")
+
+                                            // Get filename
+                                            val fileName = ownerObj["ownershipProofDocumentFileName"]?.jsonPrimitive?.contentOrNull
+                                                ?: android.net.Uri.parse(fileUrl).lastPathSegment?.substringBefore('?')
+                                                ?: "document.jpg"
+
+                                            // Detect MIME type
+                                            val mimeType = when {
+                                                fileName.endsWith(".pdf", ignoreCase = true) -> "application/pdf"
+                                                fileName.endsWith(".jpg", ignoreCase = true) || fileName.endsWith(".jpeg", ignoreCase = true) -> "image/jpeg"
+                                                fileName.endsWith(".png", ignoreCase = true) -> "image/png"
+                                                else -> "application/octet-stream"
+                                            }
+
+                                            files.add(
+                                                OwnerFileUpload(
+                                                    fileName = fileName,
+                                                    fileUri = fileUrl,
+                                                    fileBytes = fileBytes,
+                                                    mimeType = mimeType,
+                                                    docOwnerId = docOwnerId,
+                                                    docId = 1
+                                                )
+                                            )
+                                            println("📎 Re-uploaded owner draft document: $fileName (${fileBytes.size} bytes)")
+                                        },
+                                        onFailure = { error ->
+                                            println("❌ Failed to download owner draft document: ${error.message}")
+                                        }
+                                    )
+                                } catch (e: Exception) {
+                                    println("❌ Exception downloading owner draft document: ${e.message}")
+                                    e.printStackTrace()
+                                }
+                            } else {
+                                // New local document - upload normally
+                                val uri = android.net.Uri.parse(ownershipProofDocument)
                                 val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
 
                                 if (fileUpload != null) {
@@ -1749,33 +2443,11 @@ class RegistrationRequestManager @Inject constructor(
                                             fileBytes = fileUpload.fileBytes,
                                             mimeType = fileUpload.mimeType,
                                             docOwnerId = docOwnerId,
-                                            docId = docId
+                                            docId = 1 // Default document type
                                         )
                                     )
-                                    println("📎 Added owner file: ${fileUpload.fileName} (docOwnerId=$docOwnerId, docId=$docId)")
+                                    println("📎 Added owner file: ${fileUpload.fileName} (docOwnerId=$docOwnerId, docId=1)")
                                 }
-                            }
-                        }
-                    } else {
-                        // ✅ BACKWARD COMPATIBILITY: Support single ownershipProofDocument field
-                        val ownershipProofDocument = ownerObj["ownershipProofDocument"]?.jsonPrimitive?.content
-
-                        if (!ownershipProofDocument.isNullOrEmpty() && ownershipProofDocument != "") {
-                            val uri = android.net.Uri.parse(ownershipProofDocument)
-                            val fileUpload = com.informatique.mtcit.data.helpers.FileUploadHelper.uriToFileUpload(context, uri)
-
-                            if (fileUpload != null) {
-                                files.add(
-                                    OwnerFileUpload(
-                                        fileName = fileUpload.fileName,
-                                        fileUri = fileUpload.fileUri,
-                                        fileBytes = fileUpload.fileBytes,
-                                        mimeType = fileUpload.mimeType,
-                                        docOwnerId = docOwnerId,
-                                        docId = 1 // Default document type
-                                    )
-                                )
-                                println("📎 Added owner file: ${fileUpload.fileName} (docOwnerId=$docOwnerId, docId=1)")
                             }
                         }
                     }
@@ -1847,7 +2519,54 @@ class RegistrationRequestManager @Inject constructor(
             }
         }
     }
+
+    /**
+     * Parse engines from JSON string in form data
+     * Returns list of maps with engine properties including dbId if present
+     */
+    private fun parseEnginesFromFormData(enginesJson: String): List<Map<String, Any?>> {
+        return try {
+            val jsonArray = org.json.JSONArray(enginesJson)
+            val result = mutableListOf<Map<String, Any?>>()
+            for (i in 0 until jsonArray.length()) {
+                val jsonObj = jsonArray.getJSONObject(i)
+                val map = mutableMapOf<String, Any?>()
+                jsonObj.keys().forEach { key ->
+                    map[key] = jsonObj.opt(key)
+                }
+                result.add(map)
+            }
+            result
+        } catch (e: Exception) {
+            println("❌ Error parsing engines from form data: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Parse owners from JSON string in form data
+     * Returns list of maps with owner properties including dbId if present
+     */
+    private fun parseOwnersFromFormData(ownersJson: String): List<Map<String, Any?>> {
+        return try {
+            val jsonArray = org.json.JSONArray(ownersJson)
+            val result = mutableListOf<Map<String, Any?>>()
+            for (i in 0 until jsonArray.length()) {
+                val jsonObj = jsonArray.getJSONObject(i)
+                val map = mutableMapOf<String, Any?>()
+                jsonObj.keys().forEach { key ->
+                    map[key] = jsonObj.opt(key)
+                }
+                result.add(map)
+            }
+            result
+        } catch (e: Exception) {
+            println("❌ Error parsing owners from form data: ${e.message}")
+            emptyList()
+        }
+    }
 }
+
 
 /**
  * Result types for registration request operations
@@ -1888,3 +2607,17 @@ sealed class SendRequestResult {
 
     data class Error(val message: String) : SendRequestResult()
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

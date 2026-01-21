@@ -467,7 +467,21 @@ fun TransactionFormContent(
                     },
                     // ✅ NEW: Pass lookup loading states for automatic shimmer
                     lookupLoadingStates = lookupLoadingStates,
-                    loadedLookupData = loadedLookupData
+                    loadedLookupData = loadedLookupData,
+                    // ✅ NEW: Engine immediate edit/delete callbacks
+                    onEditEngineImmediate = if (viewModel is MarineRegistrationViewModel) {
+                        { engine -> viewModel.updateEngineImmediate(engine) }
+                    } else null,
+                    onDeleteEngineImmediate = if (viewModel is MarineRegistrationViewModel) {
+                        { engine -> viewModel.deleteEngineImmediate(engine) }
+                    } else null,
+                    // ✅ NEW: Owner immediate edit/delete callbacks
+                    onEditOwnerImmediate = if (viewModel is MarineRegistrationViewModel) {
+                        { owner -> viewModel.updateOwnerImmediate(owner) }
+                    } else null,
+                    onDeleteOwnerImmediate = if (viewModel is MarineRegistrationViewModel) {
+                        { owner -> viewModel.deleteOwnerImmediate(owner) }
+                    } else null
                 )
             }
         }

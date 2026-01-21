@@ -88,6 +88,13 @@ class RequestInspectionStrategy @Inject constructor(
     // ✅ NEW: Payment state tracking
     private var requestId: Long? = null
 
+    /**
+     * ✅ Get the RegistrationRequestManager for engine/owner operations
+     */
+    fun getRegistrationRequestManager(): RegistrationRequestManager {
+        return registrationRequestManager
+    }
+
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         println("🔄 Loading ESSENTIAL lookups only (lazy loading enabled for step-specific lookups)...")
 
@@ -1013,15 +1020,15 @@ class RequestInspectionStrategy @Inject constructor(
                         onLookupCompleted?.invoke("engineFuelTypes", engineFuelTypeOptions, true)
                     }
                 }
-                "buildMaterials" -> {
+                "buildingMaterials" -> {  // ✅ FIX: Match SharedSteps key ("buildingMaterials" not "buildMaterials")
                     if (buildMaterialOptions.isEmpty()) {
-                        println("📥 Loading build materials...")
+                        println("📥 Loading building materials...")
                         val data = lookupRepository.getBuildMaterials().getOrNull() ?: emptyList()
                         buildMaterialOptions = data
-                        println("✅ Loaded ${buildMaterialOptions.size} build materials")
-                        onLookupCompleted?.invoke("buildMaterials", data, true)
+                        println("✅ Loaded ${buildMaterialOptions.size} building materials")
+                        onLookupCompleted?.invoke("buildingMaterials", data, true)
                     } else {
-                        onLookupCompleted?.invoke("buildMaterials", buildMaterialOptions, true)
+                        onLookupCompleted?.invoke("buildingMaterials", buildMaterialOptions, true)
                     }
                 }
                 "inspectionPurposes" -> {

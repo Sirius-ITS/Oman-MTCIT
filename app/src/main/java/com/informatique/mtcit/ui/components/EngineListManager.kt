@@ -43,7 +43,10 @@ fun EngineListManager(
     fuelTypes: List<String>,
     conditions: List<String>,
     onEnginesChange: (List<EngineData>) -> Unit,
-    onTotalCountChange: ((String) -> Unit)? = null
+    onTotalCountChange: ((String) -> Unit)? = null,
+    onViewFile: ((String, String) -> Unit)? = null, // ✅ For viewing draft documents
+    onEditEngineImmediate: ((EngineData) -> Unit)? = null, // ✅ For immediate API update
+    onDeleteEngineImmediate: ((EngineData) -> Unit)? = null // ✅ For immediate API delete
 ) {
     val extraColors = LocalExtraColors.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -80,6 +83,15 @@ fun EngineListManager(
                         showBottomSheet = true
                     },
                     onDelete = {
+                        // ✅ Check if engine has dbId (already posted to API)
+                        if (engine.dbId != null && onDeleteEngineImmediate != null) {
+                            println("🗑️ Deleting engine with dbId=${engine.dbId} - calling API immediately")
+                            // Call DELETE API immediately
+                            onDeleteEngineImmediate(engine)
+                        } else {
+                            println("🗑️ Removing local engine (not yet posted): ${engine.number}")
+                        }
+                        // Always remove from local list (UI update)
                         onEnginesChange(engines.filter { it.id != engine.id })
                     }
                 )
@@ -126,14 +138,32 @@ fun EngineListManager(
             engineTypes = engineTypes, // Pass the new engineTypes parameter
             onDismiss = { showBottomSheet = false },
             onSave = { engineData ->
+                println("🔧 EngineListManager: onSave called for engine: ${engineData.number}, dbId: ${engineData.dbId}")
+
                 if (editingEngine != null) {
+                    // ✅ EDITING: Only update local state, no immediate API call
+                    // ❌ COMMENTED OUT: Immediate API update (will be handled by proceed step)
+                    /*
+                    if (engineData.dbId != null && onEditEngineImmediate != null) {
+                        println("✅ Editing engine with dbId=${engineData.dbId} - calling API immediately")
+                        // Call UPDATE API immediately
+                        onEditEngineImmediate(engineData)
+                    } else {
+                        println("✅ Editing local engine (not yet posted)")
+                    }
+                    */
+                    println("✅ Editing local engine (deferred API call until proceed)")
+                    // Always update in local list (UI update)
                     onEnginesChange(engines.map { if (it.id == editingEngine!!.id) engineData else it })
                 } else {
+                    // ✅ ADDING NEW: Always local (no dbId yet)
+                    println("✅ Adding new engine locally")
                     onEnginesChange(engines + engineData)
                 }
 
                 showBottomSheet = false
-            }
+            },
+            onViewFile = onViewFile // ✅ Pass onViewFile for draft documents
         )
     }
 }

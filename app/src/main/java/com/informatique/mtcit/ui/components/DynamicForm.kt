@@ -40,7 +40,13 @@ fun DynamicStepForm(
     onMarineUnitSelected: ((String) -> Unit)? = null,
     // ✅ NEW: Lookup loading state parameters
     lookupLoadingStates: Map<String, Boolean> = emptyMap(),
-    loadedLookupData: Map<String, Pair<List<String>, Boolean>> = emptyMap()
+    loadedLookupData: Map<String, Pair<List<String>, Boolean>> = emptyMap(),
+    // ✅ NEW: Engine immediate edit/delete callbacks (for engines with dbId)
+    onEditEngineImmediate: ((EngineData) -> Unit)? = null,
+    onDeleteEngineImmediate: ((EngineData) -> Unit)? = null,
+    // ✅ NEW: Owner immediate edit/delete callbacks (for owners with dbId)
+    onEditOwnerImmediate: ((OwnerData) -> Unit)? = null,
+    onDeleteOwnerImmediate: ((OwnerData) -> Unit)? = null
 ) {
 
     // ✅ Helper function to map field ID to lookup key
@@ -231,15 +237,30 @@ fun DynamicStepForm(
                           }
 
                         is FormField.OwnerList -> {
-                            // Parse owners from JSON mortgageValue
+                            // Parse owners from JSON value
                             val owners = remember(field.value) {
                                 try {
-                                    Json.decodeFromString<List<OwnerData>>(
-                                        field.value
-                                    )
-                                    Json.decodeFromString<List<OwnerData>>(field.value)
-                                } catch (_: Exception) {
-                                    emptyList<OwnerData>()
+                                    println("📥 DynamicForm: Decoding owners from JSON (${field.value.length} chars)...")
+                                    println("📄 First 500 chars: ${field.value.take(500)}")
+
+                                    val decoded = Json.decodeFromString<List<OwnerData>>(field.value)
+
+                                    println("✅ Decoded ${decoded.size} owners:")
+                                    decoded.forEachIndexed { index, owner ->
+                                        println("   Owner $index:")
+                                        println("     - id: ${owner.id}")
+                                        println("     - dbId: ${owner.dbId}")
+                                        println("     - ownerName: ${owner.ownerName}")
+                                        println("     - ownershipProofDocumentRefNum: ${owner.ownershipProofDocumentRefNum}")
+                                        println("     - ownershipProofDocumentFileName: ${owner.ownershipProofDocumentFileName}")
+                                        println("     - ownershipProofDocument: ${owner.ownershipProofDocument}")
+                                    }
+
+                                    decoded
+                                } catch (e: Exception) {
+                                    println("❌ Failed to decode owners: ${e.message}")
+                                    e.printStackTrace()
+                                    emptyList()
                                 }
                             }
 
@@ -260,7 +281,10 @@ fun DynamicStepForm(
                                 },
                                 onTotalCountChange = field.totalCountFieldId?.let { countFieldId ->
                                     { count -> onFieldChange(countFieldId, count, null) }
-                                }
+                                },
+                                onViewFile = onViewFile, // ✅ Pass callback for viewing draft documents
+                                onEditOwnerImmediate = onEditOwnerImmediate, // ✅ Pass immediate edit callback
+                                onDeleteOwnerImmediate = onDeleteOwnerImmediate // ✅ Pass immediate delete callback
                             )
                         }
                         is FormField.EngineList -> {
@@ -285,7 +309,10 @@ fun DynamicStepForm(
                                 onEnginesChange = { updatedEngines ->
                                     val json = Json.encodeToString(updatedEngines)
                                     onFieldChange(field.id, json, null)
-                                }
+                                },
+                                onViewFile = onViewFile,
+                                onEditEngineImmediate = onEditEngineImmediate,
+                                onDeleteEngineImmediate = onDeleteEngineImmediate
                             )
                         }
                         is FormField.MarineUnitSelector -> {

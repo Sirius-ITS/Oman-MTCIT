@@ -348,67 +348,157 @@ object RequestDataConverter {
      * Extract owners information
      */
     private fun extractOwners(owners: JsonArray, formData: MutableMap<String, String>) {
+        println("🔍 RequestDataConverter: Extracting ${owners.size} owners...")
         val ownersList = mutableListOf<Map<String, String>>()
 
         owners.forEachIndexed { index, element ->
+            println("🔍 Processing owner $index...")
             val ownerObj = element.jsonObject
             val ownerMap = mutableMapOf<String, String>()
 
-            // Owner info ID
+            // Owner info ID (relationship table ID - for delete operations)
             ownerObj["id"]?.jsonPrimitive?.intOrNull?.let {
                 ownerMap["shipInfoOwnerId"] = it.toString()
+                println("  - shipInfoOwnerId: $it")
             }
 
-            ownerObj["ownershipPercentage"]?.jsonPrimitive?.intOrNull?.let {
-                ownerMap["ownershipPercentage"] = it.toString()
+            ownerObj["ownershipPercentage"]?.jsonPrimitive?.doubleOrNull?.let {
+                ownerMap["ownerShipPercentage"] = it.toString()
+                println("  - ownerShipPercentage: $it")
             }
 
             // Owner details
             val owner = ownerObj["owner"]?.jsonObject
             owner?.let {
                 it["id"]?.jsonPrimitive?.intOrNull?.let { ownerId ->
-                    ownerMap["ownerId"] = ownerId.toString()
+                    ownerMap["dbId"] = ownerId.toString() // ✅ Use dbId for edit/delete operations
+                    println("  - dbId: $ownerId")
                 }
 
                 it["ownerName"]?.jsonPrimitive?.contentOrNull?.let { name ->
                     ownerMap["ownerName"] = name
+                    println("  - ownerName: $name")
                 }
 
                 it["ownerNameEn"]?.jsonPrimitive?.contentOrNull?.let { nameEn ->
                     ownerMap["ownerNameEn"] = nameEn
+                    println("  - ownerNameEn: $nameEn")
                 }
 
                 it["ownerCivilId"]?.jsonPrimitive?.contentOrNull?.let { civilId ->
-                    ownerMap["ownerCivilId"] = civilId
+                    ownerMap["idNumber"] = civilId // ✅ Map to form field name
                 }
 
                 it["ownerAddress"]?.jsonPrimitive?.contentOrNull?.let { address ->
-                    ownerMap["ownerAddress"] = address
+                    ownerMap["address"] = address // ✅ Map to form field name
                 }
 
                 it["ownerPhone"]?.jsonPrimitive?.contentOrNull?.let { phone ->
-                    ownerMap["ownerPhone"] = phone
+                    ownerMap["mobile"] = phone // ✅ Map to form field name
                 }
 
                 it["ownerEmail"]?.jsonPrimitive?.contentOrNull?.let { email ->
-                    ownerMap["ownerEmail"] = email
+                    ownerMap["email"] = email
                 }
 
                 it["isRepresentative"]?.jsonPrimitive?.intOrNull?.let { isRep ->
-                    ownerMap["isRepresentative"] = isRep.toString()
+                    ownerMap["isRepresentative"] = (isRep == 1).toString() // ✅ Convert to boolean string
+                }
+
+                it["isCompany"]?.jsonPrimitive?.intOrNull?.let { isCompany ->
+                    ownerMap["isCompany"] = (isCompany == 1).toString() // ✅ Convert to boolean string
+                }
+
+                it["commercialRegNumber"]?.jsonPrimitive?.contentOrNull?.let { crNum ->
+                    ownerMap["companyRegistrationNumber"] = crNum // ✅ Map to form field name
                 }
             }
 
+            // ✅ Extract owner documents (field name is 'documents' in API response)
+            println("🔍 Checking documents for owner $index...")
+            val ownerDocs = ownerObj["documents"]?.jsonArray
+            if (ownerDocs != null) {
+                println("📎 Found documents array with ${ownerDocs.size} document(s) for owner $index")
+
+                if (ownerDocs.isNotEmpty()) {
+                    // Take the first document (assuming one document per owner for now)
+                    val firstDoc = ownerDocs.firstOrNull()?.jsonObject
+                    firstDoc?.let { doc ->
+                        println("📄 Processing document: ${doc.toString()}")
+                        val docRefNum = doc["docRefNum"]?.jsonPrimitive?.contentOrNull
+                        val fileName = doc["fileName"]?.jsonPrimitive?.contentOrNull
+
+                        if (docRefNum != null && fileName != null) {
+                            println("✅ Owner document extracted: refNum=$docRefNum, fileName=$fileName")
+                            ownerMap["ownershipProofDocumentRefNum"] = docRefNum
+                            ownerMap["ownershipProofDocumentFileName"] = fileName
+                            // ✅ Set document URI with draft: prefix for UI to recognize it
+                            ownerMap["ownershipProofDocument"] = "draft:$docRefNum"
+                            println("✅ Added to ownerMap: ownershipProofDocument=draft:$docRefNum")
+                        } else {
+                            println("⚠️ Owner document missing fields: refNum=$docRefNum, fileName=$fileName")
+                        }
+                    }
+                } else {
+                    println("⚠️ documents array is empty for owner $index")
+                }
+            } else {
+                println("❌ No documents array found for owner $index")
+            }
+
+            println("📦 Final ownerMap for owner $index: ${ownerMap.keys}")
             ownersList.add(ownerMap)
         }
 
         // Store owners as JSON for form processing
         if (ownersList.isNotEmpty()) {
             formData["ownersCount"] = ownersList.size.toString()
-            formData["owners"] = kotlinx.serialization.json.Json.encodeToString(
-                kotlinx.serialization.serializer(),
-                ownersList
-            )
+
+            println("🔄 Converting ${ownersList.size} owner maps to OwnerData objects...")
+
+            // ✅ Convert maps to OwnerData objects for proper serialization
+            val ownerDataList = ownersList.mapIndexed { index, ownerMap ->
+                println("🔄 Converting owner $index:")
+                println("   - ownershipProofDocumentRefNum: ${ownerMap["ownershipProofDocumentRefNum"]}")
+                println("   - ownershipProofDocumentFileName: ${ownerMap["ownershipProofDocumentFileName"]}")
+                println("   - ownershipProofDocument: ${ownerMap["ownershipProofDocument"]}")
+
+                com.informatique.mtcit.ui.components.OwnerData(
+                    id = ownerMap["id"] ?: java.util.UUID.randomUUID().toString(),
+                    dbId = ownerMap["dbId"]?.toIntOrNull(),
+                    fullName = ownerMap["fullName"] ?: "",
+                    ownerName = ownerMap["ownerName"] ?: "",
+                    ownerNameEn = ownerMap["ownerNameEn"] ?: "",
+                    nationality = ownerMap["nationality"] ?: "",
+                    idNumber = ownerMap["idNumber"] ?: "",
+                    ownerShipPercentage = ownerMap["ownerShipPercentage"] ?: "",
+                    email = ownerMap["ownerEmail"] ?: "",
+                    mobile = ownerMap["ownerPhone"] ?: "",
+                    address = ownerMap["ownerAddress"] ?: "",
+                    city = ownerMap["city"] ?: "",
+                    country = ownerMap["country"] ?: "",
+                    postalCode = ownerMap["postalCode"] ?: "",
+                    isCompany = ownerMap["isCompany"]?.toBoolean() ?: false,
+                    companyRegistrationNumber = ownerMap["companyRegistrationNumber"] ?: "",
+                    companyName = ownerMap["companyName"] ?: "",
+                    companyType = ownerMap["companyType"] ?: "",
+                    isRepresentative = ownerMap["isRepresentative"]?.toBoolean() ?: false,
+                    ownershipProofDocument = ownerMap["ownershipProofDocument"] ?: "",
+                    documentName = ownerMap["ownershipProofDocumentFileName"] ?: "",
+                    ownershipProofDocumentRefNum = ownerMap["ownershipProofDocumentRefNum"],
+                    ownershipProofDocumentFileName = ownerMap["ownershipProofDocumentFileName"]
+                ).also { ownerData ->
+                    println("✅ Created OwnerData $index:")
+                    println("   - ownershipProofDocumentRefNum: ${ownerData.ownershipProofDocumentRefNum}")
+                    println("   - ownershipProofDocumentFileName: ${ownerData.ownershipProofDocumentFileName}")
+                    println("   - ownershipProofDocument: ${ownerData.ownershipProofDocument}")
+                }
+            }
+
+            val ownersJson = kotlinx.serialization.json.Json.encodeToString(ownerDataList)
+            formData["owners"] = ownersJson
+            println("✅ Stored owners JSON in formData (${ownersJson.length} chars)")
+            println("📄 First 500 chars of owners JSON: ${ownersJson.take(500)}")
         }
     }
 

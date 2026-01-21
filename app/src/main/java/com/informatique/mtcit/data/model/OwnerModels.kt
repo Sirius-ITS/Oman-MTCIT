@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class OwnerSubmissionRequest(
+    val id: Int? = null, // ✅ Owner ID for PUT requests (null for POST)
     val isCompany: Int, // 0 = Individual, 1 = Company
     val ownerName: String, // Arabic name
     val ownerNameEn: String? = null, // English name
@@ -27,7 +28,8 @@ data class OwnerSubmissionRequest(
 data class OwnerDocumentMetadata(
     val fileName: String,
     val docOwnerId: String,
-    val docId: Int // Document type ID (1, 2, 3, etc.)
+    val docId: Int, // Document type ID (1, 2, 3, etc.)
+    val docRefNum: String? = null // ✅ For referencing existing draft documents (will be omitted from JSON if null)
 )
 
 /**
@@ -44,9 +46,18 @@ data class OwnerSubmissionResponse(
 
 @Serializable
 data class OwnerResponseData(
+    val shipInfoId: Int? = null, // ✅ Ship info owner record ID (can be null in response)
+    val ownerId: Int? = null, // ✅ Owner ID (can be null in response)
+    val ownershipPercentage: Double? = null,
+    val owner: OwnerDetailsResponse? = null // ✅ Nested owner details
+)
+
+@Serializable
+data class OwnerDetailsResponse(
     val id: Int,
     val isCompany: Int? = null,
     val ownerName: String? = null,
+    val ownerNameEn: String? = null,
     val ownerCivilId: String? = null,
     val commercialRegNumber: String? = null,
     val ownershipPercentage: Double? = null,
@@ -55,6 +66,49 @@ data class OwnerResponseData(
     val ownerPhone: String? = null,
     val ownerEmail: String? = null,
     val docOwnerId: String? = null
+)
+
+/**
+ * Owners list response for GET registration-requests/{requestId}/owners
+ */
+@Serializable
+data class OwnersListResponse(
+    val message: String,
+    val statusCode: Int,
+    val success: Boolean,
+    val timestamp: String,
+    val data: List<OwnerInfoItem>? = null
+)
+
+@Serializable
+data class OwnerInfoItem(
+    val id: Int, // shipInfoOwner ID (relationship table)
+    val ownershipPercentage: Double? = null,
+    val owner: OwnerDetails,
+    val ownerDocs: List<OwnerDocInfo>? = null
+)
+
+@Serializable
+data class OwnerDetails(
+    val id: Int, // Actual owner ID
+    val ownerName: String? = null,
+    val ownerNameEn: String? = null,
+    val ownerCivilId: String? = null,
+    val commercialRegNumber: String? = null,
+    val isRepresentative: Int? = null,
+    val isCompany: Int? = null,
+    val ownerAddress: String? = null,
+    val ownerPhone: String? = null,
+    val ownerEmail: String? = null
+)
+
+@Serializable
+data class OwnerDocInfo(
+    val id: Int,
+    val docRefNum: String,
+    val fileName: String,
+    val docId: Int,
+    val docPath: String? = null
 )
 
 /**

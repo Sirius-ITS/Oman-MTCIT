@@ -5,6 +5,8 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.PortOfRegistry
 import com.informatique.mtcit.data.model.UserRequest
 import kotlinx.coroutines.delay
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
@@ -423,33 +425,168 @@ class RequestRepository @Inject constructor(
             println("✅ Draft parsing complete - ${formData.size} fields mapped")
         }
 
-        // Extract engine data
+        // Get current language for localized names
+        val currentLanguage = java.util.Locale.getDefault().language
+
+        // ✅ Extract engine data as JSON array for EngineListManager
         val enginesArray = shipInfoObject?.get("shipInfoEngines")?.jsonArray
-        enginesArray?.firstOrNull()?.jsonObject?.let { engineInfo ->
-            val engineObject = engineInfo["engine"]?.jsonObject
-            engineObject?.let { engine ->
-                engine["engineManufacturer"]?.jsonPrimitive?.contentOrNull?.let { formData["engineManufacturer"] = it }
-                engine["engineModel"]?.jsonPrimitive?.contentOrNull?.let { formData["engineModel"] = it }
-                engine["enginePower"]?.jsonPrimitive?.intOrNull?.let { formData["enginePower"] = it.toString() }
+        if (!enginesArray.isNullOrEmpty()) {
+            val enginesList = mutableListOf<Map<String, String>>()
 
-                val engineTypeObject = engine["engineType"]?.jsonObject
-                engineTypeObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["fuelType"] = it }
+            enginesArray.forEach { engineItem ->
+                val engineInfo = engineItem.jsonObject
+                val engineObject = engineInfo["engine"]?.jsonObject
+                val engineDocsArray = engineInfo["engineDocs"]?.jsonArray
 
-                val engineCountryObject = engine["engineCountry"]?.jsonObject
-                engineCountryObject?.get("nameEn")?.jsonPrimitive?.contentOrNull?.let { formData["engineManufacturerCountry"] = it }
+                engineObject?.let { engine ->
+                    val engineMap = mutableMapOf<String, String>()
+
+                    // Generate unique ID for this engine
+                    engineMap["id"] = java.util.UUID.randomUUID().toString()
+
+                    // ✅ CRITICAL: Store database ID to track existing engines (OUTER id from shipInfoEngines)
+                    engineInfo["id"]?.jsonPrimitive?.intOrNull?.let {
+                        engineMap["dbId"] = it.toString()
+                        println("   ✅ Engine dbId (shipInfoEngines): $it")
+                    }
+
+                    // Extract engine fields
+                    engine["engineSerialNumber"]?.jsonPrimitive?.contentOrNull?.let { engineMap["number"] = it }
+                    engine["engineModel"]?.jsonPrimitive?.contentOrNull?.let { engineMap["model"] = it }
+                    engine["engineManufacturer"]?.jsonPrimitive?.contentOrNull?.let { engineMap["manufacturer"] = it }
+                    engine["enginePower"]?.jsonPrimitive?.intOrNull?.let { engineMap["power"] = it.toString() }
+                    engine["cylindersCount"]?.jsonPrimitive?.intOrNull?.let { engineMap["cylinder"] = it.toString() }
+                    engine["engineBuildYear"]?.jsonPrimitive?.contentOrNull?.let { engineMap["manufactureYear"] = it }
+
+                    // Extract engine type (localized)
+                    val engineTypeObject = engine["engineType"]?.jsonObject
+                    engineTypeObject?.let { type ->
+                        val nameAr = type["nameAr"]?.jsonPrimitive?.contentOrNull
+                        val nameEn = type["nameEn"]?.jsonPrimitive?.contentOrNull
+                        val localizedType = if (currentLanguage == "ar") nameAr else nameEn
+                        localizedType?.let { engineMap["type"] = it }
+                    }
+
+                    // Extract engine country (localized)
+                    val engineCountryObject = engine["engineCountry"]?.jsonObject
+                    engineCountryObject?.let { country ->
+                        val nameAr = country["nameAr"]?.jsonPrimitive?.contentOrNull
+                        val nameEn = country["nameEn"]?.jsonPrimitive?.contentOrNull
+                        val localizedCountry = if (currentLanguage == "ar") nameAr else nameEn
+                        localizedCountry?.let { engineMap["productionCountry"] = it }
+                    }
+
+                    // Extract engine fuel type (localized)
+                    val engineFuelTypeObject = engine["engineFuelType"]?.jsonObject
+                    engineFuelTypeObject?.let { fuel ->
+                        val nameAr = fuel["nameAr"]?.jsonPrimitive?.contentOrNull
+                        val nameEn = fuel["nameEn"]?.jsonPrimitive?.contentOrNull
+                        val localizedFuel = if (currentLanguage == "ar") nameAr else nameEn
+                        localizedFuel?.let { engineMap["fuelType"] = it }
+                    }
+
+                    // Extract engine status (localized)
+                    val engineStatusObject = engine["engineStatus"]?.jsonObject
+                    engineStatusObject?.let { status ->
+                        val nameAr = status["nameAr"]?.jsonPrimitive?.contentOrNull
+                        val nameEn = status["nameEn"]?.jsonPrimitive?.contentOrNull
+                        val localizedStatus = if (currentLanguage == "ar") nameAr else nameEn
+                        localizedStatus?.let { engineMap["condition"] = it }
+                    }
+
+                    // ✅ Extract engine document if exists (from draft)
+                    engineDocsArray?.firstOrNull()?.jsonObject?.let { doc ->
+                        // Store docRefNum for preview and PUT requests
+                        doc["docRefNum"]?.jsonPrimitive?.contentOrNull?.let { refNum ->
+                            engineMap["documentRefNum"] = refNum
+                            engineMap["documentUri"] = "draft:$refNum" // Mark as draft document
+                            println("   📎 Engine has document: refNum=$refNum")
+                        }
+
+                        // Store file name for display
+                        doc["fileName"]?.jsonPrimitive?.contentOrNull?.let { fileName ->
+                            engineMap["documentFileName"] = fileName
+                        }
+                    }
+
+                    enginesList.add(engineMap)
+                }
+            }
+
+            // Convert to JSON array string
+            if (enginesList.isNotEmpty()) {
+                formData["engines"] = Json.encodeToString(enginesList)
+                println("✅ Parsed ${enginesList.size} engines from draft")
             }
         }
 
-        // Extract owner data
+        // ✅ Extract owner data as JSON array for OwnerListManager
         val ownersArray = shipInfoObject?.get("shipInfoOwners")?.jsonArray
-        ownersArray?.firstOrNull()?.jsonObject?.let { ownerInfo ->
-            val ownerObject = ownerInfo["owner"]?.jsonObject
-            ownerObject?.let { owner ->
-                owner["ownerName"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerName"] = it }
-                owner["ownerCivilId"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerCivilId"] = it }
-                owner["ownerPhone"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerPhone"] = it }
-                owner["ownerEmail"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerEmail"] = it }
-                owner["ownerAddress"]?.jsonPrimitive?.contentOrNull?.let { formData["ownerAddress"] = it }
+        if (!ownersArray.isNullOrEmpty()) {
+            val ownersList = mutableListOf<Map<String, String>>()
+
+            ownersArray.forEach { ownerItem ->
+                val ownerInfo = ownerItem.jsonObject
+                val ownerObject = ownerInfo["owner"]?.jsonObject
+                // ✅ FIX: API returns "documents", not "ownerDocs"
+                val ownerDocsArray = ownerInfo["documents"]?.jsonArray
+
+                ownerObject?.let { owner ->
+                    val ownerMap = mutableMapOf<String, String>()
+
+                    // Generate unique ID for this owner
+                    ownerMap["id"] = java.util.UUID.randomUUID().toString()
+
+                    // ✅ CRITICAL: Store database ID to track existing owners
+                    // Use the OUTER id (shipInfoOwners[].id), not the inner id (shipInfoOwners[].owner.id)
+                    ownerInfo["id"]?.jsonPrimitive?.intOrNull?.let {
+                        ownerMap["dbId"] = it.toString()
+                        println("   ✅ Owner dbId: $it")
+                    }
+
+                    // Extract owner fields
+                    owner["ownerName"]?.jsonPrimitive?.contentOrNull?.let { ownerMap["ownerName"] = it }
+                    owner["ownerNameEn"]?.jsonPrimitive?.contentOrNull?.let { ownerMap["ownerNameEn"] = it }
+                    owner["ownerCivilId"]?.jsonPrimitive?.contentOrNull?.let { ownerMap["idNumber"] = it }
+                    owner["ownerPhone"]?.jsonPrimitive?.contentOrNull?.let { ownerMap["mobile"] = it }
+                    owner["ownerEmail"]?.jsonPrimitive?.contentOrNull?.let { ownerMap["email"] = it }
+                    owner["ownerAddress"]?.jsonPrimitive?.contentOrNull?.let { ownerMap["address"] = it }
+
+                    // Extract ownership percentage
+                    ownerInfo["ownershipPercentage"]?.jsonPrimitive?.intOrNull?.let {
+                        ownerMap["ownerShipPercentage"] = it.toString()
+                    }
+
+                    // Check if representative
+                    owner["isRepresentative"]?.jsonPrimitive?.intOrNull?.let { isRep ->
+                        ownerMap["isRepresentative"] = (isRep == 1).toString()
+                    }
+
+                    // ✅ Extract owner document if exists (from draft)
+                    ownerDocsArray?.firstOrNull()?.jsonObject?.let { doc ->
+                        // Store docRefNum for preview and PUT requests
+                        doc["docRefNum"]?.jsonPrimitive?.contentOrNull?.let { refNum ->
+                            ownerMap["ownershipProofDocumentRefNum"] = refNum
+                            ownerMap["ownershipProofDocument"] = "draft:$refNum" // Mark as draft document
+                            println("   📎 Owner has document: refNum=$refNum")
+                        }
+
+                        // Store file name for display
+                        doc["fileName"]?.jsonPrimitive?.contentOrNull?.let { fileName ->
+                            ownerMap["ownershipProofDocumentFileName"] = fileName
+                        }
+                    }
+
+                    ownersList.add(ownerMap)
+                }
+            }
+
+            // Convert to JSON array string
+            if (ownersList.isNotEmpty()) {
+                formData["owners"] = Json.encodeToString(ownersList)
+                // Also set total owners count
+                formData["totalOwnersCount"] = ownersList.size.toString()
+                println("✅ Parsed ${ownersList.size} owners from draft")
             }
         }
 

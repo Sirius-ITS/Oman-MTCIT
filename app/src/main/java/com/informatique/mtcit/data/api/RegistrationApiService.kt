@@ -35,11 +35,14 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 
 /**
  * API Service for Ship Registration Requests
@@ -374,11 +377,22 @@ class RegistrationApiService @Inject constructor(
             println("📊 Engines count: ${engines.size}")
             println("📎 Files count: ${files.size}")
 
+            // ✅ Log each engine's id before serialization
+            engines.forEachIndexed { index, engine ->
+                println("📋 Engine $index: id=${engine.id}, serialNumber=${engine.engineSerialNumber}")
+            }
+
             // Build multipart form data
             val formData = mutableListOf<PartData>()
 
             // 1. Add DTO part (JSON array of engines)
-            val enginesJson = json.encodeToString(engines)
+            // Use same encoder as owners to ensure consistency
+            val jsonEncoder = Json {
+                explicitNulls = false // ✅ Omit null fields from JSON
+                encodeDefaults = false // ✅ Don't encode default values
+                ignoreUnknownKeys = true
+            }
+            val enginesJson = jsonEncoder.encodeToString(engines)
             println("📤 Engines DTO: $enginesJson")
 
             formData.add(
@@ -470,8 +484,21 @@ class RegistrationApiService @Inject constructor(
             println("📊 Owners count: ${owners.size}")
             println("📎 Files count: ${files.size}")
 
+            // ✅ Log each owner's id before serialization
+            owners.forEachIndexed { index, owner ->
+                println("📋 Owner $index: id=${owner.id}, name=${owner.ownerName}, percentage=${owner.ownershipPercentage}")
+            }
+
             val formData = mutableListOf<PartData>()
-            val ownersJson = json.encodeToString(owners)
+
+            // Create JSON encoder that excludes null values but includes all non-null fields
+            val jsonEncoder = Json {
+                explicitNulls = false // ✅ Omit null fields from JSON
+                encodeDefaults = false // ✅ Don't encode default values (id=null won't be encoded)
+                ignoreUnknownKeys = true
+            }
+
+            val ownersJson = jsonEncoder.encodeToString(owners)
             println("📤 Owners DTO: $ownersJson")
 
             formData.add(
@@ -1468,4 +1495,309 @@ class RegistrationApiService @Inject constructor(
             return Result.failure(ApiException(500, "Failed to validate build status: ${e.message}"))
         }
     }
+
+    /**
+     * Update an existing engine with multipart/form-data
+     * PUT /api/v1/registration-requests/{requestId}/engines/{engineId}
+     */
+    suspend fun updateEngine(
+        requestId: Int,
+        engineId: Int,
+        engine: EngineSubmissionRequest,
+        files: List<EngineFileUpload>
+    ): Result<EngineSubmissionResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Updating engine $engineId for requestId=$requestId...")
+            println("📊 Engine data: ${json.encodeToString(engine)}")
+            println("📎 Files count: ${files.size}")
+
+            val formData = mutableListOf<PartData>()
+
+            // Add engine DTO as JSON
+            val engineJson = json.encodeToString(engine)
+            formData.add(
+                PartData.FormItem(
+                    value = engineJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            // Add file uploads
+            files.forEach { fileUpload ->
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { fileUpload.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${fileUpload.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, fileUpload.mimeType)
+                        }
+                    )
+                )
+            }
+
+            val url = "registration-requests/$requestId/engines/$engineId"
+            when (val response = repo.onPutMultipart(url, formData)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Engine update response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            val engineResponse: EngineSubmissionResponse = json.decodeFromJsonElement(responseJson)
+                            println("✅ Engine updated successfully!")
+                            Result.success(engineResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to update engine"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in updateEngine: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to update engine: ${e.message}"))
+        }
+    }
+
+    /**
+     * Update an existing owner with multipart/form-data
+     * PUT /api/v1/registration-requests/{requestId}/owners/{ownerId}
+     */
+    suspend fun updateOwner(
+        requestId: Int,
+        ownerId: Int,
+        owner: OwnerSubmissionRequest,
+        files: List<OwnerFileUpload>
+    ): Result<OwnerSubmissionResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Updating owner $ownerId for requestId=$requestId...")
+            println("📊 Owner data: ${json.encodeToString(owner)}")
+            println("📎 Files count: ${files.size}")
+
+            val formData = mutableListOf<PartData>()
+
+            // Add owner DTO as JSON
+            val ownerJson = json.encodeToString(owner)
+            formData.add(
+                PartData.FormItem(
+                    value = ownerJson,
+                    dispose = {},
+                    partHeaders = Headers.build {
+                        append(HttpHeaders.ContentDisposition, "form-data; name=\"dto\"")
+                        append(HttpHeaders.ContentType, "application/json")
+                    }
+                )
+            )
+
+            // Add file uploads
+            files.forEach { fileUpload ->
+                formData.add(
+                    PartData.BinaryItem(
+                        provider = { fileUpload.fileBytes.inputStream().asInput() },
+                        dispose = {},
+                        partHeaders = Headers.build {
+                            append(
+                                HttpHeaders.ContentDisposition,
+                                "form-data; name=\"files\"; filename=\"${fileUpload.fileName}\""
+                            )
+                            append(HttpHeaders.ContentType, fileUpload.mimeType)
+                        }
+                    )
+                )
+            }
+
+            val url = "registration-requests/$requestId/owners/$ownerId"
+            when (val response = repo.onPutMultipart(url, formData)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Owner update response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            val ownerResponse: OwnerSubmissionResponse = json.decodeFromJsonElement(responseJson)
+                            println("✅ Owner updated successfully!")
+                            Result.success(ownerResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to update owner"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in updateOwner: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to update owner: ${e.message}"))
+        }
+    }
+
+    /**
+     * Delete an engine
+     * DELETE /api/v1/registration-requests/{requestId}/engines/{engineId}
+     */
+    suspend fun deleteEngine(requestId: Int, engineId: Int): Result<Unit> {
+        return try {
+            println("🚀 RegistrationApiService: Deleting engine $engineId for requestId=$requestId...")
+
+            when (val response = repo.onDeleteAuth("registration-requests/$requestId/engines/$engineId")) {
+                is RepoServiceState.Success -> {
+                    println("✅ Engine deleted successfully!")
+                    Result.success(Unit)
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ API Error: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+                else -> {
+                    println("❌ Unknown response state")
+                    Result.failure(ApiException(500, "Unknown response state"))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in deleteEngine: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to delete engine: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get file preview by reference number
+     * GET /api/v1/registration-request-view/file-preview?refNo={refNo}
+     * Returns the actual file URL from MinIO storage
+     *
+     * Response format:
+     * {
+     *   "message": "Data fetched successfully",
+     *   "statusCode": 200,
+     *   "success": true,
+     *   "timestamp": "2026-01-15 00:34:25",
+     *   "data": "http://omanminio.isfpdomain.com/media/..."
+     * }
+     */
+    suspend fun getFilePreview(refNo: String): Result<String> {
+        return try {
+            println("🚀 RegistrationApiService: Getting file preview for refNo=$refNo...")
+
+            // Build the URL with query parameter
+            val url = "registration-request-view/file-preview?refNo=$refNo"
+
+            when (val response = repo.onGet(url)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ File preview API Response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200) {
+                            // ✅ Extract the file URL from the "data" field
+                            val fileUrl = responseJson.jsonObject["data"]?.jsonPrimitive?.content
+
+                            if (!fileUrl.isNullOrEmpty()) {
+                                println("✅ File URL extracted: $fileUrl")
+                                Result.success(fileUrl)
+                            } else {
+                                println("❌ No file URL in response data")
+                                Result.failure(ApiException(500, "No file URL in response"))
+                            }
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to get file preview"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ Failed to get file preview: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            println("❌ API Exception in getFilePreview: ${e.message}")
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in getFilePreview: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to get file preview: ${e.message}"))
+        }
+    }
+
+    /**
+     * Delete an owner
+     * DELETE /api/v1/registration-requests/{requestId}/owners/{ownerId}
+     */
+    suspend fun deleteOwner(requestId: Int, ownerId: Int): Result<Unit> {
+        return try {
+            println("🚀 RegistrationApiService: Deleting owner $ownerId for requestId=$requestId...")
+
+            when (val response = repo.onDeleteAuth("registration-requests/$requestId/owners/$ownerId")) {
+                is RepoServiceState.Success -> {
+                    println("✅ Owner deleted successfully!")
+                    Result.success(Unit)
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ API Error: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+                else -> {
+                    println("❌ Unknown response state")
+                    Result.failure(ApiException(500, "Unknown response state"))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in deleteOwner: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to delete owner: ${e.message}"))
+        }
+    }
 }
+
+

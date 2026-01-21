@@ -24,6 +24,7 @@ import com.informatique.mtcit.ui.screens.RequestDetail
 import com.informatique.mtcit.util.UriPermissionManager
 import com.informatique.mtcit.ui.components.SuccessDialog
 import com.informatique.mtcit.ui.components.SuccessDialogItem
+import kotlinx.coroutines.launch
 
 
 /**
@@ -173,30 +174,71 @@ fun MarineRegistrationScreen(
                 }
 
                 is FileNavigationEvent.ViewFile -> {
-                    val uri = event.fileUri.toUri()
+                    println("🔍 ViewFile event received: ${event.fileUri}")
 
-                    // ✅ CRITICAL: Re-cache the URI before viewing to restore permissions
-                    // This fixes the "corrupted PDF" issue when viewing files after app restart
-                    com.informatique.mtcit.util.UriCache.cacheUri(context, uri)
+                    // ✅ Check if this is a draft document (from API)
+                    // Draft documents come as refNum (not content:// URI)
+                    val isDraftDocument = !event.fileUri.startsWith("content://", ignoreCase = true)
 
-                    // ✅ NEW: Open file viewer dialog instead of navigating to separate screen
-                    // This preserves the form state
-                    try {
-                        // Take persistent permission if possible
-                        context.contentResolver.takePersistableUriPermission(
-                            uri,
-                            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                        android.util.Log.d("MarineRegistration", "Took persistent permission for $uri")
-                    } catch (e: SecurityException) {
-                        android.util.Log.w("MarineRegistration", "Could not take persistent permission: ${e.message}")
+                    if (isDraftDocument) {
+                        // This is a draft document - fileUri is the refNum
+                        val refNum = event.fileUri
+
+                        println("📄 Fetching draft document preview URL for refNo=$refNum")
+
+                        // ✅ Call the API to get the actual MinIO URL
+                        viewModel.viewDraftDocument(refNum) { fileUrl, error ->
+                            if (error != null) {
+                                println("❌ Failed to get file preview: $error")
+                                Toast.makeText(
+                                    context,
+                                    "Unable to load document: $error",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else if (fileUrl != null) {
+                                println("✅ Got file URL: $fileUrl")
+
+                                // Extract filename from URL or use default
+                                val fileName = try {
+                                    fileUrl.toUri().lastPathSegment?.substringBefore('?') ?: "Document"
+                                } catch (_: Exception) {
+                                    "Document"
+                                }
+
+                                println("📄 Opening file viewer with MinIO URL: $fileUrl")
+
+                                // ✅ Open in common file viewer - it will handle URL with WebView
+                                viewModel.openFileViewerDialog(fileUrl, fileName, "application/pdf")
+                            }
+                        }
+                        viewModel.clearFileNavigationEvent()
+                    } else {
+                        // Local URI - use existing logic
+                        val uri = event.fileUri.toUri()
+
+                        // ✅ CRITICAL: Re-cache the URI before viewing to restore permissions
+                        // This fixes the "corrupted PDF" issue when viewing files after app restart
+                        com.informatique.mtcit.util.UriCache.cacheUri(context, uri)
+
+                        // ✅ NEW: Open file viewer dialog instead of navigating to separate screen
+                        // This preserves the form state
+                        try {
+                            // Take persistent permission if possible
+                            context.contentResolver.takePersistableUriPermission(
+                                uri,
+                                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            )
+                            android.util.Log.d("MarineRegistration", "Took persistent permission for $uri")
+                        } catch (e: SecurityException) {
+                            android.util.Log.w("MarineRegistration", "Could not take persistent permission: ${e.message}")
+                        }
+
+                        val fileName = getFileNameFromUri(context, uri) ?: "File"
+
+                        // ✅ Open dialog instead of navigating
+                        viewModel.openFileViewerDialog(event.fileUri, fileName, event.fileType)
+                        viewModel.clearFileNavigationEvent()
                     }
-
-                    val fileName = getFileNameFromUri(context, uri) ?: "File"
-
-                    // ✅ Open dialog instead of navigating
-                    viewModel.openFileViewerDialog(event.fileUri, fileName, event.fileType)
-                    viewModel.clearFileNavigationEvent()
                 }
 
                 is FileNavigationEvent.RemoveFile -> {

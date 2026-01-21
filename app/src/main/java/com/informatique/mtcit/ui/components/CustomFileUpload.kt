@@ -46,7 +46,9 @@ fun CustomFileUpload(
     onOpenFilePicker: ((String, List<String>) -> Unit)? = null,
     onViewFile: ((String, String) -> Unit)? = null,
     onRemoveFile: ((String) -> Unit)? = null,
-    disabled: Boolean = false // ✅ NEW: Disable file upload when sailors are manually entered
+    disabled: Boolean = false, // ✅ Disable file upload when sailors are manually entered
+    draftDocumentRefNum: String? = null, // ✅ NEW: For draft documents from API
+    draftDocumentFileName: String? = null // ✅ NEW: Display name for draft documents
 ) {
     val context = LocalContext.current
     var selectedUri by remember { mutableStateOf<Uri?>(null) }
@@ -54,14 +56,25 @@ fun CustomFileUpload(
     var fileName by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
 
+    // ✅ Check if this is a draft document
+    val isDraftDocument = remember(value, draftDocumentRefNum) {
+        value.startsWith("draft:") && draftDocumentRefNum != null
+    }
+
     // Ensure Excel extensions are always considered allowed when opening picker
     val pickerAllowedTypes = remember(allowedTypes) {
         (allowedTypes + listOf("xls", "xlsx")).map { it.lowercase() }.distinct()
     }
 
-    // Update selectedUri when mortgageValue changes (for persistence)
-    LaunchedEffect(value) {
-        if (value.isNotEmpty() && value.startsWith("content://")) {
+    // Update selectedUri when value changes (for persistence)
+    LaunchedEffect(value, draftDocumentFileName) {
+        if (isDraftDocument) {
+            // ✅ Draft document - use filename from API
+            selectedUri = null // No local URI
+            selectedMimeType = null
+            fileName = draftDocumentFileName ?: "Document"
+        } else if (value.isNotEmpty() && value.startsWith("content://")) {
+            // Local file URI
             selectedUri = Uri.parse(value)
             selectedMimeType = context.contentResolver.getType(selectedUri!!)
             fileName = getFileName(context, selectedUri!!) ?: "unknown_file"
@@ -115,7 +128,7 @@ fun CustomFileUpload(
             )
         }
 
-        if (selectedUri != null && value.isNotEmpty()) {
+        if ((selectedUri != null || isDraftDocument) && value.isNotEmpty()) {
             // File selected - show file card with dropdown menu
             Box {
                 Card(
@@ -181,7 +194,7 @@ fun CustomFileUpload(
                     onDismissRequest = { showMenu = false },
                     offset = DpOffset(0.dp, 4.dp)
                 ) {
-                    // View option - disabled for Excel files
+                    // View option - disabled for Excel files, enabled for draft documents
                     DropdownMenuItem(
                         text = {
                             Row(
@@ -198,9 +211,15 @@ fun CustomFileUpload(
                         },
                         onClick = {
                             showMenu = false
-                            onViewFile?.invoke(value, selectedMimeType ?: "application/*")
+                            if (isDraftDocument) {
+                                // ✅ For draft documents, open preview URL
+                                onViewFile?.invoke("draft:$draftDocumentRefNum", "application/octet-stream")
+                            } else {
+                                // For local files, use URI
+                                onViewFile?.invoke(value, selectedMimeType ?: "application/*")
+                            }
                         },
-                        enabled = !isExcel
+                        enabled = !isExcel || isDraftDocument // ✅ Enable for draft documents even if Excel
                     )
 
                     // Replace option

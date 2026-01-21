@@ -36,16 +36,24 @@ fun FileViewerDialog(
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
 
+    // ✅ Check if this is an HTTP/HTTPS URL (from API) or local URI
+    val isHttpUrl = remember(fileUri) {
+        fileUri.startsWith("http://", ignoreCase = true) ||
+        fileUri.startsWith("https://", ignoreCase = true)
+    }
+
     // Check if file can be displayed internally
-    val canDisplayInternally = remember(mimeType, fileUri) {
+    val canDisplayInternally = remember(mimeType, fileUri, isHttpUrl) {
+        // HTTP URLs are always displayed in WebView
+        isHttpUrl ||
         mimeType.startsWith("image/") ||
-                mimeType == "application/pdf" ||
-                fileUri.endsWith(".pdf", ignoreCase = true)
+        mimeType == "application/pdf" ||
+        fileUri.endsWith(".pdf", ignoreCase = true)
     }
 
     // For files that must open externally (Office docs), open and auto-dismiss
-    LaunchedEffect(isOpen, fileUri, canDisplayInternally) {
-        if (isOpen && fileUri.isNotEmpty() && !canDisplayInternally) {
+    LaunchedEffect(isOpen, fileUri, canDisplayInternally, isHttpUrl) {
+        if (isOpen && fileUri.isNotEmpty() && !canDisplayInternally && !isHttpUrl) {
             try {
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     setDataAndType(fileUri.toUri(), mimeType)
@@ -62,7 +70,7 @@ fun FileViewerDialog(
         }
     }
 
-    // For PDFs and images, show dialog with internal viewer
+    // For PDFs, images, and HTTP URLs, show dialog with internal viewer
     if (isOpen && canDisplayInternally) {
         // Handle back button to close dialog
         BackHandler(enabled = true) {
@@ -146,28 +154,71 @@ fun FileViewerDialog(
                     }
 
                     // File Content - Use NativeFileViewer for internal display
-                    NativeFileViewer(
-                        uri = fileUri.toUri(),
-                        fileName = fileName,
-                        modifier = Modifier.fillMaxSize(),
-                        onOpenExternal = {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(fileUri.toUri(), mimeType)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    // Pass HTTP URL as string, or convert local URI
+                    if (isHttpUrl) {
+                        // For HTTP URLs, pass directly as string
+                        NativeFileViewerWithUrl(
+                            url = fileUri,
+                            fileName = fileName,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // For local URIs, convert and use normal viewer
+                        NativeFileViewer(
+                            uri = fileUri.toUri(),
+                            fileName = fileName,
+                            modifier = Modifier.fillMaxSize(),
+                            onOpenExternal = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        setDataAndType(fileUri.toUri(), mimeType)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    android.util.Log.e(
+                                        "FileViewerDialog",
+                                        "Failed to open external: ${e.message}"
+                                    )
                                 }
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                android.util.Log.e(
-                                    "FileViewerDialog",
-                                    "Failed to open external: ${e.message}"
-                                )
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * Native file viewer for HTTP/HTTPS URLs
+ * Uses WebView to display remote files
+ */
+@Composable
+fun NativeFileViewerWithUrl(
+    url: String,
+    fileName: String?,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        // Use WebView to display the URL
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { context ->
+                android.webkit.WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
+                    settings.builtInZoomControls = true
+                    settings.displayZoomControls = false
+
+                    webViewClient = android.webkit.WebViewClient()
+
+                    println("🌐 Loading URL in WebView: $url")
+                    loadUrl(url)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

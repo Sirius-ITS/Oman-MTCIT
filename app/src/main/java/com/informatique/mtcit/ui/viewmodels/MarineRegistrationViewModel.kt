@@ -1546,4 +1546,298 @@ class MarineRegistrationViewModel @Inject constructor(
         println("📝 Calculated last completed step: $lastCompletedStep")
         return lastCompletedStep
     }
+
+    /**
+     * Update engine immediately via API (for engines with dbId)
+     * Called when user edits an engine from the UI
+     */
+    fun updateEngineImmediate(engine: com.informatique.mtcit.ui.components.EngineData) {
+        viewModelScope.launch {
+            try {
+                val requestId = uiState.value.formData["requestId"]?.toIntOrNull()
+                val engineId = engine.dbId
+
+                if (requestId == null || engineId == null) {
+                    println("❌ Cannot update engine: requestId=$requestId, engineId=$engineId")
+                    return@launch
+                }
+
+                println("🔄 Updating engine via API: requestId=$requestId, engineId=$engineId")
+
+                // Get strategy's registration manager
+                val strategy = currentStrategy
+                if (strategy is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.RequestInspectionStrategy) {
+
+                    // Get the RegistrationRequestManager from strategy
+                    val registrationManager = when (strategy) {
+                        is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.RequestInspectionStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        else -> {
+                            println("❌ Strategy doesn't support engine update")
+                            return@launch
+                        }
+                    }
+
+                    // Call UPDATE API
+                    val result = registrationManager.updateEngineImmediate(appContext, requestId, engine)
+
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Success -> {
+                            println("✅ Engine updated successfully via API")
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Error -> {
+                            println("❌ Failed to update engine: ${result.message}")
+                            // Could show error to user here if needed
+                        }
+                    }
+                } else {
+                    println("⚠️ Current strategy doesn't support engine operations")
+                }
+            } catch (e: Exception) {
+                println("❌ Exception updating engine: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Delete engine immediately via API (for engines with dbId)
+     * Called when user deletes an engine from the UI
+     */
+    fun deleteEngineImmediate(engine: com.informatique.mtcit.ui.components.EngineData) {
+        viewModelScope.launch {
+            try {
+                val requestId = uiState.value.formData["requestId"]?.toIntOrNull()
+                val engineId = engine.dbId
+
+                if (requestId == null || engineId == null) {
+                    println("❌ Cannot delete engine: requestId=$requestId, engineId=$engineId")
+                    return@launch
+                }
+
+                println("🗑️ Deleting engine via API: requestId=$requestId, engineId=$engineId")
+
+                // Get strategy's registration manager
+                val strategy = currentStrategy
+                if (strategy is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.RequestInspectionStrategy) {
+
+                    // Get the RegistrationRequestManager from strategy
+                    val registrationManager = when (strategy) {
+                        is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.RequestInspectionStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        else -> {
+                            println("❌ Strategy doesn't support engine deletion")
+                            return@launch
+                        }
+                    }
+
+                    // Call DELETE API
+                    val result = registrationManager.deleteEngineImmediate(requestId, engineId)
+
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Success -> {
+                            println("✅ Engine deleted successfully from API")
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Error -> {
+                            println("❌ Failed to delete engine: ${result.message}")
+                            // Could show error to user here if needed
+                        }
+                    }
+                } else {
+                    println("⚠️ Current strategy doesn't support engine operations")
+                }
+            } catch (e: Exception) {
+                println("❌ Exception deleting engine: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Update owner immediately via API (for owners with dbId)
+     * Called when user edits an owner from the UI
+     */
+    fun updateOwnerImmediate(owner: com.informatique.mtcit.ui.components.OwnerData) {
+        viewModelScope.launch {
+            try {
+                val requestId = uiState.value.formData["requestId"]?.toIntOrNull()
+                val ownerId = owner.dbId
+
+                if (requestId == null || ownerId == null) {
+                    println("❌ Cannot update owner: requestId=$requestId, ownerId=$ownerId")
+                    return@launch
+                }
+
+                println("🔄 Updating owner via API: requestId=$requestId, ownerId=$ownerId")
+
+                // Get strategy's registration manager
+                val strategy = currentStrategy
+                if (strategy is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.RequestInspectionStrategy) {
+
+                    // Get the RegistrationRequestManager from strategy
+                    val registrationManager = when (strategy) {
+                        is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.RequestInspectionStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        else -> {
+                            println("❌ Strategy doesn't support owner update")
+                            return@launch
+                        }
+                    }
+
+                    // Call UPDATE API
+                    val result = registrationManager.updateOwnerImmediate(appContext, requestId, owner)
+
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Success -> {
+                            println("✅ Owner updated successfully via API")
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Error -> {
+                            println("❌ Failed to update owner: ${result.message}")
+                            // Could show error to user here if needed
+                        }
+                    }
+                } else {
+                    println("⚠️ Current strategy doesn't support owner operations")
+                }
+            } catch (e: Exception) {
+                println("❌ Exception updating owner: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Delete owner immediately via API (for owners with dbId)
+     * Called when user deletes an owner from the UI
+     */
+    fun deleteOwnerImmediate(owner: com.informatique.mtcit.ui.components.OwnerData) {
+        viewModelScope.launch {
+            try {
+                val requestId = uiState.value.formData["requestId"]?.toIntOrNull()
+                val ownerId = owner.dbId
+
+                if (requestId == null || ownerId == null) {
+                    println("❌ Cannot delete owner: requestId=$requestId, ownerId=$ownerId")
+                    return@launch
+                }
+
+                println("🗑️ Deleting owner via API: requestId=$requestId, ownerId=$ownerId")
+
+                // Get strategy's registration manager
+                val strategy = currentStrategy
+                if (strategy is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ||
+                    strategy is com.informatique.mtcit.business.transactions.RequestInspectionStrategy) {
+
+                    // Get the RegistrationRequestManager from strategy
+                    val registrationManager = when (strategy) {
+                        is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        is com.informatique.mtcit.business.transactions.RequestInspectionStrategy ->
+                            strategy.getRegistrationRequestManager()
+                        else -> {
+                            println("❌ Strategy doesn't support owner delete")
+                            return@launch
+                        }
+                    }
+
+                    // Call DELETE API
+                    val result = registrationManager.deleteOwnerImmediate(requestId, ownerId)
+
+                    when (result) {
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Success -> {
+                            println("✅ Owner deleted successfully from API")
+                            // Note: Local list removal is handled by OwnerListManager immediately
+                        }
+                        is com.informatique.mtcit.business.transactions.shared.UpdateResult.Error -> {
+                            println("❌ Failed to delete owner: ${result.message}")
+                            // Could show error to user here if needed
+                        }
+                    }
+                } else {
+                    println("⚠️ Current strategy doesn't support owner operations")
+                }
+            } catch (e: Exception) {
+                println("❌ Exception deleting owner: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * View draft document by calling the file preview API
+     * Gets the MinIO URL from the server for the given refNo
+     */
+    fun viewDraftDocument(refNo: String, callback: (fileUrl: String?, error: String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                println("🔍 Calling getFilePreview API for refNo=$refNo")
+
+                // Get the repository from the current strategy
+                val repository = when (val strategy = currentStrategy) {
+                    is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy -> {
+                        // Access via reflection (private field)
+                        strategy::class.java.getDeclaredField("repository").apply {
+                            isAccessible = true
+                        }.get(strategy) as? com.informatique.mtcit.data.repository.ShipRegistrationRepository
+                    }
+                    is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy -> {
+                        strategy::class.java.getDeclaredField("repository").apply {
+                            isAccessible = true
+                        }.get(strategy) as? com.informatique.mtcit.data.repository.ShipRegistrationRepository
+                    }
+                    is com.informatique.mtcit.business.transactions.RequestInspectionStrategy -> {
+                        strategy::class.java.getDeclaredField("repository").apply {
+                            isAccessible = true
+                        }.get(strategy) as? com.informatique.mtcit.data.repository.ShipRegistrationRepository
+                    }
+                    else -> null
+                }
+
+                if (repository == null) {
+                    println("❌ Could not get repository from strategy")
+                    callback(null, "Unable to access file preview service")
+                    return@launch
+                }
+
+                // Call the API through repository
+                val result = repository.getFilePreview(refNo)
+
+                result.fold(
+                    onSuccess = { fileUrl ->
+                        println("✅ File preview URL received: $fileUrl")
+                        callback(fileUrl, null)
+                    },
+                    onFailure = { exception ->
+                        println("❌ Failed to get file preview: ${exception.message}")
+                        callback(null, exception.message ?: "Failed to load document")
+                    }
+                )
+            } catch (e: Exception) {
+                println("❌ Exception in viewDraftDocument: ${e.message}")
+                e.printStackTrace()
+                callback(null, "Failed to load document")
+            }
+        }
+    }
 }

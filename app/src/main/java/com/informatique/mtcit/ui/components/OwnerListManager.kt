@@ -233,7 +233,10 @@ fun OwnerListManager(
     includeCompanyFields: Boolean = true,
     totalOwnersCount: String? = null,
     onOwnersChange: (List<OwnerData>) -> Unit,
-    onTotalCountChange: ((String) -> Unit)? = null
+    onTotalCountChange: ((String) -> Unit)? = null,
+    onViewFile: ((String, String) -> Unit)? = null, // ✅ For viewing draft documents
+    onEditOwnerImmediate: ((OwnerData) -> Unit)? = null, // ✅ For editing existing owners via API
+    onDeleteOwnerImmediate: ((OwnerData) -> Unit)? = null // ✅ For deleting existing owners via API
 ) {
     val extraColors = LocalExtraColors.current
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -271,6 +274,15 @@ fun OwnerListManager(
                         showBottomSheet = true
                     },
                     onDelete = {
+                        // ✅ Check if owner has dbId (already posted to API)
+                        if (owner.dbId != null && onDeleteOwnerImmediate != null) {
+                            println("🗑️ Deleting owner with dbId=${owner.dbId} - calling API immediately")
+                            // Call DELETE API immediately
+                            onDeleteOwnerImmediate(owner)
+                        } else {
+                            println("🗑️ Removing local owner (not yet posted): ${owner.ownerName}")
+                        }
+                        // Always remove from local list (UI update)
                         onOwnersChange(owners.filter { it.id != owner.id })
                     }
                 )
@@ -315,13 +327,34 @@ fun OwnerListManager(
             includeCompanyFields = includeCompanyFields,
             onDismiss = { showBottomSheet = false },
             onSave = { ownerData ->
+                println("🏢 OwnerListManager: onSave called for owner: ${ownerData.id}, dbId: ${ownerData.dbId}")
+
+                // ✅ EDITING: Only update local state, no immediate API call
+                // ❌ COMMENTED OUT: Immediate API update (will be handled by proceed step)
+                /*
+                if (editingOwner != null && ownerData.dbId != null && onEditOwnerImmediate != null) {
+                    println("✅ Editing existing owner via API (dbId=${ownerData.dbId})")
+                    onEditOwnerImmediate(ownerData)
+                } else {
+                    println("✅ Editing local owner (not yet posted) or adding new owner")
+                    // Local change - update in list
+                    if (editingOwner != null) {
+                        onOwnersChange(owners.map { if (it.id == editingOwner!!.id) ownerData else it })
+                    } else {
+                        onOwnersChange(owners + ownerData)
+                    }
+                }
+                */
+                println("✅ Editing local owner (deferred API call until proceed)")
+                // Always update in local list (UI update)
                 if (editingOwner != null) {
                     onOwnersChange(owners.map { if (it.id == editingOwner!!.id) ownerData else it })
                 } else {
                     onOwnersChange(owners + ownerData)
                 }
                 showBottomSheet = false
-            }
+            },
+            onViewFile = onViewFile // ✅ Pass callback for viewing draft documents
         )
     }
 }

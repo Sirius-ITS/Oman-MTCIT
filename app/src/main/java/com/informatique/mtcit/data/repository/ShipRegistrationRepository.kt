@@ -5,11 +5,14 @@ import com.informatique.mtcit.data.api.RegistrationApiService
 import com.informatique.mtcit.data.model.CreateRegistrationRequest
 import com.informatique.mtcit.data.model.CreateRegistrationResponse
 import com.informatique.mtcit.data.model.EngineFileUpload
+import com.informatique.mtcit.data.model.EngineResponseData
 import com.informatique.mtcit.data.model.EngineSubmissionRequest
 import com.informatique.mtcit.data.model.EngineSubmissionResponse
 import com.informatique.mtcit.data.model.OwnerFileUpload
+import com.informatique.mtcit.data.model.OwnerResponseData
 import com.informatique.mtcit.data.model.OwnerSubmissionRequest
 import com.informatique.mtcit.data.model.OwnerSubmissionResponse
+import com.informatique.mtcit.data.model.OwnersListResponse
 import com.informatique.mtcit.data.model.UpdateDimensionsRequest
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
 import com.informatique.mtcit.data.model.UpdateWeightsRequest
@@ -82,6 +85,42 @@ interface ShipRegistrationRepository {
     ): Result<OwnerSubmissionResponse>
 
     /**
+     * Update a single engine
+     * PUT /api/v1/registration-requests/{requestId}/engines/{engineId}
+     */
+    suspend fun updateEngine(
+        context: Context,
+        requestId: Int,
+        engineId: Int,
+        engine: EngineSubmissionRequest,
+        files: List<EngineFileUpload>
+    ): Result<EngineSubmissionResponse>
+
+    /**
+     * Delete a single engine
+     * DELETE /api/v1/registration-requests/{requestId}/engines/{engineId}
+     */
+    suspend fun deleteEngine(requestId: Int, engineId: Int): Result<Unit>
+
+    /**
+     * Update a single owner
+     * PUT /api/v1/registration-requests/{requestId}/owners/{ownerId}
+     */
+    suspend fun updateOwner(
+        context: Context,
+        requestId: Int,
+        ownerId: Int,
+        owner: OwnerSubmissionRequest,
+        files: List<OwnerFileUpload>
+    ): Result<OwnerSubmissionResponse>
+
+    /**
+     * Delete a single owner
+     * DELETE /api/v1/registration-requests/{requestId}/owners/{ownerId}
+     */
+    suspend fun deleteOwner(requestId: Int, ownerId: Int): Result<Unit>
+
+    /**
      * Validate build status documents (old version - kept for backward compatibility)
      * POST registration-requests/{requestId}/validate-build-status
      */
@@ -136,6 +175,12 @@ interface ShipRegistrationRepository {
         mmsiNumber: String?,
         callSign: String?
     ): Result<com.informatique.mtcit.data.model.MaritimeIdentityResponse>
+
+    /**
+     * Get file preview URL by reference number
+     * GET /api/v1/registration-request-view/file-preview?refNo={refNo}
+     */
+    suspend fun getFilePreview(refNo: String): Result<String>
 }
 
 @Singleton
@@ -236,6 +281,39 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         return registrationApiService.submitOwners(requestId, owners, files)
     }
 
+    override suspend fun updateEngine(
+        context: Context,
+        requestId: Int,
+        engineId: Int,
+        engine: EngineSubmissionRequest,
+        files: List<EngineFileUpload>
+    ): Result<EngineSubmissionResponse> {
+        println("📞 ShipRegistrationRepository: Calling updateEngine API...")
+        return registrationApiService.updateEngine(requestId, engineId, engine, files)
+    }
+
+    override suspend fun deleteEngine(requestId: Int, engineId: Int): Result<Unit> {
+        println("📞 ShipRegistrationRepository: Calling deleteEngine API...")
+        return registrationApiService.deleteEngine(requestId, engineId)
+    }
+
+    override suspend fun updateOwner(
+        context: Context,
+        requestId: Int,
+        ownerId: Int,
+        owner: OwnerSubmissionRequest,
+        files: List<OwnerFileUpload>
+    ): Result<OwnerSubmissionResponse> {
+        println("📞 ShipRegistrationRepository: Calling updateOwner API...")
+        return registrationApiService.updateOwner(requestId, ownerId, owner, files)
+    }
+
+    override suspend fun deleteOwner(requestId: Int, ownerId: Int): Result<Unit> {
+        println("📞 ShipRegistrationRepository: Calling deleteOwner API...")
+        return registrationApiService.deleteOwner(requestId, ownerId)
+    }
+
+
     override suspend fun validateBuildStatus(
         requestId: Int,
         shipbuildingCertificateFile: ByteArray?,
@@ -292,5 +370,10 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
     ): Result<com.informatique.mtcit.data.model.MaritimeIdentityResponse> {
         println("📞 ShipRegistrationRepository: Adding maritime identity for shipId=$shipId")
         return marineUnitsApiService.addMaritimeIdentity(shipId, imoNumber, mmsiNumber, callSign)
+    }
+
+    override suspend fun getFilePreview(refNo: String): Result<String> {
+        println("📞 ShipRegistrationRepository: Getting file preview for refNo=$refNo")
+        return registrationApiService.getFilePreview(refNo)
     }
 }

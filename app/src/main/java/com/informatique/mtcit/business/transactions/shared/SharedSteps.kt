@@ -78,7 +78,7 @@ object SharedSteps {
                 countries = countries,
                 fuelTypes = fuelTypes,
                 engineConditions = engineConditions,
-                mandatory = true,
+                mandatory = true, // ✅ Engines are mandatory - user must add at least one
             )
         )
 
@@ -387,7 +387,7 @@ object SharedSteps {
             titleRes = R.string.unit_data,
             descriptionRes = R.string.unit_data_description,
             fields = fields,
-            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildingMaterials")
+            requiredLookups = listOf("shipTypes", "shipCategories", "ports", "countries", "marineActivities", "proofTypes", "buildMaterials")  // ✅ Fixed: buildMaterials not buildingMaterials
         )
     }
 

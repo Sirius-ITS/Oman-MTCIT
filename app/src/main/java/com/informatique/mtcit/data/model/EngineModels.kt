@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class EngineSubmissionRequest(
+    val id: Int? = null, // ✅ Engine ID for PUT requests
     val engineSerialNumber: String,
     val engineType: EngineTypeRef,
     val enginePower: Double,
@@ -26,36 +27,37 @@ data class EngineSubmissionRequest(
 @Serializable
 data class EngineTypeRef(
     val id: String,
-    val nameEn: String,
-    val nameAr: String
+    val nameEn: String? = null, // ✅ Optional - API may not return these in POST response
+    val nameAr: String? = null
 )
 
 @Serializable
 data class EngineCountryRef(
     val id: String,
-    val nameEn: String,
-    val nameAr: String
+    val nameEn: String? = null, // ✅ Optional - API may not return these in POST response
+    val nameAr: String? = null
 )
 
 @Serializable
 data class EngineFuelTypeRef(
     val id: String,
-    val nameEn: String,
-    val nameAr: String
+    val nameEn: String? = null, // ✅ Optional - API may not return these in POST response
+    val nameAr: String? = null
 )
 
 @Serializable
 data class EngineStatusRef(
     val id: String,
-    val nameEn: String,
-    val nameAr: String
+    val nameEn: String? = null, // ✅ Optional - API may not return these in POST response
+    val nameAr: String? = null
 )
 
 @Serializable
 data class EngineDocumentMetadata(
     val fileName: String,
     val docOwnerId: String,
-    val docId: Int = 1 // Document type ID (default to 1 for backward compatibility)
+    val docId: Int = 1, // Document type ID (default to 1 for backward compatibility)
+    val docRefNum: String? = null // ✅ For referencing existing draft documents (API expects docRefNum)
 )
 
 /**

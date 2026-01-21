@@ -32,7 +32,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class OwnerData(
-    val id: String = java.util.UUID.randomUUID().toString(),
+    val id: String = java.util.UUID.randomUUID().toString(), // Local UUID for UI tracking
+    val dbId: Int? = null, // Database ID (null for newly added owners)
     val fullName: String = "", // Deprecated - keeping for backward compatibility
     val ownerName: String = "", // Arabic name (for individuals) or Arabic company name
     val ownerNameEn: String = "", // English name (for individuals) or English company name
@@ -50,8 +51,10 @@ data class OwnerData(
     val companyName: String = "",
     val companyType: String = "",
     val isRepresentative: Boolean = false, // New field for representative checkbox
-    val ownershipProofDocument: String = "",
-    val documentName: String = ""
+    val ownershipProofDocument: String = "", // Can be local URI or "draft:refNum"
+    val documentName: String = "",
+    val ownershipProofDocumentRefNum: String? = null, // For draft documents - used in PUT requests
+    val ownershipProofDocumentFileName: String? = null // Display name for draft documents
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +65,8 @@ fun OwnerFormBottomSheet(
     countries: List<String>,
     includeCompanyFields: Boolean = true,
     onDismiss: () -> Unit,
-    onSave: (OwnerData) -> Unit
+    onSave: (OwnerData) -> Unit,
+    onViewFile: ((String, String) -> Unit)? = null // ✅ For viewing draft documents
 ) {
     val extraColors = LocalExtraColors.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -84,8 +88,38 @@ fun OwnerFormBottomSheet(
     var companyRegistrationNumber by remember { mutableStateOf(owner?.companyRegistrationNumber ?: "") }
     var companyName by remember { mutableStateOf(owner?.companyName ?: "") }
     var companyType by remember { mutableStateOf(owner?.companyType ?: "") }
-    var documentUri by remember { mutableStateOf(owner?.ownershipProofDocument ?: "") }
+
+    // ✅ Initialize documentUri properly for draft documents (same as engines)
+    var documentUri by remember {
+        mutableStateOf(
+            when {
+                // If it's a draft document, use "draft:" prefix
+                owner?.ownershipProofDocumentRefNum != null -> "draft:${owner.ownershipProofDocumentRefNum}"
+                // Otherwise use the normal URI
+                else -> owner?.ownershipProofDocument ?: ""
+            }
+        )
+    }
+
     var isRepresentative by remember { mutableStateOf(owner?.isRepresentative ?: false) }
+
+    // ✅ Track if this is a draft document (from API) or new upload
+    val isDraftDocument = remember(owner) {
+        owner?.ownershipProofDocumentRefNum != null
+    }
+
+    // ✅ Extract draft document info from owner data
+    val draftDocumentRefNum = remember(owner) {
+        owner?.ownershipProofDocumentRefNum
+    }
+    val draftDocumentFileName = remember(owner) {
+        owner?.ownershipProofDocumentFileName ?: "Document"
+    }
+
+    // Track if user has uploaded a new document (replaces draft)
+    var hasNewDocument by remember { mutableStateOf(false) }
+
+    println("🔧 OwnerFormBottomSheet: isDraft=$isDraftDocument, refNum=$draftDocumentRefNum, fileName=$draftDocumentFileName, uri=$documentUri")
 
     // File upload callbacks
     var filePickerFieldId by remember { mutableStateOf<String?>(null) }
@@ -98,6 +132,7 @@ fun OwnerFormBottomSheet(
             // ✅ CRITICAL: Cache the URI with its permissions before storing as string
             UriCache.cacheUri(context, it)
             documentUri = it.toString()
+            hasNewDocument = true // Mark that user uploaded new document
         }
     }
 
@@ -106,6 +141,11 @@ fun OwnerFormBottomSheet(
             filePickerLauncher.launch("*/*")
             filePickerFieldId = null
         }
+    }
+
+    // ✅ Debug log when draft document changes
+    LaunchedEffect(isDraftDocument, draftDocumentRefNum, draftDocumentFileName) {
+        println("🏢 Draft document state: isDraft=$isDraftDocument, refNum=$draftDocumentRefNum, fileName=$draftDocumentFileName, documentUri=$documentUri")
     }
 
     ModalBottomSheet(
@@ -371,18 +411,43 @@ fun OwnerFormBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // File Upload Section using CustomFileUpload
+            // ✅ Use CustomFileUpload for both draft and new documents
             CustomFileUpload(
                 value = documentUri,
-                onValueChange = { documentUri = it },
+                onValueChange = {
+                    println("🏢 OwnerForm: documentUri changed to: $it")
+                    documentUri = it
+                },
                 label = localizedApp(R.string.ownership_proof_document),
                 mandatory = true,
                 fieldId = "ownershipProofDocument",
                 onOpenFilePicker = { fieldId, allowedTypes ->
+                    println("🏢 OwnerForm: Opening file picker")
                     filePickerFieldId = fieldId
                     filePickerAllowedTypes = allowedTypes
                 },
-                onRemoveFile = { documentUri = "" }
+                onRemoveFile = {
+                    println("🏢 OwnerForm: Removing file")
+                    documentUri = ""
+                    hasNewDocument = false
+                },
+                onViewFile = onViewFile?.let { viewFileCallback ->
+                    { uri, mimeType ->
+                        println("🏢 OwnerForm: onViewFile called - uri=$uri, mimeType=$mimeType")
+                        println("🏢 OwnerForm: isDraftDocument=$isDraftDocument, draftDocumentRefNum=$draftDocumentRefNum")
+                        // ✅ Handle draft documents - strip the "draft:" prefix
+                        if (uri.startsWith("draft:")) {
+                            val refNum = uri.removePrefix("draft:")
+                            println("🏢 OwnerForm: Viewing draft document with refNum=$refNum")
+                            viewFileCallback(refNum, mimeType)
+                        } else {
+                            println("🏢 OwnerForm: Viewing normal document with uri=$uri")
+                            viewFileCallback(uri, mimeType)
+                        }
+                    }
+                },
+                draftDocumentRefNum = draftDocumentRefNum,
+                draftDocumentFileName = draftDocumentFileName
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -403,6 +468,7 @@ fun OwnerFormBottomSheet(
                     onClick = {
                         val ownerData = OwnerData(
                             id = owner?.id ?: java.util.UUID.randomUUID().toString(),
+                            dbId = owner?.dbId, // Preserve database ID for existing owners
                             fullName = fullName,
                             ownerName = ownerName,
                             ownerNameEn = ownerNameEn,
@@ -415,13 +481,16 @@ fun OwnerFormBottomSheet(
                             city = city,
                             country = country,
                             postalCode = postalCode,
-                        isCompany = isCompany,
-                        companyRegistrationNumber = companyRegistrationNumber,
-                        companyName = companyName,
-                        companyType = companyType,
-                        isRepresentative = isRepresentative,
-                        ownershipProofDocument = documentUri,
-                        documentName = ""
+                            isCompany = isCompany,
+                            companyRegistrationNumber = companyRegistrationNumber,
+                            companyName = companyName,
+                            companyType = companyType,
+                            isRepresentative = isRepresentative,
+                            ownershipProofDocument = documentUri,
+                            documentName = "",
+                            // ✅ Preserve draft document info if no new document uploaded
+                            ownershipProofDocumentRefNum = if (isDraftDocument && !hasNewDocument) draftDocumentRefNum else null,
+                            ownershipProofDocumentFileName = if (isDraftDocument && !hasNewDocument) draftDocumentFileName else null
                         )
                         onSave(ownerData)
                     },

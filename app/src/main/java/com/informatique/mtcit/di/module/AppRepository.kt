@@ -151,6 +151,54 @@ class AppRepository(client: HttpClient): AppHttpRequests(client = client) {
         }
     }
 
+    suspend fun onPutMultipart(url: String, data: List<PartData>): RepoServiceState {
+        return try {
+            val result = onPutMultipartData(url = url, data = data)
+
+            when(result){
+                is AppHttpRequest.AppHttpRequestModel -> {
+                    if (result.response.status.value == 200 || result.response.status.value == 201){
+                        RepoServiceState.Success(
+                            result.response.body(TypeInfo(JsonElement::class)))
+                    } else {
+                        RepoServiceState.Error(
+                            result.response.status.value,
+                            result.response.status)
+                    }
+                }
+
+                is AppHttpRequest.AppHttpRequestErrorModel -> {
+                    RepoServiceState.Error(result.code, result.message)
+                }
+            }
+        } catch (ex: Exception){
+            RepoServiceState.Error(0, ex.message)
+        }
+    }
+
+    suspend fun onDeleteAuth(url: String): RepoServiceState {
+        return try {
+            val result = onDeleteDataRequest(url)
+
+            when(result) {
+                is AppHttpRequest.AppHttpRequestModel -> {
+                    val statusCode = result.response.status.value
+                    if (statusCode == 200 || statusCode == 204) {
+                        RepoServiceState.Success(
+                            result.response.body(TypeInfo(JsonElement::class)))
+                    } else {
+                        RepoServiceState.Error(statusCode, result.response.status)
+                    }
+                }
+                is AppHttpRequest.AppHttpRequestErrorModel -> {
+                    RepoServiceState.Error(result.code, result.message)
+                }
+            }
+        } catch (ex: Exception) {
+            RepoServiceState.Error(0, ex.message.toString())
+        }
+    }
+
     fun onClose(){
         client.close()
     }
