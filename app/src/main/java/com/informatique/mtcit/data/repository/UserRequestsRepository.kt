@@ -60,6 +60,15 @@ interface UserRequestsRepository {
     ): Result<RequestDetailResponse>
 
     /**
+     * Get engineer inspection request detail by ID
+     * Uses api/v1/scheduled-inspection-requests/{requestId}/details
+     * @param requestId Request ID
+     */
+    suspend fun getEngineerRequestDetail(
+        requestId: Int
+    ): Result<RequestDetailResponse>
+
+    /**
      * Issue certificate for a request (when isPaid == 1)
      * @param issuanceEndpoint Full issuance endpoint path
      * @return Result with certificate data

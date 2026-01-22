@@ -42,7 +42,7 @@ data class RequestsData(
  */
 @Serializable
 data class RequestItem(
-    val id: Int,
+    val id: Int? = null,
     val requestId: Int? = null,
     val requestSerial: String? = null, // e.g., "1252/2025"
     val requestNumber: String? = null, // ✅ NEW: Engineer API uses "requestNumber" instead of "requestSerial"

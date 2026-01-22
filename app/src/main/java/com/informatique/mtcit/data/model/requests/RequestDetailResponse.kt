@@ -30,7 +30,11 @@ data class RequestDetailUiModel(
     val message: String?,
     val messageDetails: String?,
     val sections: List<RequestDetailSection>,
-    val isPaid: Int = 0 // 0 = not paid, 1 = paid
+    val isPaid: Int = 0, // 0 = not paid, 1 = paid
+    val shipName: String? = null, // ✅ Ship name for display in header card
+    val purposeId: Int? = null, // ✅ Purpose ID for checklist loading (engineer only)
+    val workOrderResult: com.informatique.mtcit.data.model.WorkOrderResult? = null, // ✅ Completed checklist answers (engineer only)
+    val scheduledRequestId: Int? = null // ✅ Scheduled request ID (root data.id for scheduled inspections)
 )
 
 /**

@@ -12,13 +12,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +50,7 @@ import java.util.Locale
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Suppress("DEPRECATION")
 fun ApiRequestDetailScreen(
     navController: NavController,
     requestId: Int,
@@ -66,15 +70,18 @@ fun ApiRequestDetailScreen(
     LaunchedEffect(window) {
         window?.let {
             WindowCompat.setDecorFitsSystemWindows(it, false)
+            @Suppress("DEPRECATION")
             it.statusBarColor = android.graphics.Color.TRANSPARENT
             WindowInsetsControllerCompat(it, it.decorView).isAppearanceLightStatusBars = false
         }
     }
 
-    // Fetch data on first composition
+    // ✅ Check user role and fetch data
     LaunchedEffect(requestId, requestTypeId) {
-        println("🔍 ApiRequestDetailScreen: Loading request $requestId (type: $requestTypeId)")
-        viewModel.fetchRequestDetail(requestId, requestTypeId)
+        val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+        println("👷 ApiRequestDetailScreen: User is engineer: $isEngineer")
+        println("🔍 ApiRequestDetailScreen: Loading request $requestId (type: $requestTypeId, isEngineer: $isEngineer)")
+        viewModel.fetchRequestDetail(requestId, requestTypeId, isEngineer)
     }
 
     // ✅ Show certificate issuance success dialog when certificateData is available
@@ -153,7 +160,7 @@ fun ApiRequestDetailScreen(
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
-                                imageVector = Icons.Default.ArrowBack,
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = Color.White
                             )
@@ -286,6 +293,39 @@ private fun RequestDetailContent(
     isIssuingCertificate: Boolean,
     certificateData: CertificateData?
 ) {
+    val context = LocalContext.current
+    var isEngineer by remember { mutableStateOf(false) }
+    val checklistItems by viewModel.checklistItems.collectAsState()
+    val isLoadingChecklist by viewModel.isLoadingChecklist.collectAsState()
+
+    // Check if user is engineer
+    LaunchedEffect(context) {
+        isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+    }
+
+    // ✅ Load checklist when purposeId is available (engineer only)
+    // ✅ Use checklistItems from workOrderResult if available, otherwise load from API
+    LaunchedEffect(requestDetail.purposeId, isEngineer) {
+        if (isEngineer && requestDetail.purposeId != null) {
+            // Check if we already have checklist items in workOrderResult
+            val workOrderResult = requestDetail.workOrderResult
+            if (workOrderResult != null && workOrderResult.checklistItems.isNotEmpty()) {
+                println("✅ Using checklist items from workOrderResult (${workOrderResult.checklistItems.size} items)")
+                // Set checklist items from workOrderResult
+                viewModel.setChecklistItems(workOrderResult.checklistItems)
+
+                // ✅ Also initialize answers from workOrderResult
+                workOrderResult.checklistAnswers.forEach { answer ->
+                    viewModel.updateChecklistAnswer(answer.checklistItemId, answer.answer)
+                }
+                println("✅ Initialized ${workOrderResult.checklistAnswers.size} answers from workOrderResult")
+            } else {
+                println("🔍 Loading checklist from API for purposeId=${requestDetail.purposeId}")
+                viewModel.loadChecklistByPurpose(requestDetail.purposeId)
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Scrollable content
         LazyColumn(
@@ -314,6 +354,48 @@ private fun RequestDetailContent(
             requestDetail.sections.forEach { section ->
                 item {
                     ExpandableDataSection(section, extraColors)
+                }
+            }
+
+            // ✅ Engineer Checklist Section (Dynamic based on status)
+            // ✅ Show existing answers from workOrderResult
+            // ✅ Read-only for accepted/rejected (statusId: 2, 3, 7, 10, 11, 12)
+            if (isEngineer && requestDetail.purposeId != null) {
+                item {
+                    val statusId = requestDetail.status.id
+                    // ✅ Check if this is accepted/rejected status - make read-only
+                    val isReadOnly = statusId in listOf(2, 3, 7, 10, 11, 12)
+
+                    println("📋 Checklist Debug:")
+                    println("   - statusId: $statusId")
+                    println("   - isReadOnly: $isReadOnly")
+                    println("   - checklistItems.size: ${checklistItems.size}")
+                    println("   - workOrderResult answers: ${requestDetail.workOrderResult?.checklistAnswers?.size ?: 0}")
+                    println("   - isLoadingChecklist: $isLoadingChecklist")
+
+                    EngineerChecklistSection(
+                        checklistItems = checklistItems,
+                        existingAnswers = requestDetail.workOrderResult?.checklistAnswers,
+                        isReadOnly = isReadOnly,
+                        isLoadingChecklist = isLoadingChecklist,
+                        extraColors = extraColors,
+                        onAnswerChanged = { itemId, answer ->
+                            viewModel.updateChecklistAnswer(itemId, answer)
+                        }
+                    )
+                }
+
+                // ✅ NEW: Approve Inspection Button (always visible for engineers)
+                item {
+                    val statusId = requestDetail.status.id
+                    val isReadOnly = statusId in listOf(2, 3, 7, 10, 11, 12)
+
+                    ApproveInspectionButton(
+                        viewModel = viewModel,
+                        requestDetail = requestDetail,
+                        isReadOnly = isReadOnly,
+                        extraColors = extraColors
+                    )
                 }
             }
 
@@ -349,15 +431,23 @@ private fun BottomActionButtons(
     certificateData: CertificateData?,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    var isEngineer by remember { mutableStateOf(false) }
+
+    // Check if user is engineer
+    LaunchedEffect(context) {
+        isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+    }
+
     val statusId = requestDetail.status.id
     val isPaid = requestDetail.isPaid
 
-    // Only show buttons for statuses that require action
+    // ✅ FIX: Engineers should NOT see payment button for accepted requests (statusId 3, 7, 11, 12)
     val shouldShowButton = when (statusId) {
-        1 -> true  // Draft - Continue Editing
-        2, 10 -> true  // Rejected - Submit New Request
-        3, 7, 11, 12 -> true  // Accepted/Approved - Show Payment or Issue Certificate button
-        13, 14 -> true  // Action Taken/Issued - Show View Certificate button
+        1 -> !isEngineer  // Draft - Continue Editing (not for engineer)
+        2, 10 -> !isEngineer  // Rejected - Submit New Request (not for engineer)
+        3, 7, 11, 12 -> !isEngineer  // Accepted/Approved - Show Payment or Issue Certificate button (not for engineer)
+        13, 14 -> !isEngineer  // Action Taken/Issued - Show View Certificate button (not for engineer)
         else -> false
     }
 
@@ -372,7 +462,7 @@ private fun BottomActionButtons(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
                 when (statusId) {
                     1 -> {
@@ -509,6 +599,7 @@ private fun BottomActionButtons(
  * ✅ NEW: Issue Certificate Button (when isPaid == 1)
  */
 @Composable
+@Suppress("UNUSED_PARAMETER")
 private fun IssueCertificateButton(
     requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
     navController: NavController,
@@ -818,6 +909,15 @@ private fun StatusHeaderCard(
                 thickness = 1.dp
             )
 
+            // ✅ Ship Name (if available)
+            requestDetail.shipName?.let { shipName ->
+                DataRow(
+                    label = if (Locale.getDefault().language == "ar") "اسم السفينة" else "Ship Name",
+                    value = shipName,
+                    extraColors = extraColors
+                )
+            }
+
             // Request Type
             DataRow(
                 label = if (Locale.getDefault().language == "ar") "نوع الطلب" else "Request Type",
@@ -828,6 +928,7 @@ private fun StatusHeaderCard(
     }
 }
 
+@Suppress("unused")
 @Composable
 private fun MessageCard(
     message: String?,
@@ -956,6 +1057,7 @@ private fun ExpandableDataSection(
 }
 
 @Composable
+@Suppress("SameParameterValue")
 private fun RenderField(
     field: RequestDetailField,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
@@ -1121,10 +1223,156 @@ private fun getStatusTextColor(statusId: Int): Color {
 }
 
 /**
+ * ✅ Engineer Checklist Section
+ * Shows dynamic checklist based on purposeId
+ * ✅ Read-only for accepted/rejected requests, editable for others
+ */
+@Composable
+private fun EngineerChecklistSection(
+    checklistItems: List<com.informatique.mtcit.data.model.ChecklistItem>,
+    existingAnswers: List<com.informatique.mtcit.data.model.ChecklistAnswer>?,
+    isReadOnly: Boolean,
+    isLoadingChecklist: Boolean,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
+    onAnswerChanged: (itemId: Int, answer: String) -> Unit = { _, _ -> }
+) {
+    val isArabic = Locale.getDefault().language == "ar"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Section Title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = extraColors.blue1,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isArabic) "قائمة الفحص" else "Inspection Checklist",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = extraColors.whiteInDarkMode
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            when {
+                isLoadingChecklist -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = extraColors.blue1)
+                    }
+                }
+
+                checklistItems.isEmpty() -> {
+                    Text(
+                        text = if (isArabic) "لا توجد قائمة فحص متاحة" else "No checklist available",
+                        fontSize = 14.sp,
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                }
+
+                else -> {
+                    // ✅ Show appropriate message based on read-only status
+                    if (isReadOnly) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Color(0xFFE3F2FD),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = Color(0xFF2196F3),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isArabic) "تم إكمال الفحص - عرض النتائج فقط" else "Inspection completed - View only",
+                                fontSize = 13.sp,
+                                color = Color(0xFF1976D2)
+                            )
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Color(0xFFFFF3E0),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = Color(0xFFFF9800),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (isArabic) "يمكن ملء وتعديل القائمة" else "Checklist can be filled and edited",
+                                fontSize = 13.sp,
+                                color = Color(0xFFF57C00)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // ✅ Dynamic checklist form - editable only if not read-only
+                    com.informatique.mtcit.ui.components.DynamicChecklistForm(
+                        checklistItems = checklistItems,
+                        existingAnswers = existingAnswers,
+                        onAnswersChanged = if (isReadOnly) null else { answers ->
+                            // ✅ Update ViewModel with answers
+                            println("📝 Checklist answers changed: ${answers.size} items")
+                            answers.forEach { (itemId, answer) ->
+                                onAnswerChanged(itemId, answer)
+                                println("   - Item $itemId: $answer")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * Map request type ID to transaction route with requestId for payment resumption
  * This reuses the existing transaction screens and payment strategy flow
  * Uses TransactionType enum to ensure correct mapping
  */
+@Suppress("UNUSED_PARAMETER")
 private fun getTransactionRouteForPayment(requestTypeId: Int, requestId: Int, statusId: Int, lastCompletedStep: Int): String? {
     // Map API request type ID to TransactionType
     val transactionType = TransactionType.fromTypeId(requestTypeId)
@@ -1157,3 +1405,290 @@ private fun getTransactionRouteForPayment(requestTypeId: Int, requestId: Int, st
         else -> null // Unsupported or no payment flow for this transaction type
     }
 }
+
+/**
+ * ✅ NEW: Approve Inspection Button
+ * Always visible for engineers, but disabled for accepted/rejected requests
+ * Enabled only when all mandatory fields are filled (for scheduled requests)
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ApproveInspectionButton(
+    viewModel: RequestDetailViewModel,
+    requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
+    isReadOnly: Boolean,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    val isArabic = Locale.getDefault().language == "ar"
+    val checklistItems by viewModel.checklistItems.collectAsState()
+    val checklistAnswers by viewModel.checklistAnswers.collectAsState()
+    val inspectionDecisions by viewModel.inspectionDecisions.collectAsState()
+    val isLoadingDecisions by viewModel.isLoadingDecisions.collectAsState()
+
+    var showDecisionDialog by remember { mutableStateOf(false) }
+    var selectedDecisionId by remember { mutableStateOf<Int?>(null) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
+
+    // ✅ FIX: Calculate if all mandatory fields are filled
+    val areAllMandatoryFilled = remember(checklistItems, checklistAnswers) {
+        val mandatoryItems = checklistItems.filter { it.isMandatory }
+        if (mandatoryItems.isEmpty()) {
+            false // No checklist items yet
+        } else {
+            mandatoryItems.all { item ->
+                val answer = checklistAnswers[item.id]
+                !answer.isNullOrBlank()
+            }
+        }
+    }
+
+    // ✅ Button is enabled if:
+    // - Not read-only (not accepted/rejected)
+    // - All mandatory fields are filled
+    val isButtonEnabled = !isReadOnly && areAllMandatoryFilled
+
+    println("🔘 ApproveInspectionButton state:")
+    println("   - isReadOnly: $isReadOnly")
+    println("   - checklistItems.size: ${checklistItems.size}")
+    println("   - checklistAnswers.size: ${checklistAnswers.size}")
+    println("   - areAllMandatoryFilled: $areAllMandatoryFilled")
+    println("   - isButtonEnabled: $isButtonEnabled")
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Button(
+                onClick = {
+                    println("🔘 Approve Inspection button clicked")
+                    // Load decisions and show dialog
+                    viewModel.loadInspectionDecisions()
+                    showDecisionDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isButtonEnabled) extraColors.blue1 else Color.Gray,
+                    disabledContainerColor = Color.Gray
+                ),
+                shape = RoundedCornerShape(12.dp),
+                enabled = isButtonEnabled
+            ) {
+                Text(
+                    text = if (isArabic) "اعتماد المعاينة" else "Approve Inspection",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Show warning if not all mandatory fields filled
+            if (!isButtonEnabled) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (isArabic) {
+                        if (isReadOnly) "⚠️ هذا الطلب مكتمل ولا يمكن تعديله"
+                        else "⚠️ يجب ملء جميع الحقول الإلزامية لاعتماد المعاينة"
+                    } else {
+                        if (isReadOnly) "⚠️ This request is completed and cannot be modified"
+                        else "⚠️ All mandatory fields must be filled to approve inspection"
+                    },
+                    fontSize = 12.sp,
+                    color = if (isReadOnly) Color(0xFFE91E63) else Color(0xFFFF9800),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+
+    // ✅ Decision Dialog
+    if (showDecisionDialog) {
+        println("🔄 Rendering InspectionDecisionDialog")
+        InspectionDecisionDialogWithDatePicker(
+            decisions = inspectionDecisions,
+            isLoading = isLoadingDecisions,
+            selectedDecisionId = selectedDecisionId,
+            datePickerState = datePickerState,
+            onDecisionSelected = {
+                selectedDecisionId = it
+                println("📝 Decision selected: $it")
+            },
+            onConfirm = {
+                if (selectedDecisionId != null) {
+                    println("✅ Confirmed decision: $selectedDecisionId")
+
+                    // Get expiry date if decision is Accepted (id=1)
+                    val expiredDate = if (selectedDecisionId == 1) {
+                        val selectedDateMillis = datePickerState.selectedDateMillis
+                        if (selectedDateMillis != null) {
+                            val calendar = java.util.Calendar.getInstance()
+                            calendar.timeInMillis = selectedDateMillis
+                            val formattedDate = String.format(
+                                java.util.Locale.US,
+                                "%04d-%02d-%02d",
+                                calendar.get(java.util.Calendar.YEAR),
+                                calendar.get(java.util.Calendar.MONTH) + 1,
+                                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                            )
+                            println("📅 Selected expiry date: $formattedDate")
+                            formattedDate
+                        } else {
+                            println("⚠️ No date selected for Accepted decision")
+                            null
+                        }
+                    } else {
+                        null
+                    }
+
+                    // ✅ IMPORTANT: Use scheduledRequestId (root data.id) not inspectionRequest.id
+                    // scheduledRequestId = 105, inspectionRequest.id = 228
+                    val idToUse = requestDetail.scheduledRequestId ?: requestDetail.requestId
+                    println("📤 Submitting work order result:")
+                    println("   - Decision ID: $selectedDecisionId")
+                    println("   - Scheduled Request ID (from root): ${requestDetail.scheduledRequestId}")
+                    println("   - Inspection Request ID: ${requestDetail.requestId}")
+                    println("   - Using ID: $idToUse")
+                    println("   - Expired Date: ${expiredDate ?: "N/A"}")
+
+                    viewModel.submitWorkOrderResult(
+                        decisionId = selectedDecisionId!!,
+                        scheduledRequestId = idToUse, // ✅ Use root data.id (105) not inspectionRequest.id (228)
+                        expiredDate = expiredDate
+                    )
+                    showDecisionDialog = false
+                    selectedDecisionId = null
+                }
+            },
+            onDismiss = {
+                println("❌ Decision dialog dismissed")
+                showDecisionDialog = false
+                selectedDecisionId = null
+            }
+        )
+    }
+}
+
+/**
+ * ✅ NEW: Inspection Decision Dialog with inline Date Picker
+ * Shows radio button list of decisions with inline date picker when Accepted is selected
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InspectionDecisionDialogWithDatePicker(
+    decisions: List<com.informatique.mtcit.data.model.InspectionDecision>,
+    isLoading: Boolean,
+    selectedDecisionId: Int?,
+    datePickerState: DatePickerState,
+    onDecisionSelected: (Int) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val isArabic = Locale.getDefault().language == "ar"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = if (isArabic) "اختر القرار" else "Select Decision",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    decisions.isEmpty() -> {
+                        Text(
+                            text = if (isArabic) "لا توجد قرارات متاحة" else "No decisions available",
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+
+                    else -> {
+                        // Decision options
+                        decisions.forEach { decision ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onDecisionSelected(decision.id) }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedDecisionId == decision.id,
+                                    onClick = { onDecisionSelected(decision.id) }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isArabic) decision.nameAr else decision.nameEn,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+
+                        // ✅ Show date picker if Accepted (id=1) is selected
+                        if (selectedDecisionId == 1) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = if (isArabic) "تاريخ الانتهاء" else "Expiry Date",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            DatePicker(
+                                state = datePickerState,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    // Pass selected date if decision is Accepted
+                    onConfirm()
+                },
+                enabled = selectedDecisionId != null && !isLoading
+            ) {
+                Text(if (isArabic) "تأكيد" else "Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(if (isArabic) "إلغاء" else "Cancel")
+            }
+        }
+    )
+}
+

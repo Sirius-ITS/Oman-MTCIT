@@ -175,7 +175,7 @@ class RequestsStrategy @Inject constructor(
         println("🔍 Mapping request: id=${item.id}, requestNumber=$requestNumber, statusId=$statusId, statusName=$localizedStatusName, shipName=$shipName, requestType=$requestTypeName")
 
         return UserRequestUiModel(
-            id = item.requestId ?: item.id,
+            id = (item.requestId ?: item.id)!!,
             requestSerial = requestNumber,
             requestTypeId = requestTypeId,
             requestTypeName = requestTypeName,

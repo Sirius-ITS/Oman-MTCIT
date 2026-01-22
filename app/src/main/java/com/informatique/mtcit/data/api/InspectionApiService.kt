@@ -121,6 +121,69 @@ class InspectionApiService @Inject constructor(
     }
 
     /**
+     * Get engineer inspection request detail by ID
+     * GET api/v1/scheduled-inspection-requests/{requestId}/details
+     *
+     * @param requestId The request ID
+     * @return Result with RequestDetailResponse
+     */
+    suspend fun getEngineerRequestDetail(
+        requestId: Int
+    ): Result<com.informatique.mtcit.data.model.requests.RequestDetailResponse> {
+        return try {
+            println("=".repeat(80))
+            println("🔍 InspectionApiService: Getting engineer request detail for ID: $requestId")
+            println("=".repeat(80))
+
+            val endpoint = "scheduled-inspection-requests/$requestId/details"
+            println("📡 API Call: $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Engineer Request Detail API Response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            val detailResponse: com.informatique.mtcit.data.model.requests.RequestDetailResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Parsed engineer request detail successfully")
+                            println("=".repeat(80))
+
+                            Result.success(detailResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "فشل في جلب تفاصيل الطلب"
+                            println("❌ API returned error: $message")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    println("   HTTP Code: ${response.code}")
+                    println("=".repeat(80))
+                    Result.failure(Exception("Failed to get engineer request detail: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getEngineerRequestDetail: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to get engineer request detail: ${e.message}"))
+        }
+    }
+
+    /**
      * Submit inspection request with documents
      * POST api/v1/inspection-requests
      * Content-Type: multipart/form-data

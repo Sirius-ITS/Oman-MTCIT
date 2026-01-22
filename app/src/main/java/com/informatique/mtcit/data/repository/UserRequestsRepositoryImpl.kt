@@ -91,6 +91,19 @@ class UserRequestsRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getEngineerRequestDetail(
+        requestId: Int
+    ): Result<RequestDetailResponse> = withContext(Dispatchers.IO) {
+        try {
+            println("📦 UserRequestsRepository: Fetching engineer request detail for requestId=$requestId")
+
+            inspectionApiService.getEngineerRequestDetail(requestId)
+        } catch (e: Exception) {
+            println("❌ UserRequestsRepository: Error fetching engineer request detail: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
     override suspend fun issueCertificate(
         issuanceEndpoint: String
     ): Result<RequestDetailResponse> = withContext(Dispatchers.IO) {

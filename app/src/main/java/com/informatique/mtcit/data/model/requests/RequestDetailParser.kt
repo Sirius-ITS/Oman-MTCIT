@@ -17,10 +17,20 @@ object RequestDetailParser {
     fun parseToUiModel(response: RequestDetailResponse, knownRequestTypeId: Int? = null): RequestDetailUiModel {
         val dataObject = response.data.jsonObject
 
+        // ✅ Check if this is a scheduled inspection request (engineer view)
+        val isScheduledInspection = dataObject.containsKey("scheduledDate") && dataObject.containsKey("inspectionRequest")
+
+        // ✅ For scheduled inspection, extract data from nested inspectionRequest
+        val actualDataObject = if (isScheduledInspection) {
+            dataObject["inspectionRequest"]?.jsonObject ?: dataObject
+        } else {
+            dataObject
+        }
+
         // Extract core fields
-        val requestId = dataObject["id"]?.jsonPrimitive?.intOrNull ?: 0
-        val message = dataObject["message"]?.jsonPrimitive?.contentOrNull
-        val messageDetails = dataObject["messageDetails"]?.jsonPrimitive?.contentOrNull
+        val requestId = actualDataObject["id"]?.jsonPrimitive?.intOrNull ?: 0
+        val message = actualDataObject["message"]?.jsonPrimitive?.contentOrNull
+        val messageDetails = actualDataObject["messageDetails"]?.jsonPrimitive?.contentOrNull
 
         // ✅ Handle both formats:
         // 1. Registration: separate "requestSerial" and "requestYear" fields
@@ -28,7 +38,7 @@ object RequestDetailParser {
         val requestSerial: String
         val requestYear: Int
 
-        val requestNumber = dataObject["requestNumber"]?.jsonPrimitive?.contentOrNull
+        val requestNumber = actualDataObject["requestNumber"]?.jsonPrimitive?.contentOrNull
         if (requestNumber != null) {
             // Format: "180/2026" - split and parse
             val parts = requestNumber.split("/")
@@ -36,12 +46,12 @@ object RequestDetailParser {
             requestYear = parts.getOrNull(1)?.toIntOrNull() ?: 0
         } else {
             // Separate fields
-            requestSerial = dataObject["requestSerial"]?.jsonPrimitive?.intOrNull?.toString() ?: "0"
-            requestYear = dataObject["requestYear"]?.jsonPrimitive?.intOrNull ?: 0
+            requestSerial = actualDataObject["requestSerial"]?.jsonPrimitive?.intOrNull?.toString() ?: "0"
+            requestYear = actualDataObject["requestYear"]?.jsonPrimitive?.intOrNull ?: 0
         }
 
         // Extract request type info (or use known type ID if not in response)
-        val requestType = dataObject["requestType"]?.jsonObject?.let { rt ->
+        val requestType = actualDataObject["requestType"]?.jsonObject?.let { rt ->
             RequestTypeInfo(
                 id = rt["id"]?.jsonPrimitive?.intOrNull ?: 0,
                 name = getLocalizedValue(rt, "name"),
@@ -61,7 +71,7 @@ object RequestDetailParser {
         }
 
         // Extract status info (handle both "status" and "requestStatus" keys)
-        val status = (dataObject["status"] ?: dataObject["requestStatus"])?.jsonObject?.let { st ->
+        val status = (actualDataObject["status"] ?: actualDataObject["requestStatus"])?.jsonObject?.let { st ->
             RequestStatusInfo(
                 id = st["id"]?.jsonPrimitive?.intOrNull ?: 0,
                 name = getLocalizedValue(st, "name"),
@@ -74,7 +84,126 @@ object RequestDetailParser {
         val sections = ShipDataExtractor.extractShipDataSections(response.data)
 
         // ✅ Extract isPaid field (comes as string "0" or "1" from API)
-        val isPaid = dataObject["isPaid"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
+        val isPaid = actualDataObject["isPaid"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
+
+        // ✅ Extract ship name for header display
+        val shipName = actualDataObject["shipInfo"]?.jsonObject
+            ?.get("ship")?.jsonObject
+            ?.get("shipName")?.jsonPrimitive?.contentOrNull
+
+        // ✅ Extract purposeId for checklist loading (engineer only)
+        val purposeId = actualDataObject["purpose"]?.jsonObject
+            ?.get("id")?.jsonPrimitive?.intOrNull
+
+        // ✅ Extract workOrderResult for completed inspections (engineer only)
+        // ⚠️ IMPORTANT: workOrderResult is in the ROOT dataObject, not in inspectionRequest!
+        val workOrderResult = try {
+            println("🔍 Checking for workOrderResult in ROOT dataObject...")
+            println("   - dataObject keys: ${dataObject.keys}")
+
+            dataObject["workOrderResult"]?.jsonObject?.let { wor ->
+                println("✅ Found workOrderResult!")
+                println("   - workOrderResult keys: ${wor.keys}")
+
+                val id = wor["id"]?.jsonPrimitive?.intOrNull
+                println("   - workOrderResult id: $id")
+
+                // ✅ Parse answers array (actual API structure has 'answers' not 'checklistAnswers')
+                println("   - Checking for 'answers' array...")
+                val answersArray = wor["answers"]?.jsonArray
+                println("   - answers array size: ${answersArray?.size ?: 0}")
+
+                val answers = answersArray?.map { answerElement ->
+                    val answer = answerElement.jsonObject
+                    val checklistItem = answer["checklistSettingsItem"]?.jsonObject
+
+                    // Extract checklistItemId and question from checklistSettingsItem
+                    val checklistItemId = checklistItem?.get("id")?.jsonPrimitive?.intOrNull ?: 0
+                    val question = checklistItem?.get("question")?.jsonPrimitive?.contentOrNull ?: ""
+                    val rawAnswerValue = answer["answer"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                    // ✅ FIX: For List type (id=4), convert answer ID to actual answer text
+                    val checklistTypeId = checklistItem?.get("checklistType")?.jsonObject?.get("id")?.jsonPrimitive?.intOrNull
+                    val actualAnswerValue = if (checklistTypeId == 4 && checklistItem != null) {
+                        // List type - lookup the answer text from choices
+                        val choices = checklistItem["choices"]?.jsonArray
+                        val matchingChoice = choices?.find {
+                            it.jsonObject["id"]?.jsonPrimitive?.contentOrNull == rawAnswerValue ||
+                            it.jsonObject["id"]?.jsonPrimitive?.intOrNull?.toString() == rawAnswerValue
+                        }
+                        matchingChoice?.jsonObject?.get("answer")?.jsonPrimitive?.contentOrNull ?: rawAnswerValue
+                    } else {
+                        // Text type or other - use as is
+                        rawAnswerValue
+                    }
+
+                    com.informatique.mtcit.data.model.ChecklistAnswer(
+                        checklistItemId = checklistItemId,
+                        fieldNameAr = question,  // Use question as field name
+                        fieldNameEn = question,  // Use question as field name
+                        answer = actualAnswerValue  // ✅ Use converted answer text
+                    )
+                } ?: emptyList()
+
+                println("✅ Parsed workOrderResult with ${answers.size} answers")
+                answers.forEach { ans ->
+                    println("   - Item ${ans.checklistItemId}: ${ans.fieldNameAr} = ${ans.answer}")
+                }
+
+                // ✅ Extract checklistItems from answers for form display
+                val checklistItemsFromResult = wor["answers"]?.jsonArray?.mapNotNull { answerElement ->
+                    val answer = answerElement.jsonObject
+                    val checklistItem = answer["checklistSettingsItem"]?.jsonObject ?: return@mapNotNull null
+
+                    val typeObj = checklistItem["checklistType"]?.jsonObject
+                    val choicesArray = checklistItem["choices"]?.jsonArray
+
+                    com.informatique.mtcit.data.model.ChecklistItem(
+                        id = checklistItem["id"]?.jsonPrimitive?.intOrNull ?: 0,
+                        question = checklistItem["question"]?.jsonPrimitive?.contentOrNull ?: "",
+                        checklistType = com.informatique.mtcit.data.model.ChecklistType(
+                            id = typeObj?.get("id")?.jsonPrimitive?.intOrNull ?: 0,
+                            nameAr = typeObj?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: "",
+                            nameEn = typeObj?.get("nameEn")?.jsonPrimitive?.contentOrNull ?: "",
+                            name = typeObj?.get("name")?.jsonPrimitive?.contentOrNull ?: ""
+                        ),
+                        isMandatory = checklistItem["isMandatory"]?.jsonPrimitive?.booleanOrNull ?: false,
+                        itemOrder = checklistItem["itemOrder"]?.jsonPrimitive?.intOrNull ?: 0,
+                        isActive = checklistItem["isActive"]?.jsonPrimitive?.booleanOrNull ?: true,
+                        note = checklistItem["note"]?.jsonPrimitive?.contentOrNull,
+                        choices = choicesArray?.map { choiceElement ->
+                            val choice = choiceElement.jsonObject
+                            com.informatique.mtcit.data.model.ChecklistChoice(
+                                id = choice["id"]?.jsonPrimitive?.intOrNull ?: 0,
+                                answer = choice["answer"]?.jsonPrimitive?.contentOrNull ?: "",
+                                isActive = choice["isActive"]?.jsonPrimitive?.booleanOrNull ?: true
+                            )
+                        } ?: emptyList()
+                    )
+                }?.sortedBy { it.itemOrder } ?: emptyList()
+
+                println("✅ Extracted ${checklistItemsFromResult.size} checklist items from workOrderResult")
+
+                com.informatique.mtcit.data.model.WorkOrderResult(
+                    id = id,
+                    checklistAnswers = answers,
+                    checklistItems = checklistItemsFromResult
+                )
+            }
+        } catch (e: Exception) {
+            println("⚠️ Error parsing workOrderResult: ${e.message}")
+            e.printStackTrace()
+            null
+        }
+
+        // ✅ Extract scheduledRequestId (root data.id for scheduled inspections)
+        val scheduledRequestId = if (isScheduledInspection) {
+            val rootId = dataObject["id"]?.jsonPrimitive?.intOrNull
+            println("✅ Extracted scheduledRequestId from root: $rootId")
+            rootId
+        } else {
+            null
+        }
 
         return RequestDetailUiModel(
             requestId = requestId,
@@ -85,7 +214,11 @@ object RequestDetailParser {
             message = message,
             messageDetails = messageDetails,
             sections = sections,
-            isPaid = isPaid
+            isPaid = isPaid,
+            shipName = shipName,
+            purposeId = purposeId,
+            workOrderResult = workOrderResult,
+            scheduledRequestId = scheduledRequestId
         )
     }
 

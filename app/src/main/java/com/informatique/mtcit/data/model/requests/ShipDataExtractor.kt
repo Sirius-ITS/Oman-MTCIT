@@ -18,7 +18,12 @@ object ShipDataExtractor {
         try {
             val dataObject = dataJson.jsonObject
 
-            // Extract shipInfo if present
+            // ✅ Check if this is a scheduled inspection request (engineer view)
+            if (dataObject.containsKey("scheduledDate") && dataObject.containsKey("inspectionRequest")) {
+                return extractScheduledInspectionSections(dataObject)
+            }
+
+            // Extract shipInfo if present (normal flow)
             val shipInfo = dataObject["shipInfo"]?.jsonObject
             if (shipInfo != null) {
                 // 1. Ship Basic Information
@@ -45,6 +50,49 @@ object ShipDataExtractor {
 
         } catch (e: Exception) {
             println("❌ Error extracting ship data: ${e.message}")
+        }
+
+        return sections
+    }
+
+    /**
+     * ✅ Extract sections for scheduled inspection request (engineer view)
+     */
+    private fun extractScheduledInspectionSections(dataObject: JsonObject): List<RequestDetailSection> {
+        val sections = mutableListOf<RequestDetailSection>()
+
+        try {
+            // 1. Scheduled Inspection Info
+            extractScheduledInspectionInfo(dataObject)?.let { sections.add(it) }
+
+            // 2. Inspection Request Details
+            val inspectionRequest = dataObject["inspectionRequest"]?.jsonObject
+            if (inspectionRequest != null) {
+                extractInspectionRequestInfo(inspectionRequest)?.let { sections.add(it) }
+
+                // 3. Ship Info from inspection request
+                val shipInfo = inspectionRequest["shipInfo"]?.jsonObject
+                if (shipInfo != null) {
+                    extractShipBasicInfo(shipInfo)?.let { sections.add(it) }
+                    extractDimensions(shipInfo)?.let { sections.add(it) }
+                    extractWeights(shipInfo)?.let { sections.add(it) }
+                    extractEngines(shipInfo)?.let { sections.add(it) }
+                    extractOwners(shipInfo)?.let { sections.add(it) }
+                }
+            }
+
+            // 4. Engineers
+            extractEngineersInfo(dataObject)?.let { sections.add(it) }
+
+            // 5. Work Orders
+            extractWorkOrdersInfo(dataObject)?.let { sections.add(it) }
+
+            // 6. Work Order Result
+            extractWorkOrderResultInfo(dataObject)?.let { sections.add(it) }
+
+        } catch (e: Exception) {
+            println("❌ Error extracting scheduled inspection data: ${e.message}")
+            e.printStackTrace()
         }
 
         return sections
@@ -537,7 +585,315 @@ object ShipDataExtractor {
     }
 
     /**
-     * Get localized label
+     * ✅ Extract scheduled inspection info
+     */
+    private fun extractScheduledInspectionInfo(dataObject: JsonObject): RequestDetailSection? {
+        val fields = mutableListOf<RequestDetailField>()
+
+        // Scheduled Date
+        dataObject["scheduledDate"]?.jsonPrimitive?.contentOrNull?.let {
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("scheduled_date"),
+                value = formatDateTime(it)
+            ))
+        }
+
+        return if (fields.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("scheduled_inspection_info"),
+                fields = fields
+            )
+        } else null
+    }
+
+    /**
+     * ✅ Extract inspection request info
+     */
+    private fun extractInspectionRequestInfo(inspectionRequest: JsonObject): RequestDetailSection? {
+        val fields = mutableListOf<RequestDetailField>()
+
+        // Request Number
+        inspectionRequest["requestNumber"]?.jsonPrimitive?.contentOrNull?.let {
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("request_number"),
+                value = it
+            ))
+        }
+
+        // Purpose
+        inspectionRequest["purpose"]?.jsonObject?.let { purpose ->
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("inspection_purpose"),
+                value = getLocalizedName(purpose)
+            ))
+        }
+
+        // Authority
+        inspectionRequest["authority"]?.jsonObject?.let { authority ->
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("authority"),
+                value = getLocalizedName(authority)
+            ))
+        }
+
+        // Request Status
+        inspectionRequest["requestStatus"]?.jsonObject?.let { status ->
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("request_status"),
+                value = getLocalizedName(status)
+            ))
+        }
+
+        // Inspection Date
+        inspectionRequest["inspectionDate"]?.jsonPrimitive?.contentOrNull?.let {
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("inspection_date"),
+                value = formatDate(it)
+            ))
+        }
+
+        // Place
+        inspectionRequest["place"]?.jsonObject?.let { place ->
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("inspection_place"),
+                value = getLocalizedName(place)
+            ))
+
+            // Port of Registry for the place
+            place["portOfRegistry"]?.jsonObject?.let { port ->
+                fields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("place_port"),
+                    value = getLocalizedName(port)
+                ))
+            }
+        }
+
+        return if (fields.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("inspection_request_details"),
+                fields = fields
+            )
+        } else null
+    }
+
+    /**
+     * ✅ Extract engineers info
+     */
+    private fun extractEngineersInfo(dataObject: JsonObject): RequestDetailSection? {
+        val engineers = dataObject["engineers"]?.jsonArray ?: return null
+        if (engineers.isEmpty()) return null
+
+        val fields = mutableListOf<RequestDetailField>()
+
+        engineers.forEachIndexed { index, element ->
+            val engineer = element.jsonObject
+            val engineerFields = mutableListOf<RequestDetailField>()
+
+            // Name
+            engineer["nameAr"]?.jsonPrimitive?.contentOrNull?.let { nameAr ->
+                engineer["nameEn"]?.jsonPrimitive?.contentOrNull?.let { nameEn ->
+                    engineerFields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("engineer_name"),
+                        value = if (Locale.getDefault().language == "ar") nameAr else nameEn
+                    ))
+                }
+            }
+
+            // National ID
+            engineer["nationalId"]?.jsonPrimitive?.contentOrNull?.let {
+                engineerFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("national_id"),
+                    value = it
+                ))
+            }
+
+            // Job
+            engineer["job"]?.jsonObject?.let { job ->
+                engineerFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("job_title"),
+                    value = getLocalizedName(job)
+                ))
+            }
+
+            // Port
+            engineer["port"]?.jsonObject?.let { port ->
+                engineerFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("engineer_port"),
+                    value = getLocalizedName(port)
+                ))
+            }
+
+            // Phone
+            engineer["phoneNum"]?.jsonPrimitive?.contentOrNull?.let {
+                engineerFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("phone"),
+                    value = it
+                ))
+            }
+
+            // Email
+            engineer["email"]?.jsonPrimitive?.contentOrNull?.let {
+                engineerFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("email"),
+                    value = it
+                ))
+            }
+
+            if (engineerFields.isNotEmpty()) {
+                fields.add(RequestDetailField.NestedObject(
+                    label = "${getLocalizedLabel("engineer")} ${index + 1}",
+                    fields = engineerFields
+                ))
+            }
+        }
+
+        return if (fields.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("assigned_engineers"),
+                fields = fields
+            )
+        } else null
+    }
+
+    /**
+     * ✅ Extract work orders info
+     */
+    private fun extractWorkOrdersInfo(dataObject: JsonObject): RequestDetailSection? {
+        val workOrders = dataObject["workOrders"]?.jsonArray ?: return null
+        if (workOrders.isEmpty()) return null
+
+        val fields = mutableListOf<RequestDetailField>()
+
+        workOrders.forEachIndexed { index, element ->
+            val workOrder = element.jsonObject
+            val orderFields = mutableListOf<RequestDetailField>()
+
+            // Inspection Engineer
+            workOrder["inspectionEngineer"]?.jsonObject?.let { engineer ->
+                val engineerName = getLocalizedName(engineer)
+                orderFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("inspection_engineer"),
+                    value = engineerName
+                ))
+            }
+
+            // Inspection Date
+            workOrder["inspectionDate"]?.jsonPrimitive?.contentOrNull?.let {
+                orderFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("inspection_date"),
+                    value = formatDateTime(it)
+                ))
+            }
+
+            // Status
+            workOrder["status"]?.jsonObject?.let { status ->
+                orderFields.add(RequestDetailField.SimpleField(
+                    label = getLocalizedLabel("work_order_status"),
+                    value = getLocalizedName(status)
+                ))
+            }
+
+            if (orderFields.isNotEmpty()) {
+                fields.add(RequestDetailField.NestedObject(
+                    label = "${getLocalizedLabel("work_order")} ${index + 1}",
+                    fields = orderFields
+                ))
+            }
+        }
+
+        return if (fields.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("work_orders"),
+                fields = fields
+            )
+        } else null
+    }
+
+    /**
+     * ✅ Extract work order result info
+     */
+    private fun extractWorkOrderResultInfo(dataObject: JsonObject): RequestDetailSection? {
+        val workOrderResult = dataObject["workOrderResult"]?.jsonObject ?: return null
+        val fields = mutableListOf<RequestDetailField>()
+
+        // Status
+        workOrderResult["status"]?.jsonObject?.let { status ->
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("result_status"),
+                value = getLocalizedName(status)
+            ))
+        }
+
+        // Decision
+        workOrderResult["decision"]?.jsonObject?.let { decision ->
+            fields.add(RequestDetailField.SimpleField(
+                label = getLocalizedLabel("inspection_decision"),
+                value = getLocalizedName(decision)
+            ))
+        }
+
+        // Answers
+        val answers = workOrderResult["answers"]?.jsonArray
+        if (answers != null && answers.isNotEmpty()) {
+            val answerFields = mutableListOf<RequestDetailField>()
+
+            answers.forEach { element ->
+                val answer = element.jsonObject
+                val checklistItem = answer["checklistSettingsItem"]?.jsonObject
+
+                checklistItem?.let { item ->
+                    val question = item["question"]?.jsonPrimitive?.contentOrNull ?: return@forEach
+                    val answerValue = answer["answer"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                    // Get answer display value (from choices if applicable)
+                    val displayValue = when (item["checklistType"]?.jsonObject?.get("id")?.jsonPrimitive?.intOrNull) {
+                        4 -> { // List type - lookup choice by ID
+                            val choices = item["choices"]?.jsonArray
+                            choices?.find {
+                                it.jsonObject["id"]?.jsonPrimitive?.contentOrNull == answerValue
+                            }?.jsonObject?.get("answer")?.jsonPrimitive?.contentOrNull ?: answerValue
+                        }
+                        else -> answerValue
+                    }
+
+                    answerFields.add(RequestDetailField.SimpleField(
+                        label = question,
+                        value = displayValue
+                    ))
+                }
+            }
+
+            if (answerFields.isNotEmpty()) {
+                fields.add(RequestDetailField.NestedObject(
+                    label = getLocalizedLabel("inspection_answers"),
+                    fields = answerFields
+                ))
+            }
+        }
+
+        return if (fields.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("work_order_result"),
+                fields = fields
+            )
+        } else null
+    }
+
+    /**
+     * Format datetime string
+     */
+    private fun formatDateTime(dateTimeStr: String): String {
+        return try {
+            // Convert ISO format to readable format
+            // 2026-01-22T15:35:00 -> 2026-01-22 15:35
+            dateTimeStr.replace("T", " ").take(16)
+        } catch (e: Exception) {
+            dateTimeStr
+        }
+    }
+
+    /**
+     * Get localized label for field keys
      */
     private fun getLocalizedLabel(key: String): String {
         val isArabic = Locale.getDefault().language == "ar"
@@ -607,6 +963,32 @@ object ShipDataExtractor {
             // Common
             "yes" -> if (isArabic) "نعم" else "Yes"
             "no" -> if (isArabic) "لا" else "No"
+
+            // ✅ Scheduled Inspection Fields
+            "scheduled_inspection_info" -> if (isArabic) "معلومات الجدولة" else "Scheduling Information"
+            "scheduled_date" -> if (isArabic) "موعد المعاينة المجدول" else "Scheduled Date"
+            "inspection_request_details" -> if (isArabic) "تفاصيل طلب المعاينة" else "Inspection Request Details"
+            "request_number" -> if (isArabic) "رقم الطلب" else "Request Number"
+            "inspection_purpose" -> if (isArabic) "الغرض من المعاينة" else "Inspection Purpose"
+            "authority" -> if (isArabic) "الجهة" else "Authority"
+            "request_status" -> if (isArabic) "حالة الطلب" else "Request Status"
+            "inspection_date" -> if (isArabic) "تاريخ المعاينة" else "Inspection Date"
+            "inspection_place" -> if (isArabic) "مكان المعاينة" else "Inspection Place"
+            "place_port" -> if (isArabic) "ميناء المكان" else "Place Port"
+            "assigned_engineers" -> if (isArabic) "المهندسون المعينون" else "Assigned Engineers"
+            "engineer" -> if (isArabic) "مهندس" else "Engineer"
+            "engineer_name" -> if (isArabic) "اسم المهندس" else "Engineer Name"
+            "national_id" -> if (isArabic) "الرقم الوطني" else "National ID"
+            "job_title" -> if (isArabic) "المسمى الوظيفي" else "Job Title"
+            "engineer_port" -> if (isArabic) "الميناء" else "Port"
+            "work_orders" -> if (isArabic) "أوامر العمل" else "Work Orders"
+            "work_order" -> if (isArabic) "أمر عمل" else "Work Order"
+            "inspection_engineer" -> if (isArabic) "مهندس المعاينة" else "Inspection Engineer"
+            "work_order_status" -> if (isArabic) "حالة أمر العمل" else "Work Order Status"
+            "work_order_result" -> if (isArabic) "نتيجة أمر العمل" else "Work Order Result"
+            "result_status" -> if (isArabic) "حالة النتيجة" else "Result Status"
+            "inspection_decision" -> if (isArabic) "قرار المعاينة" else "Inspection Decision"
+            "inspection_answers" -> if (isArabic) "إجابات قائمة الفحص" else "Inspection Checklist Answers"
 
             else -> key
         }
