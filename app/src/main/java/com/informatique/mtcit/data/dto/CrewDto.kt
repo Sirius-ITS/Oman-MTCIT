@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Request DTO for adding/updating a crew member in bulk operations
- * @param id Request ID (shipNavigationRequestId) for the transaction
+ * @param id Crew member ID from API (null for new sailors, actual ID for existing sailors)
  * @param nameAr Crew member name in Arabic (required)
  * @param nameEn Crew member name in English (required)
  * @param jobTitle Job title ID from lookup (required)
@@ -23,7 +23,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class CrewReqDto(
-    val id: Long,
+    val id: Long? = null,  // ✅ Nullable: null for new sailors, actual ID for existing sailors
     val nameAr: String,
     val nameEn: String,
     val jobTitle: Int,

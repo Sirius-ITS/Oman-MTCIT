@@ -429,13 +429,19 @@ class NavigationLicenseApiService @Inject constructor(
      */
     suspend fun getCrewRenew(lastNavLicId: Long): Result<List<CrewResDto>> {
         return try {
-            println("📥 Getting crew list (Renew)")
+            println("📥 Getting crew list (Renew) for lastNavLicId=$lastNavLicId")
 
             when (val response = repo.onGet("navigation-license-renewal-request/$lastNavLicId/crew")) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonArray
                     val result = data.map { json.decodeFromJsonElement(CrewResDto.serializer(), it) }
+
+                    println("✅ Successfully loaded ${result.size} crew members")
+                    result.forEachIndexed { index, crew ->
+                        println("   [$index] ${crew.nameEn} - Job: ${crew.jobTitle.nameAr}, Nationality: ${crew.nationality?.nameAr ?: "N/A"} (${crew.nationality?.id ?: "N/A"})")
+                    }
+
                     Result.success(result)
                 }
                 is RepoServiceState.Error -> {

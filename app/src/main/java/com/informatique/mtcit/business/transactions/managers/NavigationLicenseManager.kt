@@ -187,7 +187,7 @@ class NavigationLicenseManager @Inject constructor(
             println("      - nationality ID: '$nationalityId' (type: ${nationalityId.javaClass.simpleName})")
 
             val dto = CrewReqDto(
-                id = requestId, // Include requestId in each crew member
+                id = null,  // ✅ null for Issue transaction (all sailors are new)
                 nameAr = crew["nameAr"]?.toString() ?: "",
                 nameEn = crew["nameEn"]?.toString() ?: "",
                 jobTitle = jobTitleInt,
@@ -250,6 +250,7 @@ class NavigationLicenseManager @Inject constructor(
 
     /**
      * Add crew members in bulk (Renew transaction)
+     * Handles both new sailors (id=null) and existing sailors (id from API)
      * @param requestId Navigation license request ID
      * @param crewData List of crew data from form
      * @return List of created crew members
@@ -261,14 +262,19 @@ class NavigationLicenseManager @Inject constructor(
         println("👥 NavigationLicenseManager: Adding crew bulk (Renew) - count=${crewData.size}")
 
         val crewList = crewData.map { crew ->
+            // ✅ Extract apiId (crew ID from API) - will be null for new sailors
+            val apiId = crew["id"]?.toLongOrNull()
+
+            println("   📋 Processing crew: nameEn=${crew["nameEn"]}, apiId=$apiId ${if (apiId != null) "(existing)" else "(new)"}")
+
             CrewReqDto(
-                id = requestId, // Include requestId in each crew member
+                id = apiId,  // ✅ null for new sailors, actual ID for existing sailors
                 nameAr = crew["nameAr"] ?: "",
                 nameEn = crew["nameEn"] ?: "",
                 jobTitle = crew["jobTitle"]?.toIntOrNull() ?: 0,
                 civilNo = crew["civilNo"],
                 seamenBookNo = crew["seamenBookNo"] ?: "",
-                nationality = crew["nationality"]?.let { CountryReqDto(it) } // Keep as String
+                nationality = crew["nationality"]?.let { CountryReqDto(it) }
             )
         }
 
@@ -416,6 +422,9 @@ class NavigationLicenseManager @Inject constructor(
                     val seamanPassportNumber = sailor["seamanPassportNumber"]?.jsonPrimitive?.content ?: ""
                     val nationalityFull = sailor["nationality"]?.jsonPrimitive?.content ?: ""
 
+                    // ✅ Extract apiId (real crew ID from API) - null for new sailors
+                    val apiId = sailor["apiId"]?.jsonPrimitive?.content?.toLongOrNull()
+
                     // ✅ Extract job ID from "ID|Name" format
                     val jobId = if (jobFull.contains("|")) {
                         jobFull.split("|").firstOrNull()?.toIntOrNull() ?: 0
@@ -431,6 +440,7 @@ class NavigationLicenseManager @Inject constructor(
                     }
 
                     println("🔍 Raw sailor data:")
+                    println("   - apiId: $apiId ${if (apiId != null) "(existing sailor)" else "(new sailor)"}")
                     println("   - job: '$jobFull' -> ID: $jobId")
                     println("   - nameAr: '$nameAr'")
                     println("   - nameEn: '$nameEn'")
@@ -449,13 +459,14 @@ class NavigationLicenseManager @Inject constructor(
                         return@mapNotNull null
                     }
 
-                    // ✅ Map to API format - NO "id" field, only required fields
-                    val crewMember = mutableMapOf<String, Any>(
+                    // ✅ Map to API format
+                    val crewMember = mutableMapOf<String, Any?>(  // ✅ Any? to support nullable apiId
                         "nameAr" to (nameAr.ifBlank { nameEn }),
                         "nameEn" to (nameEn.ifBlank { nameAr }),
-                        "jobTitle" to jobId, // ✅ Use extracted ID
+                        "jobTitle" to jobId,
                         "civilNo" to identityNumber.ifBlank { "12345678" },
-                        "seamenBookNo" to seamanPassportNumber.ifBlank { "SM-${System.currentTimeMillis() % 100000}" }
+                        "seamenBookNo" to seamanPassportNumber.ifBlank { "SM-${System.currentTimeMillis() % 100000}" },
+                        "id" to apiId  // ✅ null for new sailors, actual ID for existing sailors
                     )
 
                     // ✅ Add nationality as nested object with ID only
@@ -463,8 +474,9 @@ class NavigationLicenseManager @Inject constructor(
                         crewMember["nationality"] = mapOf("id" to nationalityId)
                     }
 
-                    println("✅ Mapped crew member: nameAr='$nameAr', nameEn='$nameEn', jobId=$jobId, nationalityId='$nationalityId'")
+                    println("✅ Mapped crew member: apiId=$apiId, nameAr='$nameAr', nameEn='$nameEn', jobId=$jobId, nationalityId='$nationalityId'")
                     println("   Final map keys: ${crewMember.keys}")
+                    println("   id field: ${crewMember["id"]} ${if (apiId != null) "(existing)" else "(new - null)"}")
                     println("   jobTitle type: ${crewMember["jobTitle"]?.javaClass?.simpleName}, value: ${crewMember["jobTitle"]}")
                     println("   nationality: ${crewMember["nationality"]}")
                     crewMember
@@ -478,11 +490,7 @@ class NavigationLicenseManager @Inject constructor(
             println("❌ Failed to parse sailors JSON: ${e.message}")
             e.printStackTrace()
             emptyList()
-        } catch (e: Exception) {
-            println("❌ Failed to parse sailors JSON: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
+        }  as List<Map<String, Any>>
     }
 
     /**
