@@ -648,7 +648,7 @@ private fun downloadExcelFile(context: Context, uri: Uri) {
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = sailor.job,
+                            text = sailor.job.split("|").lastOrNull() ?: sailor.job,  // ✅ Show name only
                             style = MaterialTheme.typography.bodyMedium,
                             color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
                             fontSize = 14.sp
@@ -697,6 +697,17 @@ private fun downloadExcelFile(context: Context, uri: Uri) {
                             value = sailor.seamanPassportNumber,
                             extraColors = extraColors
                         )
+
+                        // ✅ Display Nationality
+                        if (sailor.nationality.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            InfoRow(
+                                label = localizedApp(R.string.nationality_label),
+                                value = sailor.nationality.split("|").lastOrNull() ?: sailor.nationality,
+                                extraColors = extraColors
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(16.dp))
 

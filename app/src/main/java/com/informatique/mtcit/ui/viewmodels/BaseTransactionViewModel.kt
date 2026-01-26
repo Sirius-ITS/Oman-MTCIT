@@ -107,6 +107,14 @@ abstract class BaseTransactionViewModel(
     val _showToastEvent = MutableStateFlow<String?>(null)
     val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
 
+
+    // ✅ Success dialog state (for transaction completion)
+    private val _showSuccessDialog = MutableStateFlow(false)
+    val showSuccessDialog: StateFlow<Boolean> = _showSuccessDialog.asStateFlow()
+
+    private val _successMessage = MutableStateFlow("")
+    val successMessage: StateFlow<String> = _successMessage.asStateFlow()
+
     /**
      * ✅ NEW: Protected method to update UI state from child classes
      * This allows child classes to update state without accessing private _uiState

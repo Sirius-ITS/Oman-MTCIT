@@ -75,7 +75,12 @@ class RenewNavigationPermitStrategy @Inject constructor(
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
-        val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
+        // ✅ Load countries with full data for nationality dropdown (format: "ID|NameAr")
+        val countriesRaw = lookupRepository.getCountriesRaw()
+        val countriesFormatted = countriesRaw.map { "${it.id}|${it.nameAr}" }
+
+        // For backward compatibility with other parts
+        val countriesNames = countriesRaw.map { it.nameAr }
 
         // ✅ Handle null civilId - return empty list if no token
         val commercialRegistrations = if (ownerCivilId != null) {
@@ -87,13 +92,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
 
-        countryOptions = countries
+        countryOptions = countriesFormatted  // ✅ Store formatted version for dropdowns
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
         return mapOf(
             "marineUnits" to emptyList<MarineUnit>(),
-            "registrationCountry" to countries,
+            "registrationCountry" to countriesNames,  // ✅ Return names for backward compatibility
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes
         )
@@ -116,11 +121,18 @@ class RenewNavigationPermitStrategy @Inject constructor(
                 }
                 "crewJobTitles" -> {
                     if (crewJobTitles.isEmpty()) {
-                        val jobs = lookupRepository.getCrewJobTitles().getOrNull() ?: emptyList()
-                        crewJobTitles = jobs
+                        val jobs = lookupRepository.getCrewJobTitlesRaw()
+                        // Format as "ID|NameAr" for dropdown
+                        crewJobTitles = jobs.map { "${it.id}|${it.nameAr}" }
+                        println("✅ Loaded ${crewJobTitles.size} crew job titles: ${crewJobTitles.take(3)}")
                     }
                     // ✅ Load existing crew for renew
                     loadExistingCrew()
+                }
+                "countries" -> {
+                    // ✅ Countries are already loaded in loadDynamicOptions()
+                    // Just log confirmation
+                    println("✅ Countries already loaded: ${countryOptions.size} available")
                 }
                 // add other lookups if needed
             }
@@ -208,17 +220,75 @@ class RenewNavigationPermitStrategy @Inject constructor(
     }
 
     /**
-     * ✅ Load existing crew from previous license
+     * ✅ Load existing crew from previous license and pre-populate in form
      */
     private suspend fun loadExistingCrew() {
-        if (existingCrew.isNotEmpty()) return // Already loaded
+        if (existingCrew.isNotEmpty()) {
+            println("⚠️ Existing crew already loaded - skipping")
+            return // Already loaded
+        }
 
-        val lastLicId = lastNavLicId ?: return
+        val lastLicId = lastNavLicId ?: accumulatedFormData["lastNavLicId"]?.toLongOrNull()
+        if (lastLicId == null) {
+            println("⚠️ No lastNavLicId available - cannot load existing crew")
+            return
+        }
+
+        println("🔄 Loading existing crew for lastNavLicId=$lastLicId")
 
         navigationLicenseManager.loadCrewRenew(lastLicId)
             .onSuccess { crew ->
                 existingCrew = crew
-                println("✅ Loaded ${crew.size} existing crew members")
+                println("✅ Loaded ${crew.size} existing crew members from API")
+
+                // ✅ Convert API crew data to SailorData JSON format for pre-population
+                if (crew.isNotEmpty()) {
+                    try {
+                        // Convert each CrewResDto to SailorData format
+                        val sailorsJsonArray = crew.map { crewMember ->
+                            // Format: job = "ID|NameAr" (e.g., "1|ربان")
+                            val jobFormatted = "${crewMember.jobTitle.id}|${crewMember.jobTitle.nameAr}"
+
+                            // Format: nationality = "ID|NameAr" (e.g., "UY|أوروغواي")
+                            val nationalityFormatted = crewMember.nationality?.let {
+                                println("🌍 Crew nationality details: id=${it.id}, nameAr=${it.nameAr}, nameEn=${it.nameEn}, isoCode=${it.isoCode}, capitalAr=${it.capitalAr}")
+                                "${it.id}|${it.nameAr}"
+                            } ?: ""
+
+                            // Build JSON object string manually to match SailorData structure
+                            // ✅ Use actual crew ID from API for existing sailors (not UUID)
+                            """
+                            {
+                                "id":"${crewMember.id}",
+                                "apiId":${crewMember.id},
+                                "job":"$jobFormatted",
+                                "nameAr":"${crewMember.nameAr}",
+                                "nameEn":"${crewMember.nameEn}",
+                                "identityNumber":"${crewMember.civilNo ?: ""}",
+                                "seamanPassportNumber":"${crewMember.seamenBookNo}",
+                                "nationality":"$nationalityFormatted",
+                                "fullName":"${crewMember.nameEn}"
+                            }
+                            """.trimIndent().replace("\n", "").replace("  ", "")
+                        }
+
+                        // Build JSON array string
+                        val sailorsJson = "[${sailorsJsonArray.joinToString(",")}]"
+
+                        // Store in accumulated form data
+                        accumulatedFormData["sailors"] = sailorsJson
+
+                        println("📝 Pre-populated sailors field with ${crew.size} crew members")
+                        println("   Sample JSON: ${sailorsJson.take(200)}...")
+
+                        // Notify UI to rebuild steps so the crew will show
+                        onStepsNeedRebuild?.invoke()
+
+                    } catch (e: Exception) {
+                        println("⚠️ Failed to pre-populate sailors field: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
             }
             .onFailure { error ->
                 println("❌ Failed to load existing crew: ${error.message}")
@@ -313,11 +383,29 @@ class RenewNavigationPermitStrategy @Inject constructor(
         } else {
             steps.add(sailingStep)
         }
-        steps.add( SharedSteps.sailorInfoStep(
+
+        // ✅ Build sailor info step and inject pre-populated crew data from accumulatedFormData
+        val sailorStep = SharedSteps.sailorInfoStep(
             includeUploadFile = false,
-            includeDownloadFile = false,
-            jobs = crewJobTitles
-        ))
+            includeDownloadFile = true, // ✅ Must be true to show SailorList field
+            jobs = crewJobTitles,
+            nationalities = countryOptions  // ✅ Pass countries for nationality dropdown
+        )
+        val prepopSailors = accumulatedFormData["sailors"]
+        if (!prepopSailors.isNullOrBlank()) {
+            val modifiedSailorFields = sailorStep.fields.map { field ->
+                // If this is the sailor list field, set its value to the prepopulated JSON
+                if (field.id == "sailors" && field is FormField.SailorList) {
+                    field.copy(
+                        value = prepopSailors,
+                        nationalities = countryOptions  // ✅ Also update nationalities
+                    )
+                } else field
+            }
+            steps.add(sailorStep.copy(fields = modifiedSailorFields))
+        } else {
+            steps.add(sailorStep)
+        }
 
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
@@ -613,10 +701,11 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
     /**
      * Handle navigation areas submission (update existing or add new)
+     * ✅ ALWAYS uses PUT API for renewal - whether user modified areas or not
      */
     private suspend fun handleNavigationAreasSubmission(data: Map<String, String>) {
         // ✅ Get selected names from form data - handle JSON array format
-        val sailingRegionsString = data["sailingRegions"] ?: ""
+        val sailingRegionsString = data["sailingRegions"] ?: accumulatedFormData["sailingRegions"] ?: ""
 
         // Parse JSON array: ["المنطقة 1","المنطقة 2","المنطقة 7"]
         val selectedNames = if (sailingRegionsString.startsWith("[") && sailingRegionsString.endsWith("]")) {
@@ -648,29 +737,27 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         println("✅ Selected navigation areas: names=$selectedNames, ids=$selectedAreaIds")
 
-        // Ensure we have a request ID (create request if needed)
-        val requestId = ensureRequestCreated()
-
-        if (requestId != null) {
-            // ✅ For renew: use UPDATE instead of ADD if areas exist
-            if (existingNavigationAreas.isNotEmpty()) {
-                navigationLicenseManager.updateNavigationAreasRenew(requestId, selectedAreaIds)
-                    .onSuccess {
-                        println("✅ Navigation areas updated successfully")
-                    }
-                    .onFailure { error ->
-                        println("❌ Failed to update navigation areas: ${error.message}")
-                    }
-            } else {
-                navigationLicenseManager.addNavigationAreasRenew(requestId, selectedAreaIds)
-                    .onSuccess {
-                        println("✅ Navigation areas added successfully")
-                    }
-                    .onFailure { error ->
-                        println("❌ Failed to add navigation areas: ${error.message}")
-                    }
-            }
+        // Ensure we have a request ID
+        val requestId = navigationRequestId
+        if (requestId == null) {
+            println("❌ No requestId available - cannot update navigation areas")
+            return
         }
+
+        // ✅ ALWAYS use PUT API for renewal (update existing areas)
+        // This is called whether user modified the areas or not
+        println("🔄 Calling PUT /api/v1/navigation-license-renewal-request/$requestId/navigation-areas")
+        println("   Sending areaIds: $selectedAreaIds")
+
+        navigationLicenseManager.updateNavigationAreasRenew(requestId, selectedAreaIds)
+            .onSuccess {
+                println("✅ Navigation areas updated successfully via PUT API")
+            }
+            .onFailure { error ->
+                println("❌ Failed to update navigation areas: ${error.message}")
+                // Store error for UI to display
+                lastApiError = error.message
+            }
     }
 
     /**

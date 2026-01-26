@@ -17,6 +17,7 @@ import java.util.UUID
 @Serializable
 data class SailorData(
     val id: String = UUID.randomUUID().toString(),
+    val apiId: Long? = null,  // ✅ Real crew ID from API (null for new sailors)
     val job: String = "",
     val nameAr: String = "",
     val nameEn: String = "",
@@ -70,9 +71,12 @@ fun SailorFormBottomSheet(
             // Jobs
             CustomDropdown(
                 label = localizedApp(R.string.sailor_job_title),
-                options = jobs,
-                selectedOption = job,
-                onOptionSelected = { job = it },
+                options = jobs.map { it.split("|").lastOrNull() ?: it },
+                selectedOption = job.split("|").lastOrNull() ?: job,
+                onOptionSelected = { selectedLabel ->
+                    // Find the full "ID|Label" string from the selected label
+                    job = jobs.find { it.endsWith("|$selectedLabel") } ?: selectedLabel
+                },
                 mandatory = true,
                 placeholder = job.ifEmpty { localizedApp(R.string.sailor_job_title) }
             )
@@ -157,6 +161,7 @@ fun SailorFormBottomSheet(
                     onClick = {
                         val sailorData = SailorData(
                             id = sailor?.id ?: UUID.randomUUID().toString(),
+                            apiId = sailor?.apiId,  // ✅ Preserve API ID for existing sailors
                             job = job,
                             nameAr = nameAr,
                             nameEn = nameEn,

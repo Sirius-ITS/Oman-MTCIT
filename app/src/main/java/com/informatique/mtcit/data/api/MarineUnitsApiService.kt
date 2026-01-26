@@ -547,16 +547,21 @@ class MarineUnitsApiService @Inject constructor(
                     val message = responseObj["message"]?.jsonPrimitive?.content ?: ""
                     val success = responseObj["success"]?.jsonPrimitive?.boolean ?: false
                     val statusCode = responseObj["statusCode"]?.jsonPrimitive?.int ?: 0
-                    val data = responseObj["data"]?.jsonPrimitive?.int ?: 0
+
+                    // ✅ Parse data object to get needInspection
+                    val dataObj = responseObj["data"]?.jsonObject
+                    val needInspection = dataObj?.get("needInspection")?.jsonPrimitive?.boolean ?: false
+                    val inspectionStatus = if (needInspection) 1 else 0
 
                     println("   Message: $message")
                     println("   Success: $success")
                     println("   Status Code: $statusCode")
-                    println("   Data (inspection status): $data")
+                    println("   Need Inspection: $needInspection")
+                    println("   Inspection Status: $inspectionStatus")
                     println("=".repeat(80))
 
                     if (success && statusCode == 200) {
-                        Result.success(data)
+                        Result.success(inspectionStatus)
                     } else {
                         val errorMsg = message.ifBlank { "Failed to check inspection preview" }
                         println("❌ $errorMsg")
