@@ -392,20 +392,20 @@ class RenewNavigationPermitStrategy @Inject constructor(
             nationalities = countryOptions  // ✅ Pass countries for nationality dropdown
         )
         val prepopSailors = accumulatedFormData["sailors"]
-//        if (!prepopSailors.isNullOrBlank()) {
-//            val modifiedSailorFields = sailorStep.fields.map { field ->
-//                // If this is the sailor list field, set its value to the prepopulated JSON
-//                if (field.id == "sailors" && field is FormField.SailorList) {
-//                    field.copy(
-//                        value = prepopSailors,
-//                        nationalities = countryOptions  // ✅ Also update nationalities
-//                    )
-//                } else field
-//            }
-//            steps.add(sailorStep.copy(fields = modifiedSailorFields))
-//        } else {
-//            steps.add(sailorStep)
-//        }
+        if (!prepopSailors.isNullOrBlank()) {
+            val modifiedSailorFields = sailorStep.fields.map { field ->
+                // If this is the sailor list field, set its value to the prepopulated JSON
+                if (field.id == "sailors" && field is FormField.SailorList) {
+                    field.copy(
+                        value = prepopSailors,
+                        nationalities = countryOptions  // ✅ Also update nationalities
+                    )
+                } else field
+            }
+            steps.add(sailorStep.copy(fields = modifiedSailorFields))
+        } else {
+            steps.add(sailorStep)
+        }
 
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())

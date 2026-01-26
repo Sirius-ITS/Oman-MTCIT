@@ -250,31 +250,43 @@ class NavigationLicenseManager @Inject constructor(
 
     /**
      * Add crew members in bulk (Renew transaction)
-     * Handles both new sailors (id=null) and existing sailors (id from API)
+     * ✅ ALL sailors are sent with id=null (both new and existing sailors)
      * @param requestId Navigation license request ID
      * @param crewData List of crew data from form
      * @return List of created crew members
      */
     suspend fun addCrewBulkRenew(
         requestId: Long,
-        crewData: List<Map<String, String>>
+        crewData: List<Map<String, Any>>
     ): Result<List<CrewResDto>> {
         println("👥 NavigationLicenseManager: Adding crew bulk (Renew) - count=${crewData.size}")
 
         val crewList = crewData.map { crew ->
-            // ✅ Extract apiId (crew ID from API) - will be null for new sailors
-            val apiId = crew["id"]?.toLongOrNull()
+            // ✅ Always send id=null for ALL sailors (new and existing)
+            println("   📋 Processing crew: nameEn=${crew["nameEn"]}, sending with id=null")
 
-            println("   📋 Processing crew: nameEn=${crew["nameEn"]}, apiId=$apiId ${if (apiId != null) "(existing)" else "(new)"}")
+            // Extract nationality ID from nested map or string
+            val nationalityId = when (val nat = crew["nationality"]) {
+                is Map<*, *> -> nat["id"]?.toString()
+                is String -> nat
+                else -> null
+            }
+
+            // Extract jobTitle as Int
+            val jobTitleValue = when (val job = crew["jobTitle"]) {
+                is Int -> job
+                is String -> job.toIntOrNull() ?: 0
+                else -> 0
+            }
 
             CrewReqDto(
-                id = apiId,  // ✅ null for new sailors, actual ID for existing sailors
-                nameAr = crew["nameAr"] ?: "",
-                nameEn = crew["nameEn"] ?: "",
-                jobTitle = crew["jobTitle"]?.toIntOrNull() ?: 0,
-                civilNo = crew["civilNo"],
-                seamenBookNo = crew["seamenBookNo"] ?: "",
-                nationality = crew["nationality"]?.let { CountryReqDto(it) }
+                id = null,  // ✅ Always null for all sailors
+                nameAr = crew["nameAr"]?.toString() ?: "",
+                nameEn = crew["nameEn"]?.toString() ?: "",
+                jobTitle = jobTitleValue,
+                civilNo = crew["civilNo"]?.toString(),
+                seamenBookNo = crew["seamenBookNo"]?.toString() ?: "",
+                nationality = nationalityId?.let { CountryReqDto(it) }
             )
         }
 
