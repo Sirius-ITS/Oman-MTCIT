@@ -72,12 +72,55 @@ class RequestDetailViewModel @Inject constructor(
     private val _checklistAnswers = MutableStateFlow<Map<Int, String>>(emptyMap())
     val checklistAnswers: StateFlow<Map<Int, String>> = _checklistAnswers.asStateFlow()
 
+    // ✅ NEW: Work order result ID state (stored after first draft save)
+    private val _workOrderResultId = MutableStateFlow<Int?>(null)
+    val workOrderResultId: StateFlow<Int?> = _workOrderResultId.asStateFlow()
+
+    // ✅ NEW: Answer IDs state (stored after first draft save for subsequent updates)
+    private val _answerIds = MutableStateFlow<Map<Int, Int>>(emptyMap()) // checklistItemId -> answerId
+    val answerIds: StateFlow<Map<Int, Int>> = _answerIds.asStateFlow()
+
+    // ✅ NEW: Toast message state (for non-blocking success messages)
+    private val _toastMessage = MutableStateFlow<String?>(null)
+    val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
+
+    /**
+     * ✅ Clear toast message after showing
+     */
+    fun clearToastMessage() {
+        _toastMessage.value = null
+    }
+
     /**
      * ✅ Set checklist items directly (used when items come from workOrderResult)
      */
     fun setChecklistItems(items: List<com.informatique.mtcit.data.model.ChecklistItem>) {
         _checklistItems.value = items
         println("✅ RequestDetailViewModel: Set ${items.size} checklist items directly")
+    }
+
+    /**
+     * ✅ Set work order result ID from API response (when loading existing draft)
+     */
+    fun setWorkOrderResultId(id: Int) {
+        _workOrderResultId.value = id
+        println("✅ RequestDetailViewModel: Set work order result ID: $id")
+    }
+
+    /**
+     * ✅ Set existing checklist answers from workOrderResult
+     */
+    fun setChecklistAnswers(answers: Map<Int, String>) {
+        _checklistAnswers.value = answers
+        println("✅ RequestDetailViewModel: Set ${answers.size} checklist answers")
+    }
+
+    /**
+     * ✅ Set answer IDs from existing workOrderResult
+     */
+    fun setAnswerIds(answerIds: Map<Int, Int>) {
+        _answerIds.value = answerIds
+        println("✅ RequestDetailViewModel: Set ${answerIds.size} answer IDs")
     }
 
     /**
@@ -451,6 +494,272 @@ class RequestDetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("❌ RequestDetailViewModel: Exception: ${e.message}")
                 _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع")
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Save inspection as draft (POST if first time, PUT if updating)
+     * @param scheduledRequestId Scheduled request ID from requestDetail
+     */
+    fun saveDraftInspection(scheduledRequestId: Int) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _appError.value = null
+
+                val currentWorkOrderResultId = _workOrderResultId.value
+                val currentAnswerIds = _answerIds.value
+
+                println("💾 RequestDetailViewModel: Saving inspection as draft")
+                println("   Scheduled Request ID: $scheduledRequestId")
+                println("   Existing Work Order Result ID: $currentWorkOrderResultId")
+                println("   Answers: ${_checklistAnswers.value.size} items")
+
+                if (currentWorkOrderResultId == null) {
+                    // ✅ First time save - use POST
+                    println("   📤 First time save - using POST")
+
+                    val answers = _checklistAnswers.value.map { (itemId, answer) ->
+                        com.informatique.mtcit.data.model.DraftAnswerSubmission(
+                            answer = answer,
+                            checklistSettingsItemId = itemId
+                        )
+                    }
+
+                    val request = com.informatique.mtcit.data.model.DraftSaveRequest(
+                        scheduledRequestId = scheduledRequestId,
+                        answers = answers
+                    )
+
+                    val result = checklistApiService.saveDraft(request)
+
+                result.fold(
+                    onSuccess = { response ->
+                        println("✅ Draft created successfully")
+                        println("    Work Order Result ID: ${response.data}")
+
+                        // ✅ Store the newly created work order result ID
+                        response.data?.let { newId ->
+                            _workOrderResultId.value = newId
+                            println("📝 Stored work order result ID: $newId")
+                        }
+
+                        // ✅ Show success toast
+                        _toastMessage.value = "✅ تم حفظ المسودة بنجاح"
+
+                        // ✅ Reload request details to show updated draft status
+                        _requestDetail.value?.let { currentDetail ->
+                            fetchRequestDetail(
+                                requestId = currentDetail.requestId,
+                                requestTypeId = currentDetail.requestType.id,
+                                isEngineer = true
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        println("❌ Error creating draft: ${error.message}")
+                        _toastMessage.value = "❌ ${error.message ?: "فشل في إنشاء المسودة"}"
+                    }
+                )
+                } else {
+                    // ✅ Subsequent save - use PUT
+                    println("   📤 Updating existing draft - using PUT")
+
+                    val answers = _checklistAnswers.value.map { (itemId, answer) ->
+                        com.informatique.mtcit.data.model.DraftAnswerUpdateSubmission(
+                            id = currentAnswerIds[itemId], // May be null for new answers
+                            answer = answer,
+                            checklistSettingsItemId = itemId
+                        )
+                    }
+
+                    val request = com.informatique.mtcit.data.model.DraftUpdateRequest(
+                        id = currentWorkOrderResultId,
+                        scheduledRequestId = scheduledRequestId,
+                        answers = answers
+                    )
+
+                    val result = checklistApiService.updateDraft(request)
+
+                    result.fold(
+                        onSuccess = { response ->
+                            println("✅ Draft updated successfully")
+
+                            // ✅ Show success toast (will be handled in UI)
+                            _toastMessage.value = "✅ تم حفظ المسودة بنجاح"
+
+                            // ✅ Reload request details to show updated draft status
+                            _requestDetail.value?.let { currentDetail ->
+                                fetchRequestDetail(
+                                    requestId = currentDetail.requestId,
+                                    requestTypeId = currentDetail.requestType.id,
+                                    isEngineer = true
+                                )
+                            }
+                        },
+                        onFailure = { error ->
+                            println("❌ Error updating draft: ${error.message}")
+                            _toastMessage.value = "❌ ${error.message ?: "فشل في تحديث المسودة"}"
+                        }
+                    )
+                }
+            } catch (e: Exception) {
+                println("❌ RequestDetailViewModel: Exception saving draft: ${e.message}")
+                _toastMessage.value = "❌ ${e.message ?: "حدث خطأ غير متوقع"}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Execute inspection submission (final submission)
+     * This method:
+     * 1. First saves/updates the draft (to ensure all answers are saved)
+     * 2. Then calls execute API with the decision
+     *
+     * @param scheduledRequestId Scheduled request ID
+     * @param decisionId Decision ID (1=Approved, 2=Refused, etc.)
+     * @param refuseNotes Notes if refused
+     * @param expiredDate Expiry date if approved
+     */
+    fun executeInspectionSubmission(
+        scheduledRequestId: Int,
+        decisionId: Int,
+        refuseNotes: String = "",
+        expiredDate: String? = null
+    ) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _appError.value = null
+
+                println("✅ RequestDetailViewModel: Executing inspection submission")
+                println("   Scheduled Request ID: $scheduledRequestId")
+                println("   Decision ID: $decisionId")
+                println("   Refuse Notes: $refuseNotes")
+                println("   Expired Date: ${expiredDate ?: "N/A"}")
+
+                // ✅ Step 1: Save/update draft first
+                val currentWorkOrderResultId = _workOrderResultId.value
+                val currentAnswerIds = _answerIds.value
+                var finalWorkOrderResultId: Int? = currentWorkOrderResultId
+
+                if (currentWorkOrderResultId == null) {
+                    // ✅ First time - POST draft
+                    println("   📤 Step 1: Saving draft (POST)")
+
+                    val answers = _checklistAnswers.value.map { (itemId, answer) ->
+                        com.informatique.mtcit.data.model.DraftAnswerSubmission(
+                            answer = answer,
+                            checklistSettingsItemId = itemId
+                        )
+                    }
+
+                    val saveRequest = com.informatique.mtcit.data.model.DraftSaveRequest(
+                        scheduledRequestId = scheduledRequestId,
+                        answers = answers
+                    )
+
+                    val saveResult = checklistApiService.saveDraft(saveRequest)
+
+                    saveResult.fold(
+                        onSuccess = { response ->
+                            println("   ✅ Draft saved, ID: ${response.data}")
+                            finalWorkOrderResultId = response.data
+                            _workOrderResultId.value = response.data
+                        },
+                        onFailure = { error ->
+                            println("   ❌ Failed to save draft: ${error.message}")
+                            _toastMessage.value = "❌ ${error.message ?: "فشل في حفظ المسودة"}"
+                            _isLoading.value = false
+                            return@launch
+                        }
+                    )
+                } else {
+                    // ✅ Update existing draft - PUT
+                    println("   📤 Step 1: Updating draft (PUT)")
+
+                    val answers = _checklistAnswers.value.map { (itemId, answer) ->
+                        com.informatique.mtcit.data.model.DraftAnswerUpdateSubmission(
+                            id = currentAnswerIds[itemId],
+                            answer = answer,
+                            checklistSettingsItemId = itemId
+                        )
+                    }
+
+                    val updateRequest = com.informatique.mtcit.data.model.DraftUpdateRequest(
+                        id = currentWorkOrderResultId,
+                        scheduledRequestId = scheduledRequestId,
+                        answers = answers
+                    )
+
+                    val updateResult = checklistApiService.updateDraft(updateRequest)
+
+                    updateResult.fold(
+                        onSuccess = { response ->
+                            println("   ✅ Draft updated successfully")
+                            // ✅ For PUT, keep using the existing work order result ID
+                            finalWorkOrderResultId = currentWorkOrderResultId
+                        },
+                        onFailure = { error ->
+                            println("   ❌ Failed to update draft: ${error.message}")
+                            _toastMessage.value = "❌ ${error.message ?: "فشل في تحديث المسودة"}"
+                            _isLoading.value = false
+                            return@launch
+                        }
+                    )
+                }
+
+                // ✅ Step 2: Execute inspection with the work order result ID
+                val workOrderIdToExecute = finalWorkOrderResultId
+                if (workOrderIdToExecute != null) {
+                    println("   📤 Step 2: Executing inspection (POST execute)")
+
+                    val executeRequest = com.informatique.mtcit.data.model.ExecuteInspectionRequest(
+                        decisionId = decisionId,
+                        refuseNotes = refuseNotes,
+                        expiredDate = expiredDate
+                    )
+
+                    val executeResult = checklistApiService.executeInspection(
+                        workOrderResultId = workOrderIdToExecute,
+                        request = executeRequest
+                    )
+
+                    executeResult.fold(
+                        onSuccess = { response ->
+                            println("   ✅ Inspection executed successfully")
+                            println("      Message: ${response.message}")
+
+                            // ✅ Show success toast
+                            _toastMessage.value = "✅ تم تنفيذ الفحص بنجاح"
+
+                            // ✅ Refresh request detail to show updated status
+                            val currentDetail = _requestDetail.value
+                            if (currentDetail != null) {
+                                fetchRequestDetail(currentDetail.requestId, currentDetail.requestType.id, true)
+                            }
+
+                            // Clear stored IDs after successful submission
+                            _workOrderResultId.value = null
+                            _answerIds.value = emptyMap()
+                        },
+                        onFailure = { error ->
+                            println("   ❌ Failed to execute inspection: ${error.message}")
+                            _toastMessage.value = "❌ ${error.message ?: "فشل في تنفيذ الفحص"}"
+                        }
+                    )
+                } else {
+                    println("   ❌ No work order result ID available for execution")
+                    _toastMessage.value = "❌ فشل في الحصول على معرف نتيجة الفحص"
+                }
+            } catch (e: Exception) {
+                println("❌ RequestDetailViewModel: Exception executing inspection: ${e.message}")
+                _toastMessage.value = "❌ ${e.message ?: "حدث خطأ غير متوقع"}"
             } finally {
                 _isLoading.value = false
             }

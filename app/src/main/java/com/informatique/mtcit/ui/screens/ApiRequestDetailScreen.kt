@@ -8,18 +8,24 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
@@ -28,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,6 +42,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.data.model.requests.RequestDetailField
 import com.informatique.mtcit.data.model.requests.RequestDetailSection
@@ -124,6 +132,15 @@ fun ApiRequestDetailScreen(
                 viewModel.clearCertificateData()
             }
         )
+    }
+
+    // ✅ Show toast message for non-blocking success notifications
+    val toastMessage by viewModel.toastMessage.collectAsState()
+    LaunchedEffect(toastMessage) {
+        toastMessage?.let { message ->
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearToastMessage()
+        }
     }
 
     // Calculate status bar height
@@ -314,11 +331,27 @@ private fun RequestDetailContent(
                 // Set checklist items from workOrderResult
                 viewModel.setChecklistItems(workOrderResult.checklistItems)
 
-                // ✅ Also initialize answers from workOrderResult
+                // ✅ Set work order result ID (crucial for PUT instead of POST)
+                workOrderResult.id?.let { id ->
+                    viewModel.setWorkOrderResultId(id)
+                    println("✅ Set work order result ID: $id")
+                }
+
+                // ✅ Initialize answers and answer IDs from workOrderResult
+                val answersMap = mutableMapOf<Int, String>()
+                val answerIdsMap = mutableMapOf<Int, Int>()
+
                 workOrderResult.checklistAnswers.forEach { answer ->
+                    answersMap[answer.checklistItemId] = answer.answer
+                    answer.id?.let { answerId ->
+                        answerIdsMap[answer.checklistItemId] = answerId
+                    }
                     viewModel.updateChecklistAnswer(answer.checklistItemId, answer.answer)
                 }
+
+                viewModel.setAnswerIds(answerIdsMap)
                 println("✅ Initialized ${workOrderResult.checklistAnswers.size} answers from workOrderResult")
+                println("✅ Initialized ${answerIdsMap.size} answer IDs")
             } else {
                 println("🔍 Loading checklist from API for purposeId=${requestDetail.purposeId}")
                 viewModel.loadChecklistByPurpose(requestDetail.purposeId)
@@ -1407,9 +1440,10 @@ private fun getTransactionRouteForPayment(requestTypeId: Int, requestId: Int, st
 }
 
 /**
- * ✅ NEW: Approve Inspection Button
- * Always visible for engineers, but disabled for accepted/rejected requests
- * Enabled only when all mandatory fields are filled (for scheduled requests)
+ * ✅ NEW: Approve Inspection Buttons Section
+ * Shows two buttons:
+ * 1. Save as Draft (حفظ مسودة) - always enabled except for rejected/accepted
+ * 2. Submit Inspection (تقديم الفحص) - enabled only when all mandatory fields are filled
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1425,13 +1459,15 @@ private fun ApproveInspectionButton(
     val inspectionDecisions by viewModel.inspectionDecisions.collectAsState()
     val isLoadingDecisions by viewModel.isLoadingDecisions.collectAsState()
 
-    var showDecisionDialog by remember { mutableStateOf(false) }
+    var showDecisionBottomSheet by remember { mutableStateOf(false) }
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedDecisionId by remember { mutableStateOf<Int?>(null) }
+    var refuseNotes by remember { mutableStateOf("") }
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
 
-    // ✅ FIX: Calculate if all mandatory fields are filled
+    // ✅ Calculate if all mandatory fields are filled
     val areAllMandatoryFilled = remember(checklistItems, checklistAnswers) {
         val mandatoryItems = checklistItems.filter { it.isMandatory }
         if (mandatoryItems.isEmpty()) {
@@ -1444,17 +1480,19 @@ private fun ApproveInspectionButton(
         }
     }
 
-    // ✅ Button is enabled if:
-    // - Not read-only (not accepted/rejected)
-    // - All mandatory fields are filled
-    val isButtonEnabled = !isReadOnly && areAllMandatoryFilled
+    // ✅ Draft button is always enabled except for read-only (rejected/accepted)
+    val isDraftButtonEnabled = !isReadOnly
+
+    // ✅ Submit button is enabled only when all mandatory fields are filled
+    val isSubmitButtonEnabled = !isReadOnly && areAllMandatoryFilled
 
     println("🔘 ApproveInspectionButton state:")
     println("   - isReadOnly: $isReadOnly")
     println("   - checklistItems.size: ${checklistItems.size}")
     println("   - checklistAnswers.size: ${checklistAnswers.size}")
     println("   - areAllMandatoryFilled: $areAllMandatoryFilled")
-    println("   - isButtonEnabled: $isButtonEnabled")
+    println("   - isDraftButtonEnabled: $isDraftButtonEnabled")
+    println("   - isSubmitButtonEnabled: $isSubmitButtonEnabled")
 
     Card(
         modifier = Modifier
@@ -1467,122 +1505,356 @@ private fun ApproveInspectionButton(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // ✅ Button 1: Save as Draft (always enabled except for rejected/accepted)
             Button(
                 onClick = {
-                    println("🔘 Approve Inspection button clicked")
-                    // Load decisions and show dialog
-                    viewModel.loadInspectionDecisions()
-                    showDecisionDialog = true
+                    println("💾 Save as Draft button clicked")
+                    val scheduledRequestId = requestDetail.scheduledRequestId ?: requestDetail.requestId
+                    viewModel.saveDraftInspection(scheduledRequestId)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isButtonEnabled) extraColors.blue1 else Color.Gray,
+                    containerColor = if (isDraftButtonEnabled) extraColors.blue1 else Color.Gray,
                     disabledContainerColor = Color.Gray
                 ),
                 shape = RoundedCornerShape(12.dp),
-                enabled = isButtonEnabled
+                enabled = isDraftButtonEnabled
             ) {
                 Text(
-                    text = if (isArabic) "اعتماد المعاينة" else "Approve Inspection",
+                    text = if (isArabic) "حفظ مسودة" else "Save as Draft",
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Show warning if not all mandatory fields filled
-            if (!isButtonEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // ✅ Button 2: Submit Inspection (enabled only when mandatory fields are filled)
+            Button(
+                onClick = {
+                    println("✅ Submit Inspection button clicked")
+                    // Load decisions and show bottom sheet
+                    viewModel.loadInspectionDecisions()
+                    showDecisionBottomSheet = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isSubmitButtonEnabled) extraColors.blue1 else Color.Gray,
+                    disabledContainerColor = Color.Gray,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                enabled = isSubmitButtonEnabled
+            ) {
                 Text(
-                    text = if (isArabic) {
-                        if (isReadOnly) "⚠️ هذا الطلب مكتمل ولا يمكن تعديله"
-                        else "⚠️ يجب ملء جميع الحقول الإلزامية لاعتماد المعاينة"
-                    } else {
-                        if (isReadOnly) "⚠️ This request is completed and cannot be modified"
-                        else "⚠️ All mandatory fields must be filled to approve inspection"
-                    },
-                    fontSize = 12.sp,
-                    color = if (isReadOnly) Color(0xFFE91E63) else Color(0xFFFF9800),
-                    modifier = Modifier.fillMaxWidth()
+                    text = if (isArabic) "اعتماد نتيجة المعاينة" else "Approve inspection result",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
     }
 
-    // ✅ Decision Dialog
-    if (showDecisionDialog) {
-        println("🔄 Rendering InspectionDecisionDialog")
-        InspectionDecisionDialogWithDatePicker(
-            decisions = inspectionDecisions,
-            isLoading = isLoadingDecisions,
-            selectedDecisionId = selectedDecisionId,
-            datePickerState = datePickerState,
-            onDecisionSelected = {
-                selectedDecisionId = it
-                println("📝 Decision selected: $it")
+    // ✅ Decision Bottom Sheet with Refuse Notes and Date Picker
+    if (showDecisionBottomSheet) {
+        println("🔄 Rendering InspectionDecisionBottomSheet")
+        ModalBottomSheet(
+            onDismissRequest = {
+                println("❌ Decision bottom sheet dismissed")
+                showDecisionBottomSheet = false
+                selectedDecisionId = null
+                refuseNotes = ""
             },
-            onConfirm = {
-                if (selectedDecisionId != null) {
-                    println("✅ Confirmed decision: $selectedDecisionId")
+            sheetState = bottomSheetState,
+            containerColor = extraColors.background
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = if (isArabic) "اختر القرار" else "Select Decision",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = extraColors.whiteInDarkMode,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
 
-                    // Get expiry date if decision is Accepted (id=1)
-                    val expiredDate = if (selectedDecisionId == 1) {
-                        val selectedDateMillis = datePickerState.selectedDateMillis
-                        if (selectedDateMillis != null) {
-                            val calendar = java.util.Calendar.getInstance()
-                            calendar.timeInMillis = selectedDateMillis
-                            val formattedDate = String.format(
-                                java.util.Locale.US,
-                                "%04d-%02d-%02d",
-                                calendar.get(java.util.Calendar.YEAR),
-                                calendar.get(java.util.Calendar.MONTH) + 1,
-                                calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                            )
-                            println("📅 Selected expiry date: $formattedDate")
-                            formattedDate
-                        } else {
-                            println("⚠️ No date selected for Accepted decision")
-                            null
+                when {
+                    isLoadingDecisions -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
                         }
-                    } else {
-                        null
                     }
 
-                    // ✅ IMPORTANT: Use scheduledRequestId (root data.id) not inspectionRequest.id
-                    // scheduledRequestId = 105, inspectionRequest.id = 228
-                    val idToUse = requestDetail.scheduledRequestId ?: requestDetail.requestId
-                    println("📤 Submitting work order result:")
-                    println("   - Decision ID: $selectedDecisionId")
-                    println("   - Scheduled Request ID (from root): ${requestDetail.scheduledRequestId}")
-                    println("   - Inspection Request ID: ${requestDetail.requestId}")
-                    println("   - Using ID: $idToUse")
-                    println("   - Expired Date: ${expiredDate ?: "N/A"}")
+                    inspectionDecisions.isEmpty() -> {
+                        Text(
+                            text = if (isArabic) "لا توجد قرارات متاحة" else "No decisions available",
+                            modifier = Modifier.padding(16.dp),
+                            color = extraColors.whiteInDarkMode
+                        )
+                    }
 
-                    viewModel.submitWorkOrderResult(
-                        decisionId = selectedDecisionId!!,
-                        scheduledRequestId = idToUse, // ✅ Use root data.id (105) not inspectionRequest.id (228)
-                        expiredDate = expiredDate
-                    )
-                    showDecisionDialog = false
-                    selectedDecisionId = null
+                    else -> {
+                        // Decision options
+                        inspectionDecisions.forEach { decision ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedDecisionId = decision.id
+                                        println("📝 Decision selected: ${decision.id}")
+                                    }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = selectedDecisionId == decision.id,
+                                    onClick = {
+                                        selectedDecisionId = decision.id
+                                        println("📝 Decision selected: ${decision.id}")
+                                    },
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = extraColors.blue1
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (isArabic) decision.nameAr else decision.nameEn,
+                                    fontSize = 16.sp,
+                                    color = extraColors.whiteInDarkMode
+                                )
+                            }
+                        }
+
+                        // ✅ Show date picker if Approved (id=1) is selected
+                        if (selectedDecisionId == 1) {
+                            var showDateDialog by remember { mutableStateOf(false) }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider(color = extraColors.whiteInDarkMode.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = if (isArabic) "تاريخ الانتهاء *" else "Expiry Date *",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = extraColors.whiteInDarkMode,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            // ✅ Clickable date field (like transactions)
+                            val selectedDateMillis = datePickerState.selectedDateMillis
+                            val displayDate = selectedDateMillis?.let {
+                                java.text.SimpleDateFormat(
+                                    "yyyy-MM-dd",
+                                    Locale.getDefault()
+                                ).format(java.util.Date(it))
+                            } ?: ""
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {
+                                        showDateDialog = true
+                                    }
+                            ) {
+                                OutlinedTextField(
+                                    value = displayDate,
+                                    onValueChange = { },
+                                    readOnly = true,
+                                    enabled = false,
+                                    placeholder = {
+                                        Text(
+                                            if (isArabic) "اختر تاريخ الانتهاء" else "Select expiry date",
+                                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                                        )
+                                    },
+                                    trailingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = "Calendar",
+                                            tint = extraColors.blue1,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                                        disabledContainerColor = extraColors.cardBackground,
+                                        disabledTextColor = extraColors.whiteInDarkMode,
+                                        disabledPlaceholderColor = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                            }
+
+                            // ✅ Show date picker dialog when field is clicked
+                            if (showDateDialog) {
+                                DatePickerDialog(
+                                    onDismissRequest = { showDateDialog = false },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = { showDateDialog = false }
+                                        ) {
+                                            Text(if (isArabic) "تأكيد" else "OK")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDateDialog = false }) {
+                                            Text(if (isArabic) "إلغاء" else "Cancel")
+                                        }
+                                    }
+                                ) {
+                                    DatePicker(
+                                        state = datePickerState,
+                                        colors = DatePickerDefaults.colors(
+                                            containerColor = extraColors.cardBackground
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // ✅ Show refuse notes field if Refused (id=2) is selected
+                        if (selectedDecisionId == 2) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider(color = extraColors.whiteInDarkMode.copy(alpha = 0.2f))
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = if (isArabic) "ملاحظات الرفض" else "Refuse Notes",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = extraColors.whiteInDarkMode,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            OutlinedTextField(
+                                value = refuseNotes,
+                                onValueChange = {
+                                    refuseNotes = it
+                                    println("📝 Refuse notes updated: $it")
+                                },
+                                placeholder = {
+                                    Text(
+                                        if (isArabic) "أدخل سبب الرفض" else "Enter refusal reason",
+                                        color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = extraColors.blue1,
+                                    unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                                    focusedContainerColor = extraColors.cardBackground,
+                                    unfocusedContainerColor = extraColors.cardBackground,
+                                    focusedTextColor = extraColors.whiteInDarkMode,
+                                    unfocusedTextColor = extraColors.whiteInDarkMode
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                maxLines = 5
+                            )
+                        }
+
+                        // Submit button
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {
+                                if (selectedDecisionId != null) {
+                                    println("✅ Confirmed decision: $selectedDecisionId")
+
+                                    // Get expiry date if decision is Approved (id=1)
+                                    val expiredDate = if (selectedDecisionId == 1) {
+                                        val selectedDateMillis = datePickerState.selectedDateMillis
+                                        if (selectedDateMillis != null) {
+                                            val calendar = java.util.Calendar.getInstance()
+                                            calendar.timeInMillis = selectedDateMillis
+                                            val formattedDate = String.format(
+                                                java.util.Locale.US,
+                                                "%04d-%02d-%02d",
+                                                calendar.get(java.util.Calendar.YEAR),
+                                                calendar.get(java.util.Calendar.MONTH) + 1,
+                                                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+                                            )
+                                            println("📅 Selected expiry date: $formattedDate")
+                                            formattedDate
+                                        } else {
+                                            println("⚠️ No date selected for Approved decision")
+                                            null
+                                        }
+                                    } else {
+                                        null
+                                    }
+
+                                    // ✅ Use scheduledRequestId (root data.id) not inspectionRequest.id
+                                    val idToUse = requestDetail.scheduledRequestId ?: requestDetail.requestId
+                                    println("📤 Executing inspection submission:")
+                                    println("   - Decision ID: $selectedDecisionId")
+                                    println("   - Scheduled Request ID: $idToUse")
+                                    println("   - Refuse Notes: $refuseNotes")
+                                    println("   - Expired Date: ${expiredDate ?: "N/A"}")
+
+                                    // ✅ Call new executeInspectionSubmission method
+                                    viewModel.executeInspectionSubmission(
+                                        scheduledRequestId = idToUse,
+                                        decisionId = selectedDecisionId!!,
+                                        refuseNotes = refuseNotes,
+                                        expiredDate = expiredDate
+                                    )
+                                    showDecisionBottomSheet = false
+                                    selectedDecisionId = null
+                                    refuseNotes = ""
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            enabled = selectedDecisionId != null,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = extraColors.blue1
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isArabic) "تأكيد" else "Confirm",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                 }
-            },
-            onDismiss = {
-                println("❌ Decision dialog dismissed")
-                showDecisionDialog = false
-                selectedDecisionId = null
             }
-        )
+        }
     }
 }
 
 /**
- * ✅ NEW: Inspection Decision Dialog with inline Date Picker
- * Shows radio button list of decisions with inline date picker when Accepted is selected
+ * ✅ UPDATED: Inspection Decision Dialog with inline Date Picker and Refuse Notes
+ * Shows radio button list of decisions with:
+ * - Inline date picker when Approved (id=1) is selected
+ * - Text field for refuse notes when Refused (id=2) is selected
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1590,12 +1862,15 @@ private fun InspectionDecisionDialogWithDatePicker(
     decisions: List<com.informatique.mtcit.data.model.InspectionDecision>,
     isLoading: Boolean,
     selectedDecisionId: Int?,
+    refuseNotes: String,
     datePickerState: DatePickerState,
     onDecisionSelected: (Int) -> Unit,
+    onRefuseNotesChanged: (String) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val isArabic = Locale.getDefault().language == "ar"
+    val extraColors = LocalExtraColors.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1608,7 +1883,9 @@ private fun InspectionDecisionDialogWithDatePicker(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
             ) {
                 when {
                     isLoading -> {
@@ -1651,23 +1928,134 @@ private fun InspectionDecisionDialogWithDatePicker(
                             }
                         }
 
-                        // ✅ Show date picker if Accepted (id=1) is selected
+                        // ✅ Show date field if Approved (id=1) is selected
                         if (selectedDecisionId == 1) {
                             Spacer(modifier = Modifier.height(16.dp))
                             HorizontalDivider()
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            Text(
-                                text = if (isArabic) "تاريخ الانتهاء" else "Expiry Date",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
+                            // ✅ Date field styled like transaction form fields
+                            val selectedDateMillis = datePickerState.selectedDateMillis
+                            val displayDate = selectedDateMillis?.let {
+                                java.text.SimpleDateFormat(
+                                    "yyyy-MM-dd",
+                                    Locale.getDefault()
+                                ).format(java.util.Date(it))
+                            } ?: (if (isArabic) "اختر التاريخ" else "Select Date")
 
-                            DatePicker(
-                                state = datePickerState,
-                                modifier = Modifier.fillMaxWidth()
-                            )
+                            var showDateDialog by remember { mutableStateOf(false) }
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = if (isArabic) "تاريخ الانتهاء *" else "Expiry Date *",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = extraColors.whiteInDarkMode,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) {
+                                            showDateDialog = true
+                                        }
+                                ) {
+                                    OutlinedTextField(
+                                        value = displayDate,
+                                        onValueChange = { },
+                                        readOnly = true,
+                                        enabled = false,
+                                        placeholder = {
+                                            Text(
+                                                if (isArabic) "اختر تاريخ الانتهاء" else "Select expiry date",
+                                                color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                                            )
+                                        },
+                                        trailingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.DateRange,
+                                                contentDescription = "Calendar",
+                                                tint = extraColors.blue1,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                                            disabledContainerColor = extraColors.cardBackground,
+                                            disabledTextColor = extraColors.whiteInDarkMode,
+                                            disabledPlaceholderColor = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                }
+                            }
+
+                            // ✅ Show date picker dialog when field is clicked
+                            if (showDateDialog) {
+                                DatePickerDialog(
+                                    onDismissRequest = { showDateDialog = false },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = { showDateDialog = false }
+                                        ) {
+                                            Text(if (isArabic) "تأكيد" else "OK")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDateDialog = false }) {
+                                            Text(if (isArabic) "إلغاء" else "Cancel")
+                                        }
+                                    }
+                                ) {
+                                    DatePicker(state = datePickerState)
+                                }
+                            }
+                        }
+
+                        // ✅ Show refuse notes field if Refused (id=2) is selected
+                        if (selectedDecisionId == 2) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = if (isArabic) "ملاحظات الرفض *" else "Refuse Notes *",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = extraColors.whiteInDarkMode,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                OutlinedTextField(
+                                    value = refuseNotes,
+                                    onValueChange = onRefuseNotesChanged,
+                                    placeholder = {
+                                        Text(
+                                            if (isArabic) "أدخل سبب الرفض" else "Enter refusal reason",
+                                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                                        )
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(120.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = extraColors.blue1,
+                                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                                        focusedContainerColor = extraColors.cardBackground,
+                                        unfocusedContainerColor = extraColors.cardBackground,
+                                        focusedTextColor = extraColors.whiteInDarkMode,
+                                        unfocusedTextColor = extraColors.whiteInDarkMode
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    maxLines = 5
+                                )
+                            }
                         }
                     }
                 }

@@ -3,7 +3,74 @@ package com.informatique.mtcit.data.model
 import kotlinx.serialization.Serializable
 
 /**
- * Work Order Result Submission Request
+ * ✅ NEW: Draft Save Request (POST - first time save)
+ * POST /api/v1/work-order-results
+ */
+@Serializable
+data class DraftSaveRequest(
+    val scheduledRequestId: Int,
+    val answers: List<DraftAnswerSubmission>
+)
+
+/**
+ * ✅ NEW: Draft Update Request (PUT - subsequent saves)
+ * PUT /api/v1/work-order-results
+ */
+@Serializable
+data class DraftUpdateRequest(
+    val id: Int,  // Work order result ID from first POST
+    val scheduledRequestId: Int,
+    val answers: List<DraftAnswerUpdateSubmission>
+)
+
+/**
+ * ✅ NEW: Answer submission for draft save (POST)
+ */
+@Serializable
+data class DraftAnswerSubmission(
+    val answer: String,
+    val checklistSettingsItemId: Int
+)
+
+/**
+ * ✅ NEW: Answer submission for draft update (PUT) - includes answer ID
+ */
+@Serializable
+data class DraftAnswerUpdateSubmission(
+    val id: Int? = null,  // Answer ID from previous save (null for new answers)
+    val answer: String,
+    val checklistSettingsItemId: Int
+)
+
+/**
+ * ✅ NEW: Execute Inspection Request
+ * POST /api/v1/work-order-results/execute/{id}
+ *
+ * Note: Only include refuseNotes for decision 2 (Refused), only include expiredDate for decision 1 (Approved)
+ */
+@Serializable
+data class ExecuteInspectionRequest(
+    val decisionId: Int,
+    @kotlinx.serialization.Transient
+    val refuseNotes: String? = null,  // Only serialized for decision 2
+    @kotlinx.serialization.Transient
+    val expiredDate: String? = null   // Only serialized for decision 1
+) {
+    // Custom serialization to conditionally include fields
+    companion object {
+        fun create(decisionId: Int, refuseNotes: String? = null, expiredDate: String? = null): Map<String, Any> {
+            val map = mutableMapOf<String, Any>("decisionId" to decisionId)
+            when (decisionId) {
+                1 -> expiredDate?.let { map["expiredDate"] = it }
+                2 -> refuseNotes?.takeIf { it.isNotBlank() }?.let { map["refuseNotes"] = it }
+            }
+            return map
+        }
+    }
+}
+
+/**
+ * Work Order Result Submission Request (OLD - kept for reference)
  * POST /api/v1/work-order-results
  */
 @Serializable

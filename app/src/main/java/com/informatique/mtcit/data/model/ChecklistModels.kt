@@ -94,6 +94,7 @@ data class WorkOrderResult(
  */
 @Serializable
 data class ChecklistAnswer(
+    val id: Int? = null,  // ✅ Answer ID from API (for PUT updates)
     val checklistItemId: Int,
     val fieldNameAr: String,
     val fieldNameEn: String,

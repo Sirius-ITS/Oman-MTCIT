@@ -6,7 +6,6 @@ import com.informatique.mtcit.data.model.WorkOrderResultRequest
 import com.informatique.mtcit.data.model.WorkOrderResultResponse
 import com.informatique.mtcit.di.module.AppRepository
 import com.informatique.mtcit.di.module.RepoServiceState
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.int
@@ -220,6 +219,239 @@ class ChecklistApiService @Inject constructor(
             e.printStackTrace()
             println("=".repeat(80))
             Result.failure(Exception("Failed to submit work order result: ${e.message}"))
+        }
+    }
+
+    /**
+     * ✅ NEW: Save inspection as draft (first time)
+     * POST /api/v1/work-order-results
+     *
+     * @param request The draft save request
+     * @return Result with WorkOrderResultResponse containing the created work order result ID
+     */
+    suspend fun saveDraft(request: com.informatique.mtcit.data.model.DraftSaveRequest): Result<WorkOrderResultResponse> {
+        return try {
+            println("=".repeat(80))
+            println("💾 ChecklistApiService: Saving inspection as draft (POST)")
+            println("=".repeat(80))
+
+            val endpoint = "work-order-results"
+            println("📡 API Call: POST $endpoint")
+            println("📤 Draft Save Request:")
+            println("   Scheduled Request ID: ${request.scheduledRequestId}")
+            println("   Answers: ${request.answers.size} items")
+
+            val requestJson = json.encodeToString(request)
+            println("📤 JSON Request: $requestJson")
+
+            when (val response = repo.onPostAuth(endpoint, requestJson)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Draft Save API Response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            val resultResponse: WorkOrderResultResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Draft saved successfully")
+                            println("   Message: ${resultResponse.message}")
+                            println("   Work Order Result ID: ${resultResponse.data}")
+                            println("=".repeat(80))
+
+                            Result.success(resultResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "فشل في حفظ المسودة"
+                            println("❌ API returned error: $message")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    println("   HTTP Code: ${response.code}")
+                    println("=".repeat(80))
+                    Result.failure(Exception("Failed to save draft: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in saveDraft: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to save draft: ${e.message}"))
+        }
+    }
+
+    /**
+     * ✅ NEW: Update inspection draft (subsequent saves)
+     * PUT /api/v1/work-order-results
+     *
+     * @param request The draft update request
+     * @return Result with WorkOrderResultResponse
+     */
+    suspend fun updateDraft(request: com.informatique.mtcit.data.model.DraftUpdateRequest): Result<WorkOrderResultResponse> {
+        return try {
+            println("=".repeat(80))
+            println("💾 ChecklistApiService: Updating inspection draft (PUT)")
+            println("=".repeat(80))
+
+            val endpoint = "work-order-results"
+            println("📡 API Call: PUT $endpoint")
+            println("📤 Draft Update Request:")
+            println("   Work Order Result ID: ${request.id}")
+            println("   Scheduled Request ID: ${request.scheduledRequestId}")
+            println("   Answers: ${request.answers.size} items")
+
+            val requestJson = json.encodeToString(request)
+            println("📤 JSON Request: $requestJson")
+
+            when (val response = repo.onPutAuth(endpoint, requestJson)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Draft Update API Response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            val resultResponse: WorkOrderResultResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Draft updated successfully")
+                            println("   Message: ${resultResponse.message}")
+                            println("   Work Order Result ID: ${resultResponse.data}")
+                            println("=".repeat(80))
+
+                            Result.success(resultResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "فشل في تحديث المسودة"
+                            println("❌ API returned error: $message")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    println("   HTTP Code: ${response.code}")
+                    println("=".repeat(80))
+                    Result.failure(Exception("Failed to update draft: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in updateDraft: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to update draft: ${e.message}"))
+        }
+    }
+
+    /**
+     * ✅ NEW: Execute inspection (final submission)
+     * POST /api/v1/work-order-results/execute/{id}
+     *
+     * @param workOrderResultId The work order result ID from previous save/update
+     * @param request The execute inspection request
+     * @return Result with WorkOrderResultResponse
+     */
+    suspend fun executeInspection(
+        workOrderResultId: Int,
+        request: com.informatique.mtcit.data.model.ExecuteInspectionRequest
+    ): Result<WorkOrderResultResponse> {
+        return try {
+            println("=".repeat(80))
+            println("✅ ChecklistApiService: Executing inspection (final submission)")
+            println("=".repeat(80))
+
+            val endpoint = "work-order-results/execute/$workOrderResultId"
+            println("📡 API Call: POST $endpoint")
+            println("📤 Execute Request:")
+            println("   Work Order Result ID: $workOrderResultId")
+            println("   Decision ID: ${request.decisionId}")
+            println("   Refuse Notes: ${request.refuseNotes ?: "N/A"}")
+            println("   Expired Date: ${request.expiredDate ?: "N/A"}")
+
+            // ✅ Build conditional JSON - only include relevant fields
+            val requestMap = com.informatique.mtcit.data.model.ExecuteInspectionRequest.create(
+                decisionId = request.decisionId,
+                refuseNotes = request.refuseNotes,
+                expiredDate = request.expiredDate
+            )
+
+            // ✅ Manually build JSON string from map to avoid serialization issues with Any type
+            val requestJson = buildString {
+                append("{")
+                requestMap.entries.forEachIndexed { index, entry ->
+                    if (index > 0) append(",")
+                    append("\"${entry.key}\":")
+                    when (val value = entry.value) {
+                        is String -> append("\"$value\"")
+                        is Number -> append(value)
+                        else -> append("\"$value\"")
+                    }
+                }
+                append("}")
+            }
+            println("📤 JSON Request: $requestJson")
+
+            when (val response = repo.onPostAuthJson(endpoint, requestJson)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Execute Inspection API Response received")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        println("📊 Status Code: $statusCode")
+
+                        if (statusCode == 200) {
+                            val resultResponse: WorkOrderResultResponse =
+                                json.decodeFromJsonElement(responseJson)
+
+                            println("✅ Inspection executed successfully")
+                            println("   Message: ${resultResponse.message}")
+                            println("=".repeat(80))
+
+                            Result.success(resultResponse)
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "فشل في تنفيذ الفحص"
+                            println("❌ API returned error: $message")
+                            println("=".repeat(80))
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        println("=".repeat(80))
+                        Result.failure(Exception("Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ API Error: ${response.error}")
+                    println("   HTTP Code: ${response.code}")
+                    println("=".repeat(80))
+                    Result.failure(Exception("Failed to execute inspection: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in executeInspection: ${e.message}")
+            e.printStackTrace()
+            println("=".repeat(80))
+            Result.failure(Exception("Failed to execute inspection: ${e.message}"))
         }
     }
 }

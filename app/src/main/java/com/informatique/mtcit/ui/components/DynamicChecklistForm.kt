@@ -1,15 +1,11 @@
 package com.informatique.mtcit.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.data.model.ChecklistAnswer
@@ -48,19 +44,9 @@ fun DynamicChecklistForm(
 
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Title
-        Text(
-            text = if (isArabic) "قائمة الفحص" else "Checklist",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = extraColors.whiteInDarkMode,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-
         // Render each checklist item
         checklistItems.forEach { item ->
             ChecklistItemField(
@@ -75,14 +61,12 @@ fun DynamicChecklistForm(
                 isArabic = isArabic
             )
         }
-
-        // Bottom spacing
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
 /**
  * Renders a single checklist item field based on its type
+ * ✅ Now uses FormField components matching transaction UI
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,25 +79,14 @@ private fun ChecklistItemField(
     isArabic: Boolean
 ) {
     val label = item.question
-    val mandatoryIndicator = if (item.isMandatory) " *" else ""
     val fieldTypeName = item.checklistType.nameEn.uppercase()
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(extraColors.cardBackground, RoundedCornerShape(12.dp))
-            .padding(16.dp)
+            .padding(vertical = 8.dp)
     ) {
-        // Label
-        Text(
-            text = "$label$mandatoryIndicator",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = extraColors.whiteInDarkMode,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        // Show note if available
+        // Show note if available (above the field)
         item.note?.let { note ->
             Text(
                 text = note,
@@ -123,82 +96,82 @@ private fun ChecklistItemField(
             )
         }
 
-        // Field based on type
+        // ✅ Field based on type - using FormField components
         when (fieldTypeName) {
             "TEXT", "STRING", "WRITTEN NOTE" -> {
-                OutlinedTextField(
+                CustomTextField(
                     value = value,
-                    onValueChange = onValueChange,
-                    enabled = !isReadOnly,
-                    placeholder = {
-                        Text(
-                            if (isArabic) "أدخل الإجابة" else "Enter answer",
-                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = extraColors.blue1,
-                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledTextColor = extraColors.whiteInDarkMode
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true
+                    onValueChange = if (isReadOnly) { _ -> } else onValueChange,
+                    label = label,
+                    placeholder = if (isArabic) "أدخل الإجابة" else "Enter answer",
+                    mandatory = item.isMandatory,
+                    enabled = !isReadOnly
                 )
             }
 
-            "NUMBER", "INTEGER", "DECIMAL" -> {
-                OutlinedTextField(
+            "NUMBER", "INTEGER" -> {
+                CustomTextField(
                     value = value,
-                    onValueChange = onValueChange,
-                    enabled = !isReadOnly,
-                    placeholder = {
-                        Text(
-                            if (isArabic) "أدخل رقم" else "Enter number",
-                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = extraColors.blue1,
-                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledTextColor = extraColors.whiteInDarkMode
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true
+                    onValueChange = if (isReadOnly) { _ -> } else onValueChange,
+                    label = label,
+                    isNumeric = true,
+                    placeholder = if (isArabic) "أدخل رقم" else "Enter number",
+                    mandatory = item.isMandatory,
+                    enabled = !isReadOnly
+                )
+            }
+
+            "DECIMAL" -> {
+                CustomTextField(
+                    value = value,
+                    onValueChange = if (isReadOnly) { _ -> } else onValueChange,
+                    label = label,
+                    isDecimal = true,
+                    placeholder = if (isArabic) "أدخل رقم عشري" else "Enter decimal number",
+                    mandatory = item.isMandatory,
+                    enabled = !isReadOnly
                 )
             }
 
             "TEXTAREA", "LONGTEXT" -> {
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    enabled = !isReadOnly,
-                    placeholder = {
-                        Text(
-                            if (isArabic) "أدخل النص" else "Enter text",
-                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = extraColors.blue1,
-                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledTextColor = extraColors.whiteInDarkMode
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    maxLines = 5
-                )
+                // For textarea, use OutlinedTextField with height modifier
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = if (item.isMandatory) "$label *" else label,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = extraColors.whiteInDarkMode,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    OutlinedTextField(
+                        value = value,
+                        onValueChange = if (isReadOnly) { _ -> } else onValueChange,
+                        enabled = !isReadOnly,
+                        placeholder = {
+                            Text(
+                                if (isArabic) "أدخل النص" else "Enter text",
+                                color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = extraColors.blue1,
+                            unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                            disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                            disabledTextColor = extraColors.whiteInDarkMode,
+                            focusedContainerColor = extraColors.cardBackground,
+                            unfocusedContainerColor = extraColors.cardBackground,
+                            disabledContainerColor = extraColors.cardBackground
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        maxLines = 5
+                    )
+                }
             }
 
             "DROPDOWN", "SELECT", "LIST" -> {
-                var expanded by remember { mutableStateOf(false) }
                 val choices = item.choices.filter { it.isActive }
 
                 // ✅ Find selected choice text from ID for display
@@ -206,129 +179,56 @@ private fun ChecklistItemField(
                     choices.find { it.id == choiceId }?.answer
                 } ?: value
 
-                ExposedDropdownMenuBox(
-                    expanded = expanded && !isReadOnly,
-                    onExpandedChange = { if (!isReadOnly) expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedChoiceText,
-                        onValueChange = {},
-                        readOnly = true,
-                        enabled = !isReadOnly,
-                        placeholder = {
-                            Text(
-                                if (isArabic) "اختر من القائمة" else "Select from list",
-                                color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                            )
-                        },
-                        trailingIcon = {
-                            if (!isReadOnly) {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable, !isReadOnly),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = extraColors.blue1,
-                            unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                            disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                            disabledTextColor = extraColors.whiteInDarkMode
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        choices.forEach { choice ->
-                            DropdownMenuItem(
-                                text = { Text(choice.answer) },
-                                onClick = {
-                                    // ✅ Save choice ID, not answer text
-                                    onValueChange(choice.id.toString())
-                                    expanded = false
-                                }
-                            )
+                CustomDropdown(
+                    selectedOption = selectedChoiceText,
+                    onOptionSelected = { selectedText: String ->
+                        // Find the choice ID from the selected text
+                        val choiceId = choices.find { it.answer == selectedText }?.id
+                        if (choiceId != null) {
+                            onValueChange(choiceId.toString())
                         }
-                    }
-                }
+                    },
+                    options = choices.map { it.answer },
+                    label = label,
+                    placeholder = if (isArabic) "اختر من القائمة" else "Select from list",
+                    mandatory = item.isMandatory,
+                    isLoading = false,
+                    enabled = !isReadOnly
+                )
             }
 
             "CHECKBOX", "BOOLEAN" -> {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Checkbox(
-                        checked = value.lowercase() in listOf("true", "yes", "نعم", "1"),
-                        onCheckedChange = {
-                            if (!isReadOnly) {
-                                onValueChange(if (it) "true" else "false")
-                            }
-                        },
-                        enabled = !isReadOnly,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = extraColors.blue1,
-                            uncheckedColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f)
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isArabic) "نعم" else "Yes",
-                        color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
-                        fontSize = 14.sp
-                    )
-                }
+                CustomCheckBox(
+                    checked = value.lowercase() in listOf("true", "yes", "نعم", "1"),
+                    onCheckedChange = { checked ->
+                        if (!isReadOnly) {
+                            onValueChange(if (checked) "true" else "false")
+                        }
+                    },
+                    label = label,
+                    error = null
+                )
             }
 
             "DATE" -> {
-                OutlinedTextField(
+                CustomDatePicker(
                     value = value,
-                    onValueChange = onValueChange,
-                    enabled = !isReadOnly,
-                    placeholder = {
-                        Text(
-                            if (isArabic) "YYYY-MM-DD" else "YYYY-MM-DD",
-                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = extraColors.blue1,
-                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledTextColor = extraColors.whiteInDarkMode
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true
+                    onValueChange = if (isReadOnly) { _ -> } else onValueChange,
+                    label = label,
+                    mandatory = item.isMandatory,
+                    allowPastDates = true
                 )
             }
 
             else -> {
                 // Default to text field for unknown types
-                OutlinedTextField(
+                CustomTextField(
                     value = value,
-                    onValueChange = onValueChange,
-                    enabled = !isReadOnly,
-                    placeholder = {
-                        Text(
-                            if (isArabic) "أدخل الإجابة" else "Enter answer",
-                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = extraColors.blue1,
-                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                        disabledTextColor = extraColors.whiteInDarkMode
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    singleLine = true
+                    onValueChange = if (isReadOnly) { _ -> } else onValueChange,
+                    label = label,
+                    placeholder = if (isArabic) "أدخل الإجابة" else "Enter answer",
+                    mandatory = item.isMandatory,
+                    enabled = !isReadOnly
                 )
             }
         }
