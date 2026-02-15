@@ -21,6 +21,7 @@ import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.api.MortgageApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
@@ -220,6 +221,41 @@ class ReleaseMortgageStrategy @Inject constructor(
         return steps
     }
 
+    /**
+     * Called when a step is opened - triggers payment API call when payment step is opened
+     */
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            // Call PaymentManager to load payment receipt
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId().toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+            return // Don't process other logic for payment step
+        }
+    }
+
     // NEW: Validate marine unit selection with business rules
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         val unit = marineUnits.find { it.id.toString() == unitId }
@@ -390,9 +426,11 @@ class ReleaseMortgageStrategy @Inject constructor(
                         println("✅ Review step processed successfully!")
                         println("   Message: ${reviewResult.message}")
                         println("   Need Inspection: ${reviewResult.needInspection}")
+                        println("   Has Acceptance: ${reviewResult.hasAcceptance}")
 
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                        accumulatedFormData["hasAcceptance"] = reviewResult.hasAcceptance.toString()
 
                         // ✅ Extract request number
                         val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
@@ -404,8 +442,14 @@ class ReleaseMortgageStrategy @Inject constructor(
                         val isNewRequest = accumulatedFormData["requestId"] == null ||
                                           accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
-                        if (isNewRequest) {
-                            println("🎉 NEW release mortgage request submitted - showing success dialog and stopping")
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - hasAcceptance (from API): ${reviewResult.hasAcceptance}")
+
+                        // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                        if (isNewRequest && reviewResult.hasAcceptance) {
+                            println("🎉 NEW release mortgage request submitted with hasAcceptance=true - showing success dialog and stopping")
+                            println("   User must continue from profile screen")
 
                             // Set success flags for ViewModel to show dialog
                             accumulatedFormData["requestSubmitted"] = "true"
@@ -414,10 +458,13 @@ class ReleaseMortgageStrategy @Inject constructor(
 
                             // Return -2 to indicate: success but show dialog and stop
                             return -2
+                        } else if (isNewRequest && !hasAcceptance) {
+                            println("✅ NEW release mortgage request submitted with hasAcceptance=false - continuing to next steps")
+                            println("   Transaction will continue to payment/next steps")
+                            // Continue normally - don't return, let the flow proceed
+                        } else {
+                            println("✅ Resumed request - release mortgage request submitted successfully")
                         }
-
-                        // Proceed - request submitted successfully (resumed requests only)
-                        println("✅ No blocking conditions - release mortgage request submitted successfully (resumed)")
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${reviewResult.message}")

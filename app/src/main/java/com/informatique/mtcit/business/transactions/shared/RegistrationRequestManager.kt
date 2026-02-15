@@ -1063,20 +1063,31 @@ class RegistrationRequestManager @Inject constructor(
      */
     suspend fun reserveMarineName(
         requestId: String,
-        marineName: String
+        marineName: String,
+        marineNameEn: String
     ): UpdateResult {
         return try {
             println("🚀 RegistrationRequestManager: Reserving marine name for requestId=$requestId...")
-            println("📤 Marine Name: $marineName")
+            println("📤 Marine Name (Arabic): $marineName")
+            println("📤 Marine Name (English): $marineNameEn")
 
-            // Validate marine name is not empty
+            // Validate marine names are not empty
             if (marineName.isBlank()) {
-                println("❌ Marine name is empty")
-                return UpdateResult.Error("Marine name cannot be empty")
+                println("❌ Marine name (Arabic) is empty")
+                return UpdateResult.Error("Marine name (Arabic) cannot be empty")
+            }
+
+            if (marineNameEn.isBlank()) {
+                println("❌ Marine name (English) is empty")
+                return UpdateResult.Error("Marine name (English) cannot be empty")
             }
 
             // Call API
-            val result = repository.shipNameReservation(requestId.toInt(), marineName)
+            val result = repository.shipNameReservation(
+                requestId = requestId.toInt(),
+                marineName = marineName,
+                marineNameEn = marineNameEn
+            )
 
             if (result.isSuccess) {
                 println("✅ Marine name reserved successfully!")
@@ -1753,12 +1764,18 @@ class RegistrationRequestManager @Inject constructor(
             StepType.MARINE_UNIT_NAME_SELECTION -> {
                 println("🏷️ Marine Unit Name Selection step detected")
 
-                // ✅ FIX: Look for "marineUnitName" (not "selectedShipName")
+                // ✅ Extract both Arabic and English names
                 val marineName = formData["marineUnitName"]
+                val marineNameEn = formData["marineUnitNameEn"]
 
                 if (marineName.isNullOrBlank()) {
-                    println("⚠️ Marine name is empty - skipping reservation")
-                    return StepProcessResult.Error("Marine name is required")
+                    println("⚠️ Marine name (Arabic) is empty - skipping reservation")
+                    return StepProcessResult.Error("Marine name (Arabic) is required")
+                }
+
+                if (marineNameEn.isNullOrBlank()) {
+                    println("⚠️ Marine name (English) is empty - skipping reservation")
+                    return StepProcessResult.Error("Marine name (English) is required")
                 }
 
                 if (requestId == null) {
@@ -1766,18 +1783,22 @@ class RegistrationRequestManager @Inject constructor(
                     return StepProcessResult.Error("No request ID available")
                 }
 
-                println("✅ Marine name found: '$marineName', proceeding with reservation...")
+                println("✅ Marine names found:")
+                println("   Arabic: '$marineName'")
+                println("   English: '$marineNameEn'")
+                println("   Proceeding with reservation...")
 
                 try {
                     val result = reserveMarineName(
                         requestId = requestId,
-                        marineName = marineName
+                        marineName = marineName,
+                        marineNameEn = marineNameEn
                     )
 
                     when (result) {
                         is UpdateResult.Success -> {
                             println("✅ Marine name reserved successfully")
-                            StepProcessResult.Success("Marine name reserved: $marineName")
+                            StepProcessResult.Success("Marine name reserved: $marineName / $marineNameEn")
                         }
                         is UpdateResult.Error -> {
                             println("❌ Failed to reserve marine name: ${result.message}")

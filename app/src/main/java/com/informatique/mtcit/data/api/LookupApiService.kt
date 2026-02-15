@@ -1373,4 +1373,44 @@ class LookupApiService @Inject constructor(
             Result.failure(Exception("Failed to get insurance companies: ${e.message}"))
         }
     }
+
+    // ✅ NEW: Get inspection places
+    suspend fun getInspectionPlaces(): Result<LookupResponse<InspectionPlace>> {
+        return try {
+            println("📡 Fetching inspection places from API...")
+            when (val response = repo.onGet("inspection-requests/places")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("📥 Response: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        if (responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int == 200
+                            && responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                        ) {
+                            val dataArray = responseJson.jsonObject.getValue("data").jsonArray
+                            val places: List<InspectionPlace> = json.decodeFromJsonElement(dataArray)
+                            println("✅ Parsed ${places.size} inspection places")
+                            Result.success(LookupResponse(true, places))
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to fetch inspection places"
+                            println("❌ API error: $message")
+                            Result.failure(Exception(message))
+                        }
+                    } else {
+                        println("❌ Empty response")
+                        Result.failure(Exception("Empty inspection places response"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMsg = ErrorMessageExtractor.extract(response.error)
+                    println("❌ Network error: $errorMsg")
+                    Result.failure(Exception("Failed to get inspection places: $errorMsg"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get inspection places: ${e.message}"))
+        }
+    }
 }

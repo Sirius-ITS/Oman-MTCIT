@@ -10,7 +10,6 @@ import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.business.transactions.shared.PaymentManager
 import com.informatique.mtcit.common.ApiException  // ✅ Import ApiException for error handling
 import com.informatique.mtcit.data.model.NavigationArea
-import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.ui.components.PersonType
@@ -23,7 +22,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import android.content.Context
-import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
@@ -42,6 +40,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
     private val navigationLicenseManager: NavigationLicenseManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val paymentManager: PaymentManager,
+    private val inspectionFlowManager: com.informatique.mtcit.business.transactions.shared.InspectionFlowManager,  // ✅ NEW: Inspection flow manager
     @ApplicationContext private val appContext: Context
  ) : BaseTransactionStrategy() {
 
@@ -59,13 +58,63 @@ class IssueNavigationPermitStrategy @Inject constructor(
     // Cache for accumulated form data (used to decide steps like other strategies)
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ NEW: Store loaded inspection authorities and documents
+    private var loadedInspectionAuthorities: List<com.informatique.mtcit.ui.components.DropdownSection> = emptyList()
+    private var loadedInspectionDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
+
     // ✅ Navigation license specific state
     private var navigationRequestId: Long? = null // Store created request ID
 
     // Allow ViewModel to set a callback when steps need to be rebuilt (same pattern as other strategies)
     override var onStepsNeedRebuild: (() -> Unit)? = null
+
+    /**
+     * ✅ NEW: Handle user clicking "Continue" on inspection required dialog
+     * Load inspection lookups and inject inspection step
+     */
+    suspend fun handleInspectionContinue() {
+        println("✅ IssueNavigationPermitStrategy.handleInspectionContinue() called")
+        println("✅ User confirmed inspection requirement - loading inspection lookups...")
+
+        val shipInfoId = accumulatedFormData["shipInfoId"]?.toIntOrNull()
+            ?: accumulatedFormData["coreShipsInfoId"]?.toIntOrNull()
+
+        if (shipInfoId == null) {
+            println("❌ No shipInfoId available for inspection")
+            return
+        }
+
+        println("   Using shipInfoId: $shipInfoId")
+
+        // ✅ Load inspection lookups using InspectionFlowManager
+        try {
+            val lookups = inspectionFlowManager.loadInspectionLookups(shipInfoId)
+
+            // ✅ Store loaded authorities and documents
+            loadedInspectionAuthorities = lookups.authoritySections
+            loadedInspectionDocuments = lookups.documents
+
+            // Store loaded lookups in accumulated form data
+            accumulatedFormData["inspectionPurposes"] = lookups.purposes.joinToString(",")
+            accumulatedFormData["inspectionPlaces"] = lookups.places.joinToString(",")
+            accumulatedFormData["showInspectionStep"] = "true"
+
+            println("✅ Inspection lookups loaded successfully:")
+            println("   - Purposes: ${lookups.purposes.size}")
+            println("   - Places: ${lookups.places.size}")
+            println("   - Authority sections: ${lookups.authoritySections.size}")
+            println("   - Documents: ${lookups.documents.size}")
+
+            // Trigger step rebuild to inject inspection step
+            onStepsNeedRebuild?.invoke()
+        } catch (e: Exception) {
+            println("❌ Failed to load inspection lookups: ${e.message}")
+            accumulatedFormData["apiError"] = "فشل في تحميل بيانات المعاينة: ${e.message}"
+        }
+    }
+
     override fun getContext(): TransactionContext {
-        TODO("Not yet implemented")
+        return transactionContext
     }
 
     /**
@@ -239,10 +288,43 @@ class IssueNavigationPermitStrategy @Inject constructor(
         // Review Step (shows all collected data)
         steps.add(SharedSteps.reviewStep())
 
-        // ✅ NEW: Payment Steps - Only show if we have requestId from review step
-        val hasRequestId = accumulatedFormData["requestId"] != null
+        // ✅ NEW: Inspection Purpose Step (dynamically added when inspection is required)
+        val showInspectionStep = accumulatedFormData["showInspectionStep"]?.toBoolean() ?: false
+        if (showInspectionStep) {
+            println("📋 Adding Inspection Purpose Step (dynamically injected)")
 
-        if (hasRequestId) {
+            // Parse lookups from formData
+            val purposes = accumulatedFormData["inspectionPurposes"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+            val places = accumulatedFormData["inspectionPlaces"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+
+            println("   - Purposes: ${purposes.size}")
+            println("   - Places: ${places.size}")
+            println("   - Authority sections: ${loadedInspectionAuthorities.size}")
+            println("   - Inspection Documents: ${loadedInspectionDocuments.size}")
+
+            // ✅ Use inspection-specific documents
+            steps.add(
+                SharedSteps.inspectionPurposeAndAuthorityStep(
+                    inspectionPurposes = purposes,
+                    inspectionPlaces = places,
+                    authoritySections = loadedInspectionAuthorities,
+                    documents = loadedInspectionDocuments
+                )
+            )
+        }
+
+        // ✅ NEW: Payment Steps - Only show if we have requestId AND inspection is NOT required
+        val hasRequestId = accumulatedFormData["requestId"] != null
+        val inspectionRequired = accumulatedFormData["showInspectionDialog"]?.toBoolean() ?: false
+
+        println("🔍 Payment step visibility check:")
+        println("   hasRequestId: $hasRequestId")
+        println("   inspectionRequired: $inspectionRequired")
+        println("   showInspectionStep: $showInspectionStep")
+
+        // ✅ Only show payment steps if we have requestId AND no inspection is pending
+        if (hasRequestId && !inspectionRequired && !showInspectionStep) {
+            println("✅ Adding payment steps")
             // Payment Details Step - Shows payment breakdown
             steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
 
@@ -251,6 +333,8 @@ class IssueNavigationPermitStrategy @Inject constructor(
             if (paymentSuccessful) {
                 steps.add(SharedSteps.paymentSuccessStep())
             }
+        } else {
+            println("⏭️ Skipping payment steps (inspection required or in progress)")
         }
 
         println("📋 Total steps count: ${steps.size}")
@@ -353,6 +437,53 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 }
             }
 
+            // ✅ NEW: Handle Inspection Purpose Step
+            if (inspectionFlowManager.isInspectionPurposeStep(stepType)) {
+                println("🔍 Processing Inspection Purpose Step...")
+
+                try {
+                    val inspectionResult = inspectionFlowManager.handleInspectionPurposeStepCompletion(
+                        formData = accumulatedFormData,
+                        context = appContext
+                    )
+
+                    when (inspectionResult) {
+                        is StepProcessResult.Success -> {
+                            println("✅ Inspection request submitted successfully!")
+                            println("   Message: ${inspectionResult.message}")
+
+                            // ✅ IMPORTANT: Exit the transaction completely
+                            // When inspection is submitted from within another transaction,
+                            // we should show success dialog and exit (like standalone inspection transaction)
+
+                            // Set success flags for ViewModel to show dialog
+                            accumulatedFormData["inspectionRequestSubmitted"] = "true"
+                            accumulatedFormData["showInspectionSuccessDialog"] = "true"
+                            accumulatedFormData["inspectionSuccessMessage"] = inspectionResult.message
+
+                            println("🎉 Inspection submitted - exiting transaction (returning -3)")
+
+                            // Return -3 to indicate: inspection success, show dialog and exit transaction
+                            return -3
+                        }
+                        is StepProcessResult.Error -> {
+                            println("❌ Inspection request submission failed: ${inspectionResult.message}")
+                            accumulatedFormData["apiError"] = inspectionResult.message
+                            return -1 // Block navigation
+                        }
+                        is StepProcessResult.NoAction -> {
+                            println("ℹ️ No action taken for inspection step")
+                            // This shouldn't happen for inspection purpose step, but handle it
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("❌ Exception processing inspection step: ${e.message}")
+                    e.printStackTrace()
+                    accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                    return -1
+                }
+            }
+
             val paymentResult = paymentManager.processStepIfNeeded(
                 stepType = stepType,
                 formData = accumulatedFormData,
@@ -430,12 +561,18 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                     // ✅ Ship requires inspection - Show inspection dialog
                                     println("⚠️ Ship requires inspection - showing inspection dialog")
 
-                                    // Show inspection required dialog
-                                    accumulatedFormData["showInspectionDialog"] = "true"
-                                    accumulatedFormData["inspectionMessage"] =
-                                        "السفينة تحتاج إلى معاينة قبل إكمال الإجراءات. يرجى تقديم طلب معاينة أولاً."
+                                    // ✅ Use prepareInspectionDialog to set dialog flags with parent transaction info
+                                    // Request Type: 3 = Issue Navigation Permit
+                                    inspectionFlowManager.prepareInspectionDialog(
+                                        message = "تم إرسال طلب تصريح الإبحار بنجاح (رقم الطلب: $requestId).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                        formData = accumulatedFormData,
+                                        allowContinue = true,
+                                        parentRequestId = requestId.toInt(),  // Convert Long to Int
+                                        parentRequestType = 3  // Issue Navigation Permit
+                                    )
 
-                                    return -1 // Block navigation
+                                    println("⚠️ Inspection required - blocking navigation to show dialog")
+                                    return -1 // ✅ Block navigation completely so dialog shows without proceeding
 
                                 } else {
                                     // ✅ Inspection done (data=1) - Show success dialog
@@ -451,12 +588,18 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                     // ✅ NEW: Check if this is a NEW request (not resumed)
                                     val isNewRequest = accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
+                                    // ✅ NEW: Check hasAcceptance flag from transaction context
+                                    val hasAcceptance = transactionContext.hasAcceptance
+
                                     println("🔍 isNewRequest check:")
                                     println("   - isResumedTransaction flag: ${accumulatedFormData["isResumedTransaction"]}")
                                     println("   - isNewRequest result: $isNewRequest")
+                                    println("   - hasAcceptance: $hasAcceptance")
 
-                                    if (isNewRequest) {
-                                        println("🎉 NEW request submitted - showing success dialog and stopping")
+                                    // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                                    if (isNewRequest && hasAcceptance) {
+                                        println("🎉 NEW request submitted with hasAcceptance=true - showing success dialog and stopping")
+                                        println("   User must continue from profile screen")
 
                                         // Set success flags for ViewModel to show dialog
                                         accumulatedFormData["requestSubmitted"] = "true"
@@ -466,14 +609,12 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
                                         // Return -2 to indicate: success but show dialog and stop
                                         return -2
+                                    } else {
+                                        println("✅ Request submitted - continuing to next steps")
+                                        println("   hasAcceptance: $hasAcceptance")
+                                        println("   isNewRequest: $isNewRequest")
+                                        // Continue normally - let the flow proceed to payment or next steps
                                     }
-
-                                    // ✅ For resumed requests: Show success dialog
-                                    println("✅ Showing success dialog for resumed request")
-                                    accumulatedFormData["showSuccessAlert"] = "true"
-                                    accumulatedFormData["successAlertMessage"] = "تم إرسال الطلب بنجاح"
-
-                                    return step // Stay on current step to show alert
                                 }
                             },
                             onFailure = { error ->
@@ -563,7 +704,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         if (selectedAreaIds.isEmpty()) {
             println("⚠️ No navigation areas selected or no matching IDs found")
-            return false
+            return false // No error - just empty selection
         }
 
         println("✅ Selected navigation areas: names=$selectedNames, ids=$selectedAreaIds")
@@ -571,14 +712,21 @@ class IssueNavigationPermitStrategy @Inject constructor(
         // ✅ Use the navigationRequestId that was created after ship selection
         val requestId = navigationRequestId
         if (requestId == null) {
-            throw Exception("No navigation request ID available. Ship selection might have failed.")
+            println("❌ No navigation request ID available")
+            accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+            return true // Error occurred
         }
 
-        // ✅ Call API - let exceptions propagate to ViewModel
-        navigationLicenseManager.addNavigationAreasIssue(requestId, selectedAreaIds).getOrThrow()
-
-        println("✅ Navigation areas added successfully")
-        return false
+        return try {
+            // ✅ Call API - let exceptions propagate to catch block
+            navigationLicenseManager.addNavigationAreasIssue(requestId, selectedAreaIds).getOrThrow()
+            println("✅ Navigation areas added successfully")
+            false // Success
+        } catch (e: Exception) {
+            println("❌ Failed to add navigation areas: ${e.message}")
+            accumulatedFormData["apiError"] = "فشل في إضافة مناطق الإبحار: ${e.message}"
+            true // Error occurred
+        }
     }
 
     /**

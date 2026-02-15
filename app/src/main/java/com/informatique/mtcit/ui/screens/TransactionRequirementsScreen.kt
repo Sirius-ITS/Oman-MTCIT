@@ -26,9 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,7 +46,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -61,27 +58,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.informatique.mtcit.common.util.LocalAppLocale
-import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
-import com.informatique.mtcit.data.model.category.Transaction
+import com.informatique.mtcit.ui.components.localizedPluralsApp
+import com.informatique.mtcit.ui.theme.ExtraColors
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.R
 import com.informatique.mtcit.data.model.category.Step
 import com.informatique.mtcit.data.model.category.Term
-import com.informatique.mtcit.ui.components.localizedPluralsApp
-import com.informatique.mtcit.ui.theme.ExtraColors
-import com.informatique.mtcit.ui.theme.fontTypography
 import com.informatique.mtcit.ui.viewmodels.TransactionDetailUiState
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionRequirementsScreen(
-    transaction: Transaction,
     onStart: () -> Unit,
     onBack: () -> Unit,
     transactionId: Int,
@@ -118,7 +110,8 @@ fun TransactionRequirementsScreen(
             buildList {
                 if (detail.terms.isNotEmpty()) add(termsTitle)
                 if (detail.steps.isNotEmpty()) add(stepsTitle)
-                if (detail.fees != null) add(feesTitle)
+                // Fees tab is no longer shown as fees are now dynamic via tariffItemResDtos
+                // if (detail.tariffItemResDtos?.isNotEmpty() == true) add(feesTitle)
             }
         } else {
             emptyList()
@@ -380,17 +373,7 @@ fun TransactionRequirementsScreen(
                                     .fillMaxHeight()
                             )
                         }
-                        if (detail.fees != null) {
-                            SummaryTileWithIcon(
-                                label = localizedApp(R.string.requirements_fees_value, detail.fees),
-                                sub = localizedApp(R.string.requirements_fees_title),
-                                icon = Icons.Filled.AttachMoney,
-                                iconColor = Color(0xFF4CAF50),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                            )
-                        }
+                        // Fees are now dynamic via tariffItemResDtos, not shown in summary
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -476,33 +459,7 @@ fun TransactionRequirementsScreen(
                                     }
                                 }
 
-                                feesTitle -> {
-                                    Text(
-                                        text = localizedApp(R.string.requirements_fees_heading),
-                                        style = MaterialTheme.typography.titleLarge.copy(
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            letterSpacing = 1.sp,
-                                            ),
-                                        color = extraColors.whiteInDarkMode,
-                                        modifier = Modifier.padding(8.dp),
-                                        maxLines = 1
-                                    )
-
-                                    FeesDurationItem(
-                                        title = localizedApp(R.string.requirements_fees_heading),
-                                        fees = detail.fees ?: 0,
-                                        backgroundColor = Color(0xFF4CAF50)
-                                    )
-
-                                    Spacer(Modifier.height(6.dp))
-
-                                    FeesDurationItem(
-                                        title = localizedApp(R.string.requirements_duration_title),
-                                        duration = detail.duration ?: 0,
-                                        backgroundColor = Color(0xFFFF9800)
-                                    )
-                                }
+                                // Fees tab removed - fees are now dynamic via tariffItemResDtos
                             }
 
                             Spacer(Modifier.height(8.dp))
@@ -597,48 +554,6 @@ private fun CustomTab(
     }
 }
 
-@Composable
-private fun FeesDurationItem(
-    title: String,
-    fees: Int? = null,
-    duration: Int? = null,
-    backgroundColor: Color,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(0.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor.copy(alpha = 0.03f))
-    ) {
-        val extraColors = LocalExtraColors.current
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 16.sp
-                ),
-                textAlign = TextAlign.Start,
-                modifier = Modifier.weight(1f),
-                color = extraColors.whiteInDarkMode
-            )
-
-            Text(
-                text = if (fees != null) localizedApp(R.string.requirements_fees_value, fees)
-                else localizedPluralsApp(R.plurals.requirements_duration_value, duration!!,
-                    duration),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 18.sp
-                ),
-                textAlign = TextAlign.End,
-                modifier = Modifier.weight(1f),
-                color = if (fees != null) backgroundColor else extraColors.whiteInDarkMode
-            )
-        }
-    }
-}
 
 @Composable
 private fun StepItem(

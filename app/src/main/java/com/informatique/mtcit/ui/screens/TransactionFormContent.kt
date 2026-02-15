@@ -37,6 +37,8 @@ import com.informatique.mtcit.ui.viewmodels.BaseTransactionViewModel
 import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 import com.informatique.mtcit.ui.viewmodels.ValidationState
 import com.informatique.mtcit.ui.components.ErrorBanner
+import io.ktor.client.request.forms.formData
+import java.util.Locale
 
 
 /**
@@ -92,6 +94,10 @@ fun TransactionFormContent(
     // ✅ NEW: Check if inspection dialog should be shown
     val showInspectionDialog = uiState.formData["showInspectionDialog"]?.toBoolean() ?: false
     val inspectionMessage = uiState.formData["inspectionMessage"] ?: ""
+    val canContinueToInspection = uiState.formData["canContinueToInspection"]?.toBoolean() ?: false
+
+    // ✅ NEW: Check if payment retry dialog should be shown (paymentStatus = 1)
+    val showPaymentRetryDialog = uiState.formData["showPaymentRetryDialog"]?.toBoolean() ?: false
 
     // ✅ NEW: Check if payment success dialog should be shown
     val showPaymentSuccessDialog = uiState.formData["showPaymentSuccessDialog"]?.toBoolean() ?: false
@@ -100,12 +106,40 @@ fun TransactionFormContent(
     val paymentTimestamp = uiState.formData["paymentTimestamp"] ?: ""
     val paymentFinalTotal = uiState.formData["paymentFinalTotal"] ?: "0.0"
 
+    // ✅ NEW: Show payment retry dialog when payment is in progress
+    if (showPaymentRetryDialog) {
+        PaymentRetryDialog(
+            onContinue = {
+                println("✅ User chose to retry payment")
+                // Clear the retry dialog flag
+                onFieldValueChange("showPaymentRetryDialog", "false")
+                // Trigger payment again (PaymentManager will use paymentStatus from formData)
+                onFieldValueChange("_triggerPaymentRetry", "true")
+            },
+            onClose = {
+                println("❌ User chose to cancel payment retry")
+                // Clear the retry dialog flag
+                onFieldValueChange("showPaymentRetryDialog", "false")
+                // Navigate back
+                navController.popBackStack()
+            }
+        )
+    }
+
     // ✅ NEW: Show inspection dialog when needed
     if (showInspectionDialog) {
         InspectionRequiredDialog(
             message = inspectionMessage,
             text = localizedApp(R.string.done),
             icon = Icons.Default.Done,
+            onContinue = if (canContinueToInspection) {
+                {
+                    // User wants to continue - trigger inspection step injection
+                    println("✅ User clicked Continue - injecting inspection step")
+                    onFieldValueChange("showInspectionDialog", "false")
+                    onFieldValueChange("injectInspectionStep", "true")
+                }
+            } else null,
             onDismiss = {
                 // Clear the dialog flag
                 onFieldValueChange("showInspectionDialog", "false")
@@ -115,8 +149,31 @@ fun TransactionFormContent(
         )
     }
 
+    // ✅ NEW: Show inspection success dialog when inspection is submitted
+    val showInspectionSuccessDialog = uiState.formData["showInspectionSuccessDialog"]?.toBoolean() ?: false
+    val inspectionSuccessMessage = uiState.formData["inspectionSuccessMessage"] ?: ""
+    val inspectionRequestId = uiState.formData["inspectionRequestId"] ?: ""
+
+    if (showInspectionSuccessDialog) {
+        InspectionRequiredDialog(
+            message = "$inspectionSuccessMessage\n\nرقم طلب المعاينة: $inspectionRequestId",
+            text = localizedApp(R.string.done),
+            icon = Icons.Default.Done, // Use Done icon for success
+            onContinue = null, // No continue button - just dismiss
+            onDismiss = {
+                // Clear the dialog flag
+                onFieldValueChange("showInspectionSuccessDialog", "false")
+                // Navigate back to home
+                println("🏠 Inspection success - navigating back to home")
+                navController.popBackStack()
+            }
+        )
+    }
+
     // ✅ NEW: Show payment success dialog when needed
     if (showPaymentSuccessDialog) {
+        val hasAcceptance = uiState.formData["hasAcceptance"]?.toBoolean() ?: true
+
         PaymentSuccessDialog(
             message = paymentSuccessMessage,
             receiptNumber = paymentReceiptId,
@@ -125,9 +182,64 @@ fun TransactionFormContent(
             onDismiss = {
                 // Clear the dialog flag
                 onFieldValueChange("showPaymentSuccessDialog", "false")
+
+                if (hasAcceptance) {
+                    // hasAcceptance = 1: Navigate back to home (user needs to wait for approval)
+                    navController.popBackStack()
+                } else {
+                    // hasAcceptance = 0: Stay in transaction and trigger refresh
+                    // Payment is complete, request should now be ISSUED
+                    // Set flag to show certificate button instead of pay button
+                    onFieldValueChange("paymentCompleted", "true")
+                    onFieldValueChange("_triggerRefresh", System.currentTimeMillis().toString())
+                }
+            }
+        )
+    }
+
+    // ✅ NEW: Show certificate issued dialog for free services or already paid
+    val shouldShowCertificate = uiState.formData["shouldShowCertificate"]?.toBoolean() ?: false
+    val certificateIssued = uiState.formData["certificateIssued"]?.toBoolean() ?: false
+    val certificateUrl = uiState.formData["certificateUrl"] ?: ""
+    val isFreeService = uiState.formData["isFreeService"]?.toBoolean() ?: false
+
+    if (shouldShowCertificate && certificateIssued) {
+        val isArabic = Locale.getDefault().language == "ar"
+        val items = buildList {
+            if (isFreeService) {
+                add(
+                    SuccessDialogItem(
+                        label = if (isArabic) "نوع الخدمة" else "Service Type",
+                        value = if (isArabic) "مجانية" else "Free",
+                        icon = "🎁"
+                    )
+                )
+            }
+            add(
+                SuccessDialogItem(
+                    label = if (isArabic) "حالة الشهادة" else "Certificate Status",
+                    value = if (isArabic) "تم الإصدار" else "Issued",
+                    icon = "✅"
+                )
+            )
+        }
+
+        SuccessDialog(
+            title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
+            items = items,
+            onDismiss = {
+                // Clear the dialog flags
+                onFieldValueChange("shouldShowCertificate", "false")
+                onFieldValueChange("certificateIssued", "false")
                 // Navigate back to home
                 navController.popBackStack()
-            }
+            },
+            onViewCertificate = if (certificateUrl.isNotEmpty()) {
+                {
+                    // Open certificate URL in file viewer
+                    viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
+                }
+            } else null
         )
     }
 
@@ -279,7 +391,8 @@ fun TransactionFormContent(
                 isSubmitting = submissionState is UIState.Loading || isProcessingNext,
                 isReviewStep = isReviewStep,
                 isProcessingStep = uiState.isProcessingStep,
-                currentStepType = uiState.steps.getOrNull(uiState.currentStep)?.stepType // ✅ Pass current step type
+                currentStepType = uiState.steps.getOrNull(uiState.currentStep)?.stepType, // ✅ Pass current step type
+                formData = uiState.formData // ✅ Pass form data for payment status checks
             )
         }
     ) { paddingValues ->
@@ -498,7 +611,8 @@ fun GenericNavigationBottomBar(
     isSubmitting: Boolean = false,
     isReviewStep: Boolean = false, // Add parameter to detect review step
     isProcessingStep: Boolean = false, // ✅ NEW: Loading state for Next button
-    currentStepType: com.informatique.mtcit.business.transactions.shared.StepType? = null // ✅ NEW: Current step type
+    currentStepType: com.informatique.mtcit.business.transactions.shared.StepType? = null, // ✅ NEW: Current step type
+    formData: Map<String, String> = emptyMap() // ✅ NEW: Form data for checking payment status
 ) {
     val extraColors = LocalExtraColors.current
     Card(
@@ -576,8 +690,27 @@ fun GenericNavigationBottomBar(
                     // Show "Pay" on PAYMENT step, "Accept & Send" on review step, or "Next" otherwise
                     when {
                         currentStepType == com.informatique.mtcit.business.transactions.shared.StepType.PAYMENT -> {
-                            // Show "Pay" button for payment step
-                            Text(localizedApp(R.string.pay_button) ,
+                            // ✅ Check if should issue certificate instead of pay
+                            val shouldIssueCertificate = formData["shouldIssueCertificate"]?.toBoolean() ?: false
+                            val isFreeService = formData["isFreeService"]?.toBoolean() ?: false
+                            val paymentAlreadyCompleted = formData["paymentAlreadyCompleted"]?.toBoolean() ?: false
+                            val paymentCompleted = formData["paymentCompleted"]?.toBoolean() ?: false // ✅ NEW: Check if payment just completed
+
+                            val buttonText = when {
+                                shouldIssueCertificate || isFreeService || paymentAlreadyCompleted || paymentCompleted -> {
+                                    // Show "Issue Certificate" for free services, already paid, or just paid
+                                    if (Locale.getDefault().language == "ar")
+                                        "اصدار الشهادة"
+                                    else "Issue Certificate"
+                                }
+                                else -> {
+                                    // Show "Pay" for normal payment flow
+                                    localizedApp(R.string.pay_button)
+                                }
+                            }
+
+                            Text(
+                                text = buttonText,
                                 fontWeight = FontWeight.Normal,
                                 fontSize = 14.sp,
                                 modifier = Modifier.padding(vertical = 4.dp)

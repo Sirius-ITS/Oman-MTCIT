@@ -205,11 +205,50 @@ class PaymentApiService @Inject constructor(
                         val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
 
                         if (statusCode == 200 || statusCode == 201) {
-                            val paymentResponse: PaymentResponse<Long> = json.decodeFromJsonElement(responseJson)
+                            // Check if data is an object (navigation license) or just a Long (other APIs)
+                            val dataElement = responseJson.jsonObject["data"]
+                            var isPaidValue: String? = null // ✅ Track isPaid status
+                            var paymentStatusValue: Int? = null // ✅ Track paymentStatus
+
+                            val receiptId = if (dataElement?.jsonObject != null) {
+                                // Navigation license renewal returns an object
+                                val navData: NavigationLicensePaymentData = json.decodeFromJsonElement(dataElement)
+                                println("✅ Navigation license payment submitted successfully!")
+                                println("   Receipt ID: ${navData.id}")
+                                println("   Idempotency ID: ${navData.idempotencyId}")
+                                println("   Is Paid: ${navData.isPaid}")
+                                isPaidValue = navData.isPaid // ✅ Extract isPaid
+
+                                // ✅ Extract paymentStatus if present
+                                paymentStatusValue = dataElement.jsonObject["paymentStatus"]?.jsonPrimitive?.content?.toIntOrNull()
+                                println("   Payment Status: ${paymentStatusValue ?: "not specified"}")
+
+                                navData.id
+                            } else {
+                                // Other APIs return just a Long
+                                dataElement?.jsonPrimitive?.content?.toLongOrNull()
+                                    ?: throw Exception("Missing payment ID in response")
+                            }
+
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: ""
+                            val timestamp = responseJson.jsonObject["timestamp"]?.jsonPrimitive?.content ?: ""
+
+                            val paymentResponse = PaymentResponse(
+                                message = message,
+                                statusCode = statusCode,
+                                success = true,
+                                timestamp = timestamp,
+                                data = receiptId,
+                                isPaid = isPaidValue, // ✅ Include isPaid in response
+                                paymentStatus = paymentStatusValue // ✅ Include paymentStatus in response
+                            )
+
                             println("✅ Payment submitted successfully!")
                             println("   Receipt ID: ${paymentResponse.data}")
                             println("   Message: ${paymentResponse.message}")
                             println("   Timestamp: ${paymentResponse.timestamp}")
+                            println("   Is Paid: ${paymentResponse.isPaid ?: "not specified"}")
+                            println("   Payment Status: ${paymentResponse.paymentStatus ?: "not specified"}")
                             Result.success(paymentResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
@@ -237,26 +276,43 @@ class PaymentApiService @Inject constructor(
 
     /**
      * Prepare payment redirect HTML
-     * GET /api/v1/online-payment/pay?dto=<base64>
+     * GET /api/v1/prepare-online-payment/prepare-payment?dto=<base64>
      * Returns HTML (text/html) containing auto-submitting form to payment gateway
+     *
+     * ✅ NEW: Added isMobile (required, always "1") and paymentStatus (optional)
      */
     suspend fun preparePaymentRedirect(
         receiptId: Long,
         successUrl: String,
-        canceledUrl: String
+        canceledUrl: String,
+        paymentStatus: Int? = null // ✅ Optional: indicates if payment is in progress (value = 1)
     ): Result<String> {
         return try {
             println("🚀 PaymentApiService: Preparing payment redirect...")
+            println("   Receipt ID: $receiptId")
+            println("   Payment Status: ${paymentStatus ?: "not specified"}")
 
-            // Build DTO JSON
+            // ✅ Build DTO JSON with new fields
             val dtoJson = kotlinx.serialization.json.buildJsonObject {
                 put("receiptId", kotlinx.serialization.json.JsonPrimitive(receiptId))
                 put("successURL", kotlinx.serialization.json.JsonPrimitive(successUrl))
                 put("canceledURL", kotlinx.serialization.json.JsonPrimitive(canceledUrl))
+                put("isMobile", kotlinx.serialization.json.JsonPrimitive("1")) // ✅ Always "1" for mobile
+
+                // ✅ Only include paymentStatus if it exists
+                if (paymentStatus != null) {
+                    put("paymentStatus", kotlinx.serialization.json.JsonPrimitive(paymentStatus))
+                }
             }.toString()
 
+            println("📤 DTO JSON: $dtoJson")
+
             val base64Dto = Base64.encodeToString(dtoJson.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-            val endpoint = "online-payment/pay?dto=$base64Dto"
+
+            // ✅ NEW endpoint
+            val endpoint = "prepare-online-payment/prepare-payment?dto=$base64Dto"
+
+            println("📡 Calling endpoint: $endpoint")
 
             // Use AppRepository.fetchRawString to get raw HTML
             val htmlResult = repo.fetchRawString(endpoint)

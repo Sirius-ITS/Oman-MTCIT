@@ -218,29 +218,6 @@ class CancelRegistrationStrategy @Inject constructor(
             )
         )
 
-        // OLD Step 4: Cancellation Reason
-        /*steps.add(
-            StepData(
-                titleRes = R.string.cancellation_reason,
-                descriptionRes = R.string.cancellation_reason_desc,
-                fields = listOf(
-                    FormField.DropDown(
-                        id = "cancellationReason",
-                        labelRes = R.string.reason_for_cancellation,
-                        mandatory = true,
-                        options = deletionReasonOptions // ✅ Use dynamic options from API
-                    ),
-                    FormField.FileUpload(
-                        id = "reasonProofDocument",
-                        labelRes = R.string.reason_proof_document,
-                        allowedTypes = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
-                        maxSizeMB = 5,
-                        mandatory = true
-                    )
-                )
-            )
-        )*/
-
         // ✅ Step 4: Cancellation Reason + Documents (dynamic)
         steps.add(
             SharedSteps.createCancellationReasonStep(
@@ -260,6 +237,39 @@ class CancelRegistrationStrategy @Inject constructor(
         }
 
         return steps
+    }
+
+    /**
+     * ✅ Called when a step is opened - triggers payment API call when payment step is opened
+     */
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed at this time")
+                }
+            }
+        }
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
@@ -366,6 +376,14 @@ class CancelRegistrationStrategy @Inject constructor(
                         deletionRequestId = response.data?.id
                         println("💾 STORED deletionRequestId = $deletionRequestId")
 
+                        // ✅ CRITICAL FIX: Update the requestId that will be used in Review/Payment steps
+                        if (deletionRequestId != null) {
+                            accumulatedFormData["requestId"] = deletionRequestId.toString()
+                            accumulatedFormData["createdRequestId"] = deletionRequestId.toString()
+                            accumulatedFormData["deletionRequestId"] = deletionRequestId.toString()
+                            println("💾 UPDATED accumulatedFormData['requestId'] = $deletionRequestId (will be used for Review/Payment)")
+                        }
+
                         // Store success flag
                         accumulatedFormData["submissionSuccess"] = "true"
                         lastApiError = null
@@ -398,13 +416,18 @@ class CancelRegistrationStrategy @Inject constructor(
         // ✅ NEW: Handle REVIEW step using ReviewManager
         if (stepType == StepType.REVIEW) {
             println("📋 Handling Review Step using ReviewManager")
+            println("🔍 DEBUG: accumulatedFormData['requestId'] = ${accumulatedFormData["requestId"]}")
+            println("🔍 DEBUG: deletionRequestId = $deletionRequestId")
 
             val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
             if (requestIdInt == null) {
                 println("❌ No requestId available for review step")
+                println("❌ accumulatedFormData keys: ${accumulatedFormData.keys}")
                 lastApiError = "لم يتم العثور على رقم الطلب"
                 return -1
             }
+
+            println("✅ Using requestId: $requestIdInt for send-request API call")
 
             try {
                 val endpoint = transactionContext.sendRequestEndpoint
@@ -426,9 +449,11 @@ class CancelRegistrationStrategy @Inject constructor(
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
                         println("✅ Review step processed successfully!")
                         println("   Message: ${result.message}")
+                        println("   Has Acceptance: ${result.hasAcceptance}")
 
                         // Store response in formData
                         accumulatedFormData["sendRequestMessage"] = result.message
+                        accumulatedFormData["hasAcceptance"] = result.hasAcceptance.toString()
 
                         // ✅ Extract request number
                         val requestNumber = result.additionalData?.get("requestNumber")?.toString()
@@ -440,8 +465,14 @@ class CancelRegistrationStrategy @Inject constructor(
                         val isNewRequest = accumulatedFormData["requestId"] == null ||
                                           accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
-                        if (isNewRequest) {
-                            println("🎉 NEW cancel registration request submitted - showing success dialog and stopping")
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - hasAcceptance (from API): ${result.hasAcceptance}")
+
+                        // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                        if (isNewRequest && result.hasAcceptance) {
+                            println("🎉 NEW cancel registration request submitted with hasAcceptance=true - showing success dialog and stopping")
+                            println("   User must continue from profile screen")
 
                             // Set success flags for ViewModel to show dialog
                             accumulatedFormData["requestSubmitted"] = "true"
@@ -450,10 +481,13 @@ class CancelRegistrationStrategy @Inject constructor(
 
                             // Return -2 to indicate: success but show dialog and stop
                             return -2
+                        } else if (isNewRequest && !result.hasAcceptance) {
+                            println("✅ NEW cancel registration request submitted with hasAcceptance=false - continuing to next steps")
+                            println("   Transaction will continue to payment/next steps")
+                            // Continue normally - don't return, let the flow proceed
+                        } else {
+                            println("✅ Resumed request - cancel registration request submitted successfully")
                         }
-
-                        // For resumed requests, continue normal flow
-                        println("✅ Cancel registration request submitted successfully (resumed)")
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${result.message}")

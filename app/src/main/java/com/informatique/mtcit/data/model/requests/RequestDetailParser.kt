@@ -52,11 +52,22 @@ object RequestDetailParser {
 
         // Extract request type info (or use known type ID if not in response)
         val requestType = actualDataObject["requestType"]?.jsonObject?.let { rt ->
+            val typeId = rt["id"]?.jsonPrimitive?.intOrNull ?: 0
+            val nameAr = rt["nameAr"]?.jsonPrimitive?.contentOrNull
+            val nameEn = rt["nameEn"]?.jsonPrimitive?.contentOrNull
+
+            // ✅ If API only provides ID without names, use fallback from getRequestTypeName
+            val name = if (nameAr == null && nameEn == null) {
+                getRequestTypeName(typeId)
+            } else {
+                getLocalizedValue(rt, "name")
+            }
+
             RequestTypeInfo(
-                id = rt["id"]?.jsonPrimitive?.intOrNull ?: 0,
-                name = getLocalizedValue(rt, "name"),
-                nameAr = rt["nameAr"]?.jsonPrimitive?.contentOrNull,
-                nameEn = rt["nameEn"]?.jsonPrimitive?.contentOrNull
+                id = typeId,
+                name = name,
+                nameAr = nameAr,
+                nameEn = nameEn
             )
         } ?: if (knownRequestTypeId != null) {
             // ✅ Use known request type ID when API doesn't provide it (e.g., inspection requests)
@@ -72,11 +83,22 @@ object RequestDetailParser {
 
         // Extract status info (handle both "status" and "requestStatus" keys)
         val status = (actualDataObject["status"] ?: actualDataObject["requestStatus"])?.jsonObject?.let { st ->
+            val statusId = st["id"]?.jsonPrimitive?.intOrNull ?: 0
+            val nameAr = st["nameAr"]?.jsonPrimitive?.contentOrNull
+            val nameEn = st["nameEn"]?.jsonPrimitive?.contentOrNull
+
+            // ✅ If API only provides ID without names, use fallback from getStatusName
+            val name = if (nameAr == null && nameEn == null) {
+                getStatusName(statusId)
+            } else {
+                getLocalizedValue(st, "name")
+            }
+
             RequestStatusInfo(
-                id = st["id"]?.jsonPrimitive?.intOrNull ?: 0,
-                name = getLocalizedValue(st, "name"),
-                nameAr = st["nameAr"]?.jsonPrimitive?.contentOrNull,
-                nameEn = st["nameEn"]?.jsonPrimitive?.contentOrNull
+                id = statusId,
+                name = name,
+                nameAr = nameAr,
+                nameEn = nameEn
             )
         } ?: RequestStatusInfo(0, "Unknown", null, null)
 
@@ -249,6 +271,32 @@ object RequestDetailParser {
             7 -> if (isArabic) "إلغاء تسجيل دائم" else "Cancel Permanent Registration"
             8 -> if (isArabic) "طلب معاينة" else "Request for Inspection"
             else -> if (isArabic) "نوع غير معروف" else "Unknown Type"
+        }
+    }
+
+    /**
+     * Get status name from ID
+     */
+    private fun getStatusName(statusId: Int): String {
+        val isArabic = Locale.getDefault().language == "ar"
+        return when (statusId) {
+            1 -> if (isArabic) "مسودة" else "Draft"
+            2 -> if (isArabic) "مرفوض" else "Rejected"
+            3 -> if (isArabic) "معلق" else "Pending"
+            4 -> if (isArabic) "تم الإرسال" else "Submitted"
+            5 -> if (isArabic) "قيد الانتظار" else "Waiting"
+            6 -> if (isArabic) "مجدول" else "Scheduled"
+            7 -> if (isArabic) "مقبول" else "Accepted"
+            8 -> if (isArabic) "قيد التنفيذ" else "In Progress"
+            9 -> if (isArabic) "مكتمل" else "Completed"
+            10 -> if (isArabic) "ملغي" else "Cancelled"
+            11 -> if (isArabic) "منتهي" else "Expired"
+            12 -> if (isArabic) "موقوف" else "Suspended"
+            13 -> if (isArabic) "جاهز للإصدار" else "Ready for Issuance"
+            14 -> if (isArabic) "تم الإصدار" else "Issued"
+            15 -> if (isArabic) "قيد المراجعة" else "Under Review"
+            16 -> if (isArabic) "يتطلب معلومات إضافية" else "Requires Additional Information"
+            else -> if (isArabic) "غير معروف" else "Unknown"
         }
     }
 }

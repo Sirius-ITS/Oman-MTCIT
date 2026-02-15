@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
@@ -28,6 +29,21 @@ data class CertificateData(
 )
 
 /**
+ * Mapping of request type IDs to certificate type IDs
+ * ✅ Based on TransactionType.typeId and actual API certificate types
+ */
+private val REQUEST_TYPE_TO_CERTIFICATE_TYPE = mapOf(
+    1 to 1,  // Temp Registration (typeId=1) -> Provisional registration certificate (certificationType.id=1)
+    2 to 2,  // Perm Registration (typeId=2) -> Permanent registration certificate (certificationType.id=2)
+    3 to 3,  // Issue Navigation Permit (typeId=3) -> Navigation Permit Certificate (certificationType.id=3)
+    4 to 6,  // Mortgage Certificate (typeId=4) -> شهادة الرهن (certificationType.id=6) ✅
+    5 to null, // Release Mortgage (typeId=5) -> NO certificate issued (just releases existing mortgage)
+    6 to 5,  // Renew Navigation Permit (typeId=6) -> Navigation Renew Permit Certificate (certificationType.id=5) ✅
+    7 to 7,  // Cancel Permanent Registration (typeId=7) -> Cancellation Certificate (certificationType.id=7)
+    8 to null  // Request Inspection (typeId=8) -> NO certificate issued
+)
+
+/**
  * ViewModel for Request Detail Screen
  * Fetches and manages request detail data dynamically based on request type
  */
@@ -40,6 +56,10 @@ class RequestDetailViewModel @Inject constructor(
     private val _requestDetail = MutableStateFlow<RequestDetailUiModel?>(null)
     val requestDetail: StateFlow<RequestDetailUiModel?> = _requestDetail.asStateFlow()
 
+    // ✅ Store raw response to access shipCertifications and other nested data
+    private val _rawResponse = MutableStateFlow<com.informatique.mtcit.data.model.requests.RequestDetailResponse?>(null)
+    val rawResponse: StateFlow<com.informatique.mtcit.data.model.requests.RequestDetailResponse?> = _rawResponse.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -50,9 +70,17 @@ class RequestDetailViewModel @Inject constructor(
     private val _isIssuingCertificate = MutableStateFlow(false)
     val isIssuingCertificate: StateFlow<Boolean> = _isIssuingCertificate.asStateFlow()
 
+    // ✅ NEW: Track if we're in "view mode" to prevent showing issuance dialog
+    private val _isViewingCertificate = MutableStateFlow(false)
+    val isViewingCertificate: StateFlow<Boolean> = _isViewingCertificate.asStateFlow()
+
     // ✅ NEW: Certificate data (replaces issuanceSuccess string)
     private val _certificateData = MutableStateFlow<CertificateData?>(null)
     val certificateData: StateFlow<CertificateData?> = _certificateData.asStateFlow()
+
+    // ✅ NEW: Certificate URL for opening in external browser
+    private val _certificateUrl = MutableStateFlow<String?>(null)
+    val certificateUrl: StateFlow<String?> = _certificateUrl.asStateFlow()
 
     // ✅ NEW: Checklist items state
     private val _checklistItems = MutableStateFlow<List<com.informatique.mtcit.data.model.ChecklistItem>>(emptyList())
@@ -84,11 +112,47 @@ class RequestDetailViewModel @Inject constructor(
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
+    // ✅ NEW: File viewer dialog state
+    data class FileViewerState(
+        val isOpen: Boolean = false,
+        val fileUri: String = "",
+        val fileName: String = "",
+        val mimeType: String = ""
+    )
+
+    private val _fileViewerState = MutableStateFlow(FileViewerState())
+    val fileViewerState: StateFlow<FileViewerState> = _fileViewerState.asStateFlow()
+
     /**
      * ✅ Clear toast message after showing
      */
     fun clearToastMessage() {
         _toastMessage.value = null
+    }
+
+    /**
+     * ✅ Open file viewer dialog with URL
+     */
+    fun openFileViewerDialog(url: String, fileName: String, mimeType: String) {
+        println("📂 RequestDetailViewModel: Opening file viewer")
+        println("   URL: $url")
+        println("   File: $fileName")
+        println("   Type: $mimeType")
+        _fileViewerState.value = FileViewerState(
+            isOpen = true,
+            fileUri = url,
+            fileName = fileName,
+            mimeType = mimeType
+        )
+    }
+
+    /**
+     * ✅ Close file viewer dialog
+     */
+    fun closeFileViewerDialog() {
+        println("📂 RequestDetailViewModel: Closing file viewer")
+        _fileViewerState.value = FileViewerState()
+        _isViewingCertificate.value = false  // ✅ Reset viewing flag when file viewer closes
     }
 
     /**
@@ -165,6 +229,9 @@ class RequestDetailViewModel @Inject constructor(
                     onSuccess = { response ->
                         println("✅ RequestDetailViewModel: Detail fetched successfully")
 
+                        // ✅ Store raw response for later use (to access shipCertifications)
+                        _rawResponse.value = response
+
                         // Parse dynamic JSON to UI model (pass known requestTypeId for inspection requests)
                         val uiModel = RequestDetailParser.parseToUiModel(response, requestTypeId)
                         _requestDetail.value = uiModel
@@ -227,16 +294,79 @@ class RequestDetailViewModel @Inject constructor(
 
     /**
      * ✅ NEW: Issue certificate for a request
-     * Called when isPaid == 1 and status is APPROVED
+     * Called when isPaid == 1 and status is APPROVED or ISSUED
      */
-    fun issueCertificate(requestId: Int, requestTypeId: Int) {
+    fun issueCertificate(requestId: Int, requestTypeId: Int, statusId: Int = 0) {
+        println("════════════════════════════════════════════════════════════")
+        println("🚀 issueCertificate() CALLED")
+        println("   requestId: $requestId")
+        println("   requestTypeId: $requestTypeId")
+        println("   statusId: $statusId")
+        println("════════════════════════════════════════════════════════════")
+
         viewModelScope.launch {
             try {
                 _isIssuingCertificate.value = true
                 _appError.value = null
                 _certificateData.value = null
+                _isViewingCertificate.value = false  // ✅ Reset viewing flag (we're issuing, not just viewing)
+                println("✅ Set _isIssuingCertificate = true")
 
-                println("🔍 RequestDetailViewModel: Issuing certificate for requestId=$requestId, typeId=$requestTypeId")
+                println("🔍 RequestDetailViewModel: Issuing/Showing certificate for requestId=$requestId, typeId=$requestTypeId, statusId=$statusId")
+
+                // ✅ Extract ship certifications from stored raw response
+                println("📦 Calling extractShipCertifications()...")
+                val shipCertifications = extractShipCertifications()
+                println("📦 extractShipCertifications() returned: ${shipCertifications?.size ?: 0} certificates")
+
+                // ✅ Check if certificate is already issued (statusId == 14)
+                if (statusId == 14 && shipCertifications != null) {
+                    println("✅ Certificate already ISSUED (statusId==14) - fetching existing certificate")
+
+                    // Map requestTypeId to certificationType.id
+                    val certificateTypeId = mapRequestTypeToCertificateType(requestTypeId)
+                    println("🔍 Mapped requestTypeId=$requestTypeId to certificateTypeId=$certificateTypeId")
+
+                    // Find the certificate number from shipCertifications
+                    println("🔍 Calling findCertificateNumber() with requestId=$requestId...")
+                    val certificationNumber = findCertificateNumber(shipCertifications, certificateTypeId, requestId)
+                    println("🔍 findCertificateNumber() returned: $certificationNumber")
+
+                    if (certificationNumber == null) {
+                        println("❌ Could not find certificate number for type: $certificateTypeId, requestId: $requestId")
+                        _appError.value = AppError.Unknown("لم يتم العثور على الشهادة")
+                        _isIssuingCertificate.value = false
+                        return@launch
+                    }
+
+                    println("✅ Found certificate number: $certificationNumber")
+
+                    // Fetch the certificate from API
+                    println("📡 Calling getCertificate API with certificationNumber: $certificationNumber")
+                    val result = userRequestsRepository.getCertificate(certificationNumber)
+                    println("📡 getCertificate API returned")
+
+                    result.fold(
+                        onSuccess = { response ->
+                            println("✅ Certificate fetched successfully")
+                            println("📄 Response: ${response.message}")
+                            parseCertificateResponse(response)
+                        },
+                        onFailure = { error ->
+                            println("❌ Failed to fetch certificate: ${error.message}")
+                            error.printStackTrace()
+                            _appError.value = AppError.Unknown(error.message ?: "فشل في جلب الشهادة")
+                        }
+                    )
+
+                    _isIssuingCertificate.value = false
+                    println("✅ Set _isIssuingCertificate = false")
+                    println("════════════════════════════════════════════════════════════")
+                    return@launch
+                }
+
+                // ✅ Original flow: Issue new certificate
+                println("🔍 Issuing new certificate (statusId != 14 or no shipCertifications)")
 
                 // Get issuance endpoint from mapping
                 val issuanceEndpoint = RequestTypeEndpoint.getIssuanceEndpoint(requestTypeId, requestId)
@@ -259,34 +389,10 @@ class RequestDetailViewModel @Inject constructor(
                     onSuccess = { response ->
                         println("✅ RequestDetailViewModel: Certificate issued successfully")
                         println("📄 Response message: ${response.message}")
+                        parseCertificateResponse(response)
 
-                        // ✅ Parse certificate data from response
-                        try {
-                            val dataObject = response.data.jsonObject
-                            val certificationNumber = dataObject["certificationNumber"]?.jsonPrimitive?.content ?: ""
-                            val issuedDate = dataObject["issuedDate"]?.jsonPrimitive?.content ?: ""
-                            val expiryDate = dataObject["expiryDate"]?.jsonPrimitive?.content
-                            val certificationQrCode = dataObject["certificationQrCode"]?.jsonPrimitive?.content ?: ""
-
-                            println("✅ Parsed certificate data:")
-                            println("   - Certificate Number: $certificationNumber")
-                            println("   - Issued Date: $issuedDate")
-                            println("   - Expiry Date: $expiryDate")
-                            println("   - QR Code length: ${certificationQrCode.length}")
-
-                            _certificateData.value = CertificateData(
-                                certificationNumber = certificationNumber,
-                                issuedDate = issuedDate,
-                                expiryDate = expiryDate,
-                                certificationQrCode = certificationQrCode
-                            )
-
-                            // Optionally refresh the request detail to update status
-                            fetchRequestDetail(requestId, requestTypeId)
-                        } catch (e: Exception) {
-                            println("❌ Error parsing certificate data: ${e.message}")
-                            _appError.value = AppError.Unknown("خطأ في معالجة بيانات الشهادة")
-                        }
+                        // Optionally refresh the request detail to update status
+                        fetchRequestDetail(requestId, requestTypeId)
                     },
                     onFailure = { error ->
                         println("❌ RequestDetailViewModel: Error issuing certificate: ${error.message}")
@@ -329,10 +435,151 @@ class RequestDetailViewModel @Inject constructor(
     }
 
     /**
+     * ✅ Extract ship certifications from stored raw response
+     */
+    private fun extractShipCertifications(): List<kotlinx.serialization.json.JsonObject>? {
+        return try {
+            val response = _rawResponse.value ?: return null
+            val dataObject = response.data.jsonObject
+            val shipInfo = dataObject["shipInfo"]?.jsonObject ?: return null
+            val shipCerts = shipInfo["shipCertifications"]?.jsonArray ?: return null
+
+            shipCerts.mapNotNull { it as? kotlinx.serialization.json.JsonObject }
+        } catch (e: Exception) {
+            println("⚠️ Error extracting shipCertifications: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * ✅ Map requestTypeId to certificationType.id
+     * Based on the certificate type mapping:
+     * - Temp Registration (typeId=1) → Certificate Type 1
+     * - Perm Registration (typeId=2) → Certificate Type 2
+     * - Issue Navigation (typeId=3) → Certificate Type 3
+     * - Renew Navigation (typeId=6) → Certificate Type 5
+     * - Mortgage (typeId=4) → Certificate Type 6 (شهادة الرهن)
+     * - Release Mortgage (typeId=5) → Certificate Type (TBD)
+     * - Cancel Registration (typeId=7) → Certificate Type (TBD)
+     */
+    private fun mapRequestTypeToCertificateType(requestTypeId: Int): Int {
+        return when (requestTypeId) {
+            1 -> 1  // Temp Registration → شهادة التسجيل المؤقتة
+            2 -> 2  // Perm Registration → شهادة التسجيل الدائمة
+            3 -> 3  // Issue Navigation → شهادة تصريح ملاحي
+            6 -> 5  // Renew Navigation → شهادة تجديد تصريح ملاحي
+            4 -> 6  // Mortgage → شهادة رهن (Certificate Type 6)
+            5 -> 7  // Release Mortgage → شهادة فك رهن (assuming type 7)
+            7 -> 8  // Cancel Registration → شهادة إلغاء تسجيل (assuming type 8)
+            8 -> 9  // Inspection → شهادة معاينة (assuming type 9)
+            else -> requestTypeId  // Fallback to same ID
+        }
+    }
+
+    /**
+     * ✅ Find certificate number from shipCertifications array
+     * First tries to match by certificateTypeId, then falls back to matching by requestId
+     */
+    private fun findCertificateNumber(shipCertifications: List<Any>, certificateTypeId: Int, requestId: Int? = null): String? {
+        try {
+            // First pass: Try to find by certificationType.id
+            for (cert in shipCertifications) {
+                // Parse as JsonObject
+                val certJson = when (cert) {
+                    is kotlinx.serialization.json.JsonObject -> cert
+                    else -> continue
+                }
+
+                // Get certificationType
+                val certificationType = certJson["certificationType"]?.jsonObject
+                val typeId = certificationType?.get("id")?.jsonPrimitive?.content?.toIntOrNull()
+
+                println("🔍 Checking certificate: typeId=$typeId, looking for $certificateTypeId")
+
+                if (typeId == certificateTypeId) {
+                    val certNumber = certJson["certificationNumber"]?.jsonPrimitive?.content
+                    println("✅ Found matching certificate by type: $certNumber")
+                    return certNumber
+                }
+            }
+
+            // Second pass: If requestId is provided, try to find by requestId
+            if (requestId != null) {
+                println("⚠️ Certificate not found by type, trying to match by requestId=$requestId")
+                for (cert in shipCertifications) {
+                    val certJson = when (cert) {
+                        is kotlinx.serialization.json.JsonObject -> cert
+                        else -> continue
+                    }
+
+                    val certRequestId = certJson["requestId"]?.jsonPrimitive?.content?.toIntOrNull()
+                    println("🔍 Checking certificate: requestId=$certRequestId")
+
+                    if (certRequestId == requestId) {
+                        val certNumber = certJson["certificationNumber"]?.jsonPrimitive?.content
+                        println("✅ Found matching certificate by requestId: $certNumber")
+                        return certNumber
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Error finding certificate number: ${e.message}")
+        }
+        return null
+    }
+
+    /**
+     * ✅ Parse certificate response (common for both issuance and fetching)
+     */
+    private fun parseCertificateResponse(response: com.informatique.mtcit.data.model.requests.RequestDetailResponse) {
+        try {
+            val dataObject = response.data.jsonObject
+            val certificationNumber = dataObject["certificationNumber"]?.jsonPrimitive?.content ?: ""
+            val issuedDate = dataObject["issuedDate"]?.jsonPrimitive?.content ?: ""
+            val expiryDate = dataObject["expiryDate"]?.jsonPrimitive?.content
+            val certificationQrCode = dataObject["certificationQrCode"]?.jsonPrimitive?.content ?: ""
+
+            println("✅ Parsed certificate data:")
+            println("   - Certificate Number: $certificationNumber")
+            println("   - Issued Date: $issuedDate")
+            println("   - Expiry Date: $expiryDate")
+            println("   - QR Code length: ${certificationQrCode.length}")
+
+            _certificateData.value = CertificateData(
+                certificationNumber = certificationNumber,
+                issuedDate = issuedDate,
+                expiryDate = expiryDate,
+                certificationQrCode = certificationQrCode
+            )
+        } catch (e: Exception) {
+            println("❌ Error parsing certificate data: ${e.message}")
+            _appError.value = AppError.Unknown("خطأ في معالجة بيانات الشهادة")
+        }
+    }
+
+    /**
      * Clear certificate data (e.g., when dialog is dismissed)
      */
     fun clearCertificateData() {
         _certificateData.value = null
+    }
+
+    /**
+     * ✅ DEPRECATED: QR decoding is no longer needed
+     * Certificate URLs are now constructed directly based on transaction type
+     */
+    @Deprecated("No longer needed - certificate URLs are constructed directly")
+    fun decodeQrCode(qrCodeBase64: String): String? {
+        println("⚠️ decodeQrCode is deprecated - URLs are now constructed directly")
+        return null
+    }
+
+    /**
+     * ✅ NEW: Construct certificate viewing URL from certification number
+     * This allows viewing the certificate in a webview without decoding QR code
+     */
+    fun getCertificateViewUrl(certificationNumber: String): String {
+        return "https://omanapi.isfpegypt.com/api/v1/certificate/$certificationNumber"
     }
 
     /**
@@ -762,6 +1009,197 @@ class RequestDetailViewModel @Inject constructor(
                 _toastMessage.value = "❌ ${e.message ?: "حدث خطأ غير متوقع"}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ NEW: Get certificate number for the current request based on status and request type
+     * First tries to match by certificationType.id, then falls back to requestId matching
+     */
+    private fun getCertificationNumber(requestTypeId: Int, certificates: List<kotlinx.serialization.json.JsonObject>?, requestId: Int? = null): String? {
+        if (certificates == null) return null
+
+        // Map request type ID to certification type ID
+        val certificationTypeId = REQUEST_TYPE_TO_CERTIFICATE_TYPE[requestTypeId]
+
+        if (certificationTypeId == null) {
+            println("⚠️ No certificate type mapping for request type ID: $requestTypeId")
+
+            // Fallback: Try to find by requestId
+            if (requestId != null) {
+                println("🔍 Trying to find certificate by requestId: $requestId")
+                val matchingCertificate = certificates.find { cert ->
+                    val certRequestId = cert["requestId"]?.jsonPrimitive?.content?.toIntOrNull()
+                    certRequestId == requestId
+                }
+
+                val certNumber = matchingCertificate?.get("certificationNumber")?.jsonPrimitive?.content
+                if (certNumber != null) {
+                    println("✅ Found certificate by requestId: $certNumber")
+                } else {
+                    println("❌ No certificate found for requestId: $requestId")
+                }
+                return certNumber
+            }
+
+            return null
+        }
+
+        println("🔍 Looking for certificate with type ID: $certificationTypeId")
+
+        // Find certificate with matching certification type ID
+        val matchingCertificate = certificates.find { cert ->
+            val certType = cert["certificationType"]?.jsonObject
+            val typeId = certType?.get("id")?.jsonPrimitive?.content?.toIntOrNull()
+            typeId == certificationTypeId
+        }
+
+        val certNumber = matchingCertificate?.get("certificationNumber")?.jsonPrimitive?.content
+
+        if (certNumber != null) {
+            println("✅ Found certificate by type: $certNumber")
+        } else {
+            println("⚠️ No certificate found for type ID: $certificationTypeId")
+
+            // Fallback: Try to find by requestId
+            if (requestId != null) {
+                println("🔍 Trying fallback: find by requestId: $requestId")
+                val fallbackCertificate = certificates.find { cert ->
+                    val certRequestId = cert["requestId"]?.jsonPrimitive?.content?.toIntOrNull()
+                    certRequestId == requestId
+                }
+
+                val fallbackCertNumber = fallbackCertificate?.get("certificationNumber")?.jsonPrimitive?.content
+                if (fallbackCertNumber != null) {
+                    println("✅ Found certificate by requestId (fallback): $fallbackCertNumber")
+                    return fallbackCertNumber
+                } else {
+                    println("❌ No certificate found for requestId: $requestId")
+                }
+            }
+        }
+
+        return certNumber
+    }
+
+    /**
+     * ✅ View certificate for already issued requests
+     * Constructs the certificate URL based on transaction type
+     */
+    fun viewCertificate(requestTypeId: Int) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _isViewingCertificate.value = true  // ✅ Set viewing flag
+                println("🔘 viewCertificate called for requestTypeId: $requestTypeId")
+
+                val rawResponse = _rawResponse.value
+                if (rawResponse == null) {
+                    println("❌ No raw response available")
+                    _toastMessage.value = "❌ لا توجد تفاصيل للطلب"
+                    _isLoading.value = false
+                    _isViewingCertificate.value = false
+                    return@launch
+                }
+
+                // ✅ Get requestId from request detail
+                val requestId = _requestDetail.value?.requestId
+                if (requestId == null) {
+                    println("❌ No request ID available")
+                    _toastMessage.value = "❌ معرف الطلب غير متاح"
+                    _isLoading.value = false
+                    _isViewingCertificate.value = false
+                    return@launch
+                }
+
+                // Extract shipCertifications from JsonElement
+                val shipCertifications = try {
+                    val dataObject = rawResponse.data.jsonObject
+                    val shipInfoElement = dataObject["shipInfo"]
+
+                    if (shipInfoElement != null) {
+                        val shipInfo = shipInfoElement.jsonObject
+                        val shipCertsArray = shipInfo["shipCertifications"]?.jsonArray
+
+                        shipCertsArray?.map { it.jsonObject }
+                    } else {
+                        println("⚠️ No shipInfo in response")
+                        null
+                    }
+                } catch (e: Exception) {
+                    println("⚠️ Error extracting shipCertifications: ${e.message}")
+                    e.printStackTrace()
+                    null
+                }
+
+                // Get certificate number based on request type
+                val certificationNumber = getCertificationNumber(requestTypeId, shipCertifications, requestId)
+
+                if (certificationNumber != null) {
+                    println("✅ Found certificate number: $certificationNumber")
+
+                    // ✅ Construct certificate URL based on transaction type
+                    val certificateUrl = getCertificateUrl(requestTypeId, certificationNumber, requestId)
+
+                    if (certificateUrl != null) {
+                        println("✅ Certificate URL constructed: $certificateUrl")
+
+                        // Open file viewer with the certificate URL
+                        _fileViewerState.value = FileViewerState(
+                            fileUri = certificateUrl,
+                            fileName = "Certificate_$certificationNumber.html",
+                            mimeType = "text/html",
+                            isOpen = true
+                        )
+
+                        println("📂 RequestDetailViewModel: Opening file viewer")
+                        println("   URL: $certificateUrl")
+                        println("   File: Certificate_$certificationNumber.html")
+                        println("   Type: text/html")
+
+                        _isLoading.value = false
+                        // ✅ Keep viewing flag true until file viewer is closed
+                    } else {
+                        println("❌ No certificate URL mapping for request type: $requestTypeId")
+                        _toastMessage.value = "❌ لا يمكن عرض الشهادة لهذا النوع من الطلبات"
+                        _isLoading.value = false
+                        _isViewingCertificate.value = false
+                    }
+                } else {
+                    println("❌ No certificate found for request type: $requestTypeId")
+                    _toastMessage.value = "❌ لا توجد شهادة لهذا الطلب"
+                    _isLoading.value = false
+                    _isViewingCertificate.value = false
+                }
+            } catch (e: Exception) {
+                println("❌ Error viewing certificate: ${e.message}")
+                e.printStackTrace()
+                _toastMessage.value = "❌ حدث خطأ أثناء عرض الشهادة"
+                _isLoading.value = false
+                _isViewingCertificate.value = false
+            }
+        }
+    }
+
+    /**
+     * ✅ Get certificate URL based on transaction type
+     */
+    private fun getCertificateUrl(requestTypeId: Int, certificationNumber: String, requestId: Int): String? {
+        val baseUrl = "https://oman.isfpegypt.com/services"
+
+        return when (requestTypeId) {
+            1 -> "$baseUrl/temporary-registration/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Temp Registration
+            2 -> "$baseUrl/permanent-registration/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Perm Registration
+            3 -> "$baseUrl/navigation-license/license-certificate?certificateNumber=$certificationNumber&requestId=$requestId" // Issue Navigation License
+            4 -> "$baseUrl/mortgage-certificate/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Mortgage Certificate
+            5 -> "$baseUrl/mortgage-redemption/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Release Mortgage
+            6 -> "$baseUrl/navigation-license-renewal/renewal-license-certificate?certificateNumber=$certificationNumber&requestId=$requestId" // Renew Navigation License
+            7 -> "$baseUrl/permanent-registration-cancellation/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Cancel Registration
+            8 -> null // Request Inspection - No certificate issuance
+            else -> {
+                println("⚠️ Unknown request type ID: $requestTypeId")
+                null
             }
         }
     }

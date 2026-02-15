@@ -119,6 +119,21 @@ class UserRequestsRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getCertificate(
+        certificationNumber: String
+    ): Result<RequestDetailResponse> = withContext(Dispatchers.IO) {
+        try {
+            println("📦 UserRequestsRepository: Fetching certificate: $certificationNumber")
+
+            requestsApiService.getCertificate(
+                certificationNumber = certificationNumber
+            )
+        } catch (e: Exception) {
+            println("❌ UserRequestsRepository: Error fetching certificate: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
     override suspend fun refreshRequests() {
         // Can implement cache clearing here if needed in the future
         println("🔄 UserRequestsRepository: Refresh requests (cache clear if implemented)")

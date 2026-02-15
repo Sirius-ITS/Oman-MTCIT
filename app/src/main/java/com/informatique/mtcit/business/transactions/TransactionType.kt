@@ -68,7 +68,7 @@ enum class TransactionType(
             createEndpoint = "deletion-requests/cancel",
             updateStatusEndpoint = "deletion-requests/{requestId}/update-status",
             sendRequestEndpoint = "deletion-requests/{requestId}/send-request",
-            sendRequestPostOrPut = "PUT",
+            sendRequestPostOrPut = "POST",
             getRequestEndpoint = "deletion-requests/{requestId}",
             deleteRequestEndpoint = "deletion-requests/{requestId}/delete",
             paymentReceiptEndpoint = "deletion-requests/payment",
@@ -79,7 +79,7 @@ enum class TransactionType(
     MORTGAGE_CERTIFICATE(
         typeId = 4,
         context = TransactionContext(
-            inspectionPreviewBaseContext = "mortgage-requests",
+            inspectionPreviewBaseContext = "mortgage-request",
             displayName = "طلب شهادة رهن",
             createEndpoint = "mortgage-request/create-mortgage-request",
             updateStatusEndpoint = "mortgage-request/{requestId}/update-status",

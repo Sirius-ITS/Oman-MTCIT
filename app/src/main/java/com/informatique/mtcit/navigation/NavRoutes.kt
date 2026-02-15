@@ -115,4 +115,11 @@ sealed class NavRoutes(val route: String) {
 
     // OAuth WebView Route
     data object OAuthWebViewRoute : NavRoutes("oauth_webview")
+
+    // ✅ Certificate WebView Route - for displaying certificates
+    data object CertificateWebViewRoute : NavRoutes("certificate_webview/{title}/{url}") {
+        fun createRoute(title: String, url: String): String {
+            return "certificate_webview/${Uri.encode(title)}/${Uri.encode(url)}"
+        }
+    }
 }

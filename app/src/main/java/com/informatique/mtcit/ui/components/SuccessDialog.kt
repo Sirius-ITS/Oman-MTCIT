@@ -1,6 +1,7 @@
 package com.informatique.mtcit.ui.components
 
 import android.graphics.BitmapFactory
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -36,7 +37,8 @@ fun SuccessDialog(
     title: String,
     items: List<SuccessDialogItem>,
     qrCode: String? = null, // Base64 encoded PNG
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onViewCertificate: (() -> Unit)? = null // Optional callback to view certificate
 ) {
     val extraColors = LocalExtraColors.current
     val isArabic = Locale.getDefault().language == "ar"
@@ -174,24 +176,74 @@ fun SuccessDialog(
                     }
                 }
 
-                // ✅ Fixed OK button at bottom (always visible)
-                Button(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .padding(horizontal = 24.dp, vertical = 0.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = extraColors.blue1
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = if (isArabic) "حسناً" else "OK",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                // ✅ Fixed buttons at bottom (always visible)
+                if (onViewCertificate != null) {
+                    // Show two buttons: View Certificate and Close
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 0.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // View Certificate button
+                        Button(
+                            onClick = {
+                                onViewCertificate()
+                                // ✅ Don't dismiss here - let parent handle dismissal after file viewer opens
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = extraColors.blue1
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isArabic) "عرض الشهادة" else "View Certificate",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Close button
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            border = BorderStroke(1.dp, extraColors.blue1),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isArabic) "إغلاق" else "Close",
+                                color = extraColors.blue1,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    // Show single OK button
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .padding(horizontal = 24.dp, vertical = 0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = extraColors.blue1
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = if (isArabic) "حسناً" else "OK",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
                 // Bottom spacing

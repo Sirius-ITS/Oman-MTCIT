@@ -70,6 +70,29 @@ fun MarineRegistrationScreen(
         }
     }
 
+    // ✅ NEW: Monitor injectInspectionStep flag to trigger inspection step injection
+    LaunchedEffect(uiState.formData["injectInspectionStep"]) {
+        val shouldInject = uiState.formData["injectInspectionStep"]?.toBoolean() ?: false
+        if (shouldInject) {
+            println("🔔 Detected injectInspectionStep flag - calling handleInspectionContinue")
+            viewModel.handleInspectionContinue()
+            // Clear the flag after handling
+            viewModel.onFieldValueChange("injectInspectionStep", "false")
+        }
+    }
+
+    // ✅ NEW: Monitor payment retry trigger
+    LaunchedEffect(uiState.formData["_triggerPaymentRetry"]) {
+        val shouldRetry = uiState.formData["_triggerPaymentRetry"]?.toBoolean() ?: false
+        if (shouldRetry) {
+            println("🔔 Detected _triggerPaymentRetry flag - re-submitting payment")
+            // Re-submit the current step (payment step) to trigger PaymentManager again
+            viewModel.nextStep()
+            // ✅ DON'T clear the flag here - let PaymentManager clear it after processing
+            // This allows PaymentManager to read the flag and skip submitSimplePayment
+        }
+    }
+
     // ✅ NEW: Trigger resume if requestId is provided
     LaunchedEffect(requestId, lastCompletedStep) {
         if (requestId != null) {

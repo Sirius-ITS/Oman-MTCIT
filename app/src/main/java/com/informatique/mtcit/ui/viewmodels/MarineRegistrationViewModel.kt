@@ -1,5 +1,6 @@
 package com.informatique.mtcit.ui.viewmodels
 
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionStrategy
 import com.informatique.mtcit.business.transactions.TransactionStrategyFactory
 import com.informatique.mtcit.business.transactions.TransactionType
@@ -859,45 +860,11 @@ class MarineRegistrationViewModel @Inject constructor(
                         }
                     }
 
-                    println("✅ Final currentStep: $finalStep")
-
                     // ✅ CRITICAL FIX: Trigger onStepOpened for the resume step to load payment details
                     if (finalStep >= 0) {
-                        println("🔄 Triggering onStepOpened for step $finalStep to load step-specific data (dropdown options, payment details, etc.)")
-
-                        // ✅ CRITICAL: For drafts, we need to load dropdown options for ALL steps with data
-                        // so when user navigates to those steps, the dropdowns show the correct selected values
-                        if (request.statusId == 1 && finalStep > 0) {
-                            println("📝 DRAFT: Loading dropdown options for all steps with data...")
-
-                            // Load lookups for all steps that have required lookups (async, no delays needed)
-                            for (stepIdx in 0..finalStep) {
-                                val stepData = rebuiltSteps.getOrNull(stepIdx)
-                                if (stepData != null && stepData.requiredLookups.isNotEmpty()) {
-                                    println("   📥 Loading lookups for step $stepIdx (${stepData.titleRes}): ${stepData.requiredLookups}")
-                                    strategy.onStepOpened(stepIdx)
-                                }
-                            }
-                            println("✅ DRAFT: All step lookups loading initiated (async)")
-                        } else {
-                            // For non-draft requests, just load the current step's data
-                            strategy.onStepOpened(finalStep)
-                        }
-
-
-                        // ✅ CRITICAL FIX #2: Recalculate canProceedToNext after loading payment details
-                        // This ensures the "Pay" button is enabled when payment data is loaded
-                        println("🔄 Recalculating canProceedToNext after loading step data...")
-                        val updatedCanProceed = navigationUseCase.canProceedToNext(
-                            finalStep,
-                            uiState.value.steps,
-                            uiState.value.formData
-                        )
-                        println("✅ Updated canProceedToNext: $updatedCanProceed")
-
-                        updateUiState { currentState ->
-                            currentState.copy(canProceedToNext = updatedCanProceed)
-                        }
+                        println("🔄 Triggering onStepOpened for step $finalStep to load step-specific data (e.g., payment details)")
+                        strategy.onStepOpened(finalStep)
+                        delay(200) // Give time for async loading
                     }
 
                     println("✅ Direct resume complete, clearing flags")
@@ -1213,6 +1180,85 @@ class MarineRegistrationViewModel @Inject constructor(
     }
 
     /**
+     * ✅ NEW: Handle inspection continue action
+     * Called when user clicks "Continue" on inspection required dialog
+     * Delegates to strategy to load inspection data and inject inspection step
+     */
+    fun handleInspectionContinue() {
+        println("✅ MarineRegistrationViewModel.handleInspectionContinue() called")
+
+        viewModelScope.launch {
+            try {
+                // Get the current strategy
+                val strategy = currentStrategy
+
+                // Check which strategy supports inspection and call its handleInspectionContinue
+                when (strategy) {
+                    is com.informatique.mtcit.business.transactions.PermanentRegistrationStrategy -> {
+                        println("✅ Calling PermanentRegistrationStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
+                    is com.informatique.mtcit.business.transactions.TemporaryRegistrationStrategy -> {
+                        println("✅ Calling TemporaryRegistrationStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
+                    is com.informatique.mtcit.business.transactions.IssueNavigationPermitStrategy -> {
+                        println("✅ Calling IssueNavigationPermitStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
+                    is com.informatique.mtcit.business.transactions.RenewNavigationPermitStrategy -> {
+                        println("✅ Calling RenewNavigationPermitStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
+                    else -> {
+                        println("⚠️ Current strategy does not support inspection continue")
+                    }
+                }
+
+                // After loading inspection data, trigger steps rebuild by getting steps again
+                println("🔄 Triggering steps rebuild to inject inspection step")
+                val rebuiltSteps = strategy?.getSteps() ?: emptyList()
+                println("✅ Steps rebuilt with ${rebuiltSteps.size} steps")
+
+                // Find the inspection purpose step
+                val inspectionStepIndex = rebuiltSteps.indexOfFirst { step ->
+                    step.stepType == StepType.INSPECTION_PURPOSES_AND_AUTHORITIES
+                }
+
+                if (inspectionStepIndex != -1) {
+                    println("✅ Found inspection step at index: $inspectionStepIndex")
+                    println("   Navigating to inspection step...")
+
+                    // Update both steps and currentStep
+                    updateUiState { currentState ->
+                        currentState.copy(
+                            steps = rebuiltSteps,
+                            currentStep = inspectionStepIndex
+                        )
+                    }
+
+                    println("✅ Navigation to inspection step complete (currentStep = $inspectionStepIndex)")
+                } else {
+                    println("⚠️ Could not find inspection purpose step in rebuilt steps")
+                    updateUiState { currentState ->
+                        currentState.copy(steps = rebuiltSteps)
+                    }
+                }
+
+            } catch (e: Exception) {
+                println("❌ Error handling inspection continue: ${e.message}")
+                e.printStackTrace()
+                // Show error to user
+                updateUiState { currentState ->
+                    val updatedFormData = currentState.formData.toMutableMap()
+                    updatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+                    currentState.copy(formData = updatedFormData)
+                }
+            }
+        }
+    }
+
+    /**
      * Get current user ID from auth system
      */
     private fun getCurrentUserId(): String {
@@ -1334,6 +1380,16 @@ class MarineRegistrationViewModel @Inject constructor(
 
         if (lastCompletedIndex !in steps.indices) {
             println("⚠️ Invalid lastCompletedIndex=$lastCompletedIndex (totalSteps=${steps.size})")
+
+            // For ACCEPTED inspection requests, jump directly to PAYMENT step
+            if (uiState.value.transactionType == TransactionType.REQUEST_FOR_INSPECTION) {
+                val paymentStepIndex = steps.indexOfFirst { it.stepType == StepType.PAYMENT }
+                if (paymentStepIndex != -1) {
+                    println("✅ ACCEPTED Inspection: Jumping to PAYMENT step (index $paymentStepIndex)")
+                    return paymentStepIndex
+                }
+            }
+
             // If index is beyond the list, it means Review was completed
             // Find the REVIEW step and look for what comes after it
             val reviewIndex = steps.indexOfFirst { it.stepType == StepType.REVIEW }

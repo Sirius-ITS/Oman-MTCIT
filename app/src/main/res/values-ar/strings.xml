@@ -341,6 +341,12 @@
     <string name="marine_unit_name">اسم الوحدة البحرية</string>
     <string name="marine_unit_name_placeholder">أدخل اسم الوحدة البحرية المطلوب تسجيله</string>
 
+    <string name="marine_unit_name_ar">اسم الوحدة البحرية (بالعربية)</string>
+    <string name="marine_unit_name_ar_placeholder">أدخل اسم الوحدة البحرية بالعربية</string>
+
+    <string name="marine_unit_name_en">اسم الوحدة البحرية (بالإنجليزية)</string>
+    <string name="marine_unit_name_en_placeholder">أدخل اسم الوحدة البحرية بالإنجليزية</string>
+
     <!-- File Upload Actions -->
     <string name="replace_file">استبدال</string>
     <string name="delete_file">حذف</string>
@@ -525,6 +531,8 @@
     <!-- Inspection Dialog -->
     <string name="inspection_required">الفحص الفني مطلوب</string>
     <string name="ok">حسناً</string>
+    <string name="continue_action">متابعة</string>
+    <string name="later">لاحقاً</string>
     <string name="processing">جاري المعالجة...</string>
     <string name="error">خطأ</string>
 
@@ -931,7 +939,9 @@
     <string name="inspection_purpose_and_authority_title">الغرض من طلب و جهة المعاينة</string>
     <string name="inspection_purpose_and_authority_description">يرجى اختيار الجهة والغرض من المعاينة لضمان توجيه الطلب للإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية.</string>
 
-    <!-- Second Dropdown: Recording Port -->
+    <!-- Second Dropdown: Recording Place -->
+    <string name="inspection_place_selection">موقع المعاينة</string>
+    <string name="select_inspection_place_placeholder">تحديد موقع المعاينة</string>
     <string name="inspection_recording_port_selection">ميناء تسجيل المعاينة</string>
     <string name="select_inspection_recording_port_placeholder">تحديد ميناء تسجيل المعاينة</string>
 

@@ -733,9 +733,11 @@ class MortgageCertificateStrategy @Inject constructor(
                         println("✅ Review step processed successfully!")
                         println("   Message: ${reviewResult.message}")
                         println("   Need Inspection: ${reviewResult.needInspection}")
+                        println("   Has Acceptance: ${reviewResult.hasAcceptance}")
 
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                        accumulatedFormData["hasAcceptance"] = reviewResult.hasAcceptance.toString()
 
                         // ✅ Extract request number
                         val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
@@ -747,8 +749,14 @@ class MortgageCertificateStrategy @Inject constructor(
                         val isNewRequest = accumulatedFormData["requestId"] == null ||
                                           accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
-                        if (isNewRequest) {
-                            println("🎉 NEW mortgage request submitted - showing success dialog and stopping")
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - hasAcceptance (from API): ${reviewResult.hasAcceptance}")
+
+                        // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                        if (isNewRequest && reviewResult.hasAcceptance) {
+                            println("🎉 NEW mortgage request submitted with hasAcceptance=true - showing success dialog and stopping")
+                            println("   User must continue from profile screen")
 
                             // Set success flags for ViewModel to show dialog
                             accumulatedFormData["requestSubmitted"] = "true"
@@ -757,6 +765,12 @@ class MortgageCertificateStrategy @Inject constructor(
 
                             // Return -2 to indicate: success but show dialog and stop
                             return -2
+                        } else if (isNewRequest && !reviewResult.hasAcceptance) {
+                            println("✅ NEW mortgage request submitted with hasAcceptance=false - continuing to next steps")
+                            println("   Transaction will continue to payment/next steps")
+                            // Continue normally - don't return, let the flow proceed
+                        } else {
+                            println("✅ Resumed mortgage request - using existing resume logic")
                         }
 
                         // ✅ MORTGAGE CERTIFICATE: Different response handling for resumed requests

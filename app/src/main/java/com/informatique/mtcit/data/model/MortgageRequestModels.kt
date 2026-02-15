@@ -27,8 +27,6 @@ data class CreateMortgageRequest(
     // backend expects `mortgageValue` in the request body
     @SerialName("mortgageValue")
     val mortgageValue: Double = 5.1,
-    @SerialName("statusId")
-    val statusId: Int = 1  // Always 1 for new mortgage requests
 )
 
 /**

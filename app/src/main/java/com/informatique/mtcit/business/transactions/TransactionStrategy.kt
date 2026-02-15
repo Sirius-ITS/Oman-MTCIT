@@ -217,6 +217,25 @@ interface TransactionStrategy {
         // Default implementation - return null
         return null
     }
+
+    /**
+     * ✅ NEW: hasAcceptance flag from transaction metadata
+     * Controls whether transaction stops after submission (hasAcceptance=1)
+     * or continues to next steps like payment (hasAcceptance=0)
+     *
+     * When hasAcceptance=1:
+     * - Transaction stops after review step submission
+     * - Shows success dialog
+     * - User must continue from profile screen
+     *
+     * When hasAcceptance=0:
+     * - Transaction continues to payment/next steps after submission
+     *
+     * @return true if transaction requires acceptance (stops after submission), false otherwise
+     */
+    var hasAcceptance: Boolean
+        get() = false
+        set(_) {}
 }
 
 /**

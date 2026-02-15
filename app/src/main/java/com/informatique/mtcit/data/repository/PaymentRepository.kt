@@ -33,7 +33,13 @@ interface PaymentRepository {
     ): Result<PaymentResponse<Long>>
 
     // Prepare payment redirect HTML for online payment flow
-    suspend fun preparePaymentRedirect(receiptId: Long, successUrl: String, canceledUrl: String): Result<String>
+    // ✅ NEW: Added paymentStatus parameter for retry logic
+    suspend fun preparePaymentRedirect(
+        receiptId: Long,
+        successUrl: String,
+        canceledUrl: String,
+        paymentStatus: Int? = null
+    ): Result<String>
 }
 
 @Singleton
@@ -59,7 +65,12 @@ class PaymentRepositoryImpl @Inject constructor(
         return apiService.submitSimplePayment(endpoint, requestType, requestId, coreShipsInfoId)
     }
 
-    override suspend fun preparePaymentRedirect(receiptId: Long, successUrl: String, canceledUrl: String): Result<String> {
-        return apiService.preparePaymentRedirect(receiptId, successUrl, canceledUrl)
+    override suspend fun preparePaymentRedirect(
+        receiptId: Long,
+        successUrl: String,
+        canceledUrl: String,
+        paymentStatus: Int?
+    ): Result<String> {
+        return apiService.preparePaymentRedirect(receiptId, successUrl, canceledUrl, paymentStatus)
     }
 }

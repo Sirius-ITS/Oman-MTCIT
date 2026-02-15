@@ -14,9 +14,11 @@ import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.data.model.RequiredDocumentItem
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
+import com.informatique.mtcit.ui.components.DropdownSection
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
@@ -45,6 +47,7 @@ class PermanentRegistrationStrategy @Inject constructor(
     private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val registrationApiService: com.informatique.mtcit.data.api.RegistrationApiService,
+    private val inspectionFlowManager: com.informatique.mtcit.business.transactions.shared.InspectionFlowManager,  // ✅ NEW: Inspection flow manager
     @ApplicationContext private val appContext: Context  // ✅ Injected context
 ) : BaseTransactionStrategy() {
 
@@ -65,7 +68,12 @@ class PermanentRegistrationStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var insuranceCompanyOptions: List<String> = emptyList() // ✅ Add insurance companies
-    private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList() // ✅ Store required documents
+    private var requiredDocuments: List<RequiredDocumentItem> = emptyList() // ✅ Store required documents
+
+    // ✅ NEW: Store loaded inspection authorities
+    private var loadedInspectionAuthorities: List<DropdownSection> = emptyList()
+    // ✅ NEW: Store inspection-specific documents (separate from permanent registration documents)
+    private var loadedInspectionDocuments: List<RequiredDocumentItem> = emptyList()
 
     // NEW: Store filtered ship types based on selected category
     private var filteredShipTypeOptions: List<String> = emptyList()
@@ -96,6 +104,80 @@ class PermanentRegistrationStrategy @Inject constructor(
 
     // ✅ Allow ViewModel to set a callback when steps need to be rebuilt
     override var onStepsNeedRebuild: (() -> Unit)? = null
+
+    /**
+     * Handle inspection dialog confirmation
+     * Called when user clicks "Continue" on inspection required dialog
+     * This will load inspection lookups and inject the inspection purpose step
+     */
+    suspend fun handleInspectionContinue() {
+        println("🔍 PermanentRegistrationStrategy: User confirmed inspection requirement")
+        println("   Loading inspection lookups...")
+
+        try {
+            // Get shipInfoId from accumulatedFormData
+            val shipInfoIdStr = accumulatedFormData["coreShipsInfoId"]
+                ?: accumulatedFormData["shipInfoId"]
+                ?: run {
+                    println("❌ No shipInfoId found in formData")
+                    accumulatedFormData["apiError"] = "لم يتم العثور على معرف السفينة"
+                    return
+                }
+
+            val shipInfoId = shipInfoIdStr.toIntOrNull() ?: run {
+                println("❌ Invalid shipInfoId: $shipInfoIdStr")
+                accumulatedFormData["apiError"] = "معرف السفينة غير صالح"
+                return
+            }
+
+            println("   Using shipInfoId: $shipInfoId")
+
+            // Load inspection lookups (purposes, places, authorities)
+            val lookups = inspectionFlowManager.loadInspectionLookups(shipInfoId)
+
+            println("✅ Inspection lookups loaded:")
+            println("   - Purposes: ${lookups.purposes.size}")
+            println("   - Places: ${lookups.places.size}")
+            println("   - Authority sections: ${lookups.authoritySections.size}")
+            println("   - Documents: ${lookups.documents.size}") // ✅ Log documents
+
+            // ✅ CRITICAL: Store authorities AND documents in member variables BEFORE setting showInspectionStep
+            loadedInspectionAuthorities = lookups.authoritySections
+            loadedInspectionDocuments = lookups.documents // ✅ Store inspection documents
+
+            // Mark that inspection step should be shown
+            accumulatedFormData["showInspectionStep"] = "true"
+            accumulatedFormData["inspectionPurposes"] = lookups.purposes.joinToString(",")
+            accumulatedFormData["inspectionPlaces"] = lookups.places.joinToString(",")
+
+            // Clear dialog flag
+            accumulatedFormData.remove("showInspectionDialog")
+
+            println("✅ Inspection lookups loaded, triggering steps rebuild")
+
+            // Trigger steps rebuild to inject inspection step
+            onStepsNeedRebuild?.invoke()
+
+        } catch (e: Exception) {
+            println("❌ Failed to load inspection lookups: ${e.message}")
+            e.printStackTrace()
+            accumulatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+        }
+    }
+
+    /**
+     * Handle inspection dialog cancel
+     * Called when user clicks "Cancel" on inspection required dialog
+     */
+    fun handleInspectionCancel() {
+        println("ℹ️ PermanentRegistrationStrategy: User cancelled inspection requirement")
+
+        // Just clear the dialog flag and stay on review step
+        accumulatedFormData.remove("showInspectionDialog")
+
+        // Set flag to show that request is sent but pending inspection
+        accumulatedFormData["requestPendingInspection"] = "true"
+    }
 
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
@@ -236,6 +318,54 @@ class PermanentRegistrationStrategy @Inject constructor(
             }
         }
 
+        // ✅ NEW: If this is inspection purposes step, load inspection authorities
+        if (step.stepType == StepType.INSPECTION_PURPOSES_AND_AUTHORITIES) {
+            println("🔍 Inspection purposes step opened - loading inspection authorities...")
+
+            val shipInfoId = accumulatedFormData["shipInfoId"]
+            if (shipInfoId != null) {
+                println("📥 shipInfoId available ($shipInfoId) - loading inspection lookups...")
+
+                try {
+                    // Load all inspection lookups using InspectionFlowManager
+                    val lookups = inspectionFlowManager.loadInspectionLookups(shipInfoId.toInt())
+
+                    // ✅ Store authorities in member variable
+                    loadedInspectionAuthorities = lookups.authoritySections
+
+                    // Store lookups in accumulatedFormData for the step to use
+                    accumulatedFormData["inspectionPurposes"] = lookups.purposes.joinToString(",")
+                    accumulatedFormData["inspectionPlaces"] = lookups.places.joinToString(",")
+
+                    println("✅ Loaded inspection lookups:")
+                    println("   - Purposes: ${lookups.purposes.size}")
+                    println("   - Places: ${lookups.places.size}")
+                    println("   - Authority sections: ${lookups.authoritySections.size}")
+
+                    // Debug print authority sections
+                    lookups.authoritySections.forEachIndexed { index, section ->
+                        println("   Section $index: ${section.title} (${section.items.size} items)")
+                        section.items.take(3).forEach { item ->
+                            println("      - $item")
+                        }
+                    }
+
+                    // Rebuild steps with new inspection data
+                    println("🔄 Notifying UI to rebuild steps with inspection authorities...")
+                    onStepsNeedRebuild?.invoke()
+
+                } catch (e: Exception) {
+                    println("❌ Failed to load inspection lookups: ${e.message}")
+                    e.printStackTrace()
+                    accumulatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+                }
+            } else {
+                println("⚠️ shipInfoId not available - cannot load inspection authorities")
+            }
+
+            return // Done processing inspection step
+        }
+
         // ✅ If this is the payment step, trigger payment API call
         if (step.stepType == StepType.PAYMENT) {
             println("💰 Payment step opened - triggering payment receipt API call...")
@@ -354,10 +484,43 @@ class PermanentRegistrationStrategy @Inject constructor(
             SharedSteps.reviewStep()
         )
 
-        // ✅ NEW: Payment Steps - Only show if we have requestId from review step
-        val hasRequestId = accumulatedFormData["requestId"] != null
+        // ✅ NEW: Inspection Purpose Step (dynamically added when inspection is required)
+        val showInspectionStep = accumulatedFormData["showInspectionStep"]?.toBoolean() ?: false
+        if (showInspectionStep) {
+            println("📋 Adding Inspection Purpose Step (dynamically injected)")
 
-        if (hasRequestId) {
+            // Parse lookups from formData
+            val purposes = accumulatedFormData["inspectionPurposes"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+            val places = accumulatedFormData["inspectionPlaces"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+
+            println("   - Purposes: ${purposes.size}")
+            println("   - Places: ${places.size}")
+            println("   - Authority sections: ${loadedInspectionAuthorities.size}")
+            println("   - Inspection Documents: ${loadedInspectionDocuments.size}") // ✅ Log inspection documents
+
+            // ✅ Use inspection-specific documents (NOT permanent registration documents)
+            steps.add(
+                SharedSteps.inspectionPurposeAndAuthorityStep(
+                    inspectionPurposes = purposes,
+                    inspectionPlaces = places,
+                    authoritySections = loadedInspectionAuthorities, // ✅ Use loaded authorities
+                    documents = loadedInspectionDocuments // ✅ Use inspection documents (not requiredDocuments)
+                )
+            )
+        }
+
+        // ✅ NEW: Payment Steps - Only show if we have requestId AND inspection is NOT required
+        val hasRequestId = accumulatedFormData["requestId"] != null
+        val inspectionRequired = accumulatedFormData["showInspectionDialog"]?.toBoolean() ?: false
+
+        println("🔍 Payment step visibility check:")
+        println("   hasRequestId: $hasRequestId")
+        println("   inspectionRequired: $inspectionRequired")
+        println("   showInspectionStep: $showInspectionStep")
+
+        // ✅ Only show payment steps if we have requestId AND no inspection is pending
+        if (hasRequestId && !inspectionRequired && !showInspectionStep) {
+            println("✅ Adding payment steps")
             // Payment Details Step - Shows payment breakdown
             steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
 
@@ -366,6 +529,8 @@ class PermanentRegistrationStrategy @Inject constructor(
             if (paymentSuccessful) {
                 steps.add(SharedSteps.paymentSuccessStep())
             }
+        } else {
+            println("⏭️ Skipping payment steps (inspection required or in progress)")
         }
 
         return steps
@@ -583,7 +748,7 @@ class PermanentRegistrationStrategy @Inject constructor(
             }
 
             // ✅ Handle Insurance Document Step
-            if (currentStepData?.stepType == StepType.INSURANCE_DOCUMENT) {
+            if (currentStepData.stepType == StepType.INSURANCE_DOCUMENT) {
                 println("📄 ✅ Insurance Document step completed - calling validate-insurance-document API...")
 
                 try {
@@ -795,77 +960,8 @@ class PermanentRegistrationStrategy @Inject constructor(
                             }
 
                             try {
-                                // ✅ STEP 1: Check inspection preview first
-                                println("🔍 STEP 1: Checking inspection preview...")
-
-                                // Get shipInfoId from formData
-                                val shipIdString = accumulatedFormData["shipInfoId"]
-                                val shipInfoId = when {
-                                    shipIdString == null -> {
-                                        println("❌ Ship ID not found in formData")
-                                        throw com.informatique.mtcit.common.ApiException(400, "معرف السفينة غير موجود")
-                                    }
-                                    shipIdString.startsWith("[") -> {
-                                        // Array format: ["1674"] -> extract the number
-                                        shipIdString.trim('[', ']', '"').toIntOrNull()
-                                            ?: throw com.informatique.mtcit.common.ApiException(400, "تنسيق معرف السفينة غير صحيح")
-                                    }
-                                    else -> {
-                                        // Single value: "1674"
-                                        shipIdString.toIntOrNull()
-                                            ?: throw com.informatique.mtcit.common.ApiException(400, "معرف السفينة غير صحيح")
-                                    }
-                                }
-
-                                println("   Calling checkInspectionPreview with shipInfoId: $shipInfoId")
-                                if (requestId == null) {
-                                    throw Exception("No navigation request ID available. Ship selection might have failed.")
-                                }
-                                val inspectionResult = marineUnitRepository.checkInspectionPreview(
-                                    requestId!!.toInt(), transactionContext.inspectionPreviewBaseContext)
-
-                                // ✅ Handle inspection status
-                                var canProceed = true
-                                inspectionResult.fold(
-                                    onSuccess = { inspectionStatus ->
-                                        println("✅ Inspection preview check successful")
-                                        println("   Inspection status: $inspectionStatus (0=no inspection, 1=has inspection)")
-
-                                        if (inspectionStatus == 0) {
-                                            // ✅ Ship requires inspection - BLOCK request
-                                            println("⚠️ Ship requires inspection - BLOCKING request")
-                                            canProceed = false
-
-                                            // Show inspection required dialog (matches existing UI flag)
-                                            accumulatedFormData["showInspectionDialog"] = "true"
-                                            accumulatedFormData["inspectionMessage"] =
-                                                "السفينة تحتاج إلى معاينة قبل إكمال الإجراءات. يرجى تقديم طلب معاينة أولاً."
-                                            // TODO: Add button to navigate to inspection request
-                                            return -1 // Block navigation
-
-                                        } else {
-                                            // ✅ Inspection done - PROCEED with request
-                                            println("✅ Ship has inspection completed - proceeding with request")
-                                            canProceed = true
-                                        }
-                                    },
-                                    onFailure = { error ->
-                                        println("❌ Failed to check inspection preview: ${error.message}")
-                                        // On error, show error message and block
-                                        canProceed = false
-                                        accumulatedFormData["apiError"] =
-                                            "حدث خطأ أثناء التحقق من المعاينة: ${error.message}"
-                                    }
-                                )
-
-                                // ✅ If inspection is required (data=0), STOP here and show dialog
-                                if (!canProceed) {
-                                    println("🛑 Blocking request - inspection required or check failed")
-                                    return step // Stay on current step to show inspection dialog
-                                }
-
-                                // ✅ STEP 2: Send request (ONLY if inspection is done - data=1)
-                                println("🚀 STEP 2: Calling ReviewManager.processReviewStep...")
+                                // ✅ STEP 1: ALWAYS Send request FIRST
+                                println("🚀 STEP 1: Calling ReviewManager.processReviewStep (ALWAYS submit first)...")
 
                                 // ✅ Get endpoint and context from transactionContext
                                 val transactionContext =
@@ -894,9 +990,51 @@ class PermanentRegistrationStrategy @Inject constructor(
                                         println("✅ Review step processed successfully!")
                                         println("   Message: ${reviewResult.message}")
                                         println("   Need Inspection: ${reviewResult.needInspection}")
+                                        println("   Has Acceptance: ${reviewResult.hasAcceptance}")
 
                                         // ✅ Store response in formData
                                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                                        accumulatedFormData["hasAcceptance"] = reviewResult.hasAcceptance.toString()
+
+                                        // ✅ NEW: Check hasAcceptance flag from metadata
+                                        if (reviewResult.hasAcceptance) {
+                                            println("🛑 hasAcceptance=1: Transaction requires acceptance/approval")
+                                            println("   Stopping transaction - user must continue from profile later")
+
+                                            // Extract request number
+                                            val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
+                                                ?: reviewResult.additionalData?.get("requestSerial")?.toString()
+                                                ?: accumulatedFormData["requestSerial"]
+                                                ?: accumulatedFormData["requestId"]
+                                                ?: "N/A"
+
+                                            // Store success message for dialog
+                                            accumulatedFormData["successMessage"] = reviewResult.message
+                                            accumulatedFormData["requestNumber"] = requestNumber
+
+                                            // Return -2 to indicate: success but stop transaction (show dialog)
+                                            return -2
+                                        }
+
+                                        // ✅ Check if inspection is required (from API response)
+                                        if (inspectionFlowManager.isInspectionRequired(reviewResult.needInspection)) {
+                                            println("🔍 Inspection is required - preparing dialog")
+
+                                            // Get requestId for parent tracking
+                                            val requestId = accumulatedFormData["requestId"]?.toIntOrNull()
+
+                                            // Prepare inspection dialog with parent transaction info
+                                            // Request Type: 2 = Permanent Registration
+                                            inspectionFlowManager.prepareInspectionDialog(
+                                                message = reviewResult.message,
+                                                formData = accumulatedFormData,
+                                                parentRequestId = requestId,
+                                                parentRequestType = 2  // Permanent Registration
+                                            )
+
+                                            println("⚠️ Inspection required - showing dialog and blocking proceed")
+                                            return step // Stay on current step to show dialog
+                                        }
 
                                         // ✅ Extract request number
                                         val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
@@ -912,8 +1050,89 @@ class PermanentRegistrationStrategy @Inject constructor(
                                         println("   - isResumedTransaction flag: ${accumulatedFormData["isResumedTransaction"]}")
                                         println("   - isNewRequest result: $isNewRequest")
 
-                                        if (isNewRequest) {
-                                            println("🎉 NEW request submitted - showing success dialog and stopping")
+                                        // ✅ STEP 2: Check inspection (AFTER request is sent successfully)
+                                        println("🔍 STEP 2: Checking inspection preview (request already sent)...")
+
+                                        try {
+                                            // Get shipInfoId from formData
+                                            val shipIdString = accumulatedFormData["shipInfoId"]
+                                            val shipInfoId = when {
+                                                shipIdString == null -> {
+                                                    println("❌ Ship ID not found in formData - skipping inspection check")
+                                                    null
+                                                }
+                                                shipIdString.startsWith("[") -> {
+                                                    // Array format: ["1674"] -> extract the number
+                                                    shipIdString.trim('[', ']', '"').toIntOrNull()
+                                                }
+                                                else -> {
+                                                    // Single value: "1674"
+                                                    shipIdString.toIntOrNull()
+                                                }
+                                            }
+
+                                            if (shipInfoId != null && requestId != null) {
+                                                println("   Calling checkInspectionPreview with requestId: $requestId")
+                                                val inspectionResult = marineUnitRepository.checkInspectionPreview(
+                                                    requestId!!.toInt(), transactionContext.inspectionPreviewBaseContext)
+
+                                                // ✅ Handle inspection status using InspectionFlowManager
+                                                inspectionResult.fold(
+                                                    onSuccess = { inspectionStatus ->
+                                                        println("✅ Inspection preview check successful")
+                                                        println("   Inspection status: $inspectionStatus (0=needs inspection, 1=has inspection)")
+
+                                                        if (inspectionStatus == 0) {
+                                                            // ⚠️ Ship requires inspection - show dialog (but request is already sent!)
+                                                            println("⚠️ Ship requires inspection - preparing dialog")
+                                                            println("📋 Permanent registration request was ALREADY submitted successfully")
+                                                            println("📋 The backend will update status automatically after inspection is done")
+
+                                                            // ✅ Use manager to prepare dialog (sets all flags) with parent transaction info
+                                                            // Request Type: 2 = Permanent Registration
+                                                            inspectionFlowManager.prepareInspectionDialog(
+                                                                message = "تم إرسال طلب التسجيل الدائم بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                                                formData = accumulatedFormData,
+                                                                parentRequestId = requestId?.toInt(),  // Convert Long to Int
+                                                                parentRequestType = 2  // Permanent Registration
+                                                            )
+
+                                                            println("⚠️ Inspection required - dialog will be shown")
+                                                            return step // Stay on current step to show dialog
+
+                                                        } else {
+                                                            // ✅ Inspection done - proceed with normal flow
+                                                            println("✅ Ship has inspection completed - proceeding with normal success flow")
+                                                        }
+                                                    },
+                                                    onFailure = { error ->
+                                                        println("⚠️ Failed to check inspection preview: ${error.message}")
+                                                        println("✅ But request was already sent successfully - continuing with normal flow")
+                                                        // Continue with normal flow since main request was successful
+                                                    }
+                                                )
+                                            } else {
+                                                println("⚠️ Missing shipInfoId or requestId - skipping inspection check")
+                                            }
+                                        } catch (e: Exception) {
+                                            println("⚠️ Exception checking inspection: ${e.message}")
+                                            println("✅ But request was already sent successfully - continuing with normal flow")
+                                            // Continue with normal flow since main request was successful
+                                        }
+
+                                        // ✅ Continue with normal success flow (NEW or resumed request)
+
+                                        // ✅ NEW: Check hasAcceptance flag from transaction context
+                                        val hasAcceptance = transactionContext.hasAcceptance
+
+                                        println("🔍 Post-submission flow decision:")
+                                        println("   - isNewRequest: $isNewRequest")
+                                        println("   - hasAcceptance: $hasAcceptance")
+
+                                        // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                                        if (isNewRequest && hasAcceptance) {
+                                            println("🎉 NEW request submitted with hasAcceptance=true - showing success dialog and stopping")
+                                            println("   User must continue from profile screen")
 
                                             // Set success flags for ViewModel to show dialog
                                             accumulatedFormData["requestSubmitted"] = "true"
@@ -922,14 +1141,16 @@ class PermanentRegistrationStrategy @Inject constructor(
 
                                             // Return -2 to indicate: success but show dialog and stop
                                             return -2
+                                        } else if (isNewRequest && !hasAcceptance) {
+                                            println("✅ NEW request submitted with hasAcceptance=false - continuing to next steps")
+                                            println("   Transaction will continue to payment/next steps")
+                                            // Continue normally - don't return, let the flow proceed
+                                        } else {
+                                            println("✅ Resumed request - showing success dialog")
+                                            accumulatedFormData["showSuccessAlert"] = "true"
+                                            accumulatedFormData["successAlertMessage"] = reviewResult.message
+                                            return step // Stay on current step to show alert
                                         }
-
-                                        // ✅ For resumed requests: Show success dialog (we only reach here if inspection was done)
-                                        println("✅ Showing success dialog for resumed request")
-                                        accumulatedFormData["showSuccessAlert"] = "true"
-                                        accumulatedFormData["successAlertMessage"] = reviewResult.message
-
-                                        return step // Stay on current step to show alert
                                     }
 
                                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
@@ -943,6 +1164,53 @@ class PermanentRegistrationStrategy @Inject constructor(
                                 e.printStackTrace()
                                 accumulatedFormData["apiError"] =
                                     "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                                return -1
+                            }
+                        }
+
+                        // ✅ NEW: Handle Inspection Purpose Step
+                        if (inspectionFlowManager.isInspectionPurposeStep(stepType)) {
+                            println("🔍 Processing Inspection Purpose Step...")
+
+                            try {
+                                val inspectionResult = inspectionFlowManager.handleInspectionPurposeStepCompletion(
+                                    formData = accumulatedFormData,
+                                    context = appContext
+                                )
+
+                                when (inspectionResult) {
+                                    is StepProcessResult.Success -> {
+                                        println("✅ Inspection request submitted successfully!")
+                                        println("   Message: ${inspectionResult.message}")
+
+                                        // ✅ IMPORTANT: Exit the transaction completely
+                                        // When inspection is submitted from within another transaction,
+                                        // we should show success dialog and exit (like standalone inspection transaction)
+
+                                        // Set success flags for ViewModel to show dialog
+                                        accumulatedFormData["inspectionRequestSubmitted"] = "true"
+                                        accumulatedFormData["showInspectionSuccessDialog"] = "true"
+                                        accumulatedFormData["inspectionSuccessMessage"] = inspectionResult.message
+
+                                        println("🎉 Inspection submitted - exiting transaction (returning -3)")
+
+                                        // Return -3 to indicate: inspection success, show dialog and exit transaction
+                                        return -3
+                                    }
+                                    is StepProcessResult.Error -> {
+                                        println("❌ Inspection request submission failed: ${inspectionResult.message}")
+                                        accumulatedFormData["apiError"] = inspectionResult.message
+                                        return -1 // Block navigation
+                                    }
+                                    is StepProcessResult.NoAction -> {
+                                        println("ℹ️ No action taken for inspection step")
+                                        // This shouldn't happen for inspection purpose step, but handle it
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                println("❌ Exception processing inspection step: ${e.message}")
+                                e.printStackTrace()
+                                accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
                                 return -1
                             }
                         }
@@ -994,6 +1262,10 @@ class PermanentRegistrationStrategy @Inject constructor(
 
     override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
         val mutableFormData = formData.toMutableMap()
+
+        // ❌ REMOVED: Duplicate inspection step injection handling
+        // This is now handled ONLY in MarineRegistrationScreen.kt LaunchedEffect
+        // to avoid double-triggering and maintain proper architecture
 
         // ✅ Handle insurance country change - switch between dropdown and text field for company
         if (fieldId == "insuranceCountry" && value.isNotBlank()) {

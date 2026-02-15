@@ -431,6 +431,36 @@ abstract class BaseTransactionViewModel(
                             return@launch
                         }
 
+                        // ✅ NEW: Handle return -3 (inspection success - show dialog and exit transaction)
+                        if (requiredNextStep == -3) {
+                            println("=" .repeat(80))
+                            println("🎉🎉🎉 processStepData returned -3 (INSPECTION SUCCESS - SHOW DIALOG & EXIT)")
+                            println("=" .repeat(80))
+
+                            // Strategy has set inspection success data in formData
+                            val updatedSteps = strategy.getSteps()
+                            val strategyFormData = strategy.getFormData()
+
+                            val mergedData = currentState.formData.toMutableMap().apply {
+                                putAll(strategyFormData)
+                            }
+
+                            _uiState.value = currentState.copy(
+                                steps = updatedSteps,
+                                formData = mergedData
+                            )
+
+                            println("✅ UI State updated with inspection success data:")
+                            println("   inspectionRequestId: ${mergedData["inspectionRequestId"]}")
+                            println("   showInspectionSuccessDialog: ${mergedData["showInspectionSuccessDialog"]}")
+                            println("   inspectionSuccessMessage: ${mergedData["inspectionSuccessMessage"]}")
+                            println("   inspectionSubmitted: ${mergedData["inspectionSubmitted"]}")
+                            println("=" .repeat(80))
+
+                            // MarineRegistrationViewModel will handle showing the dialog and exiting
+                            return@launch
+                        }
+
                         if (shouldLoadShips) {
                             try {
                                 // run loadShips on IO dispatcher to avoid blocking UI

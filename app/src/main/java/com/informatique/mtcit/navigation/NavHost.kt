@@ -23,7 +23,6 @@ import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.data.model.category.Transaction
 import com.informatique.mtcit.ui.defaultEnterTransition
 import com.informatique.mtcit.ui.defaultExitTransition
-import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.screens.ComingSoonScreen
 import com.informatique.mtcit.ui.screens.FileViewerScreen
 import com.informatique.mtcit.ui.screens.HomePageScreen
@@ -44,7 +43,6 @@ import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
-import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -60,8 +58,6 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
     val context = LocalContext.current
 
     val navController = rememberNavController()
-
-    val categories = LocalCategories.current
 
     // ✅ NEW: Check user role on app start and load it into SharedUserViewModel
     LaunchedEffect(Unit) {
@@ -373,9 +369,8 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 },
                 onBack = { navController.popBackStack() },
                 // parentTitleRes = parentTitleRes,
-                transaction = transaction,
-                navController = navController,
-                transactionId = transaction.id
+                transactionId = transaction.id,
+                navController = navController
             )
 
             /*val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
@@ -515,24 +510,84 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             )
         }
 
-        composable(NavRoutes.CancelRegistrationRoute.route) {
+        composable(
+            route = "${NavRoutes.CancelRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.CANCEL_PERMANENT_REGISTRATION
+                transactionType = TransactionType.CANCEL_PERMANENT_REGISTRATION,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 
-        composable(NavRoutes.MortgageCertificateRoute.route) {
+        composable(
+            route = "${NavRoutes.MortgageCertificateRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.MORTGAGE_CERTIFICATE
+                transactionType = TransactionType.MORTGAGE_CERTIFICATE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 
-        composable(NavRoutes.ReleaseMortgageRoute.route) {
+        composable(
+            route = "${NavRoutes.ReleaseMortgageRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+
             MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.RELEASE_MORTGAGE
+                transactionType = TransactionType.RELEASE_MORTGAGE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep
             )
         }
 

@@ -229,5 +229,8 @@ abstract class BaseTransactionStrategy : TransactionStrategy {
     override fun getApiResponse(apiName: String): Any? {
         return null
     }
+
+    // ✅ NEW: hasAcceptance flag - default to false (continue to payment)
+    override var hasAcceptance: Boolean = false
 }
 
