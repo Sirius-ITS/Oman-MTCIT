@@ -823,12 +823,13 @@ private fun ProceedToPaymentButton(
 
             println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep (requestTypeId=$requestTypeId, statusId=$statusId)")
 
-            // ✅ Smart navigation with lastCompletedStep passed through URL
+            // ✅ Smart navigation with lastCompletedStep and hasAcceptance passed through URL
             val route = getTransactionRouteForPayment(
                 requestTypeId = requestDetail.requestType.id,
                 requestId = requestDetail.requestId,
                 statusId = statusId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = requestDetail.hasAcceptance
             )
             if (route != null) {
                 navController.navigate(route)
@@ -1509,34 +1510,72 @@ private fun EngineerChecklistSection(
  * Uses TransactionType enum to ensure correct mapping
  */
 @Suppress("UNUSED_PARAMETER")
-private fun getTransactionRouteForPayment(requestTypeId: Int, requestId: Int, statusId: Int, lastCompletedStep: Int): String? {
+private fun getTransactionRouteForPayment(
+    requestTypeId: Int,
+    requestId: Int,
+    statusId: Int,
+    lastCompletedStep: Int,
+    hasAcceptance: Int
+): String? {
     // Map API request type ID to TransactionType
     val transactionType = TransactionType.fromTypeId(requestTypeId)
 
     return when (transactionType) {
         TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE ->
-            NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId.toString(), lastCompletedStep)
+            NavRoutes.ShipRegistrationRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.PERMANENT_REGISTRATION_CERTIFICATE ->
-            "${NavRoutes.PermanentRegistrationRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.PermanentRegistrationRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.ISSUE_NAVIGATION_PERMIT ->
-            "${NavRoutes.IssueNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.IssueNavigationPermitRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.RENEW_NAVIGATION_PERMIT ->
-            "${NavRoutes.RenewNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.RenewNavigationPermitRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.MORTGAGE_CERTIFICATE ->
-            "${NavRoutes.MortgageCertificateRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.MortgageCertificateRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.RELEASE_MORTGAGE ->
-            "${NavRoutes.ReleaseMortgageRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.ReleaseMortgageRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.CANCEL_PERMANENT_REGISTRATION ->
-            "${NavRoutes.CancelRegistrationRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.CancelRegistrationRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.REQUEST_FOR_INSPECTION ->
-            NavRoutes.RequestForInspection.createRouteWithResume(requestId.toString(), lastCompletedStep)
+            NavRoutes.RequestForInspection.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         else -> null // Unsupported or no payment flow for this transaction type
     }

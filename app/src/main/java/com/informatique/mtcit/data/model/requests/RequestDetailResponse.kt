@@ -31,6 +31,7 @@ data class RequestDetailUiModel(
     val messageDetails: String?,
     val sections: List<RequestDetailSection>,
     val isPaid: Int = 0, // 0 = not paid, 1 = paid
+    val hasAcceptance: Int = 0, // 0 = continue to payment, 1 = requires acceptance
     val shipName: String? = null, // ✅ Ship name for display in header card
     val purposeId: Int? = null, // ✅ Purpose ID for checklist loading (engineer only)
     val workOrderResult: com.informatique.mtcit.data.model.WorkOrderResult? = null, // ✅ Completed checklist answers (engineer only)

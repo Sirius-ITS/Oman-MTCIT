@@ -431,7 +431,7 @@ fun NativeFileViewerWithUrl(
                                             document.body.style.display = 'none';
                                             document.body.offsetHeight;
                                             document.body.style.display = '';
-                                            
+
                                             return 'success';
                                         } catch(e) {
                                             return 'error: ' + e.message;

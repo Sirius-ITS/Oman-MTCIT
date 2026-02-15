@@ -749,12 +749,16 @@ class MortgageCertificateStrategy @Inject constructor(
                         val isNewRequest = accumulatedFormData["requestId"] == null ||
                                           accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
+                        // ✅ Use hasAcceptance from strategy property (set from TransactionDetail API), not from review response
+                        val strategyHasAcceptance = this.hasAcceptance
+
                         println("🔍 Post-submission flow decision:")
                         println("   - isNewRequest: $isNewRequest")
-                        println("   - hasAcceptance (from API): ${reviewResult.hasAcceptance}")
+                        println("   - hasAcceptance (from strategy): $strategyHasAcceptance")
+                        println("   - hasAcceptance (from review API): ${reviewResult.hasAcceptance}")
 
                         // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
-                        if (isNewRequest && reviewResult.hasAcceptance) {
+                        if (isNewRequest && strategyHasAcceptance) {
                             println("🎉 NEW mortgage request submitted with hasAcceptance=true - showing success dialog and stopping")
                             println("   User must continue from profile screen")
 
@@ -765,7 +769,7 @@ class MortgageCertificateStrategy @Inject constructor(
 
                             // Return -2 to indicate: success but show dialog and stop
                             return -2
-                        } else if (isNewRequest && !reviewResult.hasAcceptance) {
+                        } else if (isNewRequest && !strategyHasAcceptance) {
                             println("✅ NEW mortgage request submitted with hasAcceptance=false - continuing to next steps")
                             println("   Transaction will continue to payment/next steps")
                             // Continue normally - don't return, let the flow proceed

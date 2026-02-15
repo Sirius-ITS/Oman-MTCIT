@@ -138,20 +138,26 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 navArgument("targetTransactionType") { type = NavType.StringType },
                 navArgument("categoryId") { type = NavType.StringType },
                 navArgument("subCategoryId") { type = NavType.StringType },
-                navArgument("transactionId") { type = NavType.StringType }
+                navArgument("transactionId") { type = NavType.StringType },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    defaultValue = "0"  // ✅ Default to 0 (continue to payment)
+                }
             )
         ) { backStackEntry ->
             val targetTransactionType = backStackEntry.arguments?.getString("targetTransactionType") ?: ""
             val categoryId = backStackEntry.arguments?.getString("categoryId") ?: ""
             val subCategoryId = backStackEntry.arguments?.getString("subCategoryId") ?: ""
             val transactionId = backStackEntry.arguments?.getString("transactionId") ?: ""
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance") ?: "0"  // ✅ Get hasAcceptance
 
             LoginScreen(
                 navController = navController,
                 targetTransactionType = targetTransactionType,
                 categoryId = categoryId,
                 subCategoryId = subCategoryId,
-                transactionId = transactionId
+                transactionId = transactionId,
+                hasAcceptance = hasAcceptance  // ✅ Pass hasAcceptance to LoginScreen
             )
         }
 
@@ -334,8 +340,17 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             val data = backStackEntry.arguments?.getString("transactionId") ?: ""
             val transaction = Json.decodeFromString<Transaction>(data)
 
+            // ✅ Get MainCategoriesViewModel to access TransactionDetail with hasAcceptance
+            val categoriesViewModel: com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel = hiltViewModel()
+
             TransactionRequirementsScreen(
                 onStart = {
+                    // ✅ Get hasAcceptance from the TransactionDetail API response
+                    val hasAcceptanceValue = (categoriesViewModel.transactionDetail.value as? com.informatique.mtcit.ui.viewmodels.TransactionDetailUiState.Success)
+                        ?.detail?.hasAcceptance ?: 0
+
+                    println("🔑 hasAcceptance from TransactionDetail API: $hasAcceptanceValue (${if (hasAcceptanceValue == 1) "requires acceptance" else "continue to payment"})")
+
                     // ✅ Navigate to LoginScreen first
                     // Map transaction ID to transaction type name
                     val transactionTypeName = when (transaction.id) {
@@ -352,7 +367,6 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                         16 -> "SHIP_ACTIVITY_CHANGE"
                         18 -> "CAPTAIN_NAME_CHANGE"
                         19 -> "SHIP_PORT_CHANGE"
-                        21 -> "REQUEST_INSPECTION"
                         else -> "TEMPORARY_REGISTRATION_CERTIFICATE"
                     }
 
@@ -363,7 +377,8 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                             targetTransactionType = transactionTypeName,
                             categoryId = "0",
                             subCategoryId = "0",
-                            transactionId = transaction.id.toString()
+                            transactionId = transaction.id.toString(),
+                            hasAcceptance = hasAcceptanceValue.toString()  // ✅ Pass hasAcceptance
                         )
                     )
                 },
@@ -423,7 +438,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
 
         // Ship Registration Forms
         composable(
-            route = "${NavRoutes.ShipRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.ShipRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -434,23 +449,30 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType  // ✅ FIX: Use StringType for nullable values
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()  // ✅ Convert to Int if present
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0  // ✅ Get hasAcceptance
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance  // ✅ Pass hasAcceptance to screen
             )
         }
 
         composable(
-            route = NavRoutes.RequestForInspection.routeWithParams,
+            route = "${NavRoutes.RequestForInspection.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -458,26 +480,32 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     defaultValue = null
                 },
                 navArgument("lastCompletedStep") {
-                    type = NavType.IntType
-                    defaultValue = -1
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
-            val lastCompletedStepString = backStackEntry.arguments?.getInt("lastCompletedStep")
-            val lastCompletedStep = if (lastCompletedStepString != null && lastCompletedStepString != -1) {
-                lastCompletedStepString
-            } else null
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0  // ✅ Get hasAcceptance
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.REQUEST_FOR_INSPECTION,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance  // ✅ Pass hasAcceptance
             )
         }
         composable(
-            route = "${NavRoutes.PermanentRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.PermanentRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -488,30 +516,49 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType  // ✅ FIX: Use StringType for nullable Int values
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()  // ✅ Convert to Int if present
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0  // ✅ Get hasAcceptance
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.PERMANENT_REGISTRATION_CERTIFICATE,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
-            )
-        }
-
-        composable(NavRoutes.SuspendRegistrationRoute.route) {
-            MarineRegistrationScreen(
-                navController = navController,
-                transactionType = TransactionType.SUSPEND_PERMANENT_REGISTRATION
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance  // ✅ Pass hasAcceptance
             )
         }
 
         composable(
-            route = "${NavRoutes.CancelRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.SuspendRegistrationRoute.route}?hasAcceptance={hasAcceptance}",
+            arguments = listOf(
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
+                }
+            )
+        ) { backStackEntry ->
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
+
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.SUSPEND_PERMANENT_REGISTRATION,
+                hasAcceptance = hasAcceptance
+            )
+        }
+
+        composable(
+            route = "${NavRoutes.CancelRegistrationRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -522,23 +569,30 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.CANCEL_PERMANENT_REGISTRATION,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
             )
         }
 
         composable(
-            route = "${NavRoutes.MortgageCertificateRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.MortgageCertificateRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -549,23 +603,30 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.MORTGAGE_CERTIFICATE,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
             )
         }
 
         composable(
-            route = "${NavRoutes.ReleaseMortgageRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.ReleaseMortgageRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -576,24 +637,31 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.RELEASE_MORTGAGE,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
             )
         }
 
         // Navigation Forms
         composable(
-            route = "${NavRoutes.IssueNavigationPermitRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.IssueNavigationPermitRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -604,23 +672,30 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.ISSUE_NAVIGATION_PERMIT,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
             )
         }
 
         composable(
-            route = "${NavRoutes.RenewNavigationPermitRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}",
+            route = "${NavRoutes.RenewNavigationPermitRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
             arguments = listOf(
                 navArgument("requestId") {
                     type = NavType.StringType
@@ -631,18 +706,25 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                     type = NavType.StringType
                     nullable = true
                     defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
                 }
             )
         ) { backStackEntry ->
             val requestId = backStackEntry.arguments?.getString("requestId")
             val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
             val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
 
             MarineRegistrationScreen(
                 navController = navController,
                 transactionType = TransactionType.RENEW_NAVIGATION_PERMIT,
                 requestId = requestId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
             )
         }
 
