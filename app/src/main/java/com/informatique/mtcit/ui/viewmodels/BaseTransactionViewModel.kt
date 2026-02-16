@@ -130,6 +130,16 @@ abstract class BaseTransactionViewModel(
     protected abstract suspend fun createStrategy(transactionType: TransactionType): TransactionStrategy
 
     /**
+     * ✅ NEW: Set hasAcceptance from TransactionDetail API response
+     * This should be called after initializeTransaction to properly configure the strategy
+     *
+     * @param hasAcceptanceValue The hasAcceptance value from TransactionDetail API (1 or 0)
+     */
+    fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        currentStrategy?.setHasAcceptanceFromApi(hasAcceptanceValue)
+    }
+
+    /**
      * Initialize transaction with specific type
      * This must be called before using the ViewModel
      */

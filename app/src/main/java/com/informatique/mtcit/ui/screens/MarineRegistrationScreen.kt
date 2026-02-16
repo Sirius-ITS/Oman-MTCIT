@@ -44,7 +44,8 @@ fun MarineRegistrationScreen(
     navController: NavController,
     transactionType: TransactionType,
     requestId: String? = null,  // ✅ NEW: Accept optional request ID for resume
-    lastCompletedStep: Int? = null  // ✅ NEW: Accept lastCompletedStep from navigation to avoid API call
+    lastCompletedStep: Int? = null,  // ✅ NEW: Accept lastCompletedStep from navigation to avoid API call
+    hasAcceptance: Int? = null  // ✅ NEW: Accept hasAcceptance from navigation
 ) {
     val viewModel: MarineRegistrationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -120,6 +121,14 @@ fun MarineRegistrationScreen(
             viewModel.initializeTransaction(transactionType)
         } else {
             println("⏭️ Skipping normal initialization - resume in progress (isResuming=$isResuming, requestId=$requestId)")
+        }
+    }
+
+    // ✅ NEW: Set hasAcceptance in strategy after initialization completes
+    LaunchedEffect(hasAcceptance, uiState.isInitialized) {
+        if (hasAcceptance != null && hasAcceptance != 0 && uiState.isInitialized) {
+            println("🔧 Setting hasAcceptance=$hasAcceptance in strategy after initialization")
+            viewModel.setHasAcceptanceFromApi(hasAcceptance)
         }
     }
 

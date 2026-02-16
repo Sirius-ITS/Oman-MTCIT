@@ -236,6 +236,17 @@ interface TransactionStrategy {
     var hasAcceptance: Boolean
         get() = false
         set(_) {}
+
+    /**
+     * ✅ NEW: Initialize hasAcceptance from TransactionDetail API response
+     * This should be called immediately after strategy creation
+     *
+     * @param hasAcceptanceValue The hasAcceptance value from API (1 = requires acceptance, 0 = continue to payment)
+     */
+    fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        hasAcceptance = hasAcceptanceValue == 1
+        println("🔧 Strategy hasAcceptance initialized from API: $hasAcceptance (raw value: $hasAcceptanceValue)")
+    }
 }
 
 /**

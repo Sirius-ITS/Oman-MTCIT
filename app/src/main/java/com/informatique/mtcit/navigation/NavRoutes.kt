@@ -8,13 +8,14 @@ import com.informatique.mtcit.data.model.category.TransactionDetail
 
 sealed class NavRoutes(val route: String) {
     data object HomeRoute : NavRoutes("homepage")
-    data object LoginRoute : NavRoutes("login/{targetTransactionType}/{categoryId}/{subCategoryId}/{transactionId}") {
+    data object LoginRoute : NavRoutes("login/{targetTransactionType}/{categoryId}/{subCategoryId}/{transactionId}/{hasAcceptance}") {
         fun createRoute(
             targetTransactionType: String,
             categoryId: String,
             subCategoryId: String,
-            transactionId: String
-        ): String = "login/${Uri.encode(targetTransactionType)}/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}"
+            transactionId: String,
+            hasAcceptance: String = "0"  // ✅ Default to 0 (continue to payment)
+        ): String = "login/${Uri.encode(targetTransactionType)}/${Uri.encode(categoryId)}/${Uri.encode(subCategoryId)}/${Uri.encode(transactionId)}/${Uri.encode(hasAcceptance)}"
     }
     data object SettingsRoute : NavRoutes("settings_screen")
 
@@ -43,24 +44,48 @@ sealed class NavRoutes(val route: String) {
     data object ShipRegistrationRoute : NavRoutes("7") {
         const val REQUEST_ID_ARG = "requestId"
         const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
 
-        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null): String {
-            return if (lastCompletedStep != null) {
-                "7?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
-            } else {
-                "7?requestId=$requestId"
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("7?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
             }
         }
     }
 
-    data object PermanentRegistrationRoute : NavRoutes("8"/*"permanent_registration_form"*/)
+    data object PermanentRegistrationRoute : NavRoutes("8"/*"permanent_registration_form"*/) {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
 
-    data object RequestForInspection : NavRoutes("21") {
-        // ✅ Support requestId and lastCompletedStep for payment resumption
-        const val routeWithParams = "21?requestId={requestId}&lastCompletedStep={lastCompletedStep}"
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("8?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
 
-        fun createRouteWithResume(requestId: String, lastCompletedStep: Int): String {
-            return "21?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+    data object RequestForInspection : NavRoutes("9") {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("9?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
         }
     }
 
@@ -68,15 +93,85 @@ sealed class NavRoutes(val route: String) {
 
     data object ChangeNameOfShipOrUnitRoute : NavRoutes("14")
 
-    data object CancelRegistrationRoute : NavRoutes("cancel_registration_form")
+    data object CancelRegistrationRoute : NavRoutes("cancel_registration_form") {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
 
-    data object MortgageCertificateRoute : NavRoutes("12"/*"mortgage_certificate_form"*/)
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("cancel_registration_form?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
 
-    data object ReleaseMortgageRoute : NavRoutes("13"/*"release_mortgage_form"*/)
+    data object MortgageCertificateRoute : NavRoutes("12"/*"mortgage_certificate_form"*/) {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
 
-    data object IssueNavigationPermitRoute : NavRoutes("4"/*"issue_navigation_permit_form"*/)
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("12?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
 
-    data object RenewNavigationPermitRoute : NavRoutes("5"/*"renew_navigation_permit_form"*/)
+    data object ReleaseMortgageRoute : NavRoutes("13"/*"release_mortgage_form"*/) {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("13?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
+
+    data object IssueNavigationPermitRoute : NavRoutes("4"/*"issue_navigation_permit_form"*/) {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("4?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
+
+    data object RenewNavigationPermitRoute : NavRoutes("5"/*"renew_navigation_permit_form"*/) {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("5?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
 
     data object SuspendNavigationPermitRoute : NavRoutes("suspend_navigation_permit_form")
 

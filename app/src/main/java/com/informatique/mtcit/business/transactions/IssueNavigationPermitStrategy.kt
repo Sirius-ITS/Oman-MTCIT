@@ -588,16 +588,16 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                     // ✅ NEW: Check if this is a NEW request (not resumed)
                                     val isNewRequest = accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
-                                    // ✅ NEW: Check hasAcceptance flag from transaction context
-                                    val hasAcceptance = transactionContext.hasAcceptance
+                                    // ✅ Use hasAcceptance from strategy property (set from TransactionDetail API)
+                                    val strategyHasAcceptance = this.hasAcceptance
 
                                     println("🔍 isNewRequest check:")
                                     println("   - isResumedTransaction flag: ${accumulatedFormData["isResumedTransaction"]}")
                                     println("   - isNewRequest result: $isNewRequest")
-                                    println("   - hasAcceptance: $hasAcceptance")
+                                    println("   - hasAcceptance (from strategy): $strategyHasAcceptance")
 
                                     // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
-                                    if (isNewRequest && hasAcceptance) {
+                                    if (isNewRequest && strategyHasAcceptance) {
                                         println("🎉 NEW request submitted with hasAcceptance=true - showing success dialog and stopping")
                                         println("   User must continue from profile screen")
 
@@ -611,7 +611,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                         return -2
                                     } else {
                                         println("✅ Request submitted - continuing to next steps")
-                                        println("   hasAcceptance: $hasAcceptance")
+                                        println("   hasAcceptance (strategy): $strategyHasAcceptance")
                                         println("   isNewRequest: $isNewRequest")
                                         // Continue normally - let the flow proceed to payment or next steps
                                     }

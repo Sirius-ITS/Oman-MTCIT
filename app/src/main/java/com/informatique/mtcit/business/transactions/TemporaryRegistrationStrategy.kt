@@ -837,12 +837,16 @@ class TemporaryRegistrationStrategy @Inject constructor(
                                     val isNewRequest = accumulatedFormData["requestId"] == null ||
                                                       accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
+                                    // ✅ Use hasAcceptance from strategy property (set from TransactionDetail API), not from review response
+                                    val strategyHasAcceptance = this.hasAcceptance
+
                                     println("🔍 Post-submission flow decision:")
                                     println("   - isNewRequest: $isNewRequest")
-                                    println("   - hasAcceptance (from API): ${result.hasAcceptance}")
+                                    println("   - hasAcceptance (from strategy): $strategyHasAcceptance")
+                                    println("   - hasAcceptance (from review API): ${result.hasAcceptance}")
 
                                     // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
-                                    if (isNewRequest && result.hasAcceptance) {
+                                    if (isNewRequest && strategyHasAcceptance) {
                                         println("🎉 NEW request submitted with hasAcceptance=true - showing success dialog and stopping")
                                         println("   User must continue from profile screen")
 
@@ -853,7 +857,7 @@ class TemporaryRegistrationStrategy @Inject constructor(
 
                                         // Return -2 to indicate: success but show dialog and stop
                                         return -2
-                                    } else if (isNewRequest && !result.hasAcceptance) {
+                                    } else if (isNewRequest && !strategyHasAcceptance) {
                                         println("✅ NEW request submitted with hasAcceptance=false - continuing to next steps")
                                     } else {
                                         println("✅ Resumed request - continuing normal flow")

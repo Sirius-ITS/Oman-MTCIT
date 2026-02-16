@@ -33,7 +33,8 @@ fun LoginScreen(
     targetTransactionType: String,
     @Suppress("UNUSED_PARAMETER") categoryId: String,
     @Suppress("UNUSED_PARAMETER") subCategoryId: String,
-    @Suppress("UNUSED_PARAMETER") transactionId: String
+    @Suppress("UNUSED_PARAMETER") transactionId: String,
+    hasAcceptance: String = "0"  // ✅ Add hasAcceptance parameter with default
 ) {
     val viewModel: LoginViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -69,22 +70,22 @@ fun LoginScreen(
                         println("👤 Client detected - continuing to transaction: $targetTransactionType")
 
                         val route = when (targetTransactionType) {
-                            "TEMPORARY_REGISTRATION_CERTIFICATE", "SHIP_REGISTRATION" -> NavRoutes.ShipRegistrationRoute.route
-                            "PERMANENT_REGISTRATION_CERTIFICATE", "PERMANENT_REGISTRATION" -> NavRoutes.PermanentRegistrationRoute.route
-                            "REQUEST_FOR_INSPECTION", "REQUEST_INSPECTION" -> NavRoutes.RequestForInspection.route
-                            "SUSPEND_REGISTRATION", "SUSPEND_PERMANENT_REGISTRATION" -> NavRoutes.SuspendRegistrationRoute.route
-                            "CANCEL_REGISTRATION", "CANCEL_PERMANENT_REGISTRATION" -> NavRoutes.CancelRegistrationRoute.route
-                            "MORTGAGE_CERTIFICATE" -> NavRoutes.MortgageCertificateRoute.route
-                            "RELEASE_MORTGAGE" -> NavRoutes.ReleaseMortgageRoute.route
-                            "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
-                            "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
-                            "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
-                            "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
-                            "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
-                            "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
-                            "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
-                            "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
-                            else -> NavRoutes.ShipRegistrationRoute.route
+                            "TEMPORARY_REGISTRATION_CERTIFICATE", "SHIP_REGISTRATION" -> "${NavRoutes.ShipRegistrationRoute.route}?hasAcceptance=$hasAcceptance"
+                            "PERMANENT_REGISTRATION_CERTIFICATE", "PERMANENT_REGISTRATION" -> "${NavRoutes.PermanentRegistrationRoute.route}?hasAcceptance=$hasAcceptance"
+                            "REQUEST_FOR_INSPECTION", "REQUEST_INSPECTION" -> "${NavRoutes.RequestForInspection.route}?hasAcceptance=$hasAcceptance"
+                            "SUSPEND_REGISTRATION", "SUSPEND_PERMANENT_REGISTRATION" -> "${NavRoutes.SuspendRegistrationRoute.route}?hasAcceptance=$hasAcceptance"
+                            "CANCEL_REGISTRATION", "CANCEL_PERMANENT_REGISTRATION" -> "${NavRoutes.CancelRegistrationRoute.route}?hasAcceptance=$hasAcceptance"
+                            "MORTGAGE_CERTIFICATE" -> "${NavRoutes.MortgageCertificateRoute.route}?hasAcceptance=$hasAcceptance"
+                            "RELEASE_MORTGAGE" -> "${NavRoutes.ReleaseMortgageRoute.route}?hasAcceptance=$hasAcceptance"
+                            "ISSUE_NAVIGATION_PERMIT" -> "${NavRoutes.IssueNavigationPermitRoute.route}?hasAcceptance=$hasAcceptance"
+                            "RENEW_NAVIGATION_PERMIT" -> "${NavRoutes.RenewNavigationPermitRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SUSPEND_NAVIGATION_PERMIT" -> "${NavRoutes.SuspendNavigationPermitRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SHIP_NAME_CHANGE" -> "${NavRoutes.ChangeNameOfShipOrUnitRoute.route}?hasAcceptance=$hasAcceptance"
+                            "CAPTAIN_NAME_CHANGE" -> "${NavRoutes.CaptainNameChangeRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SHIP_ACTIVITY_CHANGE" -> "${NavRoutes.ShipActivityChangeRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SHIP_PORT_CHANGE" -> "${NavRoutes.ShipPortChangeRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SHIP_OWNERSHIP_CHANGE" -> "${NavRoutes.ShipOwnershipChangeRoute.route}?hasAcceptance=$hasAcceptance"
+                            else -> "${NavRoutes.ShipRegistrationRoute.route}?hasAcceptance=$hasAcceptance"
                         }
 
                         navController.navigate(route) {

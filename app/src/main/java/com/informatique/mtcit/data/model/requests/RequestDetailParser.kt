@@ -108,6 +108,12 @@ object RequestDetailParser {
         // ✅ Extract isPaid field (comes as string "0" or "1" from API)
         val isPaid = actualDataObject["isPaid"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
 
+        // ✅ Extract hasAcceptance from requestType (if present) or default to 0
+        val hasAcceptance = actualDataObject["requestType"]?.jsonObject
+            ?.get("hasAcceptance")?.jsonPrimitive?.intOrNull ?: 0
+
+        println("📋 RequestDetailParser: hasAcceptance = $hasAcceptance (requestTypeId = ${requestType.id})")
+
         // ✅ Extract ship name for header display
         val shipName = actualDataObject["shipInfo"]?.jsonObject
             ?.get("ship")?.jsonObject
@@ -237,6 +243,7 @@ object RequestDetailParser {
             messageDetails = messageDetails,
             sections = sections,
             isPaid = isPaid,
+            hasAcceptance = hasAcceptance,
             shipName = shipName,
             purposeId = purposeId,
             workOrderResult = workOrderResult,

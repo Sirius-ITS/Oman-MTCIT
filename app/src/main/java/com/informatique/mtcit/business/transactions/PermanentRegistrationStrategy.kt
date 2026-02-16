@@ -1129,8 +1129,11 @@ class PermanentRegistrationStrategy @Inject constructor(
                                         println("   - isNewRequest: $isNewRequest")
                                         println("   - hasAcceptance: $hasAcceptance")
 
+                                        // ✅ Use hasAcceptance from strategy property (set from TransactionDetail API)
+                                        val strategyHasAcceptance = this.hasAcceptance
+
                                         // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
-                                        if (isNewRequest && hasAcceptance) {
+                                        if (isNewRequest && strategyHasAcceptance) {
                                             println("🎉 NEW request submitted with hasAcceptance=true - showing success dialog and stopping")
                                             println("   User must continue from profile screen")
 
@@ -1141,7 +1144,7 @@ class PermanentRegistrationStrategy @Inject constructor(
 
                                             // Return -2 to indicate: success but show dialog and stop
                                             return -2
-                                        } else if (isNewRequest && !hasAcceptance) {
+                                        } else if (isNewRequest && !strategyHasAcceptance) {
                                             println("✅ NEW request submitted with hasAcceptance=false - continuing to next steps")
                                             println("   Transaction will continue to payment/next steps")
                                             // Continue normally - don't return, let the flow proceed
