@@ -1,5 +1,7 @@
 package com.informatique.mtcit.ui
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -66,26 +68,29 @@ class LandingActivity: BaseActivity() {
     @Inject
     lateinit var navigationManager: NavigationManagerImpl
 
+    // Apply a safe fontScale before any resources are accessed to avoid
+    // "getResources() or getAssets() has already been called" when calling
+    // applyOverrideConfiguration later in lifecycle. Doing it here ensures
+    // the adjusted context is attached early.
+    override fun attachBaseContext(newBase: Context) {
+        val configuration = Configuration(newBase.resources.configuration)
+        val originalScale = configuration.fontScale
+        val limitedScale = originalScale.coerceIn(0.85f, 1f)
+
+        if (originalScale != limitedScale) {
+            configuration.fontScale = limitedScale
+            val wrapped = newBase.createConfigurationContext(configuration)
+            super.attachBaseContext(wrapped)
+        } else {
+            super.attachBaseContext(newBase)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Enable edge-to-edge for proper Android 36 support
         enableEdgeToEdge()
-
-        val configuration = resources.configuration
-
-// ناخد قيمة fontScale من الجهاز
-        val originalScale = configuration.fontScale
-
-// نحدد الحدود اللي نسمح بيها
-        val limitedScale = originalScale.coerceIn(0.85f, 1.15f)
-
-// لو كانت القيمة برا الرينج، نعدلها
-        if (originalScale != limitedScale) {
-            configuration.fontScale = limitedScale
-            val newContext = createConfigurationContext(configuration)
-            applyOverrideConfiguration(newContext.resources.configuration)
-        }
 
         setContent {
             val languageViewModel: LanguageViewModel = hiltViewModel()

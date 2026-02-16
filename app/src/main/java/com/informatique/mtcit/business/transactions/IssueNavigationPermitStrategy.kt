@@ -27,6 +27,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
 import io.ktor.utils.io.streams.asInput
 import androidx.core.net.toUri
+import com.informatique.mtcit.common.ErrorMessageExtractor
 
 /**
  * Strategy for Issue Navigation Permit
@@ -419,8 +420,18 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                         },
                                         onFailure = { error ->
                                             println("❌ Failed to create navigation license request: ${error.message}")
-                                            accumulatedFormData["apiError"] = error.message ?: "فشل في إنشاء طلب رخصة الملاحة"
-                                            return -1
+                                            // Build friendly message
+                                            val msg = when (error) {
+                                                is ApiException -> error.message ?: "فشل في إنشاء طلب رخصة الملاحة"
+                                                else -> ErrorMessageExtractor.extract(error.message)
+                                            }
+
+                                            // Store for UI/debugging
+                                            accumulatedFormData["apiError"] = msg
+
+                                            // Re-throw so upstream (BaseTransactionViewModel) can catch ApiException and show ErrorBanner
+                                            if (error is ApiException) throw error
+                                            else throw ApiException(500, msg)
                                         }
                                     )
                                 } else {
@@ -441,6 +452,10 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                 }
                             }
                         }
+                    } catch (e: ApiException) {
+                        // Preserve API exception so BaseTransactionViewModel can convert it to AppError and show the banner
+                        accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
+                        throw e
                     } catch (e: Exception) {
                         accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
                         return -1
@@ -630,10 +645,20 @@ class IssueNavigationPermitStrategy @Inject constructor(
                             },
                             onFailure = { error ->
                                 println("❌ Failed to check inspection preview: ${error.message}")
-                                // On error, show error message and block
-                                accumulatedFormData["apiError"] =
-                                    "حدث خطأ أثناء التحقق من المعاينة: ${error.message}"
-                                return -1 // Block navigation
+                                // Build friendly message and store for UI/debugging
+                                val msg = when (error) {
+                                    is ApiException -> error.message ?: "حدث خطأ أثناء التحقق من المعاينة"
+                                    else -> ErrorMessageExtractor.extract(error.message)
+                                }
+
+                                accumulatedFormData["apiError"] = "حدث خطأ أثناء التحقق من المعاينة: $msg"
+
+                                // Re-throw so upstream ViewModel (BaseTransactionViewModel) can catch and display ErrorBanner
+                                if (error is ApiException) {
+                                    throw error
+                                } else {
+                                    throw ApiException(500, msg)
+                                }
                             }
                         )
 

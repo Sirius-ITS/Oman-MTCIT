@@ -310,6 +310,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
             .onFailure { error ->
                 println("❌ Failed to load existing navigation areas: ${error.message}")
+                val msg = when (error) {
+                    is ApiException -> error.message ?: "فشل في تحميل مناطق الإبحار"
+                    else -> ErrorMessageExtractor.extract(error.message)
+                }
+                accumulatedFormData["apiError"] = msg
+                lastApiError = msg
+                if (error is ApiException) throw error else throw ApiException(500, msg)
             }
     }
 
@@ -386,6 +393,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
             }
             .onFailure { error ->
                 println("❌ Failed to load existing crew: ${error.message}")
+                val msg = when (error) {
+                    is ApiException -> error.message ?: "فشل في تحميل بيانات الطاقم"
+                    else -> ErrorMessageExtractor.extract(error.message)
+                }
+                accumulatedFormData["apiError"] = msg
+                lastApiError = msg
+                if (error is ApiException) throw error else throw ApiException(500, msg)
             }
     }
 
@@ -1027,8 +1041,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
             }
             .onFailure { error ->
                 println("❌ Failed to update navigation areas: ${error.message}")
-                // Store error for UI to display
-                lastApiError = error.message
+                val msg = when (error) {
+                    is ApiException -> error.message ?: "فشل في تحديث مناطق الإبحار"
+                    else -> ErrorMessageExtractor.extract(error.message)
+                }
+                accumulatedFormData["apiError"] = msg
+                lastApiError = msg
+                if (error is ApiException) throw error else throw ApiException(500, msg)
             }
     }
 
@@ -1056,6 +1075,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
                     }
                     .onFailure { error ->
                         println("❌ Failed to add crew: ${error.message}")
+                        val msg = when (error) {
+                            is ApiException -> error.message ?: "فشل في إضافة الطاقم"
+                            else -> ErrorMessageExtractor.extract(error.message)
+                        }
+                        accumulatedFormData["apiError"] = msg
+                        lastApiError = msg
+                        if (error is ApiException) throw error else throw ApiException(400, msg)
                     }
             }
         }
@@ -1095,6 +1121,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
             }
             .onFailure { error ->
                 println("❌ Failed to create navigation license renewal request: ${error.message}")
+                val msg = when (error) {
+                    is ApiException -> error.message ?: "فشل في إنشاء طلب تجديد"
+                    else -> ErrorMessageExtractor.extract(error.message)
+                }
+                accumulatedFormData["apiError"] = msg
+                lastApiError = msg
+                if (error is ApiException) throw error else throw ApiException(500, msg)
             }
 
         return navigationRequestId

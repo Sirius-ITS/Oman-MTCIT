@@ -12,6 +12,7 @@ import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionFileUpload
 import com.informatique.mtcit.data.model.cancelRegistration.DeletionSubmitResponse
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -107,8 +108,17 @@ class CancelRegistrationStrategy @Inject constructor(
                 println("🗑️ Deletion Reason Map: $deletionReasonMap")
                 println("🗑️ ============================================")
             }.onFailure { error ->
-                println("❌ Error fetching deletion reasons: ${error.message}")
-                error.printStackTrace()
+                println("❌ Failed to fetch deletion reasons: ${error.message}")
+                val msg = when (error) {
+                    is ApiException -> error.message ?: "فشل في جلب أسباب الحذف"
+                    else -> ErrorMessageExtractor.extract(error.message)
+                }
+
+                // Store for UI/debugging and ensure it bubbles up
+                accumulatedFormData["apiError"] = msg
+                lastApiError = msg
+
+                if (error is ApiException) throw error else throw ApiException(500, msg)
             }
         } catch (e: Exception) {
             println("❌ Exception fetching deletion reasons: ${e.message}")
@@ -400,14 +410,24 @@ class CancelRegistrationStrategy @Inject constructor(
                         lastApiError = null
                         apiCallSucceeded = true
                     },
-                    onFailure = { error ->
-                        println("❌ Failed to create deletion request: ${error.message}")
-                        error.printStackTrace()
 
-                        // Store error for display
-                        lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الشطب"
-                        apiCallSucceeded = false
+                    onFailure=  { error ->
+                    println("❌ Failed to add crew: ${error.message}")
+                    // Store API error for UI / debugging
+                    val msg = when (error) {
+                        is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إضافة الطاقم"
+                        else -> error.message ?: "فشل في إضافة الطاقم"
                     }
+                    accumulatedFormData["apiError"] = msg
+                    lastApiError = msg
+
+                    // Re-throw as ApiException so upstream processStepData will catch and surface banner
+                    if (error is com.informatique.mtcit.common.ApiException) {
+                        throw error
+                    } else {
+                        throw com.informatique.mtcit.common.ApiException(400, msg)
+                    }
+                }
                 )
             } catch (e: Exception) {
                 println("❌ Exception while creating deletion request: ${e.message}")

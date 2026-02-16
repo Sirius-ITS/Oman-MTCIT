@@ -22,6 +22,7 @@ import com.informatique.mtcit.data.api.MortgageApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
@@ -366,9 +367,13 @@ class ReleaseMortgageStrategy @Inject constructor(
 
                     result.onFailure { error ->
                         println("❌ Failed to create redemption request: ${error.message}")
-                        println("🔄 Re-throwing error to prevent navigation and show error to user")
-                        // ✅ Throw the error to prevent navigation and show error in UI
-                        throw error
+                        val msg = when (error) {
+                            is ApiException -> error.message ?: "فشل في إنشاء طلب فك الرهن"
+                            else -> ErrorMessageExtractor.extract(error.message)
+                        }
+                        accumulatedFormData["apiError"] = msg
+                        lastApiError = msg
+                        if (error is ApiException) throw error else throw ApiException(500, msg)
                     }
                 } catch (e: Exception) {
                     println("❌ Exception in createRedemptionRequest: ${e.message}")
@@ -688,6 +693,13 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         result.onFailure { error ->
             println("❌ Failed to create redemption request: ${error.message}")
+            val msg = when (error) {
+                is ApiException -> error.message ?: "فشل في إنشاء طلب فك الرهن"
+                else -> ErrorMessageExtractor.extract(error.message)
+            }
+            accumulatedFormData["apiError"] = msg
+            lastApiError = msg
+            if (error is ApiException) throw error else throw ApiException(500, msg)
         }
 
         println("=".repeat(80))
