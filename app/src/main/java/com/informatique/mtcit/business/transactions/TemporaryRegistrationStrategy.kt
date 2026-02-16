@@ -94,6 +94,17 @@ class TemporaryRegistrationStrategy @Inject constructor(
     override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
 
     /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 TemporaryRegistrationStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
+    /**
      * ✅ Get the transaction context with all API endpoints
      */
     override fun getContext(): TransactionContext {

@@ -126,7 +126,7 @@ fun MarineRegistrationScreen(
 
     // ✅ NEW: Set hasAcceptance in strategy after initialization completes
     LaunchedEffect(hasAcceptance, uiState.isInitialized) {
-        if (hasAcceptance != null && hasAcceptance != 0 && uiState.isInitialized) {
+        if (hasAcceptance != null && uiState.isInitialized) {
             println("🔧 Setting hasAcceptance=$hasAcceptance in strategy after initialization")
             viewModel.setHasAcceptanceFromApi(hasAcceptance)
         }

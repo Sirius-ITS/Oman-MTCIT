@@ -93,6 +93,17 @@ class MortgageCertificateStrategy @Inject constructor(
     override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
     override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
 
+    /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 MortgageCertificateStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
     // Helper: normalize different input date formats into ISO yyyy-MM-dd
     private fun normalizeDateToIso(input: String?): String? {
         if (input == null) return null

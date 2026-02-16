@@ -69,6 +69,17 @@ class IssueNavigationPermitStrategy @Inject constructor(
     override var onStepsNeedRebuild: (() -> Unit)? = null
 
     /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 IssueNavigationPermitStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
+    /**
      * ✅ NEW: Handle user clicking "Continue" on inspection required dialog
      * Load inspection lookups and inject inspection step
      */

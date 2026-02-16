@@ -78,6 +78,17 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private val apiResponses: MutableMap<String, Any> = mutableMapOf()
 
     /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 RenewNavigationPermitStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
+    /**
      * ✅ NEW: Handle user clicking "Continue" on inspection required dialog
      * Load inspection lookups and inject inspection step
      */

@@ -106,6 +106,17 @@ class PermanentRegistrationStrategy @Inject constructor(
     override var onStepsNeedRebuild: (() -> Unit)? = null
 
     /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 PermanentRegistrationStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
+    /**
      * Handle inspection dialog confirmation
      * Called when user clicks "Continue" on inspection required dialog
      * This will load inspection lookups and inject the inspection purpose step
