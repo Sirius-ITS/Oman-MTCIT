@@ -570,6 +570,13 @@ class RequestDetailViewModel @Inject constructor(
     }
 
     /**
+     * ✅ Clear certificate URL after opening in external browser
+     */
+    fun clearCertificateUrl() {
+        _certificateUrl.value = null
+    }
+
+    /**
      * ✅ DEPRECATED: QR decoding is no longer needed
      * Certificate URLs are now constructed directly based on transaction type
      */
@@ -1091,13 +1098,17 @@ class RequestDetailViewModel @Inject constructor(
     /**
      * ✅ View certificate for already issued requests
      * Constructs the certificate URL based on transaction type
+     *
+     * @param requestTypeId The type of request
+     * @param useExternalBrowser If true, sets certificateUrl for external browser; if false, opens WebView
      */
-    fun viewCertificate(requestTypeId: Int) {
+    fun viewCertificate(requestTypeId: Int, useExternalBrowser: Boolean = false) {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
                 _isViewingCertificate.value = true  // ✅ Set viewing flag
                 println("🔘 viewCertificate called for requestTypeId: $requestTypeId")
+                println("   useExternalBrowser: $useExternalBrowser")
 
                 val rawResponse = _rawResponse.value
                 if (rawResponse == null) {
@@ -1150,21 +1161,35 @@ class RequestDetailViewModel @Inject constructor(
                     if (certificateUrl != null) {
                         println("✅ Certificate URL constructed: $certificateUrl")
 
-                        // Open file viewer with the certificate URL
-                        _fileViewerState.value = FileViewerState(
-                            fileUri = certificateUrl,
-                            fileName = "Certificate_$certificationNumber.html",
-                            mimeType = "text/html",
-                            isOpen = true
-                        )
+                        // ✅ SMART TOGGLE: Choose viewing method based on configuration
+                        if (useExternalBrowser) {
+                            // =============================================
+                            // 🌐 EXTERNAL BROWSER APPROACH
+                            // =============================================
+                            println("🌐 Opening certificate in external browser")
+                            _certificateUrl.value = certificateUrl  // UI will detect this and open external browser
+                            _isLoading.value = false
+                            _isViewingCertificate.value = false  // No need to keep viewing flag
+                        } else {
+                            // =============================================
+                            // 📱 IN-APP WEBVIEW APPROACH (Default)
+                            // =============================================
+                            println("📱 Opening certificate in WebView dialog")
+                            _fileViewerState.value = FileViewerState(
+                                fileUri = certificateUrl,
+                                fileName = "Certificate_$certificationNumber.html",
+                                mimeType = "text/html",
+                                isOpen = true
+                            )
 
-                        println("📂 RequestDetailViewModel: Opening file viewer")
-                        println("   URL: $certificateUrl")
-                        println("   File: Certificate_$certificationNumber.html")
-                        println("   Type: text/html")
+                            println("📂 RequestDetailViewModel: Opening file viewer")
+                            println("   URL: $certificateUrl")
+                            println("   File: Certificate_$certificationNumber.html")
+                            println("   Type: text/html")
 
-                        _isLoading.value = false
-                        // ✅ Keep viewing flag true until file viewer is closed
+                            _isLoading.value = false
+                            // ✅ Keep viewing flag true until file viewer is closed
+                        }
                     } else {
                         println("❌ No certificate URL mapping for request type: $requestTypeId")
                         _toastMessage.value = "❌ لا يمكن عرض الشهادة لهذا النوع من الطلبات"

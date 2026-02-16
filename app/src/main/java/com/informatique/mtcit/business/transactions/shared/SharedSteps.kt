@@ -468,7 +468,7 @@ object SharedSteps {
             FormField.DatePicker(
                 id = "mortgageStartDate",
                 labelRes = R.string.mortgage_start_date,
-                allowPastDates = true,
+                allowPastDates = false,
                 mandatory = true
             )
         )

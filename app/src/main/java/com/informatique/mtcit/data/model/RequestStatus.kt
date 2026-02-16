@@ -22,7 +22,7 @@ enum class RequestStatus(val statusId: Int, val arabicName: String, val englishN
     ACTION_TAKEN(13, "تم اتخاذ الإجراء", "Action Taken"),
     ISSUED(14, "تم الإصدار", "Issued"),
     UNDER_INVESTIGATION(15, "قيد التحقيق", "Under Investigation"),
-    WAITING_INSPECTION_RESULT(16, "في انتظار نتيجة التفتيش", "Waiting for Inspection Result");
+    WAITING_INSPECTION_RESULT(16, "في انتظار نتائج الفحص", "Waiting for Inspection Result");
 
     companion object {
         /**

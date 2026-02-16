@@ -50,6 +50,31 @@ import com.informatique.mtcit.ui.viewmodels.CertificateData
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+// =====================================================================
+// 🔧 CERTIFICATE VIEWER CONFIGURATION
+// =====================================================================
+// Toggle between WebView (in-app) and External Browser for certificate viewing
+//
+// 🌐 EXTERNAL BROWSER (USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = true):
+//    - Opens certificate URLs in the device's default browser
+//    - Pros: Uses the full browser capabilities, more stable for complex web pages
+//    - Cons: User leaves the app
+//
+// 📱 WEBVIEW DIALOG (USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = false):
+//    - Opens certificate in an in-app WebView dialog
+//    - Pros: User stays within the app, seamless UX
+//    - Cons: May have authentication/session issues with complex web flows
+//
+// 👉 HOW TO SWITCH:
+//    1. Change the constant below to 'true' for external browser
+//    2. Change it to 'false' for in-app WebView (default)
+//    3. Rebuild the app
+//
+// No other code changes needed! The app automatically uses the configured method.
+// =====================================================================
+private const val USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = true
+// =====================================================================
+
 /**
  * API Request Detail Screen - Matches ReviewStep design pattern
  * Fetches and displays request details from API with expandable sections
@@ -185,15 +210,15 @@ fun ApiRequestDetailScreen(
                 viewModel.clearCertificateData()
             },
             onViewCertificate = {
-                println("🔄 View Certificate clicked in dialog - opening webview")
+                println("🔄 View Certificate clicked in dialog")
 
                 // ✅ Construct URL directly based on request type
                 val requestTypeId = requestDetail?.requestType?.id
                 if (requestTypeId != null) {
                     println("✅ Constructing certificate URL for requestTypeId: $requestTypeId")
 
-                    // ✅ Use the same viewCertificate method that constructs URL directly
-                    viewModel.viewCertificate(requestTypeId)
+                    // ✅ Use the configuration flag to determine viewing method
+                    viewModel.viewCertificate(requestTypeId, useExternalBrowser = USE_EXTERNAL_BROWSER_FOR_CERTIFICATES)
 
                     // ✅ Clear certificate data to dismiss dialog
                     viewModel.clearCertificateData()
@@ -207,6 +232,18 @@ fun ApiRequestDetailScreen(
                 }
             }
         )
+    }
+
+    // ✅ Handle external browser opening (when USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = true)
+    val certificateUrl by viewModel.certificateUrl.collectAsState()
+    LaunchedEffect(certificateUrl) {
+        certificateUrl?.let { url ->
+            println("🌐 Opening certificate in external browser: $url")
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            context.startActivity(intent)
+            // Clear the URL after opening
+            viewModel.clearCertificateUrl()
+        }
     }
 
     // ✅ Show toast message for non-blocking success notifications
@@ -825,8 +862,11 @@ private fun IssueCertificateButton(
             println("📋 requestId=${requestDetail.requestId}, requestTypeId=${requestDetail.requestType.id}, statusId=${requestDetail.status.id}")
 
             if (isAlreadyIssued) {
-                // ✅ Certificate already issued - view it
-                viewModel.viewCertificate(requestDetail.requestType.id)
+                // ✅ Certificate already issued - view it using configured method
+                viewModel.viewCertificate(
+                    requestTypeId = requestDetail.requestType.id,
+                    useExternalBrowser = USE_EXTERNAL_BROWSER_FOR_CERTIFICATES
+                )
             } else {
                 // ✅ Certificate not issued yet - issue it
                 viewModel.issueCertificate(

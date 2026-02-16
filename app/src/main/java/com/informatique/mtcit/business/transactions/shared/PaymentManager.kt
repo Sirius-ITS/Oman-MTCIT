@@ -557,9 +557,14 @@ class PaymentManager @Inject constructor(
                     mortgageCert?.get("certificationNumber")?.jsonPrimitive?.contentOrNull
                 }
                 5 -> {
-                    // Mortgage Redemption: nested in mortgageRedemptionCertification
-                    val redemptionCert = dataObject["mortgageRedemptionCertification"]?.jsonObject
+                    // Mortgage Redemption: nested in mortgageRedemCertification (note: no "ption")
+                    val redemptionCert = dataObject["mortgageRedemCertification"]?.jsonObject
                     redemptionCert?.get("certificationNumber")?.jsonPrimitive?.contentOrNull
+                }
+                7 -> {
+                    // Cancel Registration: nested in deletionCertification
+                    val deletionCert = dataObject["deletionCertification"]?.jsonObject
+                    deletionCert?.get("certificationNumber")?.jsonPrimitive?.contentOrNull
                 }
                 else -> {
                     // Other types: direct field

@@ -22,6 +22,7 @@ import com.informatique.mtcit.data.api.MortgageApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.util.UserHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
@@ -130,21 +131,22 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         println("🔒 loadShipsForSelectedType (RELEASE MORTGAGE) - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ For individuals: send ownerCivilId + requestTypeId ONLY (no commercialNumber)
         // ✅ For companies: send ownerCivilId + requestTypeId + commercialNumber (CR Number)
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId + requestTypeId ONLY")
-                Pair("12345678", null) // TODO: Get from authenticated user
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId + requestTypeId + commercialNumber (CR Number from selectionData)")
-                Pair("12345678", commercialReg) // ✅ commercialReg contains CR Number (e.g., "123456-1")
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
-            else -> {
-                println("⚠️ Unknown person type, using default (individual)")
-                Pair("12345678", null)
-            }
+            else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with:")
@@ -316,6 +318,24 @@ class ReleaseMortgageStrategy @Inject constructor(
                         println("✅ Ship selection successful!")
                         createdRedemptionRequestId = result.requestId
                         accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                        accumulatedFormData["requestId"] = result.requestId.toString()
+
+                        // ✅ Extract and store shipInfoId for payment
+                        val selectedUnitsJson = data["selectedMarineUnits"]
+                        if (selectedUnitsJson != null) {
+                            try {
+                                val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                                val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                val firstShipId = shipIds.firstOrNull()
+                                if (firstShipId != null) {
+                                    accumulatedFormData["shipInfoId"] = firstShipId
+                                    accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                    println("✅ Stored coreShipsInfoId for payment: $firstShipId")
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ Failed to extract shipInfoId: ${e.message}")
+                            }
+                        }
                     }
                     is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                         println("❌ Ship selection failed: ${result.message}")
@@ -441,6 +461,34 @@ class ReleaseMortgageStrategy @Inject constructor(
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
                         accumulatedFormData["hasAcceptance"] = reviewResult.hasAcceptance.toString()
+
+                        // ✅ Extract coreShipsInfoId from the response for payment
+                        // The structure is: data.shipInfo.id
+                        println("🔍 Extracting coreShipsInfoId from response...")
+                        println("   additionalData keys: ${reviewResult.additionalData?.keys}")
+
+                        val coreShipsInfoId = reviewResult.additionalData?.get("shipInfo")?.let { shipInfo ->
+                            println("   shipInfo type: ${shipInfo?.javaClass?.simpleName}")
+                            val shipInfoMap = shipInfo as? Map<*, *>
+                            println("   shipInfo keys: ${shipInfoMap?.keys}")
+                            val id = shipInfoMap?.get("id")
+                            println("   id value: $id, type: ${id?.javaClass?.simpleName}")
+
+                            // Convert to String - handle both Int and String
+                            when (id) {
+                                is Number -> id.toString()
+                                is String -> id
+                                else -> id?.toString()
+                            }
+                        }
+
+                        if (coreShipsInfoId != null) {
+                            accumulatedFormData["coreShipsInfoId"] = coreShipsInfoId
+                            println("✅ Extracted coreShipsInfoId for payment: $coreShipsInfoId")
+                        } else {
+                            println("⚠️ Could not extract coreShipsInfoId from response")
+                            println("⚠️ Full additionalData: ${reviewResult.additionalData}")
+                        }
 
                         // ✅ Extract request number
                         val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()

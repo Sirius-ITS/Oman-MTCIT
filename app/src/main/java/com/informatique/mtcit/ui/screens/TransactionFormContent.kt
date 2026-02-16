@@ -1,5 +1,9 @@
 package com.informatique.mtcit.ui.screens
 
+// ✅ NOTE: Intent and Uri imports are needed for External Browser option (see line ~250)
+// Uncomment the External Browser code block to use them
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,6 +43,7 @@ import com.informatique.mtcit.ui.viewmodels.ValidationState
 import com.informatique.mtcit.ui.components.ErrorBanner
 import io.ktor.client.request.forms.formData
 import java.util.Locale
+import androidx.core.net.toUri
 
 
 /**
@@ -236,8 +241,22 @@ fun TransactionFormContent(
             },
             onViewCertificate = if (certificateUrl.isNotEmpty()) {
                 {
-                    // Open certificate URL in file viewer
-                    viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
+                    // ✅ Open certificate URL in file viewer dialog with both WebView and External Browser options
+                    // USAGE:
+                    // - Uncomment the option you want to use:
+
+                    // Option 1: Open in WebView (default - shows certificate in app)
+//                    viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
+
+                    // Option 2: Open in External Browser (opens system browser)
+                     val context = navController.context
+                     val intent = Intent(Intent.ACTION_VIEW, certificateUrl.toUri())
+                     try {
+                         context.startActivity(intent)
+                     } catch (e: Exception) {
+                         // Fallback to WebView if external browser fails
+                         viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
+                     }
                 }
             } else null
         )
