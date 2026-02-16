@@ -47,6 +47,7 @@ import com.informatique.mtcit.ui.components.FileViewerDialog
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.RequestDetailViewModel
 import com.informatique.mtcit.ui.viewmodels.CertificateData
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
@@ -88,6 +89,41 @@ fun ApiRequestDetailScreen(
         println("👷 ApiRequestDetailScreen: User is engineer: $isEngineer")
         println("🔍 ApiRequestDetailScreen: Loading request $requestId (type: $requestTypeId, isEngineer: $isEngineer)")
         viewModel.fetchRequestDetail(requestId, requestTypeId, isEngineer)
+    }
+
+    // ✅ NEW: Handle navigation to login when refresh token fails
+    val shouldNavigateToLogin by viewModel.shouldNavigateToLogin.collectAsState()
+    LaunchedEffect(shouldNavigateToLogin) {
+        if (shouldNavigateToLogin) {
+            println("🔑 ApiRequestDetailScreen: Auto-navigating to login - refresh token failed")
+            navController.navigate(com.informatique.mtcit.navigation.NavRoutes.OAuthWebViewRoute.route)
+            viewModel.resetNavigationTrigger()
+        }
+    }
+
+    // ✅ NEW: Observe login completion to reload data
+    val coroutineScope = rememberCoroutineScope()
+    DisposableEffect(navController.currentBackStackEntry) {
+        val handle = navController.currentBackStackEntry?.savedStateHandle
+
+        val observer = androidx.lifecycle.Observer<Boolean> { loginCompleted ->
+            if (loginCompleted == true) {
+                println("✅ ApiRequestDetailScreen: Login completed, reloading request detail")
+                coroutineScope.launch {
+                    val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+                    viewModel.clearAppError()
+                    viewModel.fetchRequestDetail(requestId, requestTypeId, isEngineer)
+                }
+                // Clear the flag
+                handle?.set("login_completed", false)
+            }
+        }
+
+        handle?.getLiveData<Boolean>("login_completed")?.observeForever(observer)
+
+        onDispose {
+            handle?.getLiveData<Boolean>("login_completed")?.removeObserver(observer)
+        }
     }
 
     // ✅ Show certificate issuance success dialog ONLY when issuing (not when just viewing)
@@ -230,33 +266,84 @@ fun ApiRequestDetailScreen(
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                when {
-                    isLoading -> {
-                        LoadingState(extraColors)
+                // ✅ NEW: Show ErrorBanner for different error types
+                appError?.let { error ->
+                    when (error) {
+                        is com.informatique.mtcit.common.AppError.Unauthorized -> {
+                            // ✅ Show refresh token button for 401 errors
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                showRefreshButton = true,
+                                onRefreshToken = {
+                                    coroutineScope.launch {
+                                        val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+                                        viewModel.refreshToken(requestId, requestTypeId, isEngineer)
+                                    }
+                                },
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.ApiError -> {
+                            // Other API errors - no refresh button
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.Unknown -> {
+                            // Unknown errors
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
+                        else -> {
+                            // Fallback
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = if (Locale.getDefault().language == "ar") "حدث خطأ" else "An error occurred",
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
                     }
+                }
 
-                    appError != null -> {
-                        ErrorState(
-                            error = appError!!,
-                            extraColors = extraColors,
-                            onRetry = { viewModel.retry(requestId, requestTypeId) }
-                        )
-                    }
+                // Content area
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    when {
+                        isLoading -> {
+                            LoadingState(extraColors)
+                        }
 
-                    requestDetail != null -> {
-                        RequestDetailContent(
-                            requestDetail = requestDetail!!,
-                            extraColors = extraColors,
-                            navController = navController,
-                            viewModel = viewModel,
-                            isIssuingCertificate = isIssuingCertificate,
-                            certificateData = certificateData
-                        )
+                        appError != null -> {
+                            ErrorState(
+                                error = appError!!,
+                                extraColors = extraColors,
+                                onRetry = {
+                                    coroutineScope.launch {
+                                        val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+                                        viewModel.retry(requestId, requestTypeId, isEngineer)
+                                    }
+                                }
+                            )
+                        }
+
+                        requestDetail != null -> {
+                            RequestDetailContent(
+                                requestDetail = requestDetail!!,
+                                extraColors = extraColors,
+                                navController = navController,
+                                viewModel = viewModel,
+                                isIssuingCertificate = isIssuingCertificate,
+                                certificateData = certificateData
+                            )
+                        }
                     }
                 }
             }

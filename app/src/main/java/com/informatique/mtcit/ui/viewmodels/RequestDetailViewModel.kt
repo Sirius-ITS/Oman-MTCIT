@@ -50,7 +50,8 @@ private val REQUEST_TYPE_TO_CERTIFICATE_TYPE = mapOf(
 @HiltViewModel
 class RequestDetailViewModel @Inject constructor(
     private val userRequestsRepository: UserRequestsRepository,
-    private val checklistApiService: com.informatique.mtcit.data.api.ChecklistApiService
+    private val checklistApiService: com.informatique.mtcit.data.api.ChecklistApiService,
+    private val authRepository: com.informatique.mtcit.data.repository.AuthRepository // ✅ NEW: For token refresh
 ) : ViewModel() {
 
     private val _requestDetail = MutableStateFlow<RequestDetailUiModel?>(null)
@@ -81,6 +82,10 @@ class RequestDetailViewModel @Inject constructor(
     // ✅ NEW: Certificate URL for opening in external browser
     private val _certificateUrl = MutableStateFlow<String?>(null)
     val certificateUrl: StateFlow<String?> = _certificateUrl.asStateFlow()
+
+    // ✅ NEW: Navigation to login trigger (when refresh token expires)
+    private val _shouldNavigateToLogin = MutableStateFlow(false)
+    val shouldNavigateToLogin: StateFlow<Boolean> = _shouldNavigateToLogin.asStateFlow()
 
     // ✅ NEW: Checklist items state
     private val _checklistItems = MutableStateFlow<List<com.informatique.mtcit.data.model.ChecklistItem>>(emptyList())
@@ -288,8 +293,8 @@ class RequestDetailViewModel @Inject constructor(
     /**
      * Retry loading
      */
-    fun retry(requestId: Int, requestTypeId: Int) {
-        fetchRequestDetail(requestId, requestTypeId)
+    fun retry(requestId: Int, requestTypeId: Int, isEngineer: Boolean = false) {
+        fetchRequestDetail(requestId, requestTypeId, isEngineer)
     }
 
     /**
@@ -1202,5 +1207,57 @@ class RequestDetailViewModel @Inject constructor(
                 null
             }
         }
+    }
+
+    /**
+     * ✅ NEW: Refresh expired access token
+     * Called by UI when user clicks "Refresh Token" button in 401 error banner
+     *
+     * Flow:
+     * 1. Try to refresh token
+     * 2. If success → Clear error and automatically retry API call
+     * 3. If fail → Auto-navigate to login screen
+     */
+    fun refreshToken(requestId: Int, requestTypeId: Int, isEngineer: Boolean) {
+        viewModelScope.launch {
+            val result = authRepository.refreshAccessToken()
+
+            result.fold(
+                onSuccess = {
+                    println("✅ Token refreshed successfully in RequestDetailViewModel")
+                    _appError.value = null  // Clear error banner
+                    // Retry the API call automatically
+                    fetchRequestDetail(requestId, requestTypeId, isEngineer)
+                },
+                onFailure = {
+                    println("❌ Token refresh failed in RequestDetailViewModel - navigating to login")
+                    // ✅ Clear error banner BEFORE navigating to login
+                    _appError.value = null
+                    // ✅ AUTO-NAVIGATE to login
+                    _shouldNavigateToLogin.value = true
+                }
+            )
+        }
+    }
+
+    /**
+     * ✅ NEW: Trigger navigation to login
+     */
+    fun navigateToLogin() {
+        _shouldNavigateToLogin.value = true
+    }
+
+    /**
+     * ✅ NEW: Reset navigation trigger
+     */
+    fun resetNavigationTrigger() {
+        _shouldNavigateToLogin.value = false
+    }
+
+    /**
+     * ✅ NEW: Clear error banner
+     */
+    fun clearAppError() {
+        _appError.value = null
     }
 }
