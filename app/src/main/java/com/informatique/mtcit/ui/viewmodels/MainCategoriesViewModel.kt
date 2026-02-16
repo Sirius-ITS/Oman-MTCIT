@@ -205,10 +205,11 @@ class MainCategoriesViewModel @Inject constructor(
                     getSubCategoriesApi()
                 },
                 onFailure = {
-                    println("❌ Token refresh failed in MainCategoriesViewModel")
-                    // Show error with "Go to Login" button
-                    _apiError.value = AppError.Unknown("انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى")
-                    // Don't auto-navigate, let user click the button
+                    println("❌ Token refresh failed in MainCategoriesViewModel - auto-navigating to login")
+                    // ✅ Clear error banner BEFORE navigating
+                    _apiError.value = null
+                    // ✅ AUTO-NAVIGATE to login directly
+                    _shouldNavigateToLogin.value = true
                 }
             )
         }

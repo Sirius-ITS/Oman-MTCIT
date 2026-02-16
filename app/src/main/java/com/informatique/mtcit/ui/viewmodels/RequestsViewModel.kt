@@ -417,7 +417,7 @@ class RequestsViewModel @Inject constructor(
      * Flow:
      * 1. Try to refresh token
      * 2. If success → Clear error and automatically retry API call
-     * 3. If fail → Show error with "Go to Login" option
+     * 3. If fail → Auto-navigate to login screen
      */
     fun refreshToken() {
         viewModelScope.launch {
@@ -431,10 +431,11 @@ class RequestsViewModel @Inject constructor(
                     loadRequests()
                 },
                 onFailure = {
-                    println("❌ Token refresh failed in RequestsViewModel")
-                    // Show error with "Go to Login" button
-                    _appError.value = AppError.Unknown("انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى")
-                    // Don't auto-navigate, let user click the button
+                    println("❌ Token refresh failed in RequestsViewModel - auto-navigating to login")
+                    // ✅ Clear error banner BEFORE navigating
+                    _appError.value = null
+                    // ✅ AUTO-NAVIGATE to login directly
+                    _shouldNavigateToLogin.value = true
                 }
             )
         }
