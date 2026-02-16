@@ -682,13 +682,22 @@ class MortgageCertificateStrategy @Inject constructor(
                         apiCallSucceeded = true
                     },
                     onFailure = { error ->
-                        println("❌ Failed to create mortgage request: ${error.message}")
-                        error.printStackTrace()
-
-                        // Store error for Toast display
-                        lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الرهن"
-                        apiCallSucceeded = false
+                    println("❌ Failed to add crew: ${error.message}")
+                    // Store API error for UI / debugging
+                    val msg = when (error) {
+                        is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إضافة الطاقم"
+                        else -> error.message ?: "فشل في إضافة الطاقم"
                     }
+                    accumulatedFormData["apiError"] = msg
+                    lastApiError = msg
+
+                    // Re-throw as ApiException so upstream processStepData will catch and surface banner
+                    if (error is com.informatique.mtcit.common.ApiException) {
+                        throw error
+                    } else {
+                        throw com.informatique.mtcit.common.ApiException(400, msg)
+                    }
+                }
                 )
             } catch (e: Exception) {
                 println("❌ Exception while creating mortgage request: ${e.message}")
@@ -1098,8 +1107,23 @@ class MortgageCertificateStrategy @Inject constructor(
             }
         }
 
-        result.onFailure { error ->
+        result .onFailure { error ->
             println("❌ Create mortgage request failed: ${error.message}")
+            // Build friendly message
+            val msg = when (error) {
+                is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إنشاء طلب الرهن"
+                else -> com.informatique.mtcit.common.ErrorMessageExtractor.extract(error.message)
+            }
+            // Store for UI and debugging
+            accumulatedFormData["apiError"] = msg
+            lastApiError = msg
+
+            // Re-throw as ApiException so upstream processStepData will catch and surface banner
+            if (error is com.informatique.mtcit.common.ApiException) {
+                throw error
+            } else {
+                throw com.informatique.mtcit.common.ApiException(400, msg)
+            }
         }
 
         return result

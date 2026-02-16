@@ -13,6 +13,7 @@ import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.ApiException
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.model.RequiredDocumentItem
 import com.informatique.mtcit.data.repository.LookupRepository
@@ -916,11 +917,26 @@ class PermanentRegistrationStrategy @Inject constructor(
                             }
                         },
                         onFailure = { error ->
-                            println("❌ Failed to validate insurance document: ${error.message}")
-                            val errorMsg =
-                                com.informatique.mtcit.common.ErrorMessageExtractor.extract(error.message)
-                            accumulatedFormData["apiError"] = errorMsg
-                            throw ApiException(500, errorMsg)
+                            println("⚠️ Failed to check inspection preview: ${error.message}")
+
+                            // Build friendly message and store for UI/debugging
+                            val msg = when (error) {
+                                is ApiException -> error.message ?: "فشل في التحقق من المعاينة"
+                                else -> ErrorMessageExtractor.extract(error.message)
+                            }
+
+                            accumulatedFormData["apiError"] = "حدث خطأ أثناء التحقق من المعاينة: $msg"
+                            // store lastApiError if available (strategy holds it)
+                            try {
+                                val field = this::class.java.getDeclaredField("lastApiError")
+                                field.isAccessible = true
+                                field.set(this, msg)
+                            } catch (_: Exception) {
+                                // best-effort: if lastApiError not present, ignore
+                            }
+
+                            // Re-throw so central ViewModel (BaseTransactionViewModel) can show ErrorBanner
+                            if (error is ApiException) throw error else throw ApiException(500, msg)
                         }
                     )
                 } catch (e: ApiException) {
@@ -1118,8 +1134,25 @@ class PermanentRegistrationStrategy @Inject constructor(
                                                     },
                                                     onFailure = { error ->
                                                         println("⚠️ Failed to check inspection preview: ${error.message}")
-                                                        println("✅ But request was already sent successfully - continuing with normal flow")
-                                                        // Continue with normal flow since main request was successful
+
+                                                        // Build friendly message and store for UI/debugging
+                                                        val msg = when (error) {
+                                                            is ApiException -> error.message ?: "فشل في التحقق من المعاينة"
+                                                            else -> ErrorMessageExtractor.extract(error.message)
+                                                        }
+
+                                                        accumulatedFormData["apiError"] = "حدث خطأ أثناء التحقق من المعاينة: $msg"
+                                                        // store lastApiError if available (strategy holds it)
+                                                        try {
+                                                            val field = this::class.java.getDeclaredField("lastApiError")
+                                                            field.isAccessible = true
+                                                            field.set(this, msg)
+                                                        } catch (_: Exception) {
+                                                            // best-effort: if lastApiError not present, ignore
+                                                        }
+
+                                                        // Re-throw so central ViewModel (BaseTransactionViewModel) can show ErrorBanner
+                                                        if (error is ApiException) throw error else throw ApiException(500, msg)
                                                     }
                                                 )
                                             } else {

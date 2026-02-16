@@ -150,7 +150,7 @@ class MainCategoriesViewModel @Inject constructor(
                 // ✅ Handle 401 specifically for token refresh
                 if (e.code == 401) {
                     _apiError.value = AppError.Unauthorized(
-                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
                     )
                 } else {
                     _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
@@ -182,7 +182,7 @@ class MainCategoriesViewModel @Inject constructor(
                 // ✅ Handle 401 specifically for token refresh
                 if (e.code == 401) {
                     _apiError.value = AppError.Unauthorized(
-                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
                     )
                 } else {
                     _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
