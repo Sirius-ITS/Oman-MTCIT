@@ -4,7 +4,6 @@ import android.net.Uri
 import com.informatique.mtcit.ui.screens.RequestDetail
 import kotlinx.serialization.json.Json
 import com.informatique.mtcit.data.model.category.Transaction
-import com.informatique.mtcit.data.model.category.TransactionDetail
 
 sealed class NavRoutes(val route: String) {
     data object HomeRoute : NavRoutes("homepage")
@@ -80,13 +79,13 @@ sealed class NavRoutes(val route: String) {
 
     data object SuspendNavigationPermitRoute : NavRoutes("suspend_navigation_permit_form")
 
-    data object ShipNameChangeRoute : NavRoutes("ship_name_change_form")
+    data object ShipNameChangeRoute : NavRoutes("14"/*ship_name_change_form"*/)
 
-    data object CaptainNameChangeRoute : NavRoutes("captain_name_change_form")
+    data object CaptainNameChangeRoute : NavRoutes("15"/*captain_name_change_form"*/)
 
-    data object ShipActivityChangeRoute : NavRoutes("ship_activity_change_form")
+    data object ChangeActivityOfShipOrUnitRoute : NavRoutes("16"/*ship_activity_change_form"*/)
 
-    data object ShipPortChangeRoute : NavRoutes("ship_port_change_form")
+    data object ShipPortChangeRoute : NavRoutes("19"/*ship_port_change_form"*/)
 
     data object ShipOwnershipChangeRoute : NavRoutes("ship_ownership_change_form")
 

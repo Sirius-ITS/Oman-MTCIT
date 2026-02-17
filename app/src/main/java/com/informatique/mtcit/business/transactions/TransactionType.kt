@@ -125,7 +125,7 @@ enum class TransactionType(
 
     // Ship Data Modifications Category
     SHIP_NAME_CHANGE(
-        typeId = 0,
+        typeId = 14,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير اسم السفينة",
@@ -138,20 +138,20 @@ enum class TransactionType(
         )
     ),
     CAPTAIN_NAME_CHANGE(
-        typeId = 0,
+        typeId = 15,
         context = TransactionContext(
-            inspectionPreviewBaseContext = "ship-modifications",
+            inspectionPreviewBaseContext = "change-captain",
             displayName = "تغيير اسم الربان",
-            createEndpoint = "ship-modifications/captain-change",
-            updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
+            createEndpoint = "change-captain/captain-change",
+            updateStatusEndpoint = "change-captain/{requestId}/update-status",
+            sendRequestEndpoint = "change-captain/{requestId}/send-request",
             sendRequestPostOrPut = "PUT",
-            paymentReceiptEndpoint = "ship-modifications/payment",
-            paymentSubmitEndpoint = "ship-modifications/add-payment"
+            paymentReceiptEndpoint = "change-captain/payment",
+            paymentSubmitEndpoint = "change-captain/add-payment"
         )
     ),
     SHIP_ACTIVITY_CHANGE(
-        typeId = 0,
+        typeId = 16,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير نشاط السفينة",
@@ -190,7 +190,7 @@ enum class TransactionType(
         )
     ),
     SHIP_PORT_CHANGE(
-        typeId = 0,
+        typeId = 19,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير ميناء السفينة",
@@ -279,10 +279,10 @@ fun TransactionType.toRequestTypeId(): String {
         TransactionType.CANCEL_PERMANENT_REGISTRATION -> "7"
         TransactionType.MORTGAGE_CERTIFICATE -> "4"
         TransactionType.RELEASE_MORTGAGE -> "5"
-        TransactionType.SHIP_NAME_CHANGE -> "0"
-        TransactionType.SHIP_ACTIVITY_CHANGE -> "0"
-        TransactionType.CAPTAIN_NAME_CHANGE -> "0"
-        TransactionType.SHIP_PORT_CHANGE -> "0"
+        TransactionType.SHIP_NAME_CHANGE -> "14"
+        TransactionType.SHIP_ACTIVITY_CHANGE -> "16"
+        TransactionType.CAPTAIN_NAME_CHANGE -> "15"
+        TransactionType.SHIP_PORT_CHANGE -> "19"
         // Default values for transactions without explicit IDs
         TransactionType.SHIP_DIMENSIONS_CHANGE -> "0"
         TransactionType.SHIP_ENGINE_CHANGE -> "0"

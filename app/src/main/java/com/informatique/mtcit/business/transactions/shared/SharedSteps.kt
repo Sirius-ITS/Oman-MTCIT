@@ -17,6 +17,23 @@ object SharedSteps {
     // Special step ID to identify the owner info step with custom UI
     const val STEP_ID_OWNER_INFO_MULTIPLE = "owner_info_multiple"
 
+    // Create Certificate Step (used in all ship modification transactions)
+    fun createCertificateStep(
+        certificates: List<Certificate>
+    ): StepData {
+        return StepData(
+            titleRes = R.string.change_port_of_ship_or_unit_strategy_info2,
+            descriptionRes = R.string.change_port_of_ship_or_unit_strategy_info_desc2,
+            fields = listOf(
+                FormField.CertificatesList(
+                    id = "certificate",
+                    certificates = certificates,
+                    mandatory = false
+                )
+            )
+        )
+    }
+
     fun personTypeStep(
         options: List<PersonType>
     ): StepData {
@@ -802,13 +819,39 @@ object SharedSteps {
         }
 
         // Marine Unit Name (mandatory)
-        fields.add(
+        /*fields.add(
             FormField.TextField(
                 id = "marineUnitName",
                 labelRes = R.string.marine_unit_name,
                 placeholder = R.string.marine_unit_name_placeholder.toString(),
                 mandatory = true,
                 initialValue = prefilledName, // ✅ املأ الاسم لو موجود
+                enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
+                minLength = 3, // ✅ الحد الأدنى 3 أحرف
+                maxLength = 50 // ✅ الحد الأقصى 50 حرف
+            )
+        )*/
+
+        // Marine New Unit Arabic Name (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "newArabicMarineUnitName",
+                labelRes = R.string.marine_unit_name_with_arabic,
+                placeholder = R.string.marine_unit_name_placeholder_with_arabic.toString(),
+                mandatory = true,
+                enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
+                minLength = 3, // ✅ الحد الأدنى 3 أحرف
+                maxLength = 50 // ✅ الحد الأقصى 50 حرف
+            )
+        )
+
+        // Marine New Unit English Name (mandatory)
+        fields.add(
+            FormField.TextField(
+                id = "newEnglishMarineUnitName",
+                labelRes = R.string.marine_unit_name_with_english,
+                placeholder = R.string.marine_unit_name_placeholder_with_english.toString(),
+                mandatory = true,
                 enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
                 minLength = 3, // ✅ الحد الأدنى 3 أحرف
                 maxLength = 50 // ✅ الحد الأقصى 50 حرف

@@ -662,6 +662,12 @@
     <string name="marine_unit_name">Marine Unit Name</string>
     <string name="marine_unit_name_placeholder">Enter the marine unit name to be registered</string>
 
+    <string name="marine_unit_name_with_arabic">Enter the name of the marine unit in Arabic</string>
+    <string name="marine_unit_name_placeholder_with_arabic">Enter the name of the required unit in Arabic</string>
+
+    <string name="marine_unit_name_with_english">Enter the name of the marine unit in English</string>
+    <string name="marine_unit_name_placeholder_with_english">Enter the name of the required unit in English</string>
+
     <string name="select_unit_classification">Unit Classification</string>
     <string name="select_unit_classification_placeholder">Select unit classification</string>
     <string name="construction_pool">Construction Dock</string>
@@ -918,5 +924,16 @@
 
     <string name="empty">Please log in</string>
 
+    <!-- Change Port Of Ship Or Unit Strategy -->
+    <string name="change_port_of_ship_or_unit_strategy_info">Choosing the name of the port of registration for the ship or marine unit</string>
+    <string name="change_port_of_ship_or_unit_strategy_info_desc">We ask you to specify the port of registration of the ship or marine unit from the list of ports, in order to confirm legal and administrative responsibility in accordance with applicable regulations.</string>
+
+    <string name="change_port_of_ship_or_unit_strategy_info2">Certificates that will be amended in the ship\'s port of registration</string>
+    <string name="change_port_of_ship_or_unit_strategy_info_desc2">Based on your request to change the ship\'s port of registration, the new port of registration will be formally adopted and updated in the certificates shown below, in order to ensure conformity of official records and continued compliance with maritime requirements.</string>
+
+    <string name="change_activity_of_ship_or_unit_strategy_info">Select the desired activity</string>
+    <string name="change_activity_of_ship_or_unit_strategy_info_desc">Choosing the appropriate activity to ensure compliance with applicable legal and administrative requirements.</string>
+    <string name="change_activity_of_ship_or_unit_strategy_info_dropdown">Choose a new activity</string>
+    <string name="change_activity_of_ship_or_unit_strategy_info_dropdown_hint">Select the activity you want to change to</string>
 
 </resources>

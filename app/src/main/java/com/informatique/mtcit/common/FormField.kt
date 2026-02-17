@@ -1,5 +1,7 @@
 package com.informatique.mtcit.common
 
+import com.informatique.mtcit.business.transactions.shared.Certificate
+
 
 sealed class FormField(
     open val id: String,
@@ -15,6 +17,22 @@ sealed class FormField(
     abstract fun copyWithValue(newValue: String): FormField
     abstract fun copyWithError(newError: String?): FormField
 
+    data class CertificatesList(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "",
+        override val mandatory: Boolean = false,
+        override val error: String? = null,
+        val certificates: List<Certificate> = emptyList()
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String): FormField =
+            copy(value = newValue)
+
+        override fun copyWithError(newError: String?): FormField =
+            copy()
+    }
 
     data class TextField(
         override val id: String,

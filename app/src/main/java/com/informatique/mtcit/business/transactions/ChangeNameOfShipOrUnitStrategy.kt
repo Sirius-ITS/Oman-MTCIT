@@ -22,6 +22,10 @@ import javax.inject.Inject
 import com.informatique.mtcit.ui.components.EngineData as UIEngineData
 import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
 import android.content.Context
+import androidx.compose.runtime.mutableStateListOf
+import com.informatique.mtcit.business.transactions.shared.Certificate
+import com.informatique.mtcit.business.transactions.shared.StepType
+import com.informatique.mtcit.data.repository.CertificateLocalData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
 
@@ -33,8 +37,8 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules,
     @ApplicationContext private val appContext: Context
-) : TransactionStrategy {
-
+) : BaseTransactionStrategy() {
+    private val transactionContext: TransactionContext = TransactionType.SHIP_NAME_CHANGE.context
     private var portOptions: List<String> = emptyList()
     private var countryOptions: List<String> = emptyList()
     private var shipTypeOptions: List<String> = emptyList()
@@ -44,12 +48,14 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
     private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
+    private var loadedCertificates =  (mutableStateListOf<Certificate>())
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // ✅ Get civilId from token
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
+        loadedCertificates.addAll(CertificateLocalData.getSampleCertificates())
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
@@ -80,7 +86,8 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
             "registrationCountry" to countries,
             "unitType" to shipTypes,
             "commercialRegistration" to commercialRegistrations,
-            "personType" to personTypes
+            "personType" to personTypes,
+            "certificates" to loadedCertificates
         )
     }
 
@@ -156,22 +163,25 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
-        // Step 3: Marine Unit Selection
-        steps.add(
+        // Step 3: Marine Unit Selection ( commented for now )
+        /*steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
                 allowMultipleSelection = false,
                 showAddNewButton = true,
                 showOwnedUnitsWarning = true
             )
-        )
+        )*/
 
-        // Marine Unit Name Selection Step (final step with "Accept & Send" button that triggers integration)
+        // Step 4: Marine Unit Name Selection
         steps.add(
             SharedSteps.marineUnitNameSelectionStep(
                 showReservationInfo = true
             )
         )
+
+        // Step 5: Shared Certificate Step
+        steps.add(SharedSteps.createCertificateStep(loadedCertificates))
 
         println("📋 Total steps count: ${steps.size}")
         return steps
@@ -532,5 +542,15 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
             e.printStackTrace()
             ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
         }
+    }
+
+    override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
+        // TODO: Parse the Change Name of Ship or Unit API response to determine completed steps
+        val completedSteps = mutableSetOf<StepType>()
+
+        println("⚠️ ChangeNameOfShipOrUnitStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
     }
 }

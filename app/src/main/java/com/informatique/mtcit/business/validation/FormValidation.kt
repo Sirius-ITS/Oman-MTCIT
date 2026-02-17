@@ -167,6 +167,16 @@ class FormValidator @Inject constructor(
                 // Payment details are read-only, no validation needed
                 field
             }
+            is FormField.CertificatesList -> {
+                // Validate that at least one owner is added if mandatory
+                val error = when {
+                    field.value == "[]" || field.value.isBlank() -> {
+                        if (field.mandatory) "At least one Certificate must be added" else null
+                    }
+                    else -> null
+                }
+                field.copy(error = error)
+            }
         }
     }
     /**

@@ -1288,7 +1288,7 @@ fun getMainCategories(): List<MainCategory> {
                             id = "ship_activity_change",
                             titleRes = R.string.transaction_ship_activity_change,
                             descriptionRes = R.string.transaction_ship_activity_change_desc,
-                            route = NavRoutes.ShipActivityChangeRoute.route,
+                            route = NavRoutes.ChangeActivityOfShipOrUnitRoute.route,
                             routeInfo = "route-14"
                         ),
                         Transaction(

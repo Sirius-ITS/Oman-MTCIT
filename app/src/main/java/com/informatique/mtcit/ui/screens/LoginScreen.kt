@@ -5,15 +5,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
@@ -81,7 +78,7 @@ fun LoginScreen(
                             "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
                             "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
                             "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
-                            "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
+                            "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ChangeActivityOfShipOrUnitRoute.route
                             "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
                             "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
                             else -> NavRoutes.ShipRegistrationRoute.route
@@ -152,7 +149,7 @@ fun LoginScreen(
                     "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
                     "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
                     "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
-                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
+                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ChangeActivityOfShipOrUnitRoute.route
                     "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
                     "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
                     else -> NavRoutes.ShipRegistrationRoute.route

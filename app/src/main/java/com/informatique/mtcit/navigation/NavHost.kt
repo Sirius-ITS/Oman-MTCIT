@@ -44,7 +44,6 @@ import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
-import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -354,7 +353,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                         13 -> "RELEASE_MORTGAGE"
                         14 -> "SHIP_NAME_CHANGE"
                         16 -> "SHIP_ACTIVITY_CHANGE"
-                        18 -> "CAPTAIN_NAME_CHANGE"
+                        15 -> "CAPTAIN_NAME_CHANGE"
                         19 -> "SHIP_PORT_CHANGE"
                         21 -> "REQUEST_INSPECTION"
                         else -> "TEMPORARY_REGISTRATION_CERTIFICATE"
@@ -607,16 +606,16 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         }
 
         composable(NavRoutes.CaptainNameChangeRoute.route) {
-            ComingSoonScreen(
+            ShipDataModificationScreen(
                 navController = navController,
-                transactionName = "Captain Name Change"
+                transactionType = TransactionType.CAPTAIN_NAME_CHANGE
             )
         }
 
-        composable(NavRoutes.ShipActivityChangeRoute.route) {
-            ComingSoonScreen(
+        composable(NavRoutes.ChangeActivityOfShipOrUnitRoute.route) {
+            ShipDataModificationScreen(
                 navController = navController,
-                transactionName = "Ship Activity Change"
+                transactionType = TransactionType.SHIP_ACTIVITY_CHANGE
             )
         }
 

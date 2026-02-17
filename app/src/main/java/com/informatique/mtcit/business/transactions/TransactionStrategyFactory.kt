@@ -20,16 +20,21 @@ class TransactionStrategyFactory @Inject constructor(
     private val requestInspectionStrategy: Provider<RequestInspectionStrategy>,
 
     // Ship Data Modifications Category
-    private val shipRegistrationStrategy: Provider<ShipRegistrationStrategy>,
-    private val shipNameChangeStrategy: Provider<ShipNameChangeStrategy>,
-    private val captainNameChangeStrategy: Provider<CaptainNameChangeStrategy>,
-    private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>,
-
-    // change unit data
+    // 1-change name of ship or unit (تغيير اسم السفينة او الوحدة)
     private val changeNameOfShipOrUnitStrategy: Provider<ChangeNameOfShipOrUnitStrategy>,
 
-    //change port
+    // 2-change captain name of ship or unit (تغيير اسم ربان للسفينة او الوحدة)
+    private val changeCaptainNameOfShipOrUnitStrategy: Provider<ChangeCaptainNameOfShipOrUnitStrategy>,
+
+    // 3-change activity of ship or unit (تغيير نشاط السفينة او الوحدة)
+    private val changeActivityOfShipOrUnitStrategy: Provider<ChangeActivityOfShipOrUnitStrategy>,
+
+    // 4-change port of ship or unit (تغيير ميناء السفينة او الوحدة)
     private val changePortOfShipOrUnitStrategy: Provider<ChangePortOfShipOrUnitStrategy>,
+
+    //Other ship data modifications
+    private val shipRegistrationStrategy: Provider<ShipRegistrationStrategy>,
+    private val shipDimensionsChangeStrategy: Provider<ShipDimensionsChangeStrategy>,
 
     // Navigation permits
     private val issueNavigationPermitStrategy: Provider<IssueNavigationPermitStrategy>,
@@ -53,22 +58,29 @@ class TransactionStrategyFactory @Inject constructor(
             //
             TransactionType.REQUEST_FOR_INSPECTION -> requestInspectionStrategy.get()
 
-            // Ship Data Modifications transactions
-            TransactionType.CAPTAIN_NAME_CHANGE -> captainNameChangeStrategy.get()
-            TransactionType.SHIP_ACTIVITY_CHANGE -> captainNameChangeStrategy.get()
-            TransactionType.SHIP_DIMENSIONS_CHANGE -> shipDimensionsChangeStrategy.get()
-            TransactionType.SHIP_ENGINE_CHANGE -> captainNameChangeStrategy.get()
-            TransactionType.SHIP_PORT_CHANGE -> changePortOfShipOrUnitStrategy.get()
-            TransactionType.SHIP_OWNERSHIP_CHANGE -> captainNameChangeStrategy.get()
-
             // Navigation permits
             TransactionType.ISSUE_NAVIGATION_PERMIT -> issueNavigationPermitStrategy.get()
             TransactionType.RENEW_NAVIGATION_PERMIT -> renewNavigationPermitStrategy.get()
 
-            // change unit data
+            // Ship Data Modifications transactions
+            // 1-change name of ship or unit (تغيير اسم السفينة او الوحدة)
             TransactionType.SHIP_NAME_CHANGE -> changeNameOfShipOrUnitStrategy.get()
 
+            // 2-change captain name of ship or unit (تغيير اسم ربان للسفينة او الوحدة)
+            TransactionType.CAPTAIN_NAME_CHANGE -> changeCaptainNameOfShipOrUnitStrategy.get()
 
+            // 3-change activity of ship or unit (تغيير نشاط السفينة او الوحدة)
+            TransactionType.SHIP_ACTIVITY_CHANGE -> changeActivityOfShipOrUnitStrategy.get()
+
+            // 4-change port of ship or unit (تغيير ميناء السفينة او الوحدة)
+            TransactionType.SHIP_PORT_CHANGE -> changePortOfShipOrUnitStrategy.get()
+
+            // 5- ship dimensions change
+            TransactionType.SHIP_DIMENSIONS_CHANGE -> shipDimensionsChangeStrategy.get()
+
+            //Other ship data modifications
+            TransactionType.SHIP_ENGINE_CHANGE -> changeCaptainNameOfShipOrUnitStrategy.get()
+            TransactionType.SHIP_OWNERSHIP_CHANGE -> changeCaptainNameOfShipOrUnitStrategy.get()
 
         }
     }

@@ -93,6 +93,7 @@ class FormValidationUseCase @Inject constructor(
             is FormField.SailorList -> field.copy(value = value)
             is FormField.MultiSelectDropDown -> field.copy(value = value)
             is FormField.PaymentDetails -> field.copy(value = value)
+            is FormField.CertificatesList -> field.copy(value = value)
         }
     }
 

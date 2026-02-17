@@ -690,6 +690,11 @@ private fun updateFieldWithFormData(
             value = value.ifEmpty { "[]" },
             error = error
         )
+        is FormField.CertificatesList -> field.copy(
+            label = localizedLabel,
+            value = value.ifEmpty { "[]" },
+            error = error
+        )
         is FormField.RadioGroup -> field.copy(
             label = localizedLabel,
             value = value.ifEmpty { "[]" },

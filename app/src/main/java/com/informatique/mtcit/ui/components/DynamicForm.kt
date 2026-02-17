@@ -315,6 +315,20 @@ fun DynamicStepForm(
                                 onDeleteEngineImmediate = onDeleteEngineImmediate
                             )
                         }
+                        is FormField.CertificatesList -> {
+                            println("🔍 STEP 1: FormField.CertificatesList detected")
+                            println("   field.id = ${field.id}")
+                            println("   field.certificates.size = ${field.certificates.size}")
+                            CertificatesList(
+                                certificates = field.certificates,  // ✅ استخدم دي مباشرة!
+                                onCertificateClick = { certificate ->
+                                    println("✅ Certificate clicked: ${certificate.id}")
+                                    onFieldChange(field.id, certificate.id, null)
+                                    // Handle certificate click if needed
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                         is FormField.MarineUnitSelector -> {
                             // Parse selected unit IDs from JSON
                             val selectedIds = remember(field.value) {

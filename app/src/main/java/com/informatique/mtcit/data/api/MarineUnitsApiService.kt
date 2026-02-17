@@ -139,6 +139,7 @@ class MarineUnitsApiService @Inject constructor(
                 3 -> "ship-navigation-license-request/get-my-ships"
                 6 -> "navigation-license-renewal-request/get-my-ships"
                 8 -> "inspection-requests/get-my-ships"
+                15 -> "inspection-requests/get-my-ships"
                 else -> {
                     println("⚠️ Unknown requestTypeId: $requestTypeInt, using mortgage endpoint as fallback")
                     "mortgage-request/get-my-ships"

@@ -5,33 +5,37 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.Certificate
+import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
 import com.informatique.mtcit.business.transactions.shared.StepType
-import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.repository.CertificateLocalData
-import com.informatique.mtcit.data.repository.EngineData
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
-import com.informatique.mtcit.data.repository.OwnerData
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.repo.CompanyRepo
 import com.informatique.mtcit.ui.viewmodels.StepData
+
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.serialization.json.Json
-import java.util.UUID
 import javax.inject.Inject
-import com.informatique.mtcit.ui.components.EngineData as UIEngineData
-import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
 
-class ChangePortOfShipOrUnitStrategy @Inject constructor(
+/**
+ * Strategy for "Change Activity of Ship or Unit" transaction
+ * طلب تغيير نشاط سفينة أو وحدة
+ *
+ * Demonstrates:
+ * * - Dynamic loading of dropdown options
+ * * - Conditional steps based on user input
+ * * - Validation with accumulated data across steps
+ */
+class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
     private val companyRepository: CompanyRepo,
     private val validationUseCase: FormValidationUseCase,
@@ -39,34 +43,31 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules
 ) : BaseTransactionStrategy() {
-    private val transactionContext: TransactionContext = TransactionType.SHIP_PORT_CHANGE.context
+
+    // Cache for loaded dropdown options
+    private var marineActivityOptions: List<String> = emptyList()
     private var portOptions: List<String> = emptyList()
-    private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
+    private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
+    private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
+    private var marineUnits: List<MarineUnit> = emptyList()
     private var loadedCertificates =  (mutableStateListOf<Certificate>())
 
-    override suspend fun loadDynamicOptions(): Map<String, List<*>> {
-        val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
+    override suspend fun loadDynamicOptions(): Map<String, List<String>> {
+        val marineActivities = lookupRepository.getMarineActivities().getOrNull() ?: emptyList()
         val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         loadedCertificates.addAll(CertificateLocalData.getSampleCertificates())
-        portOptions = ports
+
+        marineActivityOptions = marineActivities
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
 
-        // ✅ Don't load ships here - they will be loaded when user presses Next
-        // after selecting person type (individual/company)
-        println("🚢 Skipping initial ship load - will load after user selects type and presses Next")
-
         return mapOf(
-            "marineUnits" to emptyList<MarineUnit>(), // ✅ Empty initially
-            "registrationPort" to ports,
-            "commercialRegistration" to commercialRegistrations,
-            "personType" to personTypes,
-            "certificates" to loadedCertificates
+            "maritimeActivity" to marineActivities
         )
     }
 
@@ -123,7 +124,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     }
 
     override fun getContext(): TransactionContext {
-        return transactionContext
+        TODO("Not yet implemented")
     }
 
     override fun getSteps(): List<StepData> {
@@ -134,11 +135,11 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شر��ة") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
-        // Step 3: Marine Unit Selection
+        // Step 3: Marine Unit Selection ( commented for now )
         /*steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
@@ -148,17 +149,18 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
             )
         )*/
 
-        // Step 4: Change Port of Ship or Unit Information
+        // Step 4: Change Activity of Ship or Unit Information
         steps.add(
             StepData(
-                titleRes = R.string.change_port_of_ship_or_unit_strategy_info,
-                descriptionRes = R.string.change_port_of_ship_or_unit_strategy_info_desc,
+                titleRes = R.string.change_activity_of_ship_or_unit_strategy_info,
+                descriptionRes = R.string.change_activity_of_ship_or_unit_strategy_info_desc,
                 fields = listOf(
                     FormField.DropDown(
-                        id = "portOptions",
-                        labelRes = R.string.registration_port,
+                        id = "marineActivityOptions",
+                        labelRes = R.string.change_activity_of_ship_or_unit_strategy_info_dropdown,
+                        placeholder = R.string.change_activity_of_ship_or_unit_strategy_info_dropdown_hint.toString(),
                         mandatory = true,
-                        options = portOptions
+                        options = marineActivityOptions
                     ),
                 )
             ),
@@ -214,10 +216,59 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         return repository.submitRegistration(data)
     }
 
+    override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
+        if (fieldId == "owner_type") {
+            val mutableFormData = formData.toMutableMap()
+            when (value) {
+                "فرد" -> {
+                    mutableFormData.remove("companyName")
+                    mutableFormData.remove("companyRegistrationNumber")
+                }
+            }
+            return mutableFormData
+        }
+
+        // ✅ Handle fishing boat selection from unitType dropdown
+        if (fieldId == "unitType") {
+            println("🔍 DEBUG - unitType changed to: $value")
+
+            // Check if the selected type is fishing boat
+            if (value == "قارب صيد" || value.contains("صيد") || value.contains("Fishing")) {
+                println("✅ Fishing boat selected! Setting flag and storing in accumulated data")
+                isFishingBoat = true
+                fishingBoatDataLoaded = false // Reset loaded flag when type changes
+                accumulatedFormData["isFishingBoat"] = "true"
+                // ✅ Store the unitType mortgageValue immediately
+                accumulatedFormData["unitType"] = value
+            } else {
+                println("❌ Not a fishing boat. Hiding agriculture field")
+                isFishingBoat = false
+                fishingBoatDataLoaded = false
+                accumulatedFormData.remove("isFishingBoat")
+                accumulatedFormData.remove("agricultureRequestNumber")
+                // ✅ Store the unitType mortgageValue immediately
+                accumulatedFormData["unitType"] = value
+            }
+
+            // ✅ Return updated formData to trigger step refresh
+            val updatedFormData = formData.toMutableMap()
+            updatedFormData["unitType"] = value
+            updatedFormData["_triggerRefresh"] = System.currentTimeMillis().toString()
+            return updatedFormData
+        }
+
+        return formData
+    }
+
     override suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
         if (fieldId == "companyRegistrationNumber") {
             return handleCompanyRegistrationLookup(value)
         }
+
+        // ✅ Handle agriculture request number lookup for fishing boats
+        /*if (fieldId == "agricultureRequestNumber") {
+            return handleAgricultureRequestLookup(value)
+        }*/
 
         return FieldFocusResult.NoAction
     }
@@ -259,43 +310,8 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         }
     }
 
-    /**
-     * Validate marine unit selection using TemporaryRegistrationRules
-     * Called from MarineRegistrationViewModel when user clicks "Accept & Send" on review step
-     */
-    suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
-        return try {
-            println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
-
-            // Find the selected unit
-            val selectedUnit = marineUnits.firstOrNull { it.id.toString() == unitId }
-
-            if (selectedUnit == null) {
-                println("❌ Unit not found with id: $unitId")
-                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
-            }
-
-            println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
-
-            // Use TemporaryRegistrationRules to validate
-            val validationResult = temporaryRegistrationRules.validateUnit(selectedUnit, userId)
-            val navigationAction = temporaryRegistrationRules.getNavigationAction(validationResult)
-
-            println("✅ Validation result: ${validationResult::class.simpleName}")
-            println("✅ Navigation action: ${navigationAction::class.simpleName}")
-
-            ValidationResult.Success(
-                validationResult = validationResult,
-                navigationAction = navigationAction
-            )
-        } catch (e: Exception) {
-            println("❌ Validation error: ${e.message}")
-            e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
-        }
-    }
-
     override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
         TODO("Not yet implemented")
     }
+
 }
