@@ -228,7 +228,9 @@ data class PaymentResponse<T>(
     val statusCode: Int,
     val success: Boolean,
     val timestamp: String,
-    val data: T
+    val data: T,
+    val isPaid: String? = null, // ✅ Optional isPaid field from some APIs (e.g., navigation license)
+    val paymentStatus: Int? = null // ✅ NEW: Optional paymentStatus field (1 = payment in progress, waiting for bank response)
 )
 
 /**
@@ -241,3 +243,15 @@ data class SimplePaymentRequest(
     val requestId: Int,
     val coreShipsInfoId: String
 )
+
+/**
+ * ✅ Navigation License Payment Response Data
+ * Some APIs return this structure instead of just a Long
+ */
+@Serializable
+data class NavigationLicensePaymentData(
+    val id: Long,
+    val idempotencyId: String,
+    val isPaid: String
+)
+

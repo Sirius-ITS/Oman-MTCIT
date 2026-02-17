@@ -802,15 +802,25 @@ class RegistrationApiService @Inject constructor(
 
     /**
      * Reserve ship/marine name
-     * POST registration-requests/{id}/{name}/shipNameReservtion
+     * PUT registration-requests/shipNameReservation
+     * Body: { "requestId": 0, "shipName": "string", "shipNameEn": "string" }
      */
-    suspend fun shipNameReservation(requestId: Int, marineName: String): Result<Unit> {
+    suspend fun shipNameReservation(requestId: Int, marineName: String, marineNameEn: String): Result<Unit> {
         return try {
             println("🚀 RegistrationApiService: Reserving marine name for requestId=$requestId...")
-            println("📤 Marine Name: $marineName")
+            println("📤 Marine Name (Arabic): $marineName")
+            println("📤 Marine Name (English): $marineNameEn")
 
-            val url = "registration-requests/$requestId/$marineName/shipNameReservation"
-            when (val response = repo.onPostAuth(url, "")) {
+            val url = "registration-requests/shipNameReservation"
+            val body = buildJsonObject {
+                put("requestId", requestId)
+                put("shipName", marineName)
+                put("shipNameEn", marineNameEn)
+            }
+
+            println("📤 Request Body: $body")
+
+            when (val response = repo.onPutAuth(url, body.toString())) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     println("✅ Ship Name Reservation API Response: $responseJson")

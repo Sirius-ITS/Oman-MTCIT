@@ -57,9 +57,7 @@ class MortgageApiService @Inject constructor(
             val encodedElement = json.parseToJsonElement(json.encodeToString(request))
             val objMap = encodedElement.jsonObject.toMutableMap()
             // Ensure canonical 'value' key exists (backend expects 'value') and add alternate keys
-            objMap["value"] = kotlinx.serialization.json.JsonPrimitive(request.mortgageValue)
             objMap["mortgageValue"] = kotlinx.serialization.json.JsonPrimitive(request.mortgageValue)
-            objMap["mortgage_value"] = kotlinx.serialization.json.JsonPrimitive(request.mortgageValue)
             val requestBody = json.encodeToString(kotlinx.serialization.json.JsonObject(objMap))
 
             println("📤 Request Details:")
@@ -69,7 +67,6 @@ class MortgageApiService @Inject constructor(
             println("   Contract Number: ${request.financingContractNumber}")
             println("   Start Date: ${request.startDate}")
             println("   Mortgage Value: ${request.mortgageValue}")
-            println("   Status ID: ${request.statusId}")
             println("\n📤 Full Request Body (JSON): $requestBody")
             println(requestBody)
             println("=".repeat(80))
@@ -272,9 +269,7 @@ class MortgageApiService @Inject constructor(
             val objMap = dtoElement.jsonObject.toMutableMap()
 
             // Add value under multiple keys for compatibility
-            objMap["value"] = JsonPrimitive(request.mortgageValue)
             objMap["mortgageValue"] = JsonPrimitive(request.mortgageValue)
-            objMap["mortgage_value"] = JsonPrimitive(request.mortgageValue)
 
             // ✅ Add documents array with fileName and documentId for each file
             if (files.isNotEmpty()) {

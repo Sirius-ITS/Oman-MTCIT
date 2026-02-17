@@ -63,6 +63,7 @@ class RequestInspectionStrategy @Inject constructor(
     private var typeOptions: List<PersonType> = emptyList()
     // ✅ NEW: Inspection request lookups
     private var inspectionPurposeOptions: List<String> = emptyList()
+    private var inspectionPlaceOptions: List<String> = emptyList()
     private var inspectionAuthorityOptions: Map<String, List<String>> = emptyMap()
     // NEW: Store filtered ship types based on selected category
     private var filteredShipTypeOptions: List<String> = emptyList()
@@ -231,12 +232,19 @@ class RequestInspectionStrategy @Inject constructor(
 
         // ✅ WORKAROUND: لو selectedMarineUnits موجود وفاضي "[]" ومفيش isAddingNewUnit flag
         // معناها المستخدم ضغط على الزرار بس الفلاج مبعتش صح
+        // ✅ NEW: Also detect resumed ACCEPTED requests - if we have ship data in formData, it's a new unit
+        val hasShipDataInForm = accumulatedFormData.containsKey("callSign") ||
+                                 accumulatedFormData.containsKey("imoNumber") ||
+                                 accumulatedFormData.containsKey("shipInfoId")
+
         val isAddingNewUnit = isAddingNewUnitFlag ||
-                (selectedUnitsJson == "[]" && accumulatedFormData.containsKey("selectedMarineUnits"))
+                (selectedUnitsJson == "[]" && accumulatedFormData.containsKey("selectedMarineUnits")) ||
+                (hasShipDataInForm && !hasSelectedExistingUnit)  // ✅ Resumed request with ship data
 
         // ✅ طباعة للتتبع (Debug)
         println("🔍 DEBUG - isAddingNewUnitFlag: $isAddingNewUnitFlag")
         println("🔍 DEBUG - selectedUnitsJson: $selectedUnitsJson")
+        println("🔍 DEBUG - hasShipDataInForm: $hasShipDataInForm")
         println("🔍 DEBUG - accumulatedFormData: $accumulatedFormData")
         println("🔍 DEBUG - hasSelectedExistingUnit: $hasSelectedExistingUnit")
         println("🔍 DEBUG - isAddingNewUnit (final): $isAddingNewUnit")
@@ -354,12 +362,12 @@ class RequestInspectionStrategy @Inject constructor(
             )
         }
 
-        // Get ports for recording port dropdown (reuse existing portOptions)
-        val recordingPorts = portOptions.ifEmpty { emptyList() }
+        // Get inspection places (use dedicated inspection places lookup)
+        val inspectionPlaces = inspectionPlaceOptions.ifEmpty { emptyList() }
 
         println("📊 Creating inspection step with:")
         println("   - ${inspectionPurposeOptions.size} purposes")
-        println("   - ${recordingPorts.size} recording ports")
+        println("   - ${inspectionPlaces.size} inspection places")
         println("   - ${inspectionAuthoritySections.size} authority sections")
 
         println("🔍 DEBUG: requiredDocuments.size = ${requiredDocuments.size}")
@@ -371,8 +379,9 @@ class RequestInspectionStrategy @Inject constructor(
             if (id != null) "$id|$name" else name
         }
 
-        val portOptionsWithIds = recordingPorts.map { name ->
-            val id = lookupRepository.getPortId(name)
+        // ✅ NEW: Use inspection places instead of port registry
+        val placeOptionsWithIds = inspectionPlaces.map { name ->
+            val id = lookupRepository.getInspectionPlaceId(name)
             if (id != null) "$id|$name" else name
         }
 
@@ -380,7 +389,7 @@ class RequestInspectionStrategy @Inject constructor(
         steps.add(
             SharedSteps.inspectionPurposeAndAuthorityStep(
                 inspectionPurposes = purposeOptionsWithIds,
-                recordingPorts = portOptionsWithIds,
+                inspectionPlaces = placeOptionsWithIds,  // ✅ Using inspection places
                 authoritySections = inspectionAuthoritySections.ifEmpty { emptyList() },
                 documents = requiredDocuments  // Will be empty list if not loaded yet
             )
@@ -392,20 +401,29 @@ class RequestInspectionStrategy @Inject constructor(
             println("✅ Inspection step added with ${requiredDocuments.size} documents")
         }
 
-        steps.add(SharedSteps.reviewStep())
+//        steps.add(SharedSteps.reviewStep())
 
         // ✅ NEW: Payment Steps - Only show if we have requestId from name selection API
         val hasRequestId = accumulatedFormData["requestId"] != null
 
+        println("🔍 DEBUG - Payment step logic:")
+        println("   - requestId in formData: ${accumulatedFormData["requestId"]}")
+        println("   - hasRequestId: $hasRequestId")
+
         if (hasRequestId) {
+            println("✅ Adding PAYMENT step (requestId = ${accumulatedFormData["requestId"]})")
+
             // Payment Details Step - Shows payment breakdown
             steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
 
             // Payment Success Step - Only show if payment was successful
             val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
             if (paymentSuccessful) {
+                println("✅ Adding PAYMENT SUCCESS step")
                 steps.add(SharedSteps.paymentSuccessStep())
             }
+        } else {
+            println("⚠️ NOT adding payment steps - no requestId in formData")
         }
 
         println("📋 Total steps count: ${steps.size}")
@@ -628,11 +646,16 @@ class RequestInspectionStrategy @Inject constructor(
 
                             accumulatedFormData["requestId"] = result.requestId.toString()
 
-                            // Store success message
+                            // ✅ Show success dialog and close transaction
+                            accumulatedFormData["showInspectionDialog"] = "true"
+                            accumulatedFormData["inspectionMessage"] = result.message
+
+                            // Store additional info for logging
                             accumulatedFormData["inspectionSubmitMessage"] = result.message
                             accumulatedFormData["inspectionSubmitted"] = "true"
 
-                            // Continue to next step
+                            println("✅ Success dialog will be shown - transaction will close on OK")
+                            return -1 // Block navigation - stay on current step and show dialog
                         }
                         is com.informatique.mtcit.business.transactions.shared.InspectionSubmitResult.Error -> {
                             println("❌ Inspection request submission failed: ${result.message}")
@@ -1088,16 +1111,15 @@ class RequestInspectionStrategy @Inject constructor(
                         }
                     }
                 }
-                "inspectionPorts" -> {
-                    // Reuse ports lookup for inspection recording ports
-                    if (portOptions.isEmpty()) {
-                        println("📥 Loading inspection recording ports...")
-                        val data = lookupRepository.getPorts().getOrNull() ?: emptyList()
-                        portOptions = data
-                        println("✅ Loaded ${portOptions.size} inspection ports")
-                        onLookupCompleted?.invoke("inspectionPorts", data, true)
+                "inspectionPlaces" -> {
+                    if (inspectionPlaceOptions.isEmpty()) {
+                        println("📥 Loading inspection places...")
+                        val data = lookupRepository.getInspectionPlaces().getOrNull() ?: emptyList()
+                        inspectionPlaceOptions = data
+                        println("✅ Loaded ${inspectionPlaceOptions.size} inspection places")
+                        onLookupCompleted?.invoke("inspectionPlaces", data, true)
                     } else {
-                        onLookupCompleted?.invoke("inspectionPorts", portOptions, true)
+                        onLookupCompleted?.invoke("inspectionPlaces", inspectionPlaceOptions, true)
                     }
                 }
                 else -> {

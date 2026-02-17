@@ -28,9 +28,11 @@ data class CreateInspectionRequestDto(
     val shipInfoId: Int = 0,            // Ship info ID
     val purposeId: Int = 0,             // Inspection purpose ID
     val authorityId: Int = 0,           // Inspection authority ID
-    val portId: String = "",            // Recording port ID (as string)
+    val placeId: Int = 0,               // Inspection place ID (as Int) - replaces portId
     val crNumber: String = "",          // Commercial registration number (empty string for individual)
-    val documents: List<InspectionDocumentDto> = emptyList()
+    val documents: List<InspectionDocumentDto> = emptyList(),
+    val needInspectionRequestId: Int? = null,      // Parent request ID (if inspection triggered from another transaction)
+    val needInspectionRequestTypeId: Int? = null   // Parent request type (1=temp, 2=perm, 3=issue nav, 5=renew nav)
 )
 
 /**

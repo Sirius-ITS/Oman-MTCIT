@@ -10,60 +10,60 @@ enum class RequestTypeEndpoint(
     val endpointPath: String,
     val issuanceEndpoint: String? = null // ✅ NEW: Endpoint for certificate issuance
 ) {
-    // 1. Temporary Registration
+    // 1. Temporary Registration (مؤقت)
     TEMP_REGISTRATION(
         requestTypeId = 1,
         endpointPath = "registration-requests",
         issuanceEndpoint = "registration-requests/{requestId}/issuance-provisional-registration-certificate"
     ),
 
-    // 2. Permanent Registration
+    // 2. Permanent Registration (دائم)
     PERM_REGISTRATION(
         requestTypeId = 2,
         endpointPath = "perm-registration-requests",
         issuanceEndpoint = "perm-registration-requests/{requestId}/issuance-provisional-registration-certificate"
     ),
 
-    // 3. Issue Navigation Permit
+    // 3. Issue Navigation Permit (ترخيص)
     ISSUE_NAVIGATION_PERMIT(
         requestTypeId = 3,
         endpointPath = "ship-navigation-license-request",
         issuanceEndpoint = "ship-navigation-license-request/{requestId}/issuance"
     ),
 
-    // 4. Mortgage Certificate
+    // 4. Mortgage Certificate (رهن)
     MORTGAGE(
         requestTypeId = 4,
-        endpointPath = "mortgage-requests",
-        issuanceEndpoint = "mortgage-request/{requestId}/issuance-certificate"
+        endpointPath = "mortgage-request",
+        issuanceEndpoint = "certificate/{requestId}/mortgage-certificate"
     ),
 
-    // 5. Release Mortgage
+    // 5. Release Mortgage (فك رهن)
     RELEASE_MORTGAGE(
         requestTypeId = 5,
         endpointPath = "mortgage-redemption-request",
-        issuanceEndpoint = "mortgage-redemption-request/{requestId}/issuance-certificate"
+        issuanceEndpoint = "certificate/{requestId}/mortgage-redemption-certificate"
     ),
 
-    // 6. Renew Navigation Permit
+    // 6. Renew Navigation Permit (تجديد ترخيص)
     RENEW_NAVIGATION_PERMIT(
         requestTypeId = 6,
         endpointPath = "navigation-license-renewal-request",
         issuanceEndpoint = "navigation-license-renewal-request/{requestId}/issuance"
     ),
 
-    // 7. Cancel Permanent Registration (Change Name)
+    // 7. Cancel Permanent Registration (شطب)
     CANCEL_PERMANENT_REGISTRATION(
         requestTypeId = 7,
         endpointPath = "deletion-requests",
-        issuanceEndpoint = "deletion-requests/{requestId}/issuance-certificate"
+        issuanceEndpoint = "deletion-requests/{requestId}/issuance"
     ),
 
-    // 8. Request for Inspection
+    // 8. Request for Inspection (No certificate issuance)
     REQUEST_FOR_INSPECTION(
         requestTypeId = 8,
         endpointPath = "inspection-requests",
-        issuanceEndpoint = "inspection-requests/{requestId}/issuance-certificate"
+        issuanceEndpoint = null // ✅ Inspection requests do not have certificate issuance
     ),
 
     ;

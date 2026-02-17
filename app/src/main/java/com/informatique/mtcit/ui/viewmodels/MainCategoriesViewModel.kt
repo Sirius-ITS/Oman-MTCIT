@@ -150,7 +150,7 @@ class MainCategoriesViewModel @Inject constructor(
                 // ✅ Handle 401 specifically for token refresh
                 if (e.code == 401) {
                     _apiError.value = AppError.Unauthorized(
-                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
                     )
                 } else {
                     _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
@@ -182,7 +182,7 @@ class MainCategoriesViewModel @Inject constructor(
                 // ✅ Handle 401 specifically for token refresh
                 if (e.code == 401) {
                     _apiError.value = AppError.Unauthorized(
-                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
                     )
                 } else {
                     _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
@@ -205,10 +205,11 @@ class MainCategoriesViewModel @Inject constructor(
                     getSubCategoriesApi()
                 },
                 onFailure = {
-                    println("❌ Token refresh failed in MainCategoriesViewModel")
-                    // Show error with "Go to Login" button
-                    _apiError.value = AppError.Unknown("انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى")
-                    // Don't auto-navigate, let user click the button
+                    println("❌ Token refresh failed in MainCategoriesViewModel - auto-navigating to login")
+                    // ✅ Clear error banner BEFORE navigating
+                    _apiError.value = null
+                    // ✅ AUTO-NAVIGATE to login directly
+                    _shouldNavigateToLogin.value = true
                 }
             )
         }

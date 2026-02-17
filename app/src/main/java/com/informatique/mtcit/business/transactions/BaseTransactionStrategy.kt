@@ -229,5 +229,17 @@ abstract class BaseTransactionStrategy : TransactionStrategy {
     override fun getApiResponse(apiName: String): Any? {
         return null
     }
+
+    // ✅ hasAcceptance flag - mutable property that can be set from API
+    override var hasAcceptance: Boolean = false
+
+    /**
+     * ✅ Set hasAcceptance from TransactionDetail API response
+     * Overriding to properly store the value in the mutable property
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        hasAcceptance = hasAcceptanceValue == 1
+        println("🔧 BaseTransactionStrategy: hasAcceptance set from API: $hasAcceptance (raw value: $hasAcceptanceValue)")
+    }
 }
 

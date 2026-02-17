@@ -451,6 +451,8 @@
     <!-- Inspection Dialog -->
     <string name="inspection_required">Inspection Required</string>
     <string name="ok">OK</string>
+    <string name="continue_action">Continue</string>
+    <string name="later">Later</string>
     <string name="processing">Processing...</string>
     <string name="error">Error</string>
 
@@ -662,11 +664,11 @@
     <string name="marine_unit_name">Marine Unit Name</string>
     <string name="marine_unit_name_placeholder">Enter the marine unit name to be registered</string>
 
-    <string name="marine_unit_name_with_arabic">Enter the name of the marine unit in Arabic</string>
-    <string name="marine_unit_name_placeholder_with_arabic">Enter the name of the required unit in Arabic</string>
+    <string name="marine_unit_name_ar">Marine Unit Name (Arabic)</string>
+    <string name="marine_unit_name_ar_placeholder">Enter the marine unit name in Arabic</string>
 
-    <string name="marine_unit_name_with_english">Enter the name of the marine unit in English</string>
-    <string name="marine_unit_name_placeholder_with_english">Enter the name of the required unit in English</string>
+    <string name="marine_unit_name_en">Marine Unit Name (English)</string>
+    <string name="marine_unit_name_en_placeholder">Enter the marine unit name in English</string>
 
     <string name="select_unit_classification">Unit Classification</string>
     <string name="select_unit_classification_placeholder">Select unit classification</string>
@@ -912,7 +914,10 @@
 
 
 
-    <!-- Second Dropdown: Recording Port -->
+    <!-- Second Dropdown: Recording Place -->
+    <string name="inspection_place_selection">Inspection place</string>
+    <string name="select_inspection_place_placeholder">Select inspection place</string>
+
     <string name="inspection_recording_port_selection">Inspection Recording Port</string>
     <string name="select_inspection_recording_port_placeholder">Select inspection recording port</string>
 

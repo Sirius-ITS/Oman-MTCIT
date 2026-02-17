@@ -72,6 +72,13 @@ data class TransactionContext(
     val proceedRequestEndpoint: String? = null,
 
     /**
+     * ✅ NEW: Controls post-submission behavior
+     * - When true (hasAcceptance=1): Transaction stops after submission, user must continue from profile
+     * - When false (hasAcceptance=0): Transaction can continue to next steps (e.g., payment) immediately
+     */
+    val hasAcceptance: Boolean = false,
+
+    /**
      * Additional transaction-specific configuration
      */
     val config: Map<String, Any> = emptyMap()

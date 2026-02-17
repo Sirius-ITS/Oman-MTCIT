@@ -150,6 +150,17 @@ data class InsuranceCompany(
     val isActive: String? = null // ✅ API returns this field too
 )
 
+// ✅ NEW: Inspection place model
+@Serializable
+data class InspectionPlace(
+    val id: Int,
+    val nameAr: String,
+    val nameEn: String,
+    val name: String,
+    val portOfRegistry: Port,
+    val isActive: Int
+)
+
 /**
  * Reference types for API requests
  * These are used when sending data to the API (only ID is needed)

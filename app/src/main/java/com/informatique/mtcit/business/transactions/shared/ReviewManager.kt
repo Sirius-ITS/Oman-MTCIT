@@ -68,6 +68,13 @@ class ReviewManager @Inject constructor(
                     println("   Message: ${response.message}")
                     println("   Need Inspection: ${response.needInspection}")
 
+                    // ✅ Extract hasAcceptance from additionalData or default to false
+                    val hasAcceptance = (response.additionalData?.get("hasAcceptance") as? Boolean)
+                        ?: (response.additionalData?.get("hasAcceptance") as? Int == 1)
+                        ?: false
+
+                    println("   Has Acceptance: $hasAcceptance")
+
                     // ✅ Log additional data if present
                     if (response.additionalData != null) {
                         println("   Additional Data:")
@@ -80,6 +87,7 @@ class ReviewManager @Inject constructor(
                     ReviewResult.Success(
                         message = response.message,
                         needInspection = response.needInspection,
+                        hasAcceptance = hasAcceptance,
                         additionalData = response.additionalData
                     )
                 } else {
@@ -113,6 +121,9 @@ sealed class ReviewResult {
      *
      * @param message Message from server (e.g., "تم إرسال الطلب بنجاح")
      * @param needInspection Whether inspection is required (used by temporary registration)
+     * @param hasAcceptance Whether transaction requires acceptance/approval (from metadata)
+     *                      - 1 = Stop after submission, continue from profile later
+     *                      - 0 = Continue to next flow (payment, inspection, etc.)
      * @param additionalData Any additional data from the API (strategy-specific fields)
      *   - For temporary registration: needInspection flag
      *   - For mortgage: approvalStatus, bankVerification, etc.
@@ -121,6 +132,7 @@ sealed class ReviewResult {
     data class Success(
         val message: String,
         val needInspection: Boolean,
+        val hasAcceptance: Boolean,
         val additionalData: Map<String, Any>? = null
     ) : ReviewResult()
 

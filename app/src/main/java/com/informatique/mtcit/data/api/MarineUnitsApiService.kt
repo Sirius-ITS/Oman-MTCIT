@@ -549,16 +549,29 @@ class MarineUnitsApiService @Inject constructor(
                     val success = responseObj["success"]?.jsonPrimitive?.boolean ?: false
                     val statusCode = responseObj["statusCode"]?.jsonPrimitive?.int ?: 0
 
-                    // ✅ Parse data object to get needInspection
-                    val dataObj = responseObj["data"]?.jsonObject
-                    val needInspection = dataObj?.get("needInspection")?.jsonPrimitive?.boolean ?: false
-                    val inspectionStatus = if (needInspection) 1 else 0
+                    // ✅ Parse data field - can be either a primitive (0, 1) or an object
+                    val inspectionStatus = try {
+                        // Try as primitive first (data: 0 or data: 1)
+                        responseObj["data"]?.jsonPrimitive?.int ?: 0
+                    } catch (e: Exception) {
+                        // If fails, try as object with needInspection field
+                        try {
+                            val dataObj = responseObj["data"]?.jsonObject
+                            val needInspection = dataObj?.get("needInspection")?.jsonPrimitive?.boolean ?: false
+                            // ✅ FIXED: needInspection=true means status=0 (needs inspection)
+                            //           needInspection=false means status=1 (has inspection)
+                            if (needInspection) 0 else 1
+                        } catch (e2: Exception) {
+                            // Default to 0 (needs inspection) if parsing fails
+                            println("⚠️ Could not parse inspection data, defaulting to 0 (needs inspection)")
+                            0
+                        }
+                    }
 
                     println("   Message: $message")
                     println("   Success: $success")
                     println("   Status Code: $statusCode")
-                    println("   Need Inspection: $needInspection")
-                    println("   Inspection Status: $inspectionStatus")
+                    println("   Inspection Status: $inspectionStatus (0=needs inspection, 1=has inspection)")
                     println("=".repeat(80))
 
                     if (success && statusCode == 200) {
@@ -632,9 +645,30 @@ class MarineUnitsApiService @Inject constructor(
                     println("✅ $transactionType request sent successfully")
                     println("📥 Response: ${response.response}")
 
-                    // ✅ Parse response to extract message and needInspection flag
-                    // Extract the `data` object safely from the response JSON
-                    val dataObj = response.response.jsonObject["data"]?.jsonObject
+                    // ✅ Parse response - handle both JsonObject and JsonPrimitive (string) in data field
+                    val dataElement = response.response.jsonObject["data"]
+                    println("🔍 Data element type: ${dataElement?.javaClass?.simpleName}")
+
+                    // Try to parse as JsonObject first (for complex responses)
+                    val dataObj = try {
+                        when {
+                            dataElement == null -> {
+                                println("⚠️ Data element is null")
+                                null
+                            }
+                            dataElement is kotlinx.serialization.json.JsonObject -> {
+                                println("✅ Data is JsonObject")
+                                dataElement
+                            }
+                            else -> {
+                                println("ℹ️ Data is not JsonObject (type: ${dataElement.javaClass.simpleName}), treating as simple response")
+                                null
+                            }
+                        }
+                    } catch (e: Exception) {
+                        println("⚠️ Exception parsing data element: ${e.message}")
+                        null
+                    }
 
                     // Parse needInspection: it may be a boolean or string in some responses
                     val needInspection = dataObj?.get("needInspection")?.jsonPrimitive?.let { prim ->
@@ -647,8 +681,9 @@ class MarineUnitsApiService @Inject constructor(
                     } ?: false
 
                     // Parse message from response data if present, otherwise use defaults
-                    val message = dataObj?.get("message")?.jsonPrimitive?.content ?:
-                        if (needInspection) "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني" else "تم إرسال الطلب بنجاح"
+                    val message = dataObj?.get("message")?.jsonPrimitive?.content
+                        ?: response.response.jsonObject["message"]?.jsonPrimitive?.content
+                        ?: if (needInspection) "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني" else "تم إرسال الطلب بنجاح"
 
                     println("   Message: $message")
                     println("   Need Inspection: $needInspection")

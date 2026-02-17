@@ -69,6 +69,10 @@ interface LookupRepository {
     fun getInspectionPurposeId(purposeName: String): Int?
     fun getInspectionAuthorityId(authorityName: String): Int?
 
+    // ✅ NEW: Inspection places lookup
+    suspend fun getInspectionPlaces(): Result<List<String>>
+    fun getInspectionPlaceId(placeName: String): Int?
+
     // ✅ NEW: Insurance companies lookup
     suspend fun getInsuranceCompanies(): Result<List<String>>
     fun getInsuranceCompanyId(companyName: String): String? // ✅ Changed return type to String
@@ -103,6 +107,7 @@ class LookupRepositoryImpl @Inject constructor(
 
     // ✅ NEW: Inspection lookups cache
     private var cachedInspectionPurposes: List<InspectionPurpose>? = null
+    private var cachedInspectionPlaces: List<InspectionPlace>? = null
 
     // ✅ NEW: Insurance companies cache
     private var cachedInsuranceCompanies: List<InsuranceCompany>? = null
@@ -1082,6 +1087,45 @@ class LookupRepositoryImpl @Inject constructor(
             }?.let { return it.id }
         }
         return null
+    }
+
+    // ✅ NEW: Get inspection places
+    override suspend fun getInspectionPlaces(): Result<List<String>> = withContext(Dispatchers.IO) {
+        try {
+            // ✅ Check cache first
+            if (cachedInspectionPlaces != null) {
+                return@withContext Result.success(cachedInspectionPlaces!!.map {
+                    getLocalizedName(it.nameAr, it.nameEn)
+                })
+            }
+
+            // ✅ Fetch from API
+            println("🔍 Fetching inspection places from API")
+            val result = apiService.getInspectionPlaces()
+            result.fold(
+                onSuccess = { response ->
+                    if (response.success) {
+                        cachedInspectionPlaces = response.data
+                        println("✅ Successfully cached ${response.data.size} inspection places")
+                        Result.success(response.data.map { getLocalizedName(it.nameAr, it.nameEn) })
+                    } else {
+                        Result.failure(Exception(response.message ?: "Failed to fetch inspection places"))
+                    }
+                },
+                onFailure = { exception ->
+                    Result.failure(exception)
+                }
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    override fun getInspectionPlaceId(placeName: String): Int? {
+        return cachedInspectionPlaces?.find {
+            getLocalizedName(it.nameAr, it.nameEn) == placeName
+        }?.id
     }
 
     // ✅ NEW: Get insurance companies

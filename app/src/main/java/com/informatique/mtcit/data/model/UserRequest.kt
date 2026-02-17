@@ -65,7 +65,7 @@ data class UserRequest(
             13 -> "تم اتخاذ الإجراء"        // Action Taken
             14 -> "تم الإصدار"              // Issued
             15 -> "قيد التحقيق"             // Under Investigation
-            16 -> "في انتظار نتيجة التفتيش" // Waiting for Inspection
+            16 -> "في انتظار نتائج المعاينة" // Waiting for Inspection
             else -> "غير معروف"             // Unknown
         }
     }

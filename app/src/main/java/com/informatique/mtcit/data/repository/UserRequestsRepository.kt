@@ -78,6 +78,13 @@ interface UserRequestsRepository {
     ): Result<RequestDetailResponse>
 
     /**
+     * ✅ Get certificate by certification number (for already issued certificates)
+     */
+    suspend fun getCertificate(
+        certificationNumber: String
+    ): Result<RequestDetailResponse>
+
+    /**
      * Refresh requests (clear cache if any)
      */
     suspend fun refreshRequests()

@@ -217,6 +217,36 @@ interface TransactionStrategy {
         // Default implementation - return null
         return null
     }
+
+    /**
+     * ✅ NEW: hasAcceptance flag from transaction metadata
+     * Controls whether transaction stops after submission (hasAcceptance=1)
+     * or continues to next steps like payment (hasAcceptance=0)
+     *
+     * When hasAcceptance=1:
+     * - Transaction stops after review step submission
+     * - Shows success dialog
+     * - User must continue from profile screen
+     *
+     * When hasAcceptance=0:
+     * - Transaction continues to payment/next steps after submission
+     *
+     * @return true if transaction requires acceptance (stops after submission), false otherwise
+     */
+    var hasAcceptance: Boolean
+        get() = false
+        set(_) {}
+
+    /**
+     * ✅ NEW: Initialize hasAcceptance from TransactionDetail API response
+     * This should be called immediately after strategy creation
+     *
+     * @param hasAcceptanceValue The hasAcceptance value from API (1 = requires acceptance, 0 = continue to payment)
+     */
+    fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        hasAcceptance = hasAcceptanceValue == 1
+        println("🔧 Strategy hasAcceptance initialized from API: $hasAcceptance (raw value: $hasAcceptanceValue)")
+    }
 }
 
 /**

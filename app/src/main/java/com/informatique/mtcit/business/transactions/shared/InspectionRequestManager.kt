@@ -111,23 +111,23 @@ class InspectionRequestManager @Inject constructor(
             }
             println("   ✅ Resolved purposeId: $purposeId (from: $inspectionPurposeValue)")
 
-            // ✅ Extract recording port ID (send ID as String - port code)
-            val inspectionRecordingPortValue = formData["inspectionRecordingPort"]
-            println("🔍 DEBUG - inspectionRecordingPortValue: '$inspectionRecordingPortValue'")
+            // ✅ Extract inspection place ID from "placeId" field (send ID as Int)
+            val inspectionPlaceValue = formData["placeId"]  // Changed from "inspectionPlace" to "placeId"
+            println("🔍 DEBUG - placeId value: '$inspectionPlaceValue'")
 
-            // Port ID is string (port code like "OMDQM"), extract from "code|name" format or lookup
-            val portId = if (inspectionRecordingPortValue?.contains("|") == true) {
-                val parts = inspectionRecordingPortValue.split("|")
-                parts[0].trim()  // Take first part as port code
+            // Place ID is integer, extract from "id|name" format or lookup
+            val placeId = if (inspectionPlaceValue?.contains("|") == true) {
+                val parts = inspectionPlaceValue.split("|")
+                parts[0].trim().toIntOrNull()  // Take first part as place ID
             } else {
-                lookupRepository.getPortId(inspectionRecordingPortValue ?: "")
+                lookupRepository.getInspectionPlaceId(inspectionPlaceValue ?: "")
             }
 
-            if (portId.isNullOrBlank()) {
-                println("❌ ERROR: Could not resolve port ID for value: '$inspectionRecordingPortValue'")
-                return InspectionSubmitResult.Error("تعذر تحديد معرف ميناء تسجيل المعاينة")
+            if (placeId == null) {
+                println("❌ ERROR: Could not resolve place ID for value: '$inspectionPlaceValue'")
+                return InspectionSubmitResult.Error("تعذر تحديد معرف موقع المعاينة")
             }
-            println("   ✅ Resolved portId: '$portId' (from: $inspectionRecordingPortValue)")
+            println("   ✅ Resolved placeId: $placeId (from: $inspectionPlaceValue)")
 
             // ✅ Extract authority ID from combined field (send ID only)
             // Format: "id|name" (e.g., "128|authority name")
@@ -153,20 +153,25 @@ class InspectionRequestManager @Inject constructor(
             println("   Ship Info ID: $shipInfoId")
             println("   Purpose ID: $purposeId")
             println("   Authority ID: $authorityId")
-            println("   Port ID: $portId")
+            println("   Place ID: $placeId")
             println("   crNumber: $crNumber")
 
             // ✅ Collect uploaded documents and their files
+            // ✅ Filter ONLY inspection-specific documents (prefix: "inspection_document_")
+            // ✅ This avoids collecting documents from parent transaction (e.g., permanent registration)
             val documents = mutableListOf<InspectionDocumentDto>()
             val files = mutableListOf<InspectionFileUpload>()
 
+            println("🔍 DEBUG - Collecting inspection documents from formData...")
+            println("   Total formData keys: ${formData.keys.size}")
+
             formData.entries
-                .filter { it.key.startsWith("document_") }
+                .filter { it.key.startsWith("inspection_document_") }  // ✅ Changed filter
                 .forEach { (key, value) ->
-                    // Extract document ID from key (e.g., "document_123" -> 123)
-                    val docId = key.removePrefix("document_").toIntOrNull()
+                    // Extract document ID from key (e.g., "inspection_document_123" -> 123)
+                    val docId = key.removePrefix("inspection_document_").toIntOrNull()  // ✅ Changed prefix
                     if (docId != null && value.isNotBlank() && value != "[]") {
-                        println("   📎 Processing document: $key = $value")
+                        println("   📎 Processing inspection document: $key = $value")
 
                         try {
                             // Parse file URI
@@ -222,14 +227,29 @@ class InspectionRequestManager @Inject constructor(
 
             println("📄 Total documents: ${documents.size}, Total files: ${files.size}")
 
+            // ✅ Extract parent transaction info (if inspection triggered from another transaction)
+            // These will be null when creating inspection request directly from inspection transaction
+            val needInspectionRequestId = formData["needInspectionRequestId"]?.toIntOrNull()
+            val needInspectionRequestTypeId = formData["needInspectionRequestTypeId"]?.toIntOrNull()
+
+            if (needInspectionRequestId != null && needInspectionRequestTypeId != null) {
+                println("✅ Inspection triggered from parent transaction:")
+                println("   Parent Request ID: $needInspectionRequestId")
+                println("   Parent Request Type: $needInspectionRequestTypeId (1=temp, 2=perm, 3=issue nav, 5=renew nav)")
+            } else {
+                println("ℹ️ Standalone inspection request (no parent transaction)")
+            }
+
             // ✅ Create DTO with correct structure (no 'id' field)
             val dto = CreateInspectionRequestDto(
                 shipInfoId = shipInfoId,    // Ship info ID
                 purposeId = purposeId,      // Inspection purpose ID
                 authorityId = authorityId,  // Authority ID
-                portId = portId,            // Port ID as string
+                placeId = placeId,          // Inspection place ID as string
                 crNumber = crNumber,        // Commercial registration number
-                documents = documents       // Documents metadata
+                documents = documents,      // Documents metadata
+                needInspectionRequestId = needInspectionRequestId,        // Parent request ID (null if standalone)
+                needInspectionRequestTypeId = needInspectionRequestTypeId // Parent request type (null if standalone)
             )
 
             // ✅ DEBUG: Print final DTO values before sending
@@ -238,8 +258,10 @@ class InspectionRequestManager @Inject constructor(
             println("   shipInfoId: ${dto.shipInfoId}")
             println("   purposeId: ${dto.purposeId}")
             println("   authorityId: ${dto.authorityId}")
-            println("   portId: '${dto.portId}'")
+            println("   placeId: '${dto.placeId}'")
             println("   crNumber: '${dto.crNumber}'")
+            println("   needInspectionRequestId: ${dto.needInspectionRequestId ?: "null (standalone)"}")
+            println("   needInspectionRequestTypeId: ${dto.needInspectionRequestTypeId ?: "null (standalone)"}")
             println("   documents (${dto.documents.size} items):")
             dto.documents.forEachIndexed { index, doc ->
                 println("      [$index] fileName='${doc.fileName}', documentId=${doc.documentId}")

@@ -130,6 +130,16 @@ abstract class BaseTransactionViewModel(
     protected abstract suspend fun createStrategy(transactionType: TransactionType): TransactionStrategy
 
     /**
+     * ✅ NEW: Set hasAcceptance from TransactionDetail API response
+     * This should be called after initializeTransaction to properly configure the strategy
+     *
+     * @param hasAcceptanceValue The hasAcceptance value from TransactionDetail API (1 or 0)
+     */
+    fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        currentStrategy?.setHasAcceptanceFromApi(hasAcceptanceValue)
+    }
+
+    /**
      * Initialize transaction with specific type
      * This must be called before using the ViewModel
      */
@@ -428,6 +438,36 @@ abstract class BaseTransactionViewModel(
                             println("✅ UI State updated, success dialog should be shown by parent ViewModel")
                             println("=" .repeat(80))
 
+                            return@launch
+                        }
+
+                        // ✅ NEW: Handle return -3 (inspection success - show dialog and exit transaction)
+                        if (requiredNextStep == -3) {
+                            println("=" .repeat(80))
+                            println("🎉🎉🎉 processStepData returned -3 (INSPECTION SUCCESS - SHOW DIALOG & EXIT)")
+                            println("=" .repeat(80))
+
+                            // Strategy has set inspection success data in formData
+                            val updatedSteps = strategy.getSteps()
+                            val strategyFormData = strategy.getFormData()
+
+                            val mergedData = currentState.formData.toMutableMap().apply {
+                                putAll(strategyFormData)
+                            }
+
+                            _uiState.value = currentState.copy(
+                                steps = updatedSteps,
+                                formData = mergedData
+                            )
+
+                            println("✅ UI State updated with inspection success data:")
+                            println("   inspectionRequestId: ${mergedData["inspectionRequestId"]}")
+                            println("   showInspectionSuccessDialog: ${mergedData["showInspectionSuccessDialog"]}")
+                            println("   inspectionSuccessMessage: ${mergedData["inspectionSuccessMessage"]}")
+                            println("   inspectionSubmitted: ${mergedData["inspectionSubmitted"]}")
+                            println("=" .repeat(80))
+
+                            // MarineRegistrationViewModel will handle showing the dialog and exiting
                             return@launch
                         }
 

@@ -485,7 +485,7 @@ object SharedSteps {
             FormField.DatePicker(
                 id = "mortgageStartDate",
                 labelRes = R.string.mortgage_start_date,
-                allowPastDates = true,
+                allowPastDates = false,
                 mandatory = true
             )
         )
@@ -818,41 +818,29 @@ object SharedSteps {
             ""
         }
 
-        // Marine Unit Name (mandatory)
-        /*fields.add(
+        // Marine Unit Name in Arabic (mandatory)
+        fields.add(
             FormField.TextField(
                 id = "marineUnitName",
-                labelRes = R.string.marine_unit_name,
-                placeholder = R.string.marine_unit_name_placeholder.toString(),
+                labelRes = R.string.marine_unit_name_ar,
+                placeholder = R.string.marine_unit_name_ar_placeholder.toString(),
                 mandatory = true,
                 initialValue = prefilledName, // ✅ املأ الاسم لو موجود
                 enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
                 minLength = 3, // ✅ الحد الأدنى 3 أحرف
                 maxLength = 50 // ✅ الحد الأقصى 50 حرف
             )
-        )*/
-
-        // Marine New Unit Arabic Name (mandatory)
-        fields.add(
-            FormField.TextField(
-                id = "newArabicMarineUnitName",
-                labelRes = R.string.marine_unit_name_with_arabic,
-                placeholder = R.string.marine_unit_name_placeholder_with_arabic.toString(),
-                mandatory = true,
-                enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
-                minLength = 3, // ✅ الحد الأدنى 3 أحرف
-                maxLength = 50 // ✅ الحد الأقصى 50 حرف
-            )
         )
 
-        // Marine New Unit English Name (mandatory)
+        // Marine Unit Name in English (mandatory)
         fields.add(
             FormField.TextField(
-                id = "newEnglishMarineUnitName",
-                labelRes = R.string.marine_unit_name_with_english,
-                placeholder = R.string.marine_unit_name_placeholder_with_english.toString(),
+                id = "marineUnitNameEn",
+                labelRes = R.string.marine_unit_name_en,
+                placeholder = R.string.marine_unit_name_en_placeholder.toString(),
                 mandatory = true,
-                enabled = isAddingNewUnit || selectedMarineUnits.isEmpty(),
+                initialValue = "", // ✅ الاسم الإنجليزي يدوي دائماً
+                enabled = true,
                 minLength = 3, // ✅ الحد الأدنى 3 أحرف
                 maxLength = 50 // ✅ الحد الأقصى 50 حرف
             )
@@ -1554,7 +1542,7 @@ object SharedSteps {
      */
     fun inspectionPurposeAndAuthorityStep(
         inspectionPurposes: List<String>,
-        recordingPorts: List<String>,
+        inspectionPlaces: List<String>,
         authoritySections: List<DropdownSection>,
         documents: List<RequiredDocumentItem>,
         allowedTypes: List<String> = listOf("pdf", "jpg", "jpeg", "png", "doc", "docx"),
@@ -1573,14 +1561,14 @@ object SharedSteps {
             )
         )
 
-        // 2️⃣ Inspection Recording Port Dropdown (ميناء تسجيل المعاينة)
+        // 2️⃣ Inspection Place Dropdown (موقع المعاينة) - replaces port of registry
         fields.add(
             FormField.DropDown(
-                id = "inspectionRecordingPort",
-                labelRes = R.string.inspection_recording_port_selection, // "ميناء تسجيل المعاينة"
-                options = recordingPorts,
+                id = "placeId", // Changed from "inspectionPlace" to "placeId" to match API
+                labelRes = R.string.inspection_place_selection, // "موقع المعاينة"
+                options = inspectionPlaces,
                 mandatory = true,
-                placeholder = R.string.select_inspection_recording_port_placeholder.toString() // "تحديد ميناء تسجيل المعاينة"
+                placeholder = R.string.select_inspection_place_placeholder.toString() // "تحديد موقع المعاينة"
             )
         )
 
@@ -1608,7 +1596,8 @@ object SharedSteps {
 
         println("📄 Creating ${activeDocuments.size} file pickers (after filtering active only)")
 
-        // Create a file upload field for each document
+        // ✅ Create a file upload field for each document
+        // ✅ Use "inspection_document_" prefix to avoid collision with parent transaction documents
         activeDocuments.forEach { docItem ->
             val document = docItem.document
             val isMandatory = document.isMandatory == 1
@@ -1617,7 +1606,7 @@ object SharedSteps {
 
             fields.add(
                 FormField.FileUpload(
-                    id = "document_${document.id}",
+                    id = "inspection_document_${document.id}",  // ✅ Changed prefix for inspection step
                     label = document.nameAr, // Use Arabic name as label
                     allowedTypes = allowedTypes,
                     maxSizeMB = maxSizeMB,
@@ -1631,7 +1620,7 @@ object SharedSteps {
             titleRes = R.string.inspection_purpose_and_authority_title, // "الغرض من طلب و جهة المعاينة"
             descriptionRes = R.string.inspection_purpose_and_authority_description, // "يرجى اختيار الجهة والغرض من المعاينة لضمان توجيه الطلب للإجراء الصحيح ومطابقته للمتطلبات القانونية والإدارية."
             fields = fields,
-            requiredLookups = listOf("inspectionPurposes", "inspectionPorts", "inspectionAuthorities") // ✅ Load via onStepOpened
+            requiredLookups = listOf("inspectionPurposes", "inspectionPlaces", "inspectionAuthorities") // ✅ Load via onStepOpened
         )
     }
 

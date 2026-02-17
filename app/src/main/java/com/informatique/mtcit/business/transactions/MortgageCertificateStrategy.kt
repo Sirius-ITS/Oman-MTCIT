@@ -93,6 +93,17 @@ class MortgageCertificateStrategy @Inject constructor(
     override var onLookupStarted: ((lookupKey: String) -> Unit)? = null
     override var onLookupCompleted: ((lookupKey: String, data: List<String>, success: Boolean) -> Unit)? = null
 
+    /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 MortgageCertificateStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
     // Helper: normalize different input date formats into ISO yyyy-MM-dd
     private fun normalizeDateToIso(input: String?): String? {
         if (input == null) return null
@@ -671,13 +682,22 @@ class MortgageCertificateStrategy @Inject constructor(
                         apiCallSucceeded = true
                     },
                     onFailure = { error ->
-                        println("❌ Failed to create mortgage request: ${error.message}")
-                        error.printStackTrace()
-
-                        // Store error for Toast display
-                        lastApiError = error.message ?: "حدث خطأ أثناء إنشاء طلب الرهن"
-                        apiCallSucceeded = false
+                    println("❌ Failed to add crew: ${error.message}")
+                    // Store API error for UI / debugging
+                    val msg = when (error) {
+                        is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إضافة الطاقم"
+                        else -> error.message ?: "فشل في إضافة الطاقم"
                     }
+                    accumulatedFormData["apiError"] = msg
+                    lastApiError = msg
+
+                    // Re-throw as ApiException so upstream processStepData will catch and surface banner
+                    if (error is com.informatique.mtcit.common.ApiException) {
+                        throw error
+                    } else {
+                        throw com.informatique.mtcit.common.ApiException(400, msg)
+                    }
+                }
                 )
             } catch (e: Exception) {
                 println("❌ Exception while creating mortgage request: ${e.message}")
@@ -733,9 +753,11 @@ class MortgageCertificateStrategy @Inject constructor(
                         println("✅ Review step processed successfully!")
                         println("   Message: ${reviewResult.message}")
                         println("   Need Inspection: ${reviewResult.needInspection}")
+                        println("   Has Acceptance: ${reviewResult.hasAcceptance}")
 
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                        accumulatedFormData["hasAcceptance"] = reviewResult.hasAcceptance.toString()
 
                         // ✅ Extract request number
                         val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
@@ -747,8 +769,18 @@ class MortgageCertificateStrategy @Inject constructor(
                         val isNewRequest = accumulatedFormData["requestId"] == null ||
                                           accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
-                        if (isNewRequest) {
-                            println("🎉 NEW mortgage request submitted - showing success dialog and stopping")
+                        // ✅ Use hasAcceptance from strategy property (set from TransactionDetail API), not from review response
+                        val strategyHasAcceptance = this.hasAcceptance
+
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - hasAcceptance (from strategy): $strategyHasAcceptance")
+                        println("   - hasAcceptance (from review API): ${reviewResult.hasAcceptance}")
+
+                        // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                        if (isNewRequest && strategyHasAcceptance) {
+                            println("🎉 NEW mortgage request submitted with hasAcceptance=true - showing success dialog and stopping")
+                            println("   User must continue from profile screen")
 
                             // Set success flags for ViewModel to show dialog
                             accumulatedFormData["requestSubmitted"] = "true"
@@ -757,6 +789,12 @@ class MortgageCertificateStrategy @Inject constructor(
 
                             // Return -2 to indicate: success but show dialog and stop
                             return -2
+                        } else if (isNewRequest && !strategyHasAcceptance) {
+                            println("✅ NEW mortgage request submitted with hasAcceptance=false - continuing to next steps")
+                            println("   Transaction will continue to payment/next steps")
+                            // Continue normally - don't return, let the flow proceed
+                        } else {
+                            println("✅ Resumed mortgage request - using existing resume logic")
                         }
 
                         // ✅ MORTGAGE CERTIFICATE: Different response handling for resumed requests
@@ -1069,8 +1107,23 @@ class MortgageCertificateStrategy @Inject constructor(
             }
         }
 
-        result.onFailure { error ->
+        result .onFailure { error ->
             println("❌ Create mortgage request failed: ${error.message}")
+            // Build friendly message
+            val msg = when (error) {
+                is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إنشاء طلب الرهن"
+                else -> com.informatique.mtcit.common.ErrorMessageExtractor.extract(error.message)
+            }
+            // Store for UI and debugging
+            accumulatedFormData["apiError"] = msg
+            lastApiError = msg
+
+            // Re-throw as ApiException so upstream processStepData will catch and surface banner
+            if (error is com.informatique.mtcit.common.ApiException) {
+                throw error
+            } else {
+                throw com.informatique.mtcit.common.ApiException(400, msg)
+            }
         }
 
         return result

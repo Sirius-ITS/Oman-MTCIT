@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
@@ -26,7 +25,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,7 +32,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,15 +39,41 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.data.model.requests.RequestDetailField
 import com.informatique.mtcit.data.model.requests.RequestDetailSection
 import com.informatique.mtcit.navigation.NavRoutes
+import com.informatique.mtcit.ui.components.FileViewerDialog
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.RequestDetailViewModel
 import com.informatique.mtcit.ui.viewmodels.CertificateData
+import kotlinx.coroutines.launch
 import java.util.Locale
+
+// =====================================================================
+// 🔧 CERTIFICATE VIEWER CONFIGURATION
+// =====================================================================
+// Toggle between WebView (in-app) and External Browser for certificate viewing
+//
+// 🌐 EXTERNAL BROWSER (USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = true):
+//    - Opens certificate URLs in the device's default browser
+//    - Pros: Uses the full browser capabilities, more stable for complex web pages
+//    - Cons: User leaves the app
+//
+// 📱 WEBVIEW DIALOG (USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = false):
+//    - Opens certificate in an in-app WebView dialog
+//    - Pros: User stays within the app, seamless UX
+//    - Cons: May have authentication/session issues with complex web flows
+//
+// 👉 HOW TO SWITCH:
+//    1. Change the constant below to 'true' for external browser
+//    2. Change it to 'false' for in-app WebView (default)
+//    3. Rebuild the app
+//
+// No other code changes needed! The app automatically uses the configured method.
+// =====================================================================
+private const val USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = true
+// =====================================================================
 
 /**
  * API Request Detail Screen - Matches ReviewStep design pattern
@@ -73,6 +96,7 @@ fun ApiRequestDetailScreen(
     val appError by viewModel.appError.collectAsState()
     val isIssuingCertificate by viewModel.isIssuingCertificate.collectAsState()
     val certificateData by viewModel.certificateData.collectAsState()
+    val fileViewerState by viewModel.fileViewerState.collectAsState()
 
     // Allow drawing behind system bars and make status bar transparent
     LaunchedEffect(window) {
@@ -92,9 +116,64 @@ fun ApiRequestDetailScreen(
         viewModel.fetchRequestDetail(requestId, requestTypeId, isEngineer)
     }
 
-    // ✅ Show certificate issuance success dialog when certificateData is available
-    certificateData?.let { certData ->
-        println("🎉 Showing certificate dialog: ${certData.certificationNumber}")
+    // ✅ NEW: Handle navigation to login when refresh token fails
+    val shouldNavigateToLogin by viewModel.shouldNavigateToLogin.collectAsState()
+    LaunchedEffect(shouldNavigateToLogin) {
+        if (shouldNavigateToLogin) {
+            println("🔑 ApiRequestDetailScreen: Auto-navigating to login - refresh token failed")
+            navController.navigate(com.informatique.mtcit.navigation.NavRoutes.OAuthWebViewRoute.route)
+            viewModel.resetNavigationTrigger()
+        }
+    }
+
+    // ✅ NEW: Observe login completion to reload data
+    val coroutineScope = rememberCoroutineScope()
+    DisposableEffect(navController.currentBackStackEntry) {
+        val handle = navController.currentBackStackEntry?.savedStateHandle
+
+        val observer = androidx.lifecycle.Observer<Boolean> { loginCompleted ->
+            if (loginCompleted == true) {
+                println("✅ ApiRequestDetailScreen: Login completed, reloading request detail")
+                coroutineScope.launch {
+                    val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+                    viewModel.clearAppError()
+                    viewModel.fetchRequestDetail(requestId, requestTypeId, isEngineer)
+                }
+                // Clear the flag
+                handle?.set("login_completed", false)
+            }
+        }
+
+        handle?.getLiveData<Boolean>("login_completed")?.observeForever(observer)
+
+        onDispose {
+            handle?.getLiveData<Boolean>("login_completed")?.removeObserver(observer)
+        }
+    }
+
+    // ✅ Show certificate issuance success dialog ONLY when issuing (not when just viewing)
+    // Track if we're in "view mode" vs "issue mode"
+    val isViewingCertificate by viewModel.isViewingCertificate.collectAsState()
+
+    // ✅ Handle certificate data
+    LaunchedEffect(certificateData) {
+        certificateData?.let { certData ->
+            if (isViewingCertificate) {
+                // ✅ If in view mode, the file viewer should already be open
+                // Just clear the certificate data
+                println("✅ View mode: Certificate viewer already open, clearing data")
+                viewModel.clearCertificateData()
+            }
+        }
+    }
+
+    // Only show dialog if:
+    // 1. Certificate data exists
+    // 2. FileViewer is NOT open (to avoid showing dialog while viewing)
+    // 3. We're NOT in view-only mode (we just issued it, not just viewing)
+    if (certificateData != null && !fileViewerState.isOpen && !isViewingCertificate) {
+        val certData = certificateData!!
+        println("🎉 Showing certificate issuance dialog: ${certData.certificationNumber}")
 
         val isArabic = Locale.getDefault().language == "ar"
         val items = buildList {
@@ -128,10 +207,43 @@ fun ApiRequestDetailScreen(
             items = items,
             qrCode = certData.certificationQrCode,
             onDismiss = {
-                println("🔄 Dialog dismissed")
                 viewModel.clearCertificateData()
+            },
+            onViewCertificate = {
+                println("🔄 View Certificate clicked in dialog")
+
+                // ✅ Construct URL directly based on request type
+                val requestTypeId = requestDetail?.requestType?.id
+                if (requestTypeId != null) {
+                    println("✅ Constructing certificate URL for requestTypeId: $requestTypeId")
+
+                    // ✅ Use the configuration flag to determine viewing method
+                    viewModel.viewCertificate(requestTypeId, useExternalBrowser = USE_EXTERNAL_BROWSER_FOR_CERTIFICATES)
+
+                    // ✅ Clear certificate data to dismiss dialog
+                    viewModel.clearCertificateData()
+                } else {
+                    println("❌ Request type ID not available")
+                    android.widget.Toast.makeText(
+                        context,
+                        if (isArabic) "فشل في عرض الشهادة" else "Failed to view certificate",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         )
+    }
+
+    // ✅ Handle external browser opening (when USE_EXTERNAL_BROWSER_FOR_CERTIFICATES = true)
+    val certificateUrl by viewModel.certificateUrl.collectAsState()
+    LaunchedEffect(certificateUrl) {
+        certificateUrl?.let { url ->
+            println("🌐 Opening certificate in external browser: $url")
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            context.startActivity(intent)
+            // Clear the URL after opening
+            viewModel.clearCertificateUrl()
+        }
     }
 
     // ✅ Show toast message for non-blocking success notifications
@@ -191,38 +303,98 @@ fun ApiRequestDetailScreen(
             },
             containerColor = Color.Transparent
         ) { paddingValues ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                when {
-                    isLoading -> {
-                        LoadingState(extraColors)
+                // ✅ NEW: Show ErrorBanner for different error types
+                appError?.let { error ->
+                    when (error) {
+                        is com.informatique.mtcit.common.AppError.Unauthorized -> {
+                            // ✅ Show refresh token button for 401 errors
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                showRefreshButton = true,
+                                onRefreshToken = {
+                                    coroutineScope.launch {
+                                        val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+                                        viewModel.refreshToken(requestId, requestTypeId, isEngineer)
+                                    }
+                                },
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.ApiError -> {
+                            // Other API errors - no refresh button
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
+                        is com.informatique.mtcit.common.AppError.Unknown -> {
+                            // Unknown errors
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = error.message,
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
+                        else -> {
+                            // Fallback
+                            com.informatique.mtcit.ui.components.ErrorBanner(
+                                message = if (Locale.getDefault().language == "ar") "حدث خطأ" else "An error occurred",
+                                onDismiss = { viewModel.clearAppError() }
+                            )
+                        }
                     }
+                }
 
-                    appError != null -> {
-                        ErrorState(
-                            error = appError!!,
-                            extraColors = extraColors,
-                            onRetry = { viewModel.retry(requestId, requestTypeId) }
-                        )
-                    }
+                // Content area
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    when {
+                        isLoading -> {
+                            LoadingState(extraColors)
+                        }
 
-                    requestDetail != null -> {
-                        RequestDetailContent(
-                            requestDetail = requestDetail!!,
-                            extraColors = extraColors,
-                            navController = navController,
-                            viewModel = viewModel,
-                            isIssuingCertificate = isIssuingCertificate,
-                            certificateData = certificateData
-                        )
+                        appError != null -> {
+                            ErrorState(
+                                error = appError!!,
+                                extraColors = extraColors,
+                                onRetry = {
+                                    coroutineScope.launch {
+                                        val isEngineer = com.informatique.mtcit.data.datastorehelper.TokenManager.isEngineer(context)
+                                        viewModel.retry(requestId, requestTypeId, isEngineer)
+                                    }
+                                }
+                            )
+                        }
+
+                        requestDetail != null -> {
+                            RequestDetailContent(
+                                requestDetail = requestDetail!!,
+                                extraColors = extraColors,
+                                navController = navController,
+                                viewModel = viewModel,
+                                isIssuingCertificate = isIssuingCertificate,
+                                certificateData = certificateData
+                            )
+                        }
                     }
                 }
             }
         }
     }
+
+    // ✅ File Viewer Dialog for certificate viewing
+    FileViewerDialog(
+        isOpen = fileViewerState.isOpen,
+        fileUri = fileViewerState.fileUri,
+        fileName = fileViewerState.fileName,
+        mimeType = fileViewerState.mimeType,
+        onDismiss = { viewModel.closeFileViewerDialog() }
+    )
 }
 
 @Composable
@@ -475,12 +647,32 @@ private fun BottomActionButtons(
     val statusId = requestDetail.status.id
     val isPaid = requestDetail.isPaid
 
+    // ✅ DEBUG: Log status and isPaid values
+    println("════════════════════════════════════════════════════════════")
+    println("🔍 BottomActionButtons DEBUG")
+    println("════════════════════════════════════════════════════════════")
+    println("   requestId: ${requestDetail.requestId}")
+    println("   requestType: ${requestDetail.requestType.name} (id=${requestDetail.requestType.id})")
+    println("   statusId: $statusId")
+    println("   statusName: ${requestDetail.status.name}")
+    println("   statusNameAr: ${requestDetail.status.nameAr}")
+    println("   statusNameEn: ${requestDetail.status.nameEn}")
+    println("   isPaid: $isPaid")
+    println("   isEngineer: $isEngineer")
+    println("════════════════════════════════════════════════════════════")
+
+    // ✅ IMPORTANT: Status 13 (ACTION_TAKEN) and 14 (ISSUED) should ALWAYS show View Certificate
+    // This applies to ALL transaction types, not just mortgage
+    val isIssued = (statusId == 13 || statusId == 14)
+    println("🔍 isIssued: $isIssued (statusId in [13, 14])")
+
     // ✅ FIX: Engineers should NOT see payment button for accepted requests (statusId 3, 7, 11, 12)
-    val shouldShowButton = when (statusId) {
-        1 -> !isEngineer  // Draft - Continue Editing (not for engineer)
-        2, 10 -> !isEngineer  // Rejected - Submit New Request (not for engineer)
-        3, 7, 11, 12 -> !isEngineer  // Accepted/Approved - Show Payment or Issue Certificate button (not for engineer)
-        13, 14 -> !isEngineer  // Action Taken/Issued - Show View Certificate button (not for engineer)
+    val shouldShowButton = when {
+        isEngineer -> false  // Engineers never see client action buttons
+        statusId == 1 -> true  // Draft - Continue Editing
+        statusId in listOf(2, 10) -> true  // Rejected - Submit New Request
+        statusId in listOf(3, 7, 11, 12) -> true  // Accepted/Approved - Payment or Issue Certificate
+        isIssued -> true  // Issued - View Certificate (statusId 13 or 14)
         else -> false
     }
 
@@ -497,8 +689,28 @@ private fun BottomActionButtons(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp)
             ) {
-                when (statusId) {
-                    1 -> {
+                // ✅ IMPORTANT: Check ISSUED status FIRST (highest priority)
+                // Status 13 (ACTION_TAKEN) and 14 (ISSUED) should ALWAYS show View Certificate
+                // This applies to ALL transaction types: mortgage, registration, permits, etc.
+                when {
+                    isIssued -> {
+                        println("🔘 BottomActionButtons: ✅ ISSUED STATUS (statusId=$statusId) - Showing View Certificate button")
+                        println("   This applies to ALL transaction types when certificate is already issued")
+                        // ✅ Certificate Already Issued - Always show View Certificate button
+                        // Regardless of isPaid value (0, 1, or null) - if status is ISSUED, certificate exists
+                        IssueCertificateButton(
+                            requestDetail = requestDetail,
+                            navController = navController,
+                            extraColors = extraColors,
+                            viewModel = viewModel,
+                            isIssuingCertificate = isIssuingCertificate,
+                            certificateData = certificateData,
+                            isAlreadyIssued = true  // ✅ Certificate already issued - show "View Certificate"
+                        )
+                    }
+
+                    statusId == 1 -> {
+                        println("🔘 BottomActionButtons: Showing Continue Editing button (statusId=1)")
                         // ✅ Draft - Continue Editing
                         Button(
                             onClick = {
@@ -519,22 +731,20 @@ private fun BottomActionButtons(
                                 // ✅ Navigate using transaction ID routes (7, 8, 4, 5, 21)
                                 // These match the NavRoutes configuration in NavGraph
                                 val route = when (requestTypeId) {
-                                    1 -> NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId.toString(), lastCompletedStep)  // "7?requestId=X&lastCompletedStep=0"
-                                    2 -> "${NavRoutes.PermanentRegistrationRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"  // "8?requestId=X&lastCompletedStep=0"
-                                    3 -> "${NavRoutes.IssueNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"  // "4?requestId=X&lastCompletedStep=0"
-                                    4 -> "${NavRoutes.RenewNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"  // "5?requestId=X&lastCompletedStep=0"
-                                    8 -> NavRoutes.RequestForInspection.createRouteWithResume(requestId.toString(), lastCompletedStep)  // "21?requestId=X&lastCompletedStep=0"
-                                    else -> {
-                                        println("⚠️ Unknown request type: $requestTypeId")
-                                        null
-                                    }
+                                    1 -> NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId.toString(), lastCompletedStep)
+                                    2 -> "${NavRoutes.PermanentRegistrationRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+                                    3 -> "${NavRoutes.IssueNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+                                    4 -> "${NavRoutes.MortgageCertificateRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+                                    5 -> "${NavRoutes.ReleaseMortgageRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+                                    6 -> "${NavRoutes.RenewNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+                                    8 -> NavRoutes.RequestForInspection.createRouteWithResume(requestId.toString(), lastCompletedStep)
+                                    else -> null
                                 }
 
                                 if (route != null) {
-                                    println("🚀 Navigating to: $route")
                                     navController.navigate(route)
                                 } else {
-                                    println("❌ Cannot navigate - unknown request type")
+                                    println("⚠️ No route found for requestTypeId: $requestTypeId")
                                 }
                             },
                             modifier = Modifier
@@ -556,7 +766,8 @@ private fun BottomActionButtons(
                         }
                     }
 
-                    2, 10 -> {
+                    statusId == 2 || statusId == 10 -> {
+                        println("🔘 BottomActionButtons: Showing Submit New Request button (statusId=$statusId)")
                         // Rejected - Submit New Request
                         Button(
                             onClick = { /* TODO: Navigate to new request */ },
@@ -579,9 +790,11 @@ private fun BottomActionButtons(
                         }
                     }
 
-                    3, 7, 11, 12 -> {
+                    statusId in listOf(3, 7, 11, 12) -> {
+                        println("🔘 BottomActionButtons: Accepted/Approved status (statusId=$statusId, isPaid=$isPaid)")
                         // ✅ NEW: Check isPaid to determine which button to show
                         if (isPaid == 1) {
+                            println("   isPaid=1: Showing Issue Certificate button")
                             // ✅ Payment completed - Show Issue Certificate button
                             IssueCertificateButton(
                                 requestDetail = requestDetail,
@@ -592,6 +805,7 @@ private fun BottomActionButtons(
                                 certificateData = certificateData
                             )
                         } else {
+                            println("   isPaid=$isPaid: Showing Proceed to Payment button")
                             // ✅ Not paid - Show Proceed to Payment button
                             ProceedToPaymentButton(
                                 requestDetail = requestDetail,
@@ -601,26 +815,10 @@ private fun BottomActionButtons(
                         }
                     }
 
-                    13, 14 -> {
-                        // ✅ NEW: Certificate Already Issued - Show View/Re-issue Certificate button
-                        if (isPaid == 1) {
-                            IssueCertificateButton(
-                                requestDetail = requestDetail,
-                                navController = navController,
-                                extraColors = extraColors,
-                                viewModel = viewModel,
-                                isIssuingCertificate = isIssuingCertificate,
-                                certificateData = certificateData,
-                                isAlreadyIssued = true  // ✅ Pass flag to change button text
-                            )
-                        } else {
-                            // Edge case: Issued but not paid (shouldn't happen normally)
-                            ProceedToPaymentButton(
-                                requestDetail = requestDetail,
-                                navController = navController,
-                                extraColors = extraColors
-                            )
-                        }
+                    else -> {
+                        println("⚠️ BottomActionButtons: Unexpected statusId=$statusId - No button will be shown")
+                        println("   This status ID is not handled in the when statement")
+                        println("   Supported status IDs: 1 (Draft), 2/10 (Rejected), 3/7/11/12 (Accepted), 13/14 (Issued)")
                     }
                 }
             }
@@ -661,10 +859,22 @@ private fun IssueCertificateButton(
     Button(
         onClick = {
             println("🔘 Issue/View Certificate button clicked (isAlreadyIssued=$isAlreadyIssued)")
-            viewModel.issueCertificate(
-                requestId = requestDetail.requestId,
-                requestTypeId = requestDetail.requestType.id
-            )
+            println("📋 requestId=${requestDetail.requestId}, requestTypeId=${requestDetail.requestType.id}, statusId=${requestDetail.status.id}")
+
+            if (isAlreadyIssued) {
+                // ✅ Certificate already issued - view it using configured method
+                viewModel.viewCertificate(
+                    requestTypeId = requestDetail.requestType.id,
+                    useExternalBrowser = USE_EXTERNAL_BROWSER_FOR_CERTIFICATES
+                )
+            } else {
+                // ✅ Certificate not issued yet - issue it
+                viewModel.issueCertificate(
+                    requestId = requestDetail.requestId,
+                    requestTypeId = requestDetail.requestType.id,
+                    statusId = requestDetail.status.id
+                )
+            }
         },
         modifier = Modifier
             .fillMaxWidth()
@@ -709,23 +919,44 @@ private fun ProceedToPaymentButton(
             val requestTypeId = requestDetail.requestType.id
 
             // ✅ Calculate lastCompletedStep based on transaction type and status
-            // Each transaction has different number of steps, so review step index varies
+            // For ACCEPTED requests (statusId == 7), navigate to Payment step in their respective strategies
             val lastCompletedStep = when {
-                statusId == 7 && requestTypeId == 1 -> 7  // Temp Registration ACCEPTED → Marine Unit Name step
-                requestTypeId == 3 -> 3  // Issue Navigation Permit → Review step (0=PersonType, 1=MarineUnit, 2=SailingRegions, 3=SailorInfo, 4=Review)
-                requestTypeId == 4 -> 2  // Renew Navigation License → Review step (0=PersonType, 1=MarineUnit, 2=Review)
-                requestTypeId == 8 -> 3  // Request Inspection → Review step (0=PersonType, 1=MarineUnit, 2=InspectionDetails, 3=Review)
-                else -> 8  // Other transactions (Perm Registration, Mortgage, etc.) → Payment step at index 8
+                // ✅ ACCEPTED requests - navigate to payment step (using correct typeId from TransactionType enum)
+                statusId == 7 && requestTypeId == 1 -> 7  // Temp Registration ACCEPTED → Marine Unit Name step (before Payment at step 8)
+                statusId == 7 && requestTypeId == 2 -> 8  // Perm Registration ACCEPTED → Payment step
+                statusId == 7 && requestTypeId == 3 -> 4  // Issue Navigation Permit ACCEPTED → Review step (before Payment at step 5)
+                statusId == 7 && requestTypeId == 4 -> 8  // Mortgage Certificate ACCEPTED → Payment step
+                statusId == 7 && requestTypeId == 5 -> 8  // Release Mortgage ACCEPTED → Payment step
+                statusId == 7 && requestTypeId == 6 -> 2  // Renew Navigation Permit ACCEPTED → Payment step (after Review at step 2)
+                statusId == 7 && requestTypeId == 7 -> 8  // Cancel Permanent Registration ACCEPTED → Payment step
+                statusId == 7 && requestTypeId == 8 -> 3  // Request Inspection ACCEPTED → InspectionPurpose step (before Payment at step 4)
+
+                // ✅ Draft/In-Progress requests - navigate based on last completed step from API
+                else -> {
+                    // For non-accepted statuses, use default step based on transaction type (using correct typeId)
+                    when (requestTypeId) {
+                        1 -> 7  // Temp Registration → step before payment
+                        2 -> 8  // Perm Registration → payment step
+                        3 -> 4  // Issue Navigation Permit → review step
+                        4 -> 8  // Mortgage Certificate → payment step
+                        5 -> 8  // Release Mortgage → payment step
+                        6 -> 2  // Renew Navigation Permit → payment step
+                        7 -> 8  // Cancel Permanent Registration → payment step
+                        8 -> 3  // Request Inspection → inspection purpose step
+                        else -> 8  // Default to payment step
+                    }
+                }
             }
 
-            println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep (requestTypeId=$requestTypeId)")
+            println("🔍 ApiRequestDetailScreen: Navigating with lastCompletedStep=$lastCompletedStep (requestTypeId=$requestTypeId, statusId=$statusId)")
 
-            // ✅ Smart navigation with lastCompletedStep passed through URL
+            // ✅ Smart navigation with lastCompletedStep and hasAcceptance passed through URL
             val route = getTransactionRouteForPayment(
                 requestTypeId = requestDetail.requestType.id,
                 requestId = requestDetail.requestId,
                 statusId = statusId,
-                lastCompletedStep = lastCompletedStep
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = requestDetail.hasAcceptance
             )
             if (route != null) {
                 navController.navigate(route)
@@ -1406,34 +1637,72 @@ private fun EngineerChecklistSection(
  * Uses TransactionType enum to ensure correct mapping
  */
 @Suppress("UNUSED_PARAMETER")
-private fun getTransactionRouteForPayment(requestTypeId: Int, requestId: Int, statusId: Int, lastCompletedStep: Int): String? {
+private fun getTransactionRouteForPayment(
+    requestTypeId: Int,
+    requestId: Int,
+    statusId: Int,
+    lastCompletedStep: Int,
+    hasAcceptance: Int
+): String? {
     // Map API request type ID to TransactionType
     val transactionType = TransactionType.fromTypeId(requestTypeId)
 
     return when (transactionType) {
         TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE ->
-            NavRoutes.ShipRegistrationRoute.createRouteWithResume(requestId.toString(), lastCompletedStep)
+            NavRoutes.ShipRegistrationRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.PERMANENT_REGISTRATION_CERTIFICATE ->
-            "${NavRoutes.PermanentRegistrationRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.PermanentRegistrationRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.ISSUE_NAVIGATION_PERMIT ->
-            "${NavRoutes.IssueNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.IssueNavigationPermitRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.RENEW_NAVIGATION_PERMIT ->
-            "${NavRoutes.RenewNavigationPermitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.RenewNavigationPermitRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.MORTGAGE_CERTIFICATE ->
-            "${NavRoutes.MortgageCertificateRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.MortgageCertificateRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.RELEASE_MORTGAGE ->
-            "${NavRoutes.ReleaseMortgageRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.ReleaseMortgageRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.CANCEL_PERMANENT_REGISTRATION ->
-            "${NavRoutes.ChangeNameOfShipOrUnitRoute.route}?requestId=$requestId&lastCompletedStep=$lastCompletedStep"
+            NavRoutes.CancelRegistrationRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         TransactionType.REQUEST_FOR_INSPECTION ->
-            NavRoutes.RequestForInspection.createRouteWithResume(requestId.toString(), lastCompletedStep)
+            NavRoutes.RequestForInspection.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
 
         else -> null // Unsupported or no payment flow for this transaction type
     }
@@ -1848,235 +2117,5 @@ private fun ApproveInspectionButton(
             }
         }
     }
-}
-
-/**
- * ✅ UPDATED: Inspection Decision Dialog with inline Date Picker and Refuse Notes
- * Shows radio button list of decisions with:
- * - Inline date picker when Approved (id=1) is selected
- * - Text field for refuse notes when Refused (id=2) is selected
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InspectionDecisionDialogWithDatePicker(
-    decisions: List<com.informatique.mtcit.data.model.InspectionDecision>,
-    isLoading: Boolean,
-    selectedDecisionId: Int?,
-    refuseNotes: String,
-    datePickerState: DatePickerState,
-    onDecisionSelected: (Int) -> Unit,
-    onRefuseNotesChanged: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val isArabic = Locale.getDefault().language == "ar"
-    val extraColors = LocalExtraColors.current
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = if (isArabic) "اختر القرار" else "Select Decision",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                when {
-                    isLoading -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-
-                    decisions.isEmpty() -> {
-                        Text(
-                            text = if (isArabic) "لا توجد قرارات متاحة" else "No decisions available",
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-
-                    else -> {
-                        // Decision options
-                        decisions.forEach { decision ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onDecisionSelected(decision.id) }
-                                    .padding(vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = selectedDecisionId == decision.id,
-                                    onClick = { onDecisionSelected(decision.id) }
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = if (isArabic) decision.nameAr else decision.nameEn,
-                                    fontSize = 16.sp
-                                )
-                            }
-                        }
-
-                        // ✅ Show date field if Approved (id=1) is selected
-                        if (selectedDecisionId == 1) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // ✅ Date field styled like transaction form fields
-                            val selectedDateMillis = datePickerState.selectedDateMillis
-                            val displayDate = selectedDateMillis?.let {
-                                java.text.SimpleDateFormat(
-                                    "yyyy-MM-dd",
-                                    Locale.getDefault()
-                                ).format(java.util.Date(it))
-                            } ?: (if (isArabic) "اختر التاريخ" else "Select Date")
-
-                            var showDateDialog by remember { mutableStateOf(false) }
-
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = if (isArabic) "تاريخ الانتهاء *" else "Expiry Date *",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = extraColors.whiteInDarkMode,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) {
-                                            showDateDialog = true
-                                        }
-                                ) {
-                                    OutlinedTextField(
-                                        value = displayDate,
-                                        onValueChange = { },
-                                        readOnly = true,
-                                        enabled = false,
-                                        placeholder = {
-                                            Text(
-                                                if (isArabic) "اختر تاريخ الانتهاء" else "Select expiry date",
-                                                color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                                            )
-                                        },
-                                        trailingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Default.DateRange,
-                                                contentDescription = "Calendar",
-                                                tint = extraColors.blue1,
-                                                modifier = Modifier.size(24.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            disabledBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                                            disabledContainerColor = extraColors.cardBackground,
-                                            disabledTextColor = extraColors.whiteInDarkMode,
-                                            disabledPlaceholderColor = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                                        ),
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                }
-                            }
-
-                            // ✅ Show date picker dialog when field is clicked
-                            if (showDateDialog) {
-                                DatePickerDialog(
-                                    onDismissRequest = { showDateDialog = false },
-                                    confirmButton = {
-                                        TextButton(
-                                            onClick = { showDateDialog = false }
-                                        ) {
-                                            Text(if (isArabic) "تأكيد" else "OK")
-                                        }
-                                    },
-                                    dismissButton = {
-                                        TextButton(onClick = { showDateDialog = false }) {
-                                            Text(if (isArabic) "إلغاء" else "Cancel")
-                                        }
-                                    }
-                                ) {
-                                    DatePicker(state = datePickerState)
-                                }
-                            }
-                        }
-
-                        // ✅ Show refuse notes field if Refused (id=2) is selected
-                        if (selectedDecisionId == 2) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            HorizontalDivider()
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = if (isArabic) "ملاحظات الرفض *" else "Refuse Notes *",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = extraColors.whiteInDarkMode,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-
-                                OutlinedTextField(
-                                    value = refuseNotes,
-                                    onValueChange = onRefuseNotesChanged,
-                                    placeholder = {
-                                        Text(
-                                            if (isArabic) "أدخل سبب الرفض" else "Enter refusal reason",
-                                            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                                        )
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(120.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = extraColors.blue1,
-                                        unfocusedBorderColor = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
-                                        focusedContainerColor = extraColors.cardBackground,
-                                        unfocusedContainerColor = extraColors.cardBackground,
-                                        focusedTextColor = extraColors.whiteInDarkMode,
-                                        unfocusedTextColor = extraColors.whiteInDarkMode
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    maxLines = 5
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    // Pass selected date if decision is Accepted
-                    onConfirm()
-                },
-                enabled = selectedDecisionId != null && !isLoading
-            ) {
-                Text(if (isArabic) "تأكيد" else "Confirm")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(if (isArabic) "إلغاء" else "Cancel")
-            }
-        }
-    )
 }
 

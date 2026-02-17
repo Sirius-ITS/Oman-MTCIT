@@ -209,7 +209,7 @@ class InspectionApiService @Inject constructor(
             println("   Ship Info ID: ${dto.shipInfoId}")
             println("   Purpose ID: ${dto.purposeId}")
             println("   Authority ID: ${dto.authorityId}")
-            println("   Port ID: ${dto.portId}")
+            println("   Port ID: ${dto.placeId}")
             println("   Civil ID (crNumber): ${dto.crNumber}")
             println("   Documents Count: ${dto.documents.size}")
             println("   Files Count: ${files.size}")

@@ -203,7 +203,11 @@ class RequestRepository @Inject constructor(
         }
 
         // Build form data from API response
-        val formData = buildFormDataFromJson(jsonObject)
+        val formData = buildFormDataFromJson(jsonObject).toMutableMap()
+
+        // ✅ CRITICAL: Ensure deletionRequestId is also stored for cancel registration
+        formData["deletionRequestId"] = id.toString()
+        println("💾 Stored requestId=$id and deletionRequestId=$id in formData for payment step")
 
         // Extract messages
         val message = jsonObject["message"]?.jsonPrimitive?.contentOrNull

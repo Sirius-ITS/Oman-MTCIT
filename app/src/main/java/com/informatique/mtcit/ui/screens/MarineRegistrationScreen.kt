@@ -44,7 +44,8 @@ fun MarineRegistrationScreen(
     navController: NavController,
     transactionType: TransactionType,
     requestId: String? = null,  // ✅ NEW: Accept optional request ID for resume
-    lastCompletedStep: Int? = null  // ✅ NEW: Accept lastCompletedStep from navigation to avoid API call
+    lastCompletedStep: Int? = null,  // ✅ NEW: Accept lastCompletedStep from navigation to avoid API call
+    hasAcceptance: Int? = null  // ✅ NEW: Accept hasAcceptance from navigation
 ) {
     val viewModel: MarineRegistrationViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -67,6 +68,29 @@ fun MarineRegistrationScreen(
         showToast?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             viewModel.clearToastEvent()
+        }
+    }
+
+    // ✅ NEW: Monitor injectInspectionStep flag to trigger inspection step injection
+    LaunchedEffect(uiState.formData["injectInspectionStep"]) {
+        val shouldInject = uiState.formData["injectInspectionStep"]?.toBoolean() ?: false
+        if (shouldInject) {
+            println("🔔 Detected injectInspectionStep flag - calling handleInspectionContinue")
+            viewModel.handleInspectionContinue()
+            // Clear the flag after handling
+            viewModel.onFieldValueChange("injectInspectionStep", "false")
+        }
+    }
+
+    // ✅ NEW: Monitor payment retry trigger
+    LaunchedEffect(uiState.formData["_triggerPaymentRetry"]) {
+        val shouldRetry = uiState.formData["_triggerPaymentRetry"]?.toBoolean() ?: false
+        if (shouldRetry) {
+            println("🔔 Detected _triggerPaymentRetry flag - re-submitting payment")
+            // Re-submit the current step (payment step) to trigger PaymentManager again
+            viewModel.nextStep()
+            // ✅ DON'T clear the flag here - let PaymentManager clear it after processing
+            // This allows PaymentManager to read the flag and skip submitSimplePayment
         }
     }
 
@@ -97,6 +121,14 @@ fun MarineRegistrationScreen(
             viewModel.initializeTransaction(transactionType)
         } else {
             println("⏭️ Skipping normal initialization - resume in progress (isResuming=$isResuming, requestId=$requestId)")
+        }
+    }
+
+    // ✅ NEW: Set hasAcceptance in strategy after initialization completes
+    LaunchedEffect(hasAcceptance, uiState.isInitialized) {
+        if (hasAcceptance != null && uiState.isInitialized) {
+            println("🔧 Setting hasAcceptance=$hasAcceptance in strategy after initialization")
+            viewModel.setHasAcceptanceFromApi(hasAcceptance)
         }
     }
 

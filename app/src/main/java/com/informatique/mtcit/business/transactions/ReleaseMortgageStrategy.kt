@@ -21,6 +21,9 @@ import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.api.MortgageApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
 import com.informatique.mtcit.data.model.OwnerFileUpload
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.util.UserHelper
+import com.informatique.mtcit.common.ErrorMessageExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
 
 /**
@@ -72,6 +75,16 @@ class ReleaseMortgageStrategy @Inject constructor(
     private var lastApiError: String? = null
     private val requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId()
 
+    /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 ReleaseMortgageStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
@@ -119,21 +132,22 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         println("🔒 loadShipsForSelectedType (RELEASE MORTGAGE) - personType=$personType, commercialReg=$commercialReg")
 
+        // ✅ Get civilId from token instead of hardcoded value
+        val ownerCivilIdFromToken = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilIdFromToken")
+
         // ✅ For individuals: send ownerCivilId + requestTypeId ONLY (no commercialNumber)
         // ✅ For companies: send ownerCivilId + requestTypeId + commercialNumber (CR Number)
         val (ownerCivilId, commercialRegNumber) = when (personType) {
             "فرد" -> {
-                println("✅ Individual: Using ownerCivilId + requestTypeId ONLY")
-                Pair("12345678", null) // TODO: Get from authenticated user
+                println("✅ Individual: Using ownerCivilId from token")
+                Pair(ownerCivilIdFromToken, null)
             }
             "شركة" -> {
-                println("✅ Company: Using ownerCivilId + requestTypeId + commercialNumber (CR Number from selectionData)")
-                Pair("12345678", commercialReg) // ✅ commercialReg contains CR Number (e.g., "123456-1")
+                println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
+                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
-            else -> {
-                println("⚠️ Unknown person type, using default (individual)")
-                Pair("12345678", null)
-            }
+            else -> Pair(null, null)
         }
 
         println("🔍 Calling loadShipsForOwner with:")
@@ -220,6 +234,41 @@ class ReleaseMortgageStrategy @Inject constructor(
         return steps
     }
 
+    /**
+     * Called when a step is opened - triggers payment API call when payment step is opened
+     */
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
+
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            // Call PaymentManager to load payment receipt
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId().toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment receipt loaded - triggering step rebuild")
+                    onStepsNeedRebuild?.invoke()
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+            return // Don't process other logic for payment step
+        }
+    }
+
     // NEW: Validate marine unit selection with business rules
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         val unit = marineUnits.find { it.id.toString() == unitId }
@@ -270,6 +319,24 @@ class ReleaseMortgageStrategy @Inject constructor(
                         println("✅ Ship selection successful!")
                         createdRedemptionRequestId = result.requestId
                         accumulatedFormData["createdRequestId"] = result.requestId.toString()
+                        accumulatedFormData["requestId"] = result.requestId.toString()
+
+                        // ✅ Extract and store shipInfoId for payment
+                        val selectedUnitsJson = data["selectedMarineUnits"]
+                        if (selectedUnitsJson != null) {
+                            try {
+                                val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                                val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                val firstShipId = shipIds.firstOrNull()
+                                if (firstShipId != null) {
+                                    accumulatedFormData["shipInfoId"] = firstShipId
+                                    accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                    println("✅ Stored coreShipsInfoId for payment: $firstShipId")
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ Failed to extract shipInfoId: ${e.message}")
+                            }
+                        }
                     }
                     is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                         println("❌ Ship selection failed: ${result.message}")
@@ -320,9 +387,13 @@ class ReleaseMortgageStrategy @Inject constructor(
 
                     result.onFailure { error ->
                         println("❌ Failed to create redemption request: ${error.message}")
-                        println("🔄 Re-throwing error to prevent navigation and show error to user")
-                        // ✅ Throw the error to prevent navigation and show error in UI
-                        throw error
+                        val msg = when (error) {
+                            is ApiException -> error.message ?: "فشل في إنشاء طلب فك الرهن"
+                            else -> ErrorMessageExtractor.extract(error.message)
+                        }
+                        accumulatedFormData["apiError"] = msg
+                        lastApiError = msg
+                        if (error is ApiException) throw error else throw ApiException(500, msg)
                     }
                 } catch (e: Exception) {
                     println("❌ Exception in createRedemptionRequest: ${e.message}")
@@ -390,9 +461,39 @@ class ReleaseMortgageStrategy @Inject constructor(
                         println("✅ Review step processed successfully!")
                         println("   Message: ${reviewResult.message}")
                         println("   Need Inspection: ${reviewResult.needInspection}")
+                        println("   Has Acceptance: ${reviewResult.hasAcceptance}")
 
                         // ✅ Store response in formData
                         accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                        accumulatedFormData["hasAcceptance"] = reviewResult.hasAcceptance.toString()
+
+                        // ✅ Extract coreShipsInfoId from the response for payment
+                        // The structure is: data.shipInfo.id
+                        println("🔍 Extracting coreShipsInfoId from response...")
+                        println("   additionalData keys: ${reviewResult.additionalData?.keys}")
+
+                        val coreShipsInfoId = reviewResult.additionalData?.get("shipInfo")?.let { shipInfo ->
+                            println("   shipInfo type: ${shipInfo?.javaClass?.simpleName}")
+                            val shipInfoMap = shipInfo as? Map<*, *>
+                            println("   shipInfo keys: ${shipInfoMap?.keys}")
+                            val id = shipInfoMap?.get("id")
+                            println("   id value: $id, type: ${id?.javaClass?.simpleName}")
+
+                            // Convert to String - handle both Int and String
+                            when (id) {
+                                is Number -> id.toString()
+                                is String -> id
+                                else -> id?.toString()
+                            }
+                        }
+
+                        if (coreShipsInfoId != null) {
+                            accumulatedFormData["coreShipsInfoId"] = coreShipsInfoId
+                            println("✅ Extracted coreShipsInfoId for payment: $coreShipsInfoId")
+                        } else {
+                            println("⚠️ Could not extract coreShipsInfoId from response")
+                            println("⚠️ Full additionalData: ${reviewResult.additionalData}")
+                        }
 
                         // ✅ Extract request number
                         val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
@@ -404,8 +505,18 @@ class ReleaseMortgageStrategy @Inject constructor(
                         val isNewRequest = accumulatedFormData["requestId"] == null ||
                                           accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
 
-                        if (isNewRequest) {
-                            println("🎉 NEW release mortgage request submitted - showing success dialog and stopping")
+                        // ✅ Use hasAcceptance from strategy property (set from TransactionDetail API), not from review response
+                        val strategyHasAcceptance = this.hasAcceptance
+
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - hasAcceptance (from strategy): $strategyHasAcceptance")
+                        println("   - hasAcceptance (from review API): ${reviewResult.hasAcceptance}")
+
+                        // ✅ Only stop if BOTH isNewRequest AND hasAcceptance are true
+                        if (isNewRequest && strategyHasAcceptance) {
+                            println("🎉 NEW release mortgage request submitted with hasAcceptance=true - showing success dialog and stopping")
+                            println("   User must continue from profile screen")
 
                             // Set success flags for ViewModel to show dialog
                             accumulatedFormData["requestSubmitted"] = "true"
@@ -414,10 +525,13 @@ class ReleaseMortgageStrategy @Inject constructor(
 
                             // Return -2 to indicate: success but show dialog and stop
                             return -2
+                        } else if (isNewRequest && !strategyHasAcceptance) {
+                            println("✅ NEW release mortgage request submitted with hasAcceptance=false - continuing to next steps")
+                            println("   Transaction will continue to payment/next steps")
+                            // Continue normally - don't return, let the flow proceed
+                        } else {
+                            println("✅ Resumed request - release mortgage request submitted successfully")
                         }
-
-                        // Proceed - request submitted successfully (resumed requests only)
-                        println("✅ No blocking conditions - release mortgage request submitted successfully (resumed)")
                     }
                     is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
                         println("❌ Review step failed: ${reviewResult.message}")
@@ -627,6 +741,13 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         result.onFailure { error ->
             println("❌ Failed to create redemption request: ${error.message}")
+            val msg = when (error) {
+                is ApiException -> error.message ?: "فشل في إنشاء طلب فك الرهن"
+                else -> ErrorMessageExtractor.extract(error.message)
+            }
+            accumulatedFormData["apiError"] = msg
+            lastApiError = msg
+            if (error is ApiException) throw error else throw ApiException(500, msg)
         }
 
         println("=".repeat(80))
