@@ -1,7 +1,9 @@
-package com.informatique.mtcit.ui.screens
+﻿package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -21,7 +23,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -258,7 +260,9 @@ fun ApiRequestDetailScreen(
     // Calculate status bar height
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
-    Box(modifier = Modifier.fillMaxSize().background(extraColors.background)) {
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .background(extraColors.background)) {
         // Gradient background for TopAppBar only
         Box(
             modifier = Modifier
@@ -536,7 +540,7 @@ private fun RequestDetailContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 80.dp), // Space for fixed bottom button
+                .padding(bottom = 100.dp), // Space for fixed bottom button
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // ...existing items...
@@ -559,6 +563,16 @@ private fun RequestDetailContent(
             requestDetail.sections.forEach { section ->
                 item {
                     ExpandableDataSection(section, extraColors)
+                }
+            }
+
+            // ✅ Assigned Engineers Card (shown when engineers are assigned)
+            if (requestDetail.engineerWorkOrders.isNotEmpty()) {
+                item {
+                    AssignedEngineersCard(
+                        workOrders = requestDetail.engineerWorkOrders,
+                        extraColors = extraColors
+                    )
                 }
             }
 
@@ -590,36 +604,40 @@ private fun RequestDetailContent(
                     )
                 }
 
-                // ✅ NEW: Approve Inspection Button (always visible for engineers)
-                item {
-                    val statusId = requestDetail.status.id
-                    val isReadOnly = statusId in listOf(2, 3, 7, 10, 11, 12)
-
-                    ApproveInspectionButton(
-                        viewModel = viewModel,
-                        requestDetail = requestDetail,
-                        isReadOnly = isReadOnly,
-                        extraColors = extraColors
-                    )
-                }
+//                // ✅ NEW: Approve Inspection Button (always visible for engineers)
+//                item {
+//
+//                }
             }
 
-            // Bottom spacing
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+//            // Bottom spacing
+//            item {
+//                Spacer(modifier = Modifier.height(16.dp))
+//            }
         }
+        if (isEngineer && requestDetail.purposeId != null) {
+            val statusId = requestDetail.status.id
+            val isReadOnly = statusId in listOf(2, 3, 7, 10, 11, 12)
 
-        // Fixed Bottom Action Buttons
-        BottomActionButtons(
-            requestDetail = requestDetail,
-            extraColors = extraColors,
-            navController = navController,
-            viewModel = viewModel,
-            isIssuingCertificate = isIssuingCertificate,
-            certificateData = certificateData,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+            ApproveInspectionButton(
+                viewModel = viewModel,
+                requestDetail = requestDetail,
+                isReadOnly = isReadOnly,
+                extraColors = extraColors,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }else{
+            // Fixed Bottom Action Buttons
+            BottomActionButtons(
+                requestDetail = requestDetail,
+                extraColors = extraColors,
+                navController = navController,
+                viewModel = viewModel,
+                isIssuingCertificate = isIssuingCertificate,
+                certificateData = certificateData,
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+        }
     }
 }
 
@@ -1128,67 +1146,155 @@ private fun StatusHeaderCard(
     requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors
 ) {
+    val isAr = Locale.getDefault().language == "ar"
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 4.dp
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(top = 20.dp)
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Request Number & Status
+            // ─── Row: Request Number (label + value) ── Status badge ───
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "#${requestDetail.requestSerial}",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = extraColors.whiteInDarkMode
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = if (isAr) "رقم الطلب" else "Request Number",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
+                    )
+                    Text(
+                        text = requestDetail.requestSerial,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = extraColors.whiteInDarkMode
+                    )
+                }
 
                 Surface(
                     color = getStatusBackgroundColor(requestDetail.status.id),
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(50.dp)
                 ) {
                     Text(
                         text = requestDetail.status.name,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = getStatusTextColor(requestDetail.status.id),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
                     )
                 }
             }
 
             HorizontalDivider(
-                color = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                color = extraColors.whiteInDarkMode.copy(alpha = 0.12f),
                 thickness = 1.dp
             )
 
-            // ✅ Ship Name (if available)
-            requestDetail.shipName?.let { shipName ->
-                DataRow(
-                    label = if (Locale.getDefault().language == "ar") "اسم السفينة" else "Ship Name",
-                    value = shipName,
-                    extraColors = extraColors
+            // ─── Request Type ───
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = if (isAr) "نوع الطلب" else "Request Type",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
+                )
+                Text(
+                    text = requestDetail.requestType.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = extraColors.whiteInDarkMode
                 )
             }
 
-            // Request Type
-            DataRow(
-                label = if (Locale.getDefault().language == "ar") "نوع الطلب" else "Request Type",
-                value = requestDetail.requestType.name,
-                extraColors = extraColors
-            )
+//            // ─── Ship Name (if available) ───
+//            requestDetail.shipName?.let { shipName ->
+//                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+//                    Text(
+//                        text = if (isAr) "اسم السفينة" else "Ship Name",
+//                        fontSize = 12.sp,
+//                        fontWeight = FontWeight.Normal,
+//                        color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
+//                    )
+//                    Text(
+//                        text = shipName,
+//                        fontSize = 16.sp,
+//                        fontWeight = FontWeight.SemiBold,
+//                        color = extraColors.whiteInDarkMode
+//                    )
+//                }
+//            }
+
+            // ─── Message ───
+            val displayMessage = requestDetail.message?.takeIf { it.isNotEmpty() }
+                ?: when (requestDetail.status.id) {
+                    2, 10 -> if (isAr) "تعذر اعتماد الطلب" else "Request could not be approved"
+                    3, 7, 11, 12, 13, 14 -> if (isAr) "تم اعتماد الطلب بنجاح" else "Request approved successfully"
+                    6 -> if (isAr) "تم تحديد موعد المعاينة" else "Inspection appointment scheduled"
+                    else -> null
+                }
+
+            displayMessage?.let {
+                Text(
+                    text = it,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = extraColors.whiteInDarkMode
+                )
+            }
+
+//            // ─── Message Details (if available) ───
+//            if (!requestDetail.messageDetails.isNullOrEmpty()) {
+//                Text(
+//                    text = requestDetail.messageDetails,
+//                    fontSize = 14.sp,
+//                    fontWeight = FontWeight.Normal,
+//                    color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
+//                    lineHeight = 20.sp
+//                )
+//            }
+            // ─── Message Details (if available) ───
+            val displayMessageDetails = requestDetail.messageDetails?.takeIf { it.isNotEmpty() }
+                ?: when (requestDetail.status.id) {
+                    2, 10 -> if (isAr)
+                        "نأسف لإبلاغكم بأنه تم رفض الطلب بعد مراجعته، وذلك لعدم استيفاء بعض المتطلبات. يرجى الاطلاع على تفاصيل الرفض أدناه، مع إمكانية تصحيح الملاحظات وإعادة التقديم في حال رغبتكم."
+                    else
+                        "We regret to inform you that your request has been rejected after review due to unmet requirements."
+                    3, 7, 11, 12, 13, 14 -> if (isAr)
+                        "نود إحاطتكم علماً بإنه تم تأكيد طلبكم بنجاح بعد استيفاء جميع المتطلبات اللازمة. يمكنكم الآن متابعة الخطوة التالية ضمن مسار الخدمة وفق الإجراءات المعتمدة."
+                    else
+                        "Your request has been successfully confirmed after meeting all requirements."
+                    6 -> if (isAr)
+                        "يسرنا إعلامكم بأنه تم تحديد موعد للمعاينة. يرجى التأكد من الالتزام بالحضور في الموعد المحدد لضمان استكمال المعاملة بسلاسة ووفق الأطر الزمنية المعتمدة."
+                    else
+                        "We are pleased to inform you that an inspection appointment has been scheduled."
+                    else -> null
+                }
+
+            displayMessageDetails?.let {
+                Text(
+                    text = it,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    color = extraColors.whiteInDarkMode.copy(alpha = 0.55f),
+                    lineHeight = 25.sp
+                )
+            }
         }
     }
 }
@@ -1247,7 +1353,7 @@ private fun MessageCard(
 }
 
 /**
- * Expandable section card - matches ReviewStepContent design
+ * Expandable section card - matches iOS Swift expandableCard design
  */
 @Composable
 private fun ExpandableDataSection(
@@ -1256,60 +1362,80 @@ private fun ExpandableDataSection(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
 
+    // Chevron rotation: 0° when collapsed, 180° when expanded (same as Swift rotationEffect)
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+        label = "chevronRotation"
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // Clickable Header
+            // ── Clickable Header ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isExpanded = !isExpanded }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { isExpanded = !isExpanded }
                     .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
+                // Section icon on trailing side (accent color)
+                Icon(
+                    imageVector = getSectionIcon(section.title),
+                    contentDescription = null,
+                    tint = extraColors.iconBlueGrey,
+                    modifier = Modifier.size(22.dp)
+                )
+                // Title — fills remaining space
                 Text(
                     text = section.title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     color = extraColors.whiteInDarkMode,
                     modifier = Modifier.weight(1f)
                 )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
+                // Chevron (on the leading side — left in LTR, left in RTL for iOS match)
                 Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = extraColors.whiteInDarkMode
+                    tint = extraColors.blue1,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = chevronRotation }
                 )
+
             }
 
-            // Expandable Content
+            // ── Expandable Content ──
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     HorizontalDivider(
-                        modifier = Modifier.padding(bottom = 12.dp),
-                        color = extraColors.whiteInDarkMode.copy(alpha = 0.2f),
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.12f),
                         thickness = 1.dp
                     )
 
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         section.fields.forEach { field ->
                             RenderField(field, extraColors, 0)
@@ -1322,111 +1448,129 @@ private fun ExpandableDataSection(
 }
 
 @Composable
-@Suppress("SameParameterValue")
+@Suppress("SameParameterValue", "UNUSED_PARAMETER")
 private fun RenderField(
     field: RequestDetailField,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
-    indentLevel: Int
+    @Suppress("unused") indentLevel: Int
 ) {
-    val indentModifier = Modifier.padding(start = (indentLevel * 12).dp)
-
     when (field) {
+        // ── Simple field: matches iOS DetailFieldCard ──
         is RequestDetailField.SimpleField -> {
-            Column(
-                modifier = indentModifier,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = field.label,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = field.value,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = extraColors.whiteInDarkMode
-                )
-            }
+            DetailFieldCard(
+                label = field.label,
+                value = field.value.ifBlank { "-" },
+                extraColors = extraColors
+            )
         }
 
+        // ── Nested object: label header + each sub-field as DetailFieldCard ──
         is RequestDetailField.NestedObject -> {
-            Column(
-                modifier = indentModifier.padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Section label
                 Text(
                     text = field.label,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = extraColors.blue1
+                    color = extraColors.blue1,
+                    modifier = Modifier.padding(horizontal = 2.dp)
                 )
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = extraColors.background.copy(alpha = 0.5f)
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    elevation = CardDefaults.cardElevation(0.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        field.fields.forEach { nestedField ->
-                            RenderField(nestedField, extraColors, 0)
-                        }
-                    }
+                // Each nested field as DetailFieldCard
+                field.fields.forEach { nestedField ->
+                    RenderField(nestedField, extraColors, 0)
                 }
             }
         }
 
+        // ── Array field: label header + numbered groups of DetailFieldCards ──
         is RequestDetailField.ArrayField -> {
-            Column(
-                modifier = indentModifier.padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Section label
                 Text(
                     text = field.label,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = extraColors.blue1
+                    color = extraColors.blue1,
+                    modifier = Modifier.padding(horizontal = 2.dp)
                 )
-
                 field.items.forEachIndexed { index, itemFields ->
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = extraColors.background.copy(alpha = 0.5f)
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        elevation = CardDefaults.cardElevation(0.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = "${if (Locale.getDefault().language == "ar") "العنصر" else "Item"} ${index + 1}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = extraColors.blue1
-                            )
-                            itemFields.forEach { itemField ->
-                                RenderField(itemField, extraColors, 0)
-                            }
+                    // Item group header
+                    Text(
+                        text = "${if (Locale.getDefault().language == "ar") "العنصر" else "Item"} ${index + 1}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = extraColors.blue1,
+                        modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        itemFields.forEach { itemField ->
+                            RenderField(itemField, extraColors, 0)
                         }
-                    }
-
-                    if (index < field.items.size - 1) {
-                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Matches iOS DetailFieldCard exactly:
+ * HStack: title (leading, accent-ish) | value (trailing, SemiBold, gray)
+ * Background: gray 5% opacity, cornerRadius 10, padding h12 v10
+ */
+@Composable
+private fun DetailFieldCard(
+    label: String,
+    value: String,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = Color.Gray.copy(alpha = 0.05f),
+                shape = RoundedCornerShape(10.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Title — leading, wraps up to 2 lines
+        Text(
+            text = label,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            color = extraColors.whiteInDarkMode,
+            lineHeight = 18.sp,
+            maxLines = 2,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        // Value — trailing, SemiBold, secondary color
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = extraColors.whiteInDarkMode.copy(alpha = 0.6f),
+            lineHeight = 18.sp,
+            maxLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
+    }
+}
+
+// Helper: pick an icon per section title (matches Swift sectionIcon logic)
+private fun getSectionIcon(title: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val lower = title.lowercase()
+    return when {
+        lower.contains("ship") || lower.contains("سفينة") || lower.contains("وحدة") || lower.contains("unit") -> Icons.Default.Info
+        lower.contains("document") || lower.contains("مستند") || lower.contains("وثيقة") -> Icons.Default.Info
+        lower.contains("insurance") || lower.contains("تأمين") -> Icons.Default.CheckCircle
+        lower.contains("engine") || lower.contains("محرك") -> Icons.Default.Info
+        lower.contains("owner") || lower.contains("مالك") -> Icons.Default.Info
+        lower.contains("engineer") || lower.contains("مهندس") -> Icons.Default.Info
+        lower.contains("inspection") || lower.contains("معاينة") || lower.contains("فحص") -> Icons.Default.DateRange
+        else -> Icons.Default.Info
     }
 }
 
@@ -1488,10 +1632,181 @@ private fun getStatusTextColor(statusId: Int): Color {
 }
 
 /**
- * ✅ Engineer Checklist Section
- * Shows dynamic checklist based on purposeId
- * ✅ Read-only for accepted/rejected requests, editable for others
+ * Assigned Engineers Card — matches iOS engineersListCard + engineerRow exactly:
+ * Expandable card with icon + title + chevron rotation
+ * Each engineer row: circle avatar (accent 10%) + name/job VStack + status badge capsule
+ * Rows separated by Dividers with horizontal padding
  */
+@Composable
+private fun AssignedEngineersCard(
+    workOrders: List<com.informatique.mtcit.data.model.requests.EngineerWorkOrder>,
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+) {
+    val isAr = Locale.getDefault().language == "ar"
+    var isExpanded by remember { mutableStateOf(false) }
+
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f),
+        label = "engineersChevron"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            // ── Header Row ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { isExpanded = !isExpanded }
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Section icon — trailing (person.2.fill equivalent)
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = extraColors.iconBlueGrey,
+                    modifier = Modifier.size(22.dp)
+                )
+                // Title — fills space
+                Text(
+                    text = if (isAr) "قائمة المهندسين المعينين" else "Assigned Engineers",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = extraColors.whiteInDarkMode,
+                    modifier = Modifier.weight(1f)
+                )
+                // Chevron — leading
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = extraColors.blue1,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = chevronRotation }
+                )
+            }
+
+            // ── Expandable Content ──
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.12f),
+                        thickness = 1.dp
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp)
+                    ) {
+                        workOrders.forEachIndexed { index, workOrder ->
+                            // ── Engineer Row (matches iOS engineerRow) ──
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 18.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Circle avatar with person icon (accent 10% fill)
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .background(
+                                            color = extraColors.blue1.copy(alpha = 0.1f),
+                                            shape = RoundedCornerShape(50.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = extraColors.blue1,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                // Name + job title VStack
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = workOrder.engineerName.ifBlank { "N/A" },
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = extraColors.whiteInDarkMode
+                                    )
+                                    workOrder.jobTitle?.let { job ->
+                                        if (job.isNotBlank()) {
+                                            Text(
+                                                text = job,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Normal,
+                                                color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Status badge capsule (matches iOS statusBadgeInspection)
+                                Surface(
+                                    color = getEngineerStatusColor(workOrder.statusId),
+                                    shape = RoundedCornerShape(50.dp)
+                                ) {
+                                    Text(
+                                        text = workOrder.statusName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+
+                            // Divider between rows (with horizontal padding — not after last)
+                            if (index < workOrders.size - 1) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 12.dp),
+                                    color = extraColors.whiteInDarkMode.copy(alpha = 0.12f),
+                                    thickness = 1.dp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Maps engineer work order status ID to color — matches iOS statusColorInspection */
+private fun getEngineerStatusColor(statusId: String): Color {
+    return when (statusId) {
+        "2" -> Color(0xFF4CAF50)   // Executed — Green
+        "1" -> Color(0xFFFF9800)   // Pending — Orange
+        else -> Color(0xFF2196F3)  // Default — Blue (accent)
+    }
+}
+
 @Composable
 private fun EngineerChecklistSection(
     checklistItems: List<com.informatique.mtcit.data.model.ChecklistItem>,
@@ -1728,7 +2043,8 @@ private fun ApproveInspectionButton(
     viewModel: RequestDetailViewModel,
     requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
     isReadOnly: Boolean,
-    extraColors: com.informatique.mtcit.ui.theme.ExtraColors
+    extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
+    modifier: Modifier = Modifier
 ) {
     val isArabic = Locale.getDefault().language == "ar"
     val checklistItems by viewModel.checklistItems.collectAsState()
@@ -1772,18 +2088,18 @@ private fun ApproveInspectionButton(
     println("   - isSubmitButtonEnabled: $isSubmitButtonEnabled")
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // ✅ Button 1: Save as Draft (always enabled except for rejected/accepted)
             Button(
@@ -1793,7 +2109,7 @@ private fun ApproveInspectionButton(
                     viewModel.saveDraftInspection(scheduledRequestId)
                 },
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isDraftButtonEnabled) extraColors.blue1 else Color.Gray,
@@ -1805,7 +2121,7 @@ private fun ApproveInspectionButton(
                 Text(
                     text = if (isArabic) "حفظ مسودة" else "Save as Draft",
                     color = Color.White,
-                    fontSize = 16.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1819,7 +2135,7 @@ private fun ApproveInspectionButton(
                     showDecisionBottomSheet = true
                 },
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .weight(1f)
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isSubmitButtonEnabled) extraColors.blue1 else Color.Gray,
@@ -1832,8 +2148,10 @@ private fun ApproveInspectionButton(
                 Text(
                     text = if (isArabic) "اعتماد نتيجة المعاينة" else "Approve inspection result",
                     color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
         }
