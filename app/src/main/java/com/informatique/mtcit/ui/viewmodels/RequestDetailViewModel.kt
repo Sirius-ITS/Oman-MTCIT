@@ -91,6 +91,10 @@ class RequestDetailViewModel @Inject constructor(
     private val _checklistItems = MutableStateFlow<List<com.informatique.mtcit.data.model.ChecklistItem>>(emptyList())
     val checklistItems: StateFlow<List<com.informatique.mtcit.data.model.ChecklistItem>> = _checklistItems.asStateFlow()
 
+    // ✅ NEW: Full checklist settings (includes notesAr/notesEn)
+    private val _checklistSettings = MutableStateFlow<com.informatique.mtcit.data.model.ChecklistSettingsData?>(null)
+    val checklistSettings: StateFlow<com.informatique.mtcit.data.model.ChecklistSettingsData?> = _checklistSettings.asStateFlow()
+
     private val _isLoadingChecklist = MutableStateFlow(false)
     val isLoadingChecklist: StateFlow<Boolean> = _isLoadingChecklist.asStateFlow()
 
@@ -611,6 +615,7 @@ class RequestDetailViewModel @Inject constructor(
                     onSuccess = { response ->
                         println("✅ RequestDetailViewModel: Loaded ${response.data.items.size} checklist items")
                         _checklistItems.value = response.data.items.sortedBy { it.itemOrder }
+                        _checklistSettings.value = response.data
                     },
                     onFailure = { error ->
                         println("❌ RequestDetailViewModel: Error loading checklist: ${error.message}")

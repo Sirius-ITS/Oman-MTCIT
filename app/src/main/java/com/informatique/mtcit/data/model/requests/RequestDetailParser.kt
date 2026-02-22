@@ -233,6 +233,76 @@ object RequestDetailParser {
             null
         }
 
+        // ✅ Extract engineer-specific inspection details card
+        val inspectionDetails: InspectionDetails? = if (isScheduledInspection) {
+            try {
+                val ir = dataObject["inspectionRequest"]?.jsonObject
+                val scheduledDate = dataObject["scheduledDate"]?.jsonPrimitive?.contentOrNull ?: ""
+                if (ir != null) {
+                    val isArabic = Locale.getDefault().language == "ar"
+                    val reqNumber = ir["requestNumber"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val sName = ir["shipInfo"]?.jsonObject?.get("ship")?.jsonObject
+                        ?.get("shipName")?.jsonPrimitive?.contentOrNull ?: ""
+                    val authority = ir["authority"]?.jsonObject?.let { a ->
+                        if (isArabic) a["nameAr"]?.jsonPrimitive?.contentOrNull
+                        else a["nameEn"]?.jsonPrimitive?.contentOrNull
+                    } ?: ""
+                    val place = ir["place"]?.jsonObject?.let { p ->
+                        if (isArabic) p["nameAr"]?.jsonPrimitive?.contentOrNull
+                        else p["nameEn"]?.jsonPrimitive?.contentOrNull
+                    } ?: ""
+                    val inspDate = ir["inspectionDate"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val purpose = ir["purpose"]?.jsonObject?.let { p ->
+                        if (isArabic) p["nameAr"]?.jsonPrimitive?.contentOrNull
+                        else p["nameEn"]?.jsonPrimitive?.contentOrNull
+                    } ?: ""
+                    InspectionDetails(
+                        requestNumber = reqNumber,
+                        shipName = sName,
+                        authorityName = authority,
+                        portName = place,
+                        inspectionDate = formatDateSimple(inspDate),
+                        purposeName = purpose,
+                        scheduledTime = formatTimeSimple(scheduledDate)
+                    )
+                } else null
+            } catch (e: Exception) {
+                println("⚠️ Error parsing inspectionDetails: ${e.message}")
+                null
+            }
+        } else null
+
+        // ✅ Extract work orders (assigned engineers list)
+        val engineerWorkOrders: List<EngineerWorkOrder> = if (isScheduledInspection) {
+            try {
+                val isArabic = Locale.getDefault().language == "ar"
+                dataObject["workOrders"]?.jsonArray?.map { element ->
+                    val wo = element.jsonObject
+                    val eng = wo["inspectionEngineer"]?.jsonObject
+                    val engName = if (isArabic)
+                        eng?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+                    else
+                        eng?.get("nameEn")?.jsonPrimitive?.contentOrNull ?: ""
+                    val job = eng?.get("job")?.jsonObject?.let { j ->
+                        if (isArabic) j["nameAr"]?.jsonPrimitive?.contentOrNull
+                        else j["nameEn"]?.jsonPrimitive?.contentOrNull
+                    }
+                    val st = wo["status"]?.jsonObject
+                    val stId = st?.get("id")?.jsonPrimitive?.contentOrNull ?: ""
+                    val stName = if (isArabic)
+                        st?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+                    else
+                        st?.get("nameEn")?.jsonPrimitive?.contentOrNull ?: ""
+                    EngineerWorkOrder(engineerName = engName, jobTitle = job, statusId = stId, statusName = stName)
+                } ?: emptyList()
+            } catch (e: Exception) {
+                println("⚠️ Error parsing workOrders: ${e.message}")
+                emptyList()
+            }
+        } else emptyList()
+
+        // ✅ Checklist notes will be loaded from API separately and stored in ViewModel
+        // Pass null here; ViewModel will update after loading checklist settings
         return RequestDetailUiModel(
             requestId = requestId,
             requestSerial = "$requestSerial/$requestYear",
@@ -247,8 +317,28 @@ object RequestDetailParser {
             shipName = shipName,
             purposeId = purposeId,
             workOrderResult = workOrderResult,
-            scheduledRequestId = scheduledRequestId
+            scheduledRequestId = scheduledRequestId,
+            inspectionDetails = inspectionDetails,
+            engineerWorkOrders = engineerWorkOrders
         )
+    }
+
+    private fun formatDateSimple(dateString: String): String {
+        return try {
+            val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val outputFormat = java.text.SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
+            val date = inputFormat.parse(dateString)
+            if (date != null) outputFormat.format(date) else dateString
+        } catch (_: Exception) { dateString }
+    }
+
+    private fun formatTimeSimple(dateString: String): String {
+        return try {
+            val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val outputFormat = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
+            val date = inputFormat.parse(dateString)
+            if (date != null) outputFormat.format(date) else dateString
+        } catch (_: Exception) { dateString }
     }
 
     /**

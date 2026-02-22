@@ -2,7 +2,6 @@ package com.informatique.mtcit.data.model.requests
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 
 /**
  * Generic API Response wrapper for request details
@@ -35,7 +34,34 @@ data class RequestDetailUiModel(
     val shipName: String? = null, // ✅ Ship name for display in header card
     val purposeId: Int? = null, // ✅ Purpose ID for checklist loading (engineer only)
     val workOrderResult: com.informatique.mtcit.data.model.WorkOrderResult? = null, // ✅ Completed checklist answers (engineer only)
-    val scheduledRequestId: Int? = null // ✅ Scheduled request ID (root data.id for scheduled inspections)
+    val scheduledRequestId: Int? = null, // ✅ Scheduled request ID (root data.id for scheduled inspections)
+    val inspectionDetails: InspectionDetails? = null, // ✅ Engineer-specific inspection info card
+    val engineerWorkOrders: List<EngineerWorkOrder> = emptyList(), // ✅ Assigned engineers list
+    val checklistNotesAr: String? = null, // ✅ Checklist notes (Arabic)
+    val checklistNotesEn: String? = null  // ✅ Checklist notes (English)
+)
+
+/**
+ * Engineer-specific inspection details (parsed from scheduled inspection API response)
+ */
+data class InspectionDetails(
+    val requestNumber: String,
+    val shipName: String,
+    val authorityName: String,
+    val portName: String,
+    val inspectionDate: String,
+    val purposeName: String,
+    val scheduledTime: String
+)
+
+/**
+ * Single work order (engineer assigned to inspection)
+ */
+data class EngineerWorkOrder(
+    val engineerName: String,
+    val jobTitle: String?,
+    val statusId: String,
+    val statusName: String
 )
 
 /**
