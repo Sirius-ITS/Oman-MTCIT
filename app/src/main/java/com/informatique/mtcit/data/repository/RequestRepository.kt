@@ -84,6 +84,7 @@ class RequestRepository @Inject constructor(
                 TransactionType.MORTGAGE_CERTIFICATE -> "/api/v1/mortgage-request"
                 TransactionType.RELEASE_MORTGAGE -> "/api/v1/mortgage-redemption-request"
                 TransactionType.CANCEL_PERMANENT_REGISTRATION -> "/api/v1/deletion-requests"
+                TransactionType.SHIP_PORT_CHANGE -> "/api/v1/change-ship-info"
                 else -> ""
             }
 

@@ -40,7 +40,8 @@ private val REQUEST_TYPE_TO_CERTIFICATE_TYPE = mapOf(
     5 to null, // Release Mortgage (typeId=5) -> NO certificate issued (just releases existing mortgage)
     6 to 5,  // Renew Navigation Permit (typeId=6) -> Navigation Renew Permit Certificate (certificationType.id=5) ✅
     7 to 7,  // Cancel Permanent Registration (typeId=7) -> Cancellation Certificate (certificationType.id=7)
-    8 to null  // Request Inspection (typeId=8) -> NO certificate issued
+    8 to null,  // Request Inspection (typeId=8) -> NO certificate issued
+    12 to null  // Change Port of Ship (typeId=12) -> Certificate type TBD (may issue certificate showing port change)
 )
 
 /**
@@ -1227,6 +1228,7 @@ class RequestDetailViewModel @Inject constructor(
             6 -> "$baseUrl/navigation-license-renewal/renewal-license-certificate?certificateNumber=$certificationNumber&requestId=$requestId" // Renew Navigation License
             7 -> "$baseUrl/permanent-registration-cancellation/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Cancel Registration
             8 -> null // Request Inspection - No certificate issuance
+            12 -> "$baseUrl/change-port/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Change Port of Ship
             else -> {
                 println("⚠️ Unknown request type ID: $requestTypeId")
                 null

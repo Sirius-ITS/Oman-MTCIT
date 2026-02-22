@@ -120,6 +120,16 @@ enum class StepType {
     INSURANCE_DOCUMENT,
 
     /**
+     * Change port of ship or unit information step
+     */
+    CHANGE_PORT_INFO,
+
+    /**
+     * Affected certificates display step
+     */
+    AFFECTED_CERTIFICATES,
+
+    /**
      * Custom step (default fallback)
      */
     CUSTOM

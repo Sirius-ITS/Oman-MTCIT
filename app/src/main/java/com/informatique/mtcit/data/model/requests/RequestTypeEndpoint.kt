@@ -66,6 +66,13 @@ enum class RequestTypeEndpoint(
         issuanceEndpoint = null // ✅ Inspection requests do not have certificate issuance
     ),
 
+    // 12. Change Port of Ship or Unit (تغيير ميناء السفينة)
+    CHANGE_PORT_OF_SHIP(
+        requestTypeId = 12,
+        endpointPath = "change-ship-info",
+        issuanceEndpoint = "certificate/{requestId}/change-ship-info-certificate" // ✅ Certificate issuance endpoint
+    ),
+
     ;
 
     companion object {

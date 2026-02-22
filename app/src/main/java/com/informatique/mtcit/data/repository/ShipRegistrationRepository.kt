@@ -151,12 +151,6 @@ interface ShipRegistrationRepository {
     ): Result<com.informatique.mtcit.data.model.DocumentValidationResponse>
 
     /**
-     * Send registration request and check if inspection is needed
-     * POST registration-requests/{request-id}/send-request
-     */
-    suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse>
-
-    /**
      * Reserve ship/marine name
      * POST registration-requests/{id}/{name}/shipNameReservtion
      */
@@ -181,6 +175,18 @@ interface ShipRegistrationRepository {
      * GET /api/v1/registration-request-view/file-preview?refNo={refNo}
      */
     suspend fun getFilePreview(refNo: String): Result<String>
+
+    /**
+     * Change port of registry for a ship
+     * POST /api/v1/change-ship-info/port-of-registry
+     */
+    suspend fun changePortOfRegistry(requestId: Int, portOfRegistryId: String): Result<com.informatique.mtcit.data.api.ChangePortResponse>
+
+    /**
+     * Get affected certificates for a ship change request
+     * GET /api/v1/certificate/{shipInfoId}/affected-certificates/{requestTypeId}
+     */
+    suspend fun getAffectedCertificates(shipInfoId: Int, requestTypeId: Int): Result<List<com.informatique.mtcit.business.transactions.shared.Certificate>>
 }
 
 @Singleton
@@ -347,11 +353,6 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         return registrationApiService.validatePermanentBuildStatusWithDocuments(requestId, documents)
     }
 
-    override suspend fun sendRequest(requestId: Int): Result<com.informatique.mtcit.data.model.SendRequestResponse> {
-        println("📞 ShipRegistrationRepository: Calling sendRequest API...")
-        return registrationApiService.sendRequest(requestId)
-    }
-
     override suspend fun shipNameReservation(requestId: Int, marineName: String, marineNameEn: String): Result<Unit> {
         println("📞 ShipRegistrationRepository: Calling shipNameReservation API...")
         println("   Arabic Name: $marineName")
@@ -377,5 +378,19 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
     override suspend fun getFilePreview(refNo: String): Result<String> {
         println("📞 ShipRegistrationRepository: Getting file preview for refNo=$refNo")
         return registrationApiService.getFilePreview(refNo)
+    }
+
+    override suspend fun changePortOfRegistry(requestId: Int, portOfRegistryId: String): Result<com.informatique.mtcit.data.api.ChangePortResponse> {
+        println("📞 ShipRegistrationRepository: Changing port of registry")
+        println("   requestId: $requestId")
+        println("   portOfRegistryId: $portOfRegistryId")
+        return registrationApiService.changePortOfRegistry(requestId, portOfRegistryId)
+    }
+
+    override suspend fun getAffectedCertificates(shipInfoId: Int, requestTypeId: Int): Result<List<com.informatique.mtcit.business.transactions.shared.Certificate>> {
+        println("📞 ShipRegistrationRepository: Getting affected certificates")
+        println("   shipInfoId: $shipInfoId")
+        println("   requestTypeId: $requestTypeId")
+        return registrationApiService.getAffectedCertificates(shipInfoId, requestTypeId)
     }
 }

@@ -943,6 +943,7 @@ private fun ProceedToPaymentButton(
                         6 -> 2  // Renew Navigation Permit → payment step
                         7 -> 8  // Cancel Permanent Registration → payment step
                         8 -> 3  // Request Inspection → inspection purpose step
+                        12 -> 4  // Change Port of Ship → payment step (after affected certificates)
                         else -> 8  // Default to payment step
                     }
                 }
@@ -1699,6 +1700,13 @@ private fun getTransactionRouteForPayment(
 
         TransactionType.REQUEST_FOR_INSPECTION ->
             NavRoutes.RequestForInspection.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
+
+        TransactionType.SHIP_PORT_CHANGE ->
+            NavRoutes.ShipPortChangeRoute.createRouteWithResume(
                 requestId = requestId.toString(),
                 lastCompletedStep = lastCompletedStep,
                 hasAcceptance = hasAcceptance

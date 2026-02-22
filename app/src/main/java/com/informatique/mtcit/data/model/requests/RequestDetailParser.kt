@@ -277,6 +277,7 @@ object RequestDetailParser {
             6 -> if (isArabic) "تجديد رخصة ملاحية" else "Renew Navigation Permit"
             7 -> if (isArabic) "إلغاء تسجيل دائم" else "Cancel Permanent Registration"
             8 -> if (isArabic) "طلب معاينة" else "Request for Inspection"
+            12 -> if (isArabic) "طلب تغيير ميناء التسجيل" else "Change port of registration request"
             else -> if (isArabic) "نوع غير معروف" else "Unknown Type"
         }
     }

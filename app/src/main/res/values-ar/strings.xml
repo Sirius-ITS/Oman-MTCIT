@@ -956,6 +956,9 @@
     <string name="change_port_of_ship_or_unit_strategy_info">اختيار اسم ميناء تسجيل السفينة أو الوحدة البحرية</string>
     <string name="change_port_of_ship_or_unit_strategy_info_desc">نرجو منكم تعيين ميناء تسجيل السفينة أو الوحدة البحرية من قائمة المواني, وذلك لتأكيد المسؤولية القانونية والإدارية وفقاً لأنظمة المعمول بها.</string>
 
+    <string name="current_port_of_registry">ميناء التسجيل الحالي</string>
+    <string name="new_port_of_registry">ميناء التسجيل الجديد</string>
+
     <string name="change_port_of_ship_or_unit_strategy_info2">الشهادات التي سيتم تعديل ميناء تسجيل السفينة فيها</string>
     <string name="change_port_of_ship_or_unit_strategy_info_desc2">بناءً على طلبك بتغيير ميناء تسجيل السفينة, سيتم اعتماد ميناء تسجيل الجديد رسمياً وتحديثه في الشهادات الموضحة أدناه, وذلك لضمان مطابقة السجلات الرسمية واستمرارية الامتثال للمتطلبات البحرية.</string>
 

@@ -1008,50 +1008,6 @@ class RegistrationRequestManager @Inject constructor(
     }
 
     /**
-     * Send registration request and check if inspection is needed
-     * Called when user reaches Review Step
-     *
-     * POST registration-requests/{request-id}/send-request
-     *
-     * @param requestId The registration request ID
-     * @return SendRequestResult with inspection status
-     */
-    suspend fun sendRequest(requestId: Int): SendRequestResult {
-        return try {
-            println("🚀 RegistrationRequestManager: Sending request for requestId=$requestId...")
-
-            val result = repository.sendRequest(requestId)
-
-            result.fold(
-                onSuccess = { response ->
-                    if (response.success && (response.statusCode == 200 || response.statusCode == 201)) {
-                        println("✅ Request sent successfully!")
-                        println("   Message: ${response.data.message}")
-                        println("   Need Inspection: ${response.data.needInspection}")
-
-                        SendRequestResult.Success(
-                            message = response.data.message,
-                            needInspection = response.data.needInspection
-                        )
-                    } else {
-                        println("❌ API returned error: ${response.message}")
-                        SendRequestResult.Error(response.message)
-                    }
-                },
-                onFailure = { exception ->
-                    println("❌ Failed to send request: ${exception.message}")
-                    exception.printStackTrace()
-                    SendRequestResult.Error(exception.message ?: "Unknown error")
-                }
-            )
-        } catch (e: Exception) {
-            println("❌ Exception in sendRequest: ${e.message}")
-            e.printStackTrace()
-            SendRequestResult.Error(e.message ?: "Unknown error")
-        }
-    }
-
-    /**
      * Reserve marine/ship name
      * Called when user enters marine name and clicks "Proceed to Payment"
      *

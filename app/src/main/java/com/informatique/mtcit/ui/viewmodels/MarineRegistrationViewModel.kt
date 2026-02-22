@@ -9,6 +9,7 @@ import com.informatique.mtcit.common.ResourceProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
+import com.informatique.mtcit.business.transactions.ChangePortOfShipOrUnitStrategy
 import kotlinx.coroutines.launch
 import com.informatique.mtcit.business.transactions.MarineUnitValidatable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -197,6 +198,11 @@ class MarineRegistrationViewModel @Inject constructor(
 
                     TransactionType.RELEASE_MORTGAGE -> {
                         val strategy = currentStrategy as? ReleaseMortgageStrategy
+                        strategy?.validateMarineUnitSelection(unitId, userId)
+                    }
+
+                    TransactionType.SHIP_PORT_CHANGE -> {
+                        val strategy = currentStrategy as? ChangePortOfShipOrUnitStrategy
                         strategy?.validateMarineUnitSelection(unitId, userId)
                     }
 
@@ -1208,6 +1214,10 @@ class MarineRegistrationViewModel @Inject constructor(
                     }
                     is com.informatique.mtcit.business.transactions.RenewNavigationPermitStrategy -> {
                         println("✅ Calling RenewNavigationPermitStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
+                    is com.informatique.mtcit.business.transactions.ChangePortOfShipOrUnitStrategy -> {
+                        println("✅ Calling ChangePortOfShipOrUnitStrategy.handleInspectionContinue()")
                         strategy.handleInspectionContinue()
                     }
                     else -> {

@@ -45,6 +45,14 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 
 /**
+ * Response from change port of registry API
+ */
+data class ChangePortResponse(
+    val newRequestId: Int,
+    val newShipInfoId: Int?
+)
+
+/**
  * API Service for Ship Registration Requests
  */
 @Singleton
@@ -1808,6 +1816,152 @@ class RegistrationApiService @Inject constructor(
             Result.failure(ApiException(500, "Failed to delete owner: ${e.message}"))
         }
     }
+
+    /**
+     * Change port of registry for a ship
+     * POST /api/v1/change-ship-info/port-of-registry
+     * Body: { "id": requestId, "portOfRegistryId": "OMKHS" }
+     */
+    suspend fun changePortOfRegistry(requestId: Int, portOfRegistryId: String): Result<ChangePortResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Changing port of registry...")
+            println("   requestId: $requestId")
+            println("   portOfRegistryId: $portOfRegistryId")
+
+            // Build request body
+            val requestBody = buildJsonObject {
+                put("id", requestId)
+                put("portOfRegistryId", portOfRegistryId)
+            }
+
+            println("📤 Request Body: $requestBody")
+
+            when (val response = repo.onPostAuth("change-ship-info/port-of-registry", requestBody.toString())) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200 || statusCode == 201) {
+                            // ✅ Extract the new request ID from data.id
+                            val newRequestId = responseJson.jsonObject["data"]
+                                ?.jsonObject?.get("id")
+                                ?.jsonPrimitive?.int
+                                ?: requestId // fallback to original if not found
+
+                            val newShipInfoId = responseJson.jsonObject["data"]
+                                ?.jsonObject?.get("shipInfo")
+                                ?.jsonObject?.get("id")
+                                ?.jsonPrimitive?.int
+
+                            println("✅ Port changed successfully!")
+                            println("   New Request ID: $newRequestId")
+                            println("   New Ship Info ID: $newShipInfoId")
+
+                            Result.success(ChangePortResponse(
+                                newRequestId = newRequestId,
+                                newShipInfoId = newShipInfoId
+                            ))
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to change port of registry"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ API Error: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in changePortOfRegistry: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to change port: ${e.message}"))
+        }
+    }
+
+    /**
+     * Get affected certificates for a ship change request
+     * GET /api/v1/certificate/{shipInfoId}/affected-certificates/{requestTypeId}
+     */
+    suspend fun getAffectedCertificates(shipInfoId: Int, requestTypeId: Int): Result<List<com.informatique.mtcit.business.transactions.shared.Certificate>> {
+        return try {
+            println("🚀 RegistrationApiService: Getting affected certificates...")
+            println("   shipInfoId: $shipInfoId")
+            println("   requestTypeId: $requestTypeId")
+
+            when (val response = repo.onGet("certificate/$shipInfoId/affected-certificates/$requestTypeId")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+
+                        if (statusCode == 200) {
+                            val dataObject = responseJson.jsonObject["data"]?.jsonObject
+                            val certificatesArray = dataObject?.get("affectedCertificates")?.jsonArray
+
+                            if (certificatesArray != null) {
+                                val certificates = certificatesArray.map { certJson ->
+                                    val certObj = certJson.jsonObject
+                                    val certType = certObj["certificationType"]?.jsonObject
+                                    val certNum = certObj["certificationNumber"]?.jsonPrimitive?.content ?: ""
+                                    val issDate = certObj["issuedDate"]?.jsonPrimitive?.content ?: ""
+                                    val expDate = certObj["expiryDate"]?.jsonPrimitive?.contentOrNull ?: ""
+
+                                    // Construct Certificate using proper constructor
+                                    com.informatique.mtcit.business.transactions.shared.Certificate(
+                                        id = certType?.get("id")?.jsonPrimitive?.content ?: "",
+                                        certificateNumber = certNum,
+                                        title = certType?.get("nameAr")?.jsonPrimitive?.content ?:
+                                                certType?.get("nameEn")?.jsonPrimitive?.content ?: "",
+                                        issueDate = issDate,
+                                        expiryDate = expDate,
+                                        certificateType = certType?.get("nameAr")?.jsonPrimitive?.content ?: "",
+                                        issuingAuthority = "وزارة النقل والاتصالات وتقنية المعلومات",
+                                        status = com.informatique.mtcit.business.transactions.shared.CertificateStatus.ACTIVE
+                                    )
+                                }
+                                println("✅ Loaded ${certificates.size} affected certificates")
+                                Result.success(certificates)
+                            } else {
+                                println("⚠️ No certificates found in response")
+                                Result.success(emptyList())
+                            }
+                        } else {
+                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                ?: "Failed to get affected certificates"
+                            println("❌ API returned error: $message (Status: $statusCode)")
+                            Result.failure(ApiException(statusCode, message))
+                        }
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ API Error: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in getAffectedCertificates: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to get certificates: ${e.message}"))
+        }
+    }
 }
-
-

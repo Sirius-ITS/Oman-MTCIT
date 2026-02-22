@@ -139,6 +139,7 @@ class MarineUnitsApiService @Inject constructor(
                 3 -> "ship-navigation-license-request/get-my-ships"
                 6 -> "navigation-license-renewal-request/get-my-ships"
                 8 -> "inspection-requests/get-my-ships"
+                12 -> "coreshipinfo/get-my-ships"
                 15 -> "inspection-requests/get-my-ships"
                 else -> {
                     println("⚠️ Unknown requestTypeId: $requestTypeInt, using mortgage endpoint as fallback")
@@ -164,15 +165,78 @@ class MarineUnitsApiService @Inject constructor(
                         if (statusCode == 200 && success) {
                             val data = responseJson.jsonObject.getValue("data").jsonObject
 
-                            // ✅ NEW API Structure: activeCoreShips[] and nonActiveCoreShip[]
-                            val activeCoreShips = data["activeCoreShips"]?.jsonArray ?: emptyList()
-                            val nonActiveCoreShips = data["nonActiveCoreShip"]?.jsonArray ?: emptyList()
+                            // ✅ FIXED: Handle different API response structures
+                            // - Some transactions: activeCoreShips[] + nonActiveCoreShip[]
+                            // - Change Port (12): content[] with pagination
+                            val activeCoreShips = data["activeCoreShips"]?.jsonArray
+                            val nonActiveCoreShips = data["nonActiveCoreShip"]?.jsonArray
+                            val contentArray = data["content"]?.jsonArray
 
-                            println("📦 Active ships: ${activeCoreShips.size}")
-                            println("📦 Non-active ships: ${nonActiveCoreShips.size}")
+                            println("📦 activeCoreShips: ${activeCoreShips?.size ?: "null"}")
+                            println("📦 nonActiveCoreShips: ${nonActiveCoreShips?.size ?: "null"}")
+                            println("📦 content array: ${contentArray?.size ?: "null"}")
+
+                            // ✅ Parse ships based on response structure
+                            val allShips = when {
+                                // Structure 1: content[] array (Change Port, etc.)
+                                contentArray != null -> {
+                                    println("📋 Using content[] structure")
+                                    contentArray.mapNotNull { shipItem ->
+                                        try {
+                                            val shipObject = shipItem.jsonObject
+                                            // For content[] structure, shipInfoId is the ID
+                                            val shipInfoId = shipObject["shipInfoId"]?.jsonPrimitive?.content
+                                            val shipName = shipObject["shipName"]?.jsonPrimitive?.content ?: ""
+                                            val imo = shipObject["imo"]?.jsonPrimitive?.content
+                                            val officialNumber = shipObject["officialNumber"]?.jsonPrimitive?.content ?: ""
+                                            val portOfRegistry = shipObject["portOfRegistry"]?.jsonPrimitive?.content ?: ""
+                                            val marineActivityName = shipObject["marineActivityName"]?.jsonPrimitive?.content ?: ""
+                                            val isActive = shipObject["isActive"]?.jsonPrimitive?.boolean ?: true
+
+                                            MarineUnit(
+                                                id = shipInfoId ?: "",
+                                                shipName = shipName,
+                                                imoNumber = imo,
+                                                officialNumber = officialNumber,
+                                                portOfRegistry = PortOfRegistry(id = portOfRegistry),
+                                                marineActivity = MarineActivity(id = 0), // No ID in response, use 0
+                                                isActive = isActive,
+                                                // Default values for fields not in content[] structure
+                                                callSign = "",
+                                                mmsiNumber = "",
+                                                firstRegistrationDate = "",
+                                                requestSubmissionDate = "",
+                                                isTemp = "0",
+                                                shipCategory = ShipCategory(id = 0),
+                                                shipType = ShipType(id = 0),
+                                                proofType = ProofType(id = 0),
+                                                buildCountry = BuildCountry(id = ""),
+                                                buildMaterial = BuildMaterial(id = 0),
+                                                shipBuildYear = "",
+                                                buildEndDate = "",
+                                                grossTonnage = "",
+                                                netTonnage = "",
+                                                deadweightTonnage = "",
+                                                maxLoadCapacity = "",
+                                                totalLength = "",
+                                                totalWidth = "",
+                                                draft = "",
+                                                height = "",
+                                                numberOfDecks = ""
+                                            )
+                                        } catch (e: Exception) {
+                                            println("⚠ Failed to parse ship from content[]: ${e.message}")
+                                            e.printStackTrace()
+                                            null
+                                        }
+                                    }
+                                }
+                                // Structure 2: activeCoreShips[] + nonActiveCoreShip[]
+                                activeCoreShips != null || nonActiveCoreShips != null -> {
+                                    println("📋 Using activeCoreShips/nonActiveCoreShip structure")
 
                             // ✅ FIXED: Parse active ships using the OUTER id from activeCoreShips
-                            val activeShips = activeCoreShips.mapNotNull { shipItem ->
+                            val activeShips = (activeCoreShips ?: emptyList()).mapNotNull { shipItem ->
                                 try {
                                     // Each item has: id, ship{}, isCurrent, shipInfoEngines[], shipInfoOwners[]
                                     val outerShipItemObject = shipItem.jsonObject
@@ -196,7 +260,7 @@ class MarineUnitsApiService @Inject constructor(
                             }
 
                             // ✅ FIXED: Parse non-active ships using the OUTER id
-                            val nonActiveShips = nonActiveCoreShips.mapNotNull { shipItem ->
+                            val nonActiveShips = (nonActiveCoreShips ?: emptyList()).mapNotNull { shipItem ->
                                 try {
                                     val outerShipItemObject = shipItem.jsonObject
                                     val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
@@ -218,10 +282,16 @@ class MarineUnitsApiService @Inject constructor(
                                 }
                             }
 
-                            // Combine both active and non-active ships
-                            val allShips = activeShips + nonActiveShips
+                                    // Combine both active and non-active ships
+                                    activeShips + nonActiveShips
+                                }
+                                else -> {
+                                    println("⚠ Unknown response structure")
+                                    emptyList()
+                                }
+                            }
 
-                            println("✅ Successfully fetched ${allShips.size} ships (${activeShips.size} active, ${nonActiveShips.size} non-active)")
+                            println("✅ Successfully fetched ${allShips.size} ships")
                             Result.success(allShips)
                         } else {
                             println("❌ Service failed with status: $statusCode")

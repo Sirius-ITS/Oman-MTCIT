@@ -532,7 +532,21 @@ abstract class BaseTransactionViewModel(
                             println("   apiErrorMessage = ${_uiState.value.formData["apiErrorMessage"]}")
 
                             val targetStep = if (requiredNextStep == currentStepIndex) nextStep else requiredNextStep
+
+                            // ✅ Call onStepOpened (may modify strategy's formData)
                             strategy.onStepOpened(targetStep)
+
+                            // ✅ CRITICAL FIX: Re-merge strategy formData AFTER onStepOpened
+                            // (onStepOpened may have set field values like current_port_of_registry)
+                            val formDataAfterStepOpened = strategy.getFormData()
+                            if (formDataAfterStepOpened.isNotEmpty()) {
+                                println("🔄 Re-merging formData after onStepOpened (${formDataAfterStepOpened.size} items)")
+                                val remergedFormData = _uiState.value.formData.toMutableMap().apply {
+                                    putAll(formDataAfterStepOpened)
+                                }
+                                _uiState.value = _uiState.value.copy(formData = remergedFormData)
+                                println("✅ FormData re-merged after onStepOpened")
+                            }
                         }
                     }
 

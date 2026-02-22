@@ -933,6 +933,9 @@
     <string name="change_port_of_ship_or_unit_strategy_info">Choosing the name of the port of registration for the ship or marine unit</string>
     <string name="change_port_of_ship_or_unit_strategy_info_desc">We ask you to specify the port of registration of the ship or marine unit from the list of ports, in order to confirm legal and administrative responsibility in accordance with applicable regulations.</string>
 
+    <string name="current_port_of_registry">Current Port of Registry</string>
+    <string name="new_port_of_registry">New Port of Registry</string>
+
     <string name="change_port_of_ship_or_unit_strategy_info2">Certificates that will be amended in the ship\'s port of registration</string>
     <string name="change_port_of_ship_or_unit_strategy_info_desc2">Based on your request to change the ship\'s port of registration, the new port of registration will be formally adopted and updated in the certificates shown below, in order to ensure conformity of official records and continued compliance with maritime requirements.</string>
 

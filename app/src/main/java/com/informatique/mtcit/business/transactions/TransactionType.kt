@@ -190,16 +190,18 @@ enum class TransactionType(
         )
     ),
     SHIP_PORT_CHANGE(
-        typeId = 19,
+        typeId = 12,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير ميناء السفينة",
             createEndpoint = "ship-modifications/port-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
-            sendRequestPostOrPut = "PUT",
+            sendRequestEndpoint = "general-request/12/{requestId}/send-request", // ✅ Updated to use general-request
+            sendRequestPostOrPut = "POST", // ✅ Changed to POST
             paymentReceiptEndpoint = "ship-modifications/payment",
-            paymentSubmitEndpoint = "ship-modifications/add-payment"
+            paymentSubmitEndpoint = "ship-modifications/add-payment",
+            proceedRequestEndpoint = "coreshipinfo/ship-info/{shipInfoId}/proceed-request/12",
+            hasAcceptance = true // ✅ All transactions have hasAcceptance
         )
     ),
     SHIP_OWNERSHIP_CHANGE(
@@ -282,7 +284,7 @@ fun TransactionType.toRequestTypeId(): String {
         TransactionType.SHIP_NAME_CHANGE -> "14"
         TransactionType.SHIP_ACTIVITY_CHANGE -> "16"
         TransactionType.CAPTAIN_NAME_CHANGE -> "15"
-        TransactionType.SHIP_PORT_CHANGE -> "19"
+        TransactionType.SHIP_PORT_CHANGE -> "12"
         // Default values for transactions without explicit IDs
         TransactionType.SHIP_DIMENSIONS_CHANGE -> "0"
         TransactionType.SHIP_ENGINE_CHANGE -> "0"

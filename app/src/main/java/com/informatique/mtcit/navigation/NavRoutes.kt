@@ -180,7 +180,21 @@ sealed class NavRoutes(val route: String) {
 
     data object ChangeActivityOfShipOrUnitRoute : NavRoutes("16"/*ship_activity_change_form"*/)
 
-    data object ShipPortChangeRoute : NavRoutes("19"/*ship_port_change_form"*/)
+    data object ShipPortChangeRoute : NavRoutes("19"/*ship_port_change_form"*/) {
+        const val REQUEST_ID_ARG = "requestId"
+        const val LAST_COMPLETED_STEP_ARG = "lastCompletedStep"
+        const val HAS_ACCEPTANCE_ARG = "hasAcceptance"
+
+        fun createRouteWithResume(requestId: String, lastCompletedStep: Int? = null, hasAcceptance: Int = 0): String {
+            return buildString {
+                append("19?requestId=$requestId")
+                if (lastCompletedStep != null) {
+                    append("&lastCompletedStep=$lastCompletedStep")
+                }
+                append("&hasAcceptance=$hasAcceptance")
+            }
+        }
+    }
 
     data object ShipOwnershipChangeRoute : NavRoutes("ship_ownership_change_form")
 

@@ -257,27 +257,49 @@ class RequestsApiService @Inject constructor(
                     println("✅ Request detail response received")
 
                     if (!responseJson.jsonObject.isEmpty()) {
-                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
-                        println("📊 Status Code: $statusCode")
+                        // ✅ Check if this is a standard wrapped response or direct data response
+                        val hasStandardWrapper = responseJson.jsonObject.containsKey("statusCode") &&
+                                                 responseJson.jsonObject.containsKey("success")
 
-                        if (statusCode == 200) {
-                            // Parse the response
-                            val detailResponse: RequestDetailResponse = json.decodeFromJsonElement(responseJson)
-                            println("✅ Request detail parsed successfully")
+                        if (hasStandardWrapper) {
+                            // ✅ Standard wrapped response (most transactions)
+                            val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                            println("📊 Status Code: $statusCode")
 
-                            Result.success(detailResponse)
-                        } else {
-                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "حدث خطأ في الخادم"
-                            println("❌ API Error: Status code $statusCode - $message")
+                            if (statusCode == 200) {
+                                // Parse the response
+                                val detailResponse: RequestDetailResponse = json.decodeFromJsonElement(responseJson)
+                                println("✅ Request detail parsed successfully")
 
-                            when (statusCode) {
-                                401 -> throw ApiException(401, message)
-                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                404 -> throw ApiException(404, "الطلب غير موجود")
-                                500 -> throw ApiException(500, "خطأ في الخادم")
-                                else -> throw ApiException(statusCode, message)
+                                Result.success(detailResponse)
+                            } else {
+                                val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                    ?: "حدث خطأ في الخادم"
+                                println("❌ API Error: Status code $statusCode - $message")
+
+                                when (statusCode) {
+                                    401 -> throw ApiException(401, message)
+                                    403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
+                                    404 -> throw ApiException(404, "الطلب غير موجود")
+                                    500 -> throw ApiException(500, "خطأ في الخادم")
+                                    else -> throw ApiException(statusCode, message)
+                                }
                             }
+                        } else {
+                            // ✅ Direct data response (e.g., change-ship-info endpoint)
+                            println("📦 Direct data response detected - wrapping in standard structure")
+
+                            // Wrap the direct data in the standard response structure
+                            val wrappedResponse = RequestDetailResponse(
+                                message = "Retrieved Successfully",
+                                statusCode = 200,
+                                success = true,
+                                timestamp = "",
+                                data = responseJson // The entire response is the data
+                            )
+
+                            println("✅ Direct response wrapped successfully")
+                            Result.success(wrappedResponse)
                         }
                     } else {
                         println("❌ Empty JSON response")

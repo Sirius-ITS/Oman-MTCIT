@@ -22,6 +22,7 @@ object SharedSteps {
         certificates: List<Certificate>
     ): StepData {
         return StepData(
+            stepType = StepType.AFFECTED_CERTIFICATES, // ✅ Added
             titleRes = R.string.change_port_of_ship_or_unit_strategy_info2,
             descriptionRes = R.string.change_port_of_ship_or_unit_strategy_info_desc2,
             fields = listOf(
