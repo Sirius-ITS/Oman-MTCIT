@@ -44,6 +44,10 @@ import com.informatique.mtcit.ui.components.ErrorBanner
 import io.ktor.client.request.forms.formData
 import java.util.Locale
 import androidx.core.net.toUri
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 
 /**
@@ -207,9 +211,16 @@ fun TransactionFormContent(
     val certificateIssued = uiState.formData["certificateIssued"]?.toBoolean() ?: false
     val certificateUrl = uiState.formData["certificateUrl"] ?: ""
     val isFreeService = uiState.formData["isFreeService"]?.toBoolean() ?: false
+    // Parse multiple affected certificates stored as JSON array by PaymentManager
+    val affectedCertificatesJson = uiState.formData["affectedCertificatesList"] ?: ""
+    val isArabicLocale = Locale.getDefault().language == "ar"
+
+    val affectedCertsList: List<AffectedCert> = remember(affectedCertificatesJson) {
+        parseAffectedCertificates(affectedCertificatesJson)
+    }
 
     if (shouldShowCertificate && certificateIssued) {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = isArabicLocale
         val items = buildList {
             if (isFreeService) {
                 add(
@@ -223,43 +234,72 @@ fun TransactionFormContent(
             add(
                 SuccessDialogItem(
                     label = if (isArabic) "حالة الشهادة" else "Certificate Status",
-                    value = if (isArabic) "تم الإصدار" else "Issued",
+                    value = if (isArabic) "مصدر" else "Issued",
                     icon = "✅"
                 )
             )
+            // Add each affected cert as a summary item
+            affectedCertsList.forEach { cert ->
+                add(
+                    SuccessDialogItem(
+                        label = if (isArabic) cert.typeAr.ifBlank { cert.typeEn } else cert.typeEn,
+                        value = cert.number,
+                        icon = "📄"
+                    )
+                )
+            }
         }
 
-        SuccessDialog(
-            title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
-            items = items,
-            onDismiss = {
-                // Clear the dialog flags
-                onFieldValueChange("shouldShowCertificate", "false")
-                onFieldValueChange("certificateIssued", "false")
-                // Navigate back to home
-                navController.popBackStack()
-            },
-            onViewCertificate = if (certificateUrl.isNotEmpty()) {
-                {
-                    // ✅ Open certificate URL in file viewer dialog with both WebView and External Browser options
-                    // USAGE:
-                    // - Uncomment the option you want to use:
-
-                    // Option 1: Open in WebView (default - shows certificate in app)
-//                    viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
-
-                    // Option 2: Open in External Browser (opens system browser)
-                     val context = navController.context
-                     val intent = Intent(Intent.ACTION_VIEW, certificateUrl.toUri())
-                     try {
-                         context.startActivity(intent)
-                     } catch (e: Exception) {
-                         // Fallback to WebView if external browser fails
-                         viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
-                     }
+        if (affectedCertsList.isNotEmpty()) {
+            // ── Bottom sheet for change-transaction multi-cert issuance ────
+            val issuedCertItems = affectedCertsList.map { cert ->
+                IssuedCertItem(
+                    number = cert.number,
+                    typeEn = cert.typeEn,
+                    typeAr = cert.typeAr,
+                    onView = {
+                        val context = navController.context
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(cert.url))
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            viewModel.openFileViewerDialog(cert.url, cert.typeEn, "application/pdf")
+                        }
+                    }
+                )
+            }
+            IssuedCertificatesBottomSheet(
+                title = if (isArabic) "تم إصدار الشهادات بنجاح" else "Certificates Issued Successfully",
+                items = issuedCertItems,
+                onDismiss = {
+                    onFieldValueChange("shouldShowCertificate", "false")
+                    onFieldValueChange("certificateIssued", "false")
+                    navController.popBackStack()
                 }
-            } else null
-        )
+            )
+        } else {
+            // ── SuccessDialog for standard single-certificate transactions ─
+            SuccessDialog(
+                title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
+                items = items,
+                onDismiss = {
+                    onFieldValueChange("shouldShowCertificate", "false")
+                    onFieldValueChange("certificateIssued", "false")
+                    navController.popBackStack()
+                },
+                onViewCertificate = if (certificateUrl.isNotEmpty()) {
+                    {
+                        val context = navController.context
+                        val intent = Intent(Intent.ACTION_VIEW, certificateUrl.toUri())
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            viewModel.openFileViewerDialog(certificateUrl, "Certificate", "application/pdf")
+                        }
+                    }
+                } else null
+            )
+        }
     }
 
     // ✅ NEW: Show Payment WebView when PaymentManager triggers it
@@ -565,6 +605,8 @@ fun TransactionFormContent(
                 // ✅ Observe lookup loading states for shimmer effect
                 val lookupLoadingStates by viewModel.lookupLoadingStates.collectAsState()
                 val loadedLookupData by viewModel.loadedLookupData.collectAsState()
+                // ✅ INFINITE SCROLL: observe loading-more state
+                val isLoadingMoreShips by viewModel.isLoadingMoreShips.collectAsState()
 
                 DynamicStepForm(
                     stepData = componentStepData,
@@ -597,6 +639,10 @@ fun TransactionFormContent(
                     } else {
                         null
                     },
+                    // ✅ INFINITE SCROLL: wire load-more callbacks
+                    onLoadMore = { viewModel.loadMoreShips() },
+                    isLoadingMore = isLoadingMoreShips,
+                    hasMore = !viewModel.isLastShipsPage,
                     // ✅ NEW: Pass lookup loading states for automatic shimmer
                     lookupLoadingStates = lookupLoadingStates,
                     loadedLookupData = loadedLookupData,
@@ -613,7 +659,16 @@ fun TransactionFormContent(
                     } else null,
                     onDeleteOwnerImmediate = if (viewModel is MarineRegistrationViewModel) {
                         { owner -> viewModel.deleteOwnerImmediate(owner) }
-                    } else null
+                    } else null,
+                    // ✅ NEW: Sailor immediate save/delete callbacks (Renew Navigation Permit only)
+                    onSaveSailorImmediate = if (viewModel is MarineRegistrationViewModel) {
+                        { sailor -> viewModel.saveSailorImmediate(sailor) }
+                    } else null,
+                    onDeleteSailorImmediate = if (viewModel is MarineRegistrationViewModel) {
+                        { sailor -> viewModel.deleteSailorImmediate(sailor) }
+                    } else null,
+                    // ✅ Ship details fetch for "عرض جميع البيانات"
+                    fetchShipDetails = { shipId -> viewModel.loadShipCoreInfo(shipId) }
                 )
             }
         }
@@ -896,5 +951,46 @@ private fun updateFieldWithFormData(
             },
             error = error
         )
+        is FormField.CurrentValueCard -> field.copy(
+            label = localizedLabel,
+            value = value,
+            error = error
+        )
+    }
+}
+
+// ── Affected Certificates (multi-cert types 10/11/12/13) ─────────────────────
+
+data class AffectedCert(
+    val number: String,
+    val typeEn: String,
+    val typeAr: String,
+    val url: String
+)
+
+/**
+ * Parses the JSON array stored by PaymentManager as "affectedCertificatesList":
+ *   [{"number":"MTCIT-...","typeEn":"Nav license","typeAr":"...","url":"https://..."},...]
+ * Uses kotlinx.serialization.json for reliable parsing of all fields including URLs.
+ */
+fun parseAffectedCertificates(json: String): List<AffectedCert> {
+    if (json.isBlank() || json == "[]") return emptyList()
+    return try {
+        val jsonParser = Json { ignoreUnknownKeys = true }
+        val array = jsonParser.parseToJsonElement(json).jsonArray
+        array.mapNotNull { element ->
+            val obj = element.jsonObject
+            val number = obj["number"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            AffectedCert(
+                number = number,
+                typeEn = obj["typeEn"]?.jsonPrimitive?.content ?: "",
+                typeAr = obj["typeAr"]?.jsonPrimitive?.content ?: "",
+                url = obj["url"]?.jsonPrimitive?.content ?: ""
+            )
+        }
+    } catch (e: Exception) {
+        println("⚠️ parseAffectedCertificates failed: ${e.message}")
+        emptyList()
     }
 }

@@ -19,6 +19,18 @@ import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 /**
+ * Represents one affected certificate for change transactions (types 10/11/12/13).
+ * Each cert has its own type name and view URL derived from certificationType.id.
+ */
+data class AffectedCertInfo(
+    val certificationNumber: String,
+    val typeId: Int,
+    val typeNameEn: String,
+    val typeNameAr: String,
+    val viewUrl: String
+)
+
+/**
  * Certificate data returned from issuance API
  */
 data class CertificateData(
@@ -83,6 +95,11 @@ class RequestDetailViewModel @Inject constructor(
     // ✅ NEW: Certificate URL for opening in external browser
     private val _certificateUrl = MutableStateFlow<String?>(null)
     val certificateUrl: StateFlow<String?> = _certificateUrl.asStateFlow()
+
+    // ✅ Affected certificates list for change transactions (types 10/11/12/13).
+    // When populated, the UI shows one "View" button per certificate instead of a single button.
+    private val _affectedCertificatesList = MutableStateFlow<List<AffectedCertInfo>>(emptyList())
+    val affectedCertificatesList: StateFlow<List<AffectedCertInfo>> = _affectedCertificatesList.asStateFlow()
 
     // ✅ NEW: Navigation to login trigger (when refresh token expires)
     private val _shouldNavigateToLogin = MutableStateFlow(false)
@@ -319,13 +336,58 @@ class RequestDetailViewModel @Inject constructor(
                 _isIssuingCertificate.value = true
                 _appError.value = null
                 _certificateData.value = null
-                _isViewingCertificate.value = false  // ✅ Reset viewing flag (we're issuing, not just viewing)
+                _affectedCertificatesList.value = emptyList()
+                _isViewingCertificate.value = false
                 println("✅ Set _isIssuingCertificate = true")
 
+                // ─────────────────────────────────────────────────────────
+                // CHANGE-INFO TRANSACTIONS (types 10/11/12/13)
+                // Always call issue-affected-certificates — the endpoint is
+                // idempotent: if already issued it returns the existing certs,
+                // otherwise it issues and returns them.
+                // ─────────────────────────────────────────────────────────
+                if (requestTypeId in listOf(10, 11, 12, 13)) {
+                    println("🔀 Change-info transaction (type=$requestTypeId): calling issue-affected-certificates")
+                    val issuanceEndpoint = "certificate/issue-affected-certificates/$requestTypeId/$requestId"
+                    val result = userRequestsRepository.issueCertificate(issuanceEndpoint = issuanceEndpoint)
+                    result.fold(
+                        onSuccess = { response ->
+                            println("✅ issue-affected-certificates success")
+                            val certs = buildAffectedCertInfosFromIssueResponse(response)
+                            if (certs.isNotEmpty()) {
+                                println("   ✅ Built ${certs.size} AffectedCertInfo entries")
+                                _affectedCertificatesList.value = certs
+                                // Refresh request detail so shipCertifications are up-to-date
+                                fetchRequestDetail(requestId, requestTypeId)
+                            } else {
+                                println("   ⚠️ No certs in response — trying shipCertifications fallback")
+                                val shipCerts = extractShipCertifications()
+                                if (shipCerts != null) {
+                                    val fallback = buildAffectedCertInfosFromShipCerts(shipCerts, requestId)
+                                    if (fallback.isNotEmpty()) {
+                                        _affectedCertificatesList.value = fallback
+                                    } else {
+                                        _appError.value = AppError.Unknown("لم يتم العثور على الشهادات في الرد")
+                                    }
+                                } else {
+                                    _appError.value = AppError.Unknown("لم يتم العثور على الشهادات في الرد")
+                                }
+                            }
+                        },
+                        onFailure = { error ->
+                            println("❌ issue-affected-certificates failed: ${error.message}")
+                            _appError.value = AppError.Unknown(error.message ?: "فشل إصدار الشهادات")
+                        }
+                    )
+                    _isIssuingCertificate.value = false
+                    return@launch
+                }
+
+                // ─────────────────────────────────────────────────────────
+                // STANDARD SINGLE-CERTIFICATE TRANSACTIONS
+                // ─────────────────────────────────────────────────────────
                 println("🔍 RequestDetailViewModel: Issuing/Showing certificate for requestId=$requestId, typeId=$requestTypeId, statusId=$statusId")
 
-                // ✅ Extract ship certifications from stored raw response
-                println("📦 Calling extractShipCertifications()...")
                 val shipCertifications = extractShipCertifications()
                 println("📦 extractShipCertifications() returned: ${shipCertifications?.size ?: 0} certificates")
 
@@ -333,12 +395,9 @@ class RequestDetailViewModel @Inject constructor(
                 if (statusId == 14 && shipCertifications != null) {
                     println("✅ Certificate already ISSUED (statusId==14) - fetching existing certificate")
 
-                    // Map requestTypeId to certificationType.id
                     val certificateTypeId = mapRequestTypeToCertificateType(requestTypeId)
                     println("🔍 Mapped requestTypeId=$requestTypeId to certificateTypeId=$certificateTypeId")
 
-                    // Find the certificate number from shipCertifications
-                    println("🔍 Calling findCertificateNumber() with requestId=$requestId...")
                     val certificationNumber = findCertificateNumber(shipCertifications, certificateTypeId, requestId)
                     println("🔍 findCertificateNumber() returned: $certificationNumber")
 
@@ -351,34 +410,25 @@ class RequestDetailViewModel @Inject constructor(
 
                     println("✅ Found certificate number: $certificationNumber")
 
-                    // Fetch the certificate from API
-                    println("📡 Calling getCertificate API with certificationNumber: $certificationNumber")
                     val result = userRequestsRepository.getCertificate(certificationNumber)
-                    println("📡 getCertificate API returned")
-
                     result.fold(
                         onSuccess = { response ->
                             println("✅ Certificate fetched successfully")
-                            println("📄 Response: ${response.message}")
                             parseCertificateResponse(response)
                         },
                         onFailure = { error ->
                             println("❌ Failed to fetch certificate: ${error.message}")
-                            error.printStackTrace()
                             _appError.value = AppError.Unknown(error.message ?: "فشل في جلب الشهادة")
                         }
                     )
 
                     _isIssuingCertificate.value = false
-                    println("✅ Set _isIssuingCertificate = false")
-                    println("════════════════════════════════════════════════════════════")
                     return@launch
                 }
 
                 // ✅ Original flow: Issue new certificate
                 println("🔍 Issuing new certificate (statusId != 14 or no shipCertifications)")
 
-                // Get issuance endpoint from mapping
                 val issuanceEndpoint = RequestTypeEndpoint.getIssuanceEndpoint(requestTypeId, requestId)
 
                 if (issuanceEndpoint == null) {
@@ -390,48 +440,27 @@ class RequestDetailViewModel @Inject constructor(
 
                 println("📡 RequestDetailViewModel: Using issuance endpoint: $issuanceEndpoint")
 
-                // Call issuance API
-                val result = userRequestsRepository.issueCertificate(
-                    issuanceEndpoint = issuanceEndpoint
-                )
+                val result = userRequestsRepository.issueCertificate(issuanceEndpoint = issuanceEndpoint)
 
                 result.fold(
                     onSuccess = { response ->
                         println("✅ RequestDetailViewModel: Certificate issued successfully")
                         println("📄 Response message: ${response.message}")
                         parseCertificateResponse(response)
-
-                        // Optionally refresh the request detail to update status
                         fetchRequestDetail(requestId, requestTypeId)
                     },
                     onFailure = { error ->
                         println("❌ RequestDetailViewModel: Error issuing certificate: ${error.message}")
-
                         when (error) {
                             is ApiException -> {
                                 when (error.code) {
-                                    401 -> _appError.value = AppError.Unauthorized(
-                                        error.message ?: "انتهت صلاحية الجلسة"
-                                    )
-                                    403 -> _appError.value = AppError.ApiError(
-                                        error.code,
-                                        "ليس لديك صلاحية لإصدار هذه الشهادة"
-                                    )
-                                    404 -> _appError.value = AppError.ApiError(
-                                        error.code,
-                                        "الطلب غير موجود"
-                                    )
-                                    else -> _appError.value = AppError.ApiError(
-                                        error.code,
-                                        error.message ?: "حدث خطأ في إصدار الشهادة"
-                                    )
+                                    401 -> _appError.value = AppError.Unauthorized(error.message ?: "انتهت صلاحية الجلسة")
+                                    403 -> _appError.value = AppError.ApiError(error.code, "ليس لديك صلاحية لإصدار هذه الشهادة")
+                                    404 -> _appError.value = AppError.ApiError(error.code, "الطلب غير موجود")
+                                    else -> _appError.value = AppError.ApiError(error.code, error.message ?: "حدث خطأ في إصدار الشهادة")
                                 }
                             }
-                            else -> {
-                                _appError.value = AppError.Unknown(
-                                    error.message ?: "حدث خطأ غير متوقع"
-                                )
-                            }
+                            else -> _appError.value = AppError.Unknown(error.message ?: "حدث خطأ غير متوقع")
                         }
                     }
                 )
@@ -441,7 +470,98 @@ class RequestDetailViewModel @Inject constructor(
             } finally {
                 _isIssuingCertificate.value = false
             }
+
         }
+    }
+
+    /**
+     * Build [AffectedCertInfo] list from shipCertifications already stored in raw response.
+     * Filters by requestId so we only show certs that belong to THIS change request.
+     * Falls back to all certs when nothing matches (edge case: first issuance before page refresh).
+     */
+    private fun buildAffectedCertInfosFromShipCerts(
+        shipCertifications: List<kotlinx.serialization.json.JsonObject>,
+        requestId: Int
+    ): List<AffectedCertInfo> {
+        val baseUrl = "https://mtimedev.mtcit.gov.om/services"
+
+        // First pass: match by requestId
+        var matched = shipCertifications.filter { cert ->
+            cert["requestId"]?.jsonPrimitive?.content?.toIntOrNull() == requestId
+        }
+        // Fallback: use all (should not happen in normal flow)
+        if (matched.isEmpty()) {
+            println("⚠️ No certs matched requestId=$requestId — using all ${shipCertifications.size}")
+            matched = shipCertifications
+        }
+
+        return matched.mapNotNull { cert ->
+            val number = cert["certificationNumber"]?.jsonPrimitive?.content ?: return@mapNotNull null
+            val typeObj = cert["certificationType"]?.jsonObject
+            val typeId = typeObj?.get("id")?.jsonPrimitive?.content?.toIntOrNull() ?: return@mapNotNull null
+            val typeEn = typeObj["nameEn"]?.jsonPrimitive?.content ?: ""
+            val typeAr = typeObj["nameAr"]?.jsonPrimitive?.content ?: ""
+            val url = buildCertificateViewUrlForType(baseUrl, typeId, number)
+            AffectedCertInfo(
+                certificationNumber = number,
+                typeId = typeId,
+                typeNameEn = typeEn,
+                typeNameAr = typeAr,
+                viewUrl = url
+            )
+        }
+    }
+
+    /**
+     * Build [AffectedCertInfo] list from the JSON response of
+     * POST /certificate/issue-affected-certificates/{typeId}/{requestId}.
+     * Response shape: { data: { count, affectedCertificates: [ { certificationType, certificationNumber, ... } ] } }
+     */
+    private fun buildAffectedCertInfosFromIssueResponse(
+        response: com.informatique.mtcit.data.model.requests.RequestDetailResponse
+    ): List<AffectedCertInfo> {
+        val baseUrl = "https://mtimedev.mtcit.gov.om/services"
+        return try {
+            val dataObj = response.data.jsonObject
+            val affectedArr = dataObj["affectedCertificates"]?.jsonArray ?: return emptyList()
+            affectedArr.mapNotNull { element ->
+                val obj = element.jsonObject
+                val number = obj["certificationNumber"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val typeObj = obj["certificationType"]?.jsonObject
+                val typeId = typeObj?.get("id")?.jsonPrimitive?.content?.toIntOrNull() ?: return@mapNotNull null
+                val typeEn = typeObj["nameEn"]?.jsonPrimitive?.content ?: ""
+                val typeAr = typeObj["nameAr"]?.jsonPrimitive?.content ?: ""
+                val url = buildCertificateViewUrlForType(baseUrl, typeId, number)
+                AffectedCertInfo(
+                    certificationNumber = number,
+                    typeId = typeId,
+                    typeNameEn = typeEn,
+                    typeNameAr = typeAr,
+                    viewUrl = url
+                )
+            }
+        } catch (e: Exception) {
+            println("❌ buildAffectedCertInfosFromIssueResponse: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Maps certificationType.id → correct web view URL.
+     * Shared by both helper builders above.
+     */
+    private fun buildCertificateViewUrlForType(baseUrl: String, certTypeId: Int, certNumber: String): String {
+        val path = when (certTypeId) {
+            1 -> "temporary-registration/cert"
+            2 -> "permanent-registration/cert"
+            3 -> "navigation-license/license-certificate"
+            4 -> "navigation-license/license-certificate"
+            5 -> "navigation-license-renewal/renewal-license-certificate"
+            6 -> "mortgage-certificate/cert"
+            7 -> "permanent-registration-cancellation/cert"
+            else -> "certificates/view"
+        }
+        return "$baseUrl/$path?certificateNumber=$certNumber"
     }
 
     /**
@@ -575,6 +695,22 @@ class RequestDetailViewModel @Inject constructor(
     }
 
     /**
+     * Clear affected certificates list (types 10/11/12/13)
+     */
+    fun clearAffectedCertificatesList() {
+        _affectedCertificatesList.value = emptyList()
+    }
+
+    /**
+     * Open a single affected certificate by URL (types 10/11/12/13).
+     * Called when user taps one of the per-cert view buttons.
+     */
+    fun viewAffectedCertificate(certInfo: AffectedCertInfo, useExternalBrowser: Boolean = true) {
+        println("🔗 viewAffectedCertificate: ${certInfo.certificationNumber} → ${certInfo.viewUrl}")
+        _certificateUrl.value = certInfo.viewUrl
+    }
+
+    /**
      * ✅ Clear certificate URL after opening in external browser
      */
     fun clearCertificateUrl() {
@@ -589,14 +725,6 @@ class RequestDetailViewModel @Inject constructor(
     fun decodeQrCode(qrCodeBase64: String): String? {
         println("⚠️ decodeQrCode is deprecated - URLs are now constructed directly")
         return null
-    }
-
-    /**
-     * ✅ NEW: Construct certificate viewing URL from certification number
-     * This allows viewing the certificate in a webview without decoding QR code
-     */
-    fun getCertificateViewUrl(certificationNumber: String): String {
-        return "https://omanapi.isfpegypt.com/api/v1/certificate/$certificationNumber"
     }
 
     /**
@@ -1222,18 +1350,21 @@ class RequestDetailViewModel @Inject constructor(
      * ✅ Get certificate URL based on transaction type
      */
     private fun getCertificateUrl(requestTypeId: Int, certificationNumber: String, requestId: Int): String? {
-        val baseUrl = "https://oman.isfpegypt.com/services"
+        val baseUrl = "https://mtimedev.mtcit.gov.om/services"
 
         return when (requestTypeId) {
-            1 -> "$baseUrl/temporary-registration/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Temp Registration
-            2 -> "$baseUrl/permanent-registration/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Perm Registration
-            3 -> "$baseUrl/navigation-license/license-certificate?certificateNumber=$certificationNumber&requestId=$requestId" // Issue Navigation License
-            4 -> "$baseUrl/mortgage-certificate/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Mortgage Certificate
-            5 -> "$baseUrl/mortgage-redemption/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Release Mortgage
-            6 -> "$baseUrl/navigation-license-renewal/renewal-license-certificate?certificateNumber=$certificationNumber&requestId=$requestId" // Renew Navigation License
-            7 -> "$baseUrl/permanent-registration-cancellation/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Cancel Registration
+            1 -> "$baseUrl/temporary-registration/cert?certificateNumber=$certificationNumber" // Temp Registration
+            2 -> "$baseUrl/permanent-registration/cert?certificateNumber=$certificationNumber" // Perm Registration
+            3 -> "$baseUrl/navigation-license/license-certificate?certificateNumber=$certificationNumber" // Issue Navigation License
+            4 -> "$baseUrl/mortgage-certificate/cert?certificateNumber=$certificationNumber" // Mortgage Certificate
+            5 -> "$baseUrl/mortgage-redemption/cert?certificateNumber=$certificationNumber" // Release Mortgage
+            6 -> "$baseUrl/navigation-license-renewal/renewal-license-certificate?certificateNumber=$certificationNumber" // Renew Navigation License
+            7 -> "$baseUrl/permanent-registration-cancellation/cert?certificateNumber=$certificationNumber" // Cancel Registration
             8 -> null // Request Inspection - No certificate issuance
-            12 -> "$baseUrl/change-port/cert?certificateNumber=$certificationNumber&requestId=$requestId" // Change Port of Ship
+            // Types 10/11/12/13 issue MULTIPLE affected certificates per certificationType.id
+            // Their view URLs are built by buildCertificateViewUrl() in PaymentManager (by certTypeId),
+            // not by a single URL here.
+            10, 11, 12, 13 -> null
             else -> {
                 println("⚠️ Unknown request type ID: $requestTypeId")
                 null

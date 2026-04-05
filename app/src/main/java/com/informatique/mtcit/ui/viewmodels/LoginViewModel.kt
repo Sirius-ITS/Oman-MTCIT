@@ -40,8 +40,54 @@ class LoginViewModel @Inject constructor(
 
     // OAuth URLs
     companion object {
-        const val OAUTH_AUTH_URL = "https://omankeycloak.isfpegypt.com/realms/oman/protocol/openid-connect/auth?client_id=front&redirect_uri=https%3A%2F%2Fomankeycloak.isfpegypt.com%2Fstarter&response_type=code&scope=openid"
-        const val OAUTH_REDIRECT_URI = "https://omankeycloak.isfpegypt.com/starter"
+        const val OAUTH_REDIRECT_URI = "https://mtimedev.mtcit.gov.om/auth/callback"
+
+        /**
+         * Builds a fresh OAuth authorization URL matching the web app's parameters.
+         * Uses PKCE (S256), a random nonce, response_mode=fragment, and prompt=login.
+         */
+        fun buildAuthUrl(): String {
+            val codeVerifier = generateCodeVerifier()
+            val codeChallenge = generateCodeChallenge(codeVerifier)
+            val nonce = java.util.UUID.randomUUID().toString().replace("-", "")
+            val state = java.util.UUID.randomUUID().toString()
+            // Store verifier so token exchange can use it
+            _lastCodeVerifier = codeVerifier
+            return buildString {
+                append("https://mtimedevidp.mtcit.gov.om/realms/oman/protocol/openid-connect/auth")
+                append("?client_id=front")
+                append("&redirect_uri=${android.net.Uri.encode(OAUTH_REDIRECT_URI)}")
+                append("&state=${android.net.Uri.encode(state)}")
+                append("&response_mode=fragment")
+                append("&response_type=code")
+                append("&scope=openid")
+                append("&nonce=${android.net.Uri.encode(nonce)}")
+                append("&prompt=login")
+                append("&code_challenge=${android.net.Uri.encode(codeChallenge)}")
+                append("&code_challenge_method=S256")
+            }
+        }
+
+        private var _lastCodeVerifier: String = ""
+        val lastCodeVerifier: String get() = _lastCodeVerifier
+
+        private fun generateCodeVerifier(): String {
+            val bytes = ByteArray(32)
+            java.security.SecureRandom().nextBytes(bytes)
+            return android.util.Base64.encodeToString(
+                bytes,
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+            )
+        }
+
+        private fun generateCodeChallenge(verifier: String): String {
+            val bytes = verifier.toByteArray(Charsets.US_ASCII)
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+            return android.util.Base64.encodeToString(
+                digest,
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+            )
+        }
     }
 
     init {
@@ -120,7 +166,7 @@ class LoginViewModel @Inject constructor(
     suspend fun handleOAuthCode(authorizationCode: String): Boolean {
         println("🔄 Exchanging OAuth code for token...")
 
-        val result = authRepository.exchangeCodeForToken(authorizationCode)
+        val result = authRepository.exchangeCodeForToken(authorizationCode, lastCodeVerifier)
 
         return result.fold(
             onSuccess = { tokenResponse ->

@@ -34,6 +34,8 @@ fun SailorFormBottomSheet(
     sailor: SailorData? = null,
     jobs: List<String>,
     nationalities: List<String> = emptyList(),
+    /** When true (Change Captain edit mode): only nameAr/nameEn are editable */
+    editNameOnly: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (SailorData) -> Unit
 ) {
@@ -74,11 +76,13 @@ fun SailorFormBottomSheet(
                 options = jobs.map { it.split("|").lastOrNull() ?: it },
                 selectedOption = job.split("|").lastOrNull() ?: job,
                 onOptionSelected = { selectedLabel ->
-                    // Find the full "ID|Label" string from the selected label
-                    job = jobs.find { it.endsWith("|$selectedLabel") } ?: selectedLabel
+                    if (!editNameOnly) {
+                        job = jobs.find { it.endsWith("|$selectedLabel") } ?: selectedLabel
+                    }
                 },
                 mandatory = true,
-                placeholder = job.ifEmpty { localizedApp(R.string.sailor_job_title) }
+                placeholder = job.ifEmpty { localizedApp(R.string.sailor_job_title) },
+                enabled = !editNameOnly
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -112,11 +116,13 @@ fun SailorFormBottomSheet(
                     options = nationalities.map { it.split("|").lastOrNull() ?: it },
                     selectedOption = nationality.split("|").lastOrNull() ?: nationality,
                     onOptionSelected = { selectedLabel ->
-                        // Find the full "ID|Label" string from the selected label
-                        nationality = nationalities.find { it.endsWith("|$selectedLabel") } ?: selectedLabel
+                        if (!editNameOnly) {
+                            nationality = nationalities.find { it.endsWith("|$selectedLabel") } ?: selectedLabel
+                        }
                     },
                     mandatory = true,
-                    placeholder = localizedApp(R.string.nationality_label)
+                    placeholder = localizedApp(R.string.nationality_label),
+                    enabled = !editNameOnly
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -125,10 +131,11 @@ fun SailorFormBottomSheet(
             // Identity number
             CustomTextField(
                 value = identityNumber,
-                onValueChange = { identityNumber = it },
+                onValueChange = { if (!editNameOnly) identityNumber = it },
                 label = localizedApp(R.string.sailor_identity_number_title),
                 mandatory = true,
                 placeholder = localizedApp(R.string.sailor_identity_number_title),
+                enabled = !editNameOnly
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -136,11 +143,12 @@ fun SailorFormBottomSheet(
             // Seaman's passport number
             CustomTextField(
                 value = seamanPassportNumber,
-                onValueChange = { seamanPassportNumber = it },
+                onValueChange = { if (!editNameOnly) seamanPassportNumber = it },
                 label = localizedApp(R.string.sailor_seaman_passport_number_title),
                 isNumeric = true,
                 mandatory = true,
-                placeholder =localizedApp(R.string.sailor_seaman_passport_number_title)
+                placeholder = localizedApp(R.string.sailor_seaman_passport_number_title),
+                enabled = !editNameOnly
             )
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -86,9 +86,9 @@ data class JobTitleResDto(
  */
 @Serializable
 data class CountryResDto(
-    val id: String,        // ✅ Changed from Int to String to match API response
-    val nameAr: String,
-    val nameEn: String,
+    val id: String,                     // ✅ ISO code e.g. "OM", "EG"
+    val nameAr: String? = null,         // ✅ Nullable: crew endpoints return only id
+    val nameEn: String? = null,         // ✅ Nullable: crew endpoints return only id
     val name: String? = null,           // ✅ Optional field from API
     val isoCode: String? = null,        // ✅ Optional field from API
     val capitalAr: String? = null,      // ✅ Optional field from API

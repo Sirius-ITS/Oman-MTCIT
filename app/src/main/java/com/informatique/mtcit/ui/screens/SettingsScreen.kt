@@ -31,6 +31,7 @@ import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.theme.ThemeOption
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
+import com.informatique.mtcit.ui.viewmodels.NotificationViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +44,8 @@ fun SettingsScreen(
     viewModel: ThemeViewModel,
     navController: NavController,
     sharedUserViewModel: SharedUserViewModel,
-    languageViewModel: LanguageViewModel = hiltViewModel()
+    languageViewModel: LanguageViewModel = hiltViewModel(),
+    notificationViewModel: NotificationViewModel
 ) {
     val extraColors = LocalExtraColors.current
     val theme by viewModel.theme.collectAsState()
@@ -51,6 +53,7 @@ fun SettingsScreen(
     val isLoading = languageViewModel.isLoading.value
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val notificationsEnabled by notificationViewModel.notificationsEnabled.collectAsState()
 
     Box(
         modifier = Modifier
@@ -124,6 +127,53 @@ fun SettingsScreen(
                 isSelected = currentLanguage == "ar",
                 onClick = { languageViewModel.saveLanguage("ar") }
             )
+
+            Spacer(modifier = Modifier.height(60.dp))
+
+            // ── Notifications Section ──────────────────────────────────────
+            Text(
+                text = localizedApp(R.string.settings_notifications_section),
+                fontSize = 20.sp,
+                color = extraColors.whiteInDarkMode,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(extraColors.grayCard.copy(alpha = 0.25f))
+                    .padding(horizontal = 24.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = localizedApp(R.string.settings_receive_notifications),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.sp,
+                        color = extraColors.whiteInDarkMode
+                    )
+                    Switch(
+                        checked = notificationsEnabled,
+                        onCheckedChange = { enabled ->
+                            notificationViewModel.setNotificationsEnabled(enabled)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = extraColors.blue1,
+                            checkedTrackColor = extraColors.iconLightBlueBackground,
+                            uncheckedThumbColor = extraColors.whiteInDarkMode.copy(alpha = 0.6f),
+                            uncheckedTrackColor = extraColors.grayCard.copy(alpha = 0.4f)
+                        )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(60.dp))
 

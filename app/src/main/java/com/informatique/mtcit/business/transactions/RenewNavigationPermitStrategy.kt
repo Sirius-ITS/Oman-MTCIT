@@ -29,6 +29,7 @@ import com.informatique.mtcit.business.transactions.shared.PaymentManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
+import com.informatique.mtcit.ui.components.SailorData
 
 // Added imports for API error handling and message extraction
 import com.informatique.mtcit.common.ApiException
@@ -60,9 +61,14 @@ class RenewNavigationPermitStrategy @Inject constructor(
     private var sailingRegionsOptions: List<NavigationArea> = emptyList()
     private var crewJobTitles: List<String> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
-
     private val requestTypeId = TransactionType.RENEW_NAVIGATION_PERMIT.toRequestTypeId()
     private val transactionContext: TransactionContext = TransactionType.RENEW_NAVIGATION_PERMIT.context
+
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
 
     // ✅ NEW: Store loaded inspection authorities and documents
     private var loadedInspectionAuthorities: List<com.informatique.mtcit.ui.components.DropdownSection> = emptyList()
@@ -321,7 +327,14 @@ class RenewNavigationPermitStrategy @Inject constructor(
     }
 
     /**
-     * ✅ Load existing crew from previous license and pre-populate in form
+     * ✅ Load existing crew from the RENEWAL REQUEST (not the previous license)
+     *
+     * ⚠️ IMPORTANT: We must load crew using `navigationRequestId` (the current renewal request,
+     * e.g. 1741), NOT `lastNavLicId` (the previous license, e.g. 1721).
+     *
+     * The server creates new crew records for the renewal request with NEW IDs.
+     * If we mistakenly use IDs from the previous license, subsequent PUT/DELETE calls will fail
+     * with HTTP 406 "Crew member does not belong to navigation license request".
      */
     private suspend fun loadExistingCrew() {
         if (existingCrew.isNotEmpty()) {
@@ -329,15 +342,18 @@ class RenewNavigationPermitStrategy @Inject constructor(
             return // Already loaded
         }
 
-        val lastLicId = lastNavLicId ?: accumulatedFormData["lastNavLicId"]?.toLongOrNull()
-        if (lastLicId == null) {
-            println("⚠️ No lastNavLicId available - cannot load existing crew")
+        // ✅ Use the current renewal REQUEST ID — server assigns new crew IDs under this request
+        val requestId = navigationRequestId
+            ?: accumulatedFormData["requestId"]?.toLongOrNull()
+
+        if (requestId == null) {
+            println("⚠️ No renewal requestId available — cannot load crew for renewal request")
             return
         }
 
-        println("🔄 Loading existing crew for lastNavLicId=$lastLicId")
+        println("🔄 Loading existing crew for renewal requestId=$requestId (NOT lastNavLicId)")
 
-        navigationLicenseManager.loadCrewRenew(lastLicId)
+        navigationLicenseManager.loadCrewRenew(requestId)
             .onSuccess { crew ->
                 existingCrew = crew
                 println("✅ Loaded ${crew.size} existing crew members from API")
@@ -428,27 +444,50 @@ class RenewNavigationPermitStrategy @Inject constructor(
             else -> Pair(null, null)
         }
 
-        println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
-
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
             commercialRegNumber = commercialRegNumber,
-            // **********************************************************************************************************
-            //Request Type Id
-            requestTypeId = requestTypeId
+            requestTypeId = requestTypeId,
+            page = 0
         )
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
 
-        println("✅ Loaded ${marineUnits.size} ships")
-        marineUnits.forEach { unit ->
-            println("   - ${unit.shipName} (ID: ${unit.id})")
-        }
-
+        println("✅ Loaded ${marineUnits.size} ships (isLast=$_isLastShipsPage)")
+        marineUnits.forEach { unit -> println("   - ${unit.shipName} (ID: ${unit.id})") }
         return marineUnits
     }
 
     override suspend fun clearLoadedShips() {
         println("🧹 Clearing loaded ships cache")
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (RenewNavPermit) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = requestTypeId,
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     override fun updateAccumulatedData(data: Map<String, String>) {
@@ -1053,38 +1092,60 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
     /**
      * Handle crew submission (manual or Excel)
+     * Individual crew saves/deletes are now handled via immediate API calls from the UI.
+     * This method only ensures the request exists and handles Excel upload if selected.
      */
     private suspend fun handleCrewSubmission(data: Map<String, String>) {
-        val requestId = ensureRequestCreated() ?: return
+        // Ensure the renewal request has been created
+        ensureRequestCreated() ?: return
 
-        // Check if user chose Excel upload
         if (navigationLicenseManager.isExcelUploadSelected(data)) {
-            // TODO: Handle Excel file upload
+            // TODO: Handle Excel file upload path
             println("📤 Excel upload mode selected")
         } else {
-            // Manual crew entry
-            val crewData = navigationLicenseManager.parseCrewFromFormData(data)
-
-            if (crewData.isNotEmpty()) {
-                // ✅ For renew: Add new crew members (existing ones are already loaded)
-                navigationLicenseManager.addCrewBulkRenew(requestId,
-                    crewData as List<Map<String, String>>
-                )
-                    .onSuccess { crew ->
-                        println("✅ Added ${crew.size} crew members successfully")
-                    }
-                    .onFailure { error ->
-                        println("❌ Failed to add crew: ${error.message}")
-                        val msg = when (error) {
-                            is ApiException -> error.message ?: "فشل في إضافة الطاقم"
-                            else -> ErrorMessageExtractor.extract(error.message)
-                        }
-                        accumulatedFormData["apiError"] = msg
-                        lastApiError = msg
-                        if (error is ApiException) throw error else throw ApiException(400, msg)
-                    }
-            }
+            // Individual crew members are managed via immediate API calls triggered from the UI.
+            // Nothing to bulk-submit here.
+            println("ℹ️ Crew step - individual saves/deletes already sent to API immediately")
         }
+    }
+
+    // ========================================
+    // IMMEDIATE CREW API CALLS
+    // (called by MarineRegistrationViewModel for Renew Navigation Permit)
+    // ========================================
+
+    /**
+     * Add a new crew member immediately via POST
+     * Called when user saves a new sailor (apiId == null)
+     */
+    suspend fun addCrewMemberImmediate(sailor: SailorData): Result<com.informatique.mtcit.data.dto.CrewResDto> {
+        val requestId = ensureRequestCreated()
+            ?: return Result.failure(Exception("فشل في الحصول على معرف الطلب"))
+        return navigationLicenseManager.addCrewMemberRenewImmediate(requestId, sailor)
+    }
+
+    /**
+     * Update an existing crew member immediately via PUT
+     * Called when user saves an existing sailor (apiId != null)
+     */
+    suspend fun updateCrewMemberImmediate(sailor: SailorData): Result<com.informatique.mtcit.data.dto.CrewResDto> {
+        val requestId = ensureRequestCreated()
+            ?: return Result.failure(Exception("فشل في الحصول على معرف الطلب"))
+        val crewId = sailor.apiId
+            ?: return Result.failure(Exception("لا يوجد معرف API لفرد الطاقم"))
+        return navigationLicenseManager.updateCrewMemberRenewImmediate(requestId, crewId, sailor)
+    }
+
+    /**
+     * Delete a crew member immediately via DELETE
+     * Called when user deletes an existing sailor (apiId != null)
+     */
+    suspend fun deleteCrewMemberImmediate(sailor: SailorData): Result<Unit> {
+        val requestId = ensureRequestCreated()
+            ?: return Result.failure(Exception("فشل في الحصول على معرف الطلب"))
+        val crewId = sailor.apiId
+            ?: return Result.failure(Exception("لا يوجد معرف API لفرد الطاقم"))
+        return navigationLicenseManager.deleteCrewMemberRenew(requestId, crewId)
     }
 
     /**

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1049360788992",
+    "project_id": "mtcit-62e18",
+    "storage_bucket": "mtcit-62e18.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1049360788992:android:35fdbe4085ee93336072e5",
+        "android_client_info": {
+          "package_name": "com.informatique.mtcit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXof3wG0aQsTsj2XmAFCt-duQM1mkLKFQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

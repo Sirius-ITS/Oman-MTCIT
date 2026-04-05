@@ -26,8 +26,16 @@ import javax.inject.Inject
 class ShipDataModificationViewModel @Inject constructor(
     resourceProvider: ResourceProvider,
     navigationUseCase: StepNavigationUseCase,
-    private val strategyFactory: TransactionStrategyFactory
+    private val strategyFactory: TransactionStrategyFactory,
+    private val marineUnitsApiService: com.informatique.mtcit.data.api.MarineUnitsApiService
 ) : BaseTransactionViewModel(resourceProvider, navigationUseCase) {
+
+    /**
+     * ✅ Override: fetch full ship details for "عرض جميع البيانات"
+     */
+    override suspend fun loadShipCoreInfo(shipInfoId: String): Result<com.informatique.mtcit.business.transactions.shared.CoreShipInfo> {
+        return marineUnitsApiService.getShipCoreInfo(shipInfoId)
+    }
 
     /**
      * Create strategy for Ship Data Modification transactions

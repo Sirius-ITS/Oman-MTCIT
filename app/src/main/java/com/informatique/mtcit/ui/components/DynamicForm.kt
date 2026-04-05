@@ -38,6 +38,10 @@ fun DynamicStepForm(
     // NEW: Validation parameters
     validationState: com.informatique.mtcit.ui.viewmodels.ValidationState = com.informatique.mtcit.ui.viewmodels.ValidationState.Idle,
     onMarineUnitSelected: ((String) -> Unit)? = null,
+    // ✅ INFINITE SCROLL parameters
+    onLoadMore: (() -> Unit)? = null,
+    isLoadingMore: Boolean = false,
+    hasMore: Boolean = false,
     // ✅ NEW: Lookup loading state parameters
     lookupLoadingStates: Map<String, Boolean> = emptyMap(),
     loadedLookupData: Map<String, Pair<List<String>, Boolean>> = emptyMap(),
@@ -46,7 +50,12 @@ fun DynamicStepForm(
     onDeleteEngineImmediate: ((EngineData) -> Unit)? = null,
     // ✅ NEW: Owner immediate edit/delete callbacks (for owners with dbId)
     onEditOwnerImmediate: ((OwnerData) -> Unit)? = null,
-    onDeleteOwnerImmediate: ((OwnerData) -> Unit)? = null
+    onDeleteOwnerImmediate: ((OwnerData) -> Unit)? = null,
+    // ✅ NEW: Sailor immediate save/delete callbacks (Renew Navigation Permit only)
+    onSaveSailorImmediate: ((SailorData) -> Unit)? = null,
+    onDeleteSailorImmediate: ((SailorData) -> Unit)? = null,
+    // ✅ Ship details fetch for "عرض جميع البيانات" button
+    fetchShipDetails: (suspend (String) -> Result<com.informatique.mtcit.business.transactions.shared.CoreShipInfo>)? = null
 ) {
 
     // ✅ Helper function to map field ID to lookup key
@@ -95,6 +104,13 @@ fun DynamicStepForm(
                 // Only show field if it passes conditional visibility check
                 if (showConditionalFields(field.id)) {
                     when (field) {
+                        is FormField.CurrentValueCard -> {
+                            CurrentValueCard(
+                                label = field.label,
+                                value = field.value
+                            )
+                        }
+
                         is FormField.TextField -> {
                             // Special handling for company registration number field
                             if (field.id == "companyRegistrationNumber") {
@@ -367,7 +383,13 @@ fun DynamicStepForm(
                                 },
                                 // Pass validation parameters down to MarineUnitSelectorManager
                                 validationState = validationState,
-                                onMarineUnitSelected = onMarineUnitSelected
+                                onMarineUnitSelected = onMarineUnitSelected,
+                                // ✅ INFINITE SCROLL: pass callbacks
+                                onLoadMore = onLoadMore,
+                                isLoadingMore = isLoadingMore,
+                                hasMore = hasMore,
+                                // ✅ Ship details fetch
+                                fetchShipDetails = fetchShipDetails
                             )
                         }
 
@@ -509,10 +531,13 @@ fun DynamicStepForm(
                                 jobs = field.jobs,
                                 nationalities = field.nationalities,
                                 hasExcelFile = hasExcelFile,
+                                editNameOnly = field.editNameOnly,
                                 onSailorChange = { updatedSailors ->
                                     val json = Json.encodeToString(updatedSailors)
                                     onFieldChange(field.id, json, null)
-                                }
+                                },
+                                onSaveSailorImmediate = onSaveSailorImmediate,      // ✅ NEW
+                                onDeleteSailorImmediate = onDeleteSailorImmediate,  // ✅ NEW
                             )
                         }
 

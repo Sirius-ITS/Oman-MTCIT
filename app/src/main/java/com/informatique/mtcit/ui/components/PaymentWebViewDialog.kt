@@ -101,7 +101,7 @@ fun PaymentWebViewDialog(
                         }
 
                         loadDataWithBaseURL(
-                            "https://oman.isfpegypt.com/",
+                            "https://mtimedev.mtcit.gov.om/",
                             html,
                             "text/html",
                             "UTF-8",

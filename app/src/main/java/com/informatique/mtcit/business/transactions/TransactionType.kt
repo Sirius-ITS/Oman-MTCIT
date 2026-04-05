@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
+import java.util.Locale
 /**
  * Enum representing different types of transactions in the system
  * Each transaction now has its own TransactionContext with API endpoints
@@ -125,42 +126,45 @@ enum class TransactionType(
 
     // Ship Data Modifications Category
     SHIP_NAME_CHANGE(
-        typeId = 14,
+        typeId = 11,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير اسم السفينة",
             createEndpoint = "ship-modifications/name-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
-            sendRequestPostOrPut = "PUT",
-            paymentReceiptEndpoint = "ship-modifications/payment",
-            paymentSubmitEndpoint = "ship-modifications/add-payment"
+            sendRequestEndpoint = "general-request/11/{requestId}/send-request",
+            sendRequestPostOrPut = "POST",
+            paymentReceiptEndpoint = "payment-receipt/payment",
+            paymentSubmitEndpoint = "payment-receipt/add-payment",
+            proceedRequestEndpoint = "coreshipinfo/ship-info/{shipInfoId}/proceed-request/11"
         )
     ),
     CAPTAIN_NAME_CHANGE(
-        typeId = 15,
+        typeId = 10,
         context = TransactionContext(
             inspectionPreviewBaseContext = "change-captain",
-            displayName = "تغيير اسم الربان",
-            createEndpoint = "change-captain/captain-change",
+            displayName = "تغيير الربان",
+            createEndpoint = "change-captain/{shipInfoId}/add-request",  // ✅ CDD §4.1.6
             updateStatusEndpoint = "change-captain/{requestId}/update-status",
-            sendRequestEndpoint = "change-captain/{requestId}/send-request",
-            sendRequestPostOrPut = "PUT",
-            paymentReceiptEndpoint = "change-captain/payment",
-            paymentSubmitEndpoint = "change-captain/add-payment"
+            sendRequestEndpoint = "general-request/10/{requestId}/send-request", // ✅ CDD §4.1.9
+            sendRequestPostOrPut = "POST",
+            paymentReceiptEndpoint = "payment-receipt/payment",           // ✅ CDD §4.1.11
+            paymentSubmitEndpoint = "payment-receipt/add-payment",        // ✅ CDD §4.1.12
+            proceedRequestEndpoint = "coreshipinfo/ship-info/{shipInfoId}/proceed-request/10" // ✅ CDD §4.1.2
         )
     ),
     SHIP_ACTIVITY_CHANGE(
-        typeId = 16,
+        typeId = 13,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
             displayName = "تغيير نشاط السفينة",
             createEndpoint = "ship-modifications/activity-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
-            sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
-            sendRequestPostOrPut = "PUT",
-            paymentReceiptEndpoint = "ship-modifications/payment",
-            paymentSubmitEndpoint = "ship-modifications/add-payment"
+            sendRequestEndpoint = "general-request/13/{requestId}/send-request",
+            sendRequestPostOrPut = "POST",
+            paymentReceiptEndpoint = "payment-receipt/payment",
+            paymentSubmitEndpoint = "payment-receipt/add-payment",
+            proceedRequestEndpoint = "coreshipinfo/ship-info/{shipInfoId}/proceed-request/13"
         )
     ),
     SHIP_DIMENSIONS_CHANGE(
@@ -198,10 +202,9 @@ enum class TransactionType(
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "general-request/12/{requestId}/send-request", // ✅ Updated to use general-request
             sendRequestPostOrPut = "POST", // ✅ Changed to POST
-            paymentReceiptEndpoint = "ship-modifications/payment",
-            paymentSubmitEndpoint = "ship-modifications/add-payment",
-            proceedRequestEndpoint = "coreshipinfo/ship-info/{shipInfoId}/proceed-request/12",
-            hasAcceptance = true // ✅ All transactions have hasAcceptance
+            paymentReceiptEndpoint = "payment-receipt/payment",
+            paymentSubmitEndpoint = "payment-receipt/add-payment",
+            proceedRequestEndpoint = "coreshipinfo/ship-info/{shipInfoId}/proceed-request/12"
         )
     ),
     SHIP_OWNERSHIP_CHANGE(
@@ -258,10 +261,59 @@ enum class TransactionType(
             return entries.firstOrNull { it.typeId == typeId }
         }
         /**
-         * Get display name for a request type ID
+         * Get localized display name for a request type ID.
+         * Names match the official backend RegMdRequestTypeEnum (all 22 types).
+         * Mirrors RequestDetailParser.getRequestTypeName() so every screen is consistent.
          */
         fun getDisplayName(typeId: Int): String {
-            return fromTypeId(typeId)?.context?.displayName ?: "نوع غير معروف"
+            val ar = Locale.getDefault().language == "ar"
+            return when (typeId) {
+                1  -> if (ar) "إصدار شهادة تسجيل مؤقتة للسفن والوحدات البحرية"
+                      else "Temporary Registration Certificate for Ships and Marine Units"
+                2  -> if (ar) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية"
+                      else "Permanent Registration Certificate for Ships and Marine Units"
+                3  -> if (ar) "إصدار تصريح ملاحة للسفن والوحدات البحرية"
+                      else "Navigation Permit for Ships and Marine Units"
+                4  -> if (ar) "إصدار شهادة رهن للسفن والوحدات البحرية"
+                      else "Mortgage Certificate for Ships and Marine Units"
+                5  -> if (ar) "إصدار شهادة فك رهن للسفن والوحدات البحرية"
+                      else "Mortgage Release Certificate for Ships and Marine Units"
+                6  -> if (ar) "تجديد تصريح ملاحة للسفن والوحدات البحرية"
+                      else "Navigation Permit Renewal for Ships and Marine Units"
+                7  -> if (ar) "إصدار شهادة شطب التسجيل الدائمة للسفينة أو الوحدة البحرية"
+                      else "Cancellation of Permanent Registration Certificate"
+                8  -> if (ar) "تقديم طلب معاينة للسفن والوحدات البحرية"
+                      else "Inspection Request for Ships and Marine Units"
+                9  -> if (ar) "اضافة / تعديل على ملف سفينة / الوحدة البحرية"
+                      else "Add / Edit Ship or Marine Unit File"
+                10 -> if (ar) "طلب تغيير اسم ربان السفينة أو الوحدة البحرية"
+                      else "Change Captain Name of Ship or Marine Unit"
+                11 -> if (ar) "طلب تغيير اسم السفينة أو الوحدة البحرية"
+                      else "Change Ship or Marine Unit Name"
+                12 -> if (ar) "طلب تغيير ميناء تسجيل السفينة أو الوحدة البحرية"
+                      else "Change Ship or Marine Unit Registration Port"
+                13 -> if (ar) "طلب تغيير نشاط السفينة أو الوحدة البحرية"
+                      else "Change Ship or Marine Unit Activity"
+                14 -> if (ar) "ايقاف تصريح ملاحة للسفن والوحدات البحرية"
+                      else "Suspend Navigation Permit for Ships and Marine Units"
+                15 -> if (ar) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية التي عمرها يتعدى (20 سنة)"
+                      else "Permanent Registration Certificate for Ships and Marine Units Over 20 Years"
+                16 -> if (ar) "إصدار شهادة تسجيل وحدة بحرية مسجَّلة بنظام التسجيل الموازي"
+                      else "Parallel Registration Certificate for Marine Units"
+                17 -> if (ar) "تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني"
+                      else "Suspend Parallel Registration Certificate (Under Omani Flag)"
+                18 -> if (ar) "فك تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني"
+                      else "Unsuspend Parallel Registration Certificate (Under Omani Flag)"
+                19 -> if (ar) "تعليق شهادة تسجيل دائمة للسفن والوحدات البحرية"
+                      else "Suspend Permanent Registration Certificate"
+                20 -> if (ar) "طلب تغيير ملاك السفينة أو الوحدة البحرية"
+                      else "Change Ship or Marine Unit Owners"
+                21 -> if (ar) "طلب تغيير أبعاد السفينة أو الوحدة البحرية"
+                      else "Change Ship or Marine Unit Dimensions"
+                22 -> if (ar) "طلب استبدال محرك السفينة أو الوحدة البحرية"
+                      else "Change Ship or Marine Unit Engine"
+                else -> if (ar) "نوع غير معروف" else "Unknown Type"
+            }
         }
     }
 }
@@ -281,9 +333,9 @@ fun TransactionType.toRequestTypeId(): String {
         TransactionType.CANCEL_PERMANENT_REGISTRATION -> "7"
         TransactionType.MORTGAGE_CERTIFICATE -> "4"
         TransactionType.RELEASE_MORTGAGE -> "5"
-        TransactionType.SHIP_NAME_CHANGE -> "14"
-        TransactionType.SHIP_ACTIVITY_CHANGE -> "16"
-        TransactionType.CAPTAIN_NAME_CHANGE -> "15"
+        TransactionType.SHIP_NAME_CHANGE -> "11"
+        TransactionType.SHIP_ACTIVITY_CHANGE -> "13"
+        TransactionType.CAPTAIN_NAME_CHANGE -> "10"
         TransactionType.SHIP_PORT_CHANGE -> "12"
         // Default values for transactions without explicit IDs
         TransactionType.SHIP_DIMENSIONS_CHANGE -> "0"

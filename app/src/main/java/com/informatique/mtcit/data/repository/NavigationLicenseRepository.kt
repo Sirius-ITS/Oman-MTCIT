@@ -94,6 +94,12 @@ interface NavigationLicenseRepository {
     suspend fun addCrewBulkRenew(requestId: Long, crewList: List<CrewReqDto>): Result<List<CrewResDto>>
 
     /**
+     * Add a single crew member (Renew)
+     * POST /navigation-license-renewal-request/{requestId}/crew
+     */
+    suspend fun addCrewMemberRenew(requestId: Long, crew: CrewReqDto): Result<CrewResDto>
+
+    /**
      * Update crew member (Renew)
      */
     suspend fun updateCrewMemberRenew(requestId: Long, crewId: Long, crew: CrewReqDto): Result<CrewResDto>
@@ -107,6 +113,21 @@ interface NavigationLicenseRepository {
      * Upload crew Excel file (Renew)
      */
     suspend fun uploadCrewExcelRenew(requestId: Long, fileParts: List<PartData>): Result<List<CrewResDto>>
+
+    /**
+     * Create change captain request (CDD §4.1.6)
+     * POST /change-captain/{shipInfoId}/add-request
+     */
+    suspend fun createChangeCaptainRequest(
+        shipInfoId: Long,
+        crewList: List<Map<String, String>>
+    ): Result<NavigationRequestResDto>
+
+    /**
+     * Get existing captains for a ship (CDD §4.1.3)
+     * GET /change-captain/{shipInfoId}/captains
+     */
+    suspend fun getExistingCaptains(shipInfoId: Long): Result<List<CrewResDto>>
 }
 
 @Singleton
@@ -215,6 +236,14 @@ class NavigationLicenseRepositoryImpl @Inject constructor(
         return apiService.addCrewBulkRenew(requestId, crewList)
     }
 
+    override suspend fun addCrewMemberRenew(
+        requestId: Long,
+        crew: CrewReqDto
+    ): Result<CrewResDto> {
+        println("➕ Adding single crew member (Renew): requestId=$requestId")
+        return apiService.addCrewMemberRenew(requestId, crew)
+    }
+
     override suspend fun updateCrewMemberRenew(
         requestId: Long,
         crewId: Long,
@@ -245,5 +274,18 @@ class NavigationLicenseRepositoryImpl @Inject constructor(
     ): Result<NavigationRequestResDto> {
         println("🔄 Creating renewal navigation license request (simple): shipInfoId=$shipInfoId")
         return apiService.createRenewalRequestSimple(shipInfoId)
+    }
+
+    override suspend fun createChangeCaptainRequest(
+        shipInfoId: Long,
+        crewList: List<Map<String, String>>
+    ): Result<NavigationRequestResDto> {
+        println("⚓ Creating change captain request: shipInfoId=$shipInfoId, crew=${crewList.size}")
+        return apiService.createChangeCaptainRequest(shipInfoId, crewList)
+    }
+
+    override suspend fun getExistingCaptains(shipInfoId: Long): Result<List<CrewResDto>> {
+        println("📥 Getting existing captains: shipInfoId=$shipInfoId")
+        return apiService.getExistingCaptains(shipInfoId)
     }
 }

@@ -46,6 +46,10 @@ import com.informatique.mtcit.data.model.requests.RequestDetailField
 import com.informatique.mtcit.data.model.requests.RequestDetailSection
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.FileViewerDialog
+import com.informatique.mtcit.ui.components.IssuedCertificatesBottomSheet
+import com.informatique.mtcit.ui.components.IssuedCertItem
+import com.informatique.mtcit.ui.components.SuccessDialog
+import com.informatique.mtcit.ui.components.SuccessDialogItem
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.RequestDetailViewModel
 import com.informatique.mtcit.ui.viewmodels.CertificateData
@@ -99,6 +103,8 @@ fun ApiRequestDetailScreen(
     val isIssuingCertificate by viewModel.isIssuingCertificate.collectAsState()
     val certificateData by viewModel.certificateData.collectAsState()
     val fileViewerState by viewModel.fileViewerState.collectAsState()
+    // ✅ Affected certificates list for change transactions (types 10/11/12/13)
+    val affectedCertificatesList by viewModel.affectedCertificatesList.collectAsState()
 
     // Allow drawing behind system bars and make status bar transparent
     LaunchedEffect(window) {
@@ -169,6 +175,28 @@ fun ApiRequestDetailScreen(
         }
     }
 
+    // ✅ Affected Certificates Bottom Sheet for change transactions (types 10/11/12/13)
+    val isArabicLang = Locale.getDefault().language == "ar"
+    if (affectedCertificatesList.isNotEmpty()) {
+        val issuedItems = affectedCertificatesList.map { cert ->
+            IssuedCertItem(
+                number = cert.certificationNumber,
+                typeEn = cert.typeNameEn,
+                typeAr = cert.typeNameAr,
+                onView = {
+                    // Open the certificate — do NOT clear the list so sheet stays open.
+                    // User can view multiple certs and close the sheet explicitly.
+                    viewModel.viewAffectedCertificate(cert)
+                }
+            )
+        }
+        IssuedCertificatesBottomSheet(
+            title = if (isArabicLang) "الشهادات المُصدرة" else "Issued Certificates",
+            items = issuedItems,
+            onDismiss = { viewModel.clearAffectedCertificatesList() }
+        )
+    }
+
     // Only show dialog if:
     // 1. Certificate data exists
     // 2. FileViewer is NOT open (to avoid showing dialog while viewing)
@@ -180,14 +208,14 @@ fun ApiRequestDetailScreen(
         val isArabic = Locale.getDefault().language == "ar"
         val items = buildList {
             add(
-                com.informatique.mtcit.ui.components.SuccessDialogItem(
+                SuccessDialogItem(
                     label = if (isArabic) "رقم الشهادة" else "Certificate Number",
                     value = certData.certificationNumber,
                     icon = "📄"
                 )
             )
             add(
-                com.informatique.mtcit.ui.components.SuccessDialogItem(
+                SuccessDialogItem(
                     label = if (isArabic) "تاريخ الإصدار" else "Issued Date",
                     value = certData.issuedDate,
                     icon = "📅"
@@ -195,7 +223,7 @@ fun ApiRequestDetailScreen(
             )
             if (!certData.expiryDate.isNullOrEmpty()) {
                 add(
-                    com.informatique.mtcit.ui.components.SuccessDialogItem(
+                    SuccessDialogItem(
                         label = if (isArabic) "تاريخ الانتهاء" else "Expiry Date",
                         value = certData.expiryDate,
                         icon = "⏰"
@@ -204,7 +232,7 @@ fun ApiRequestDetailScreen(
             }
         }
 
-        com.informatique.mtcit.ui.components.SuccessDialog(
+        SuccessDialog(
             title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
             items = items,
             qrCode = certData.certificationQrCode,
@@ -879,14 +907,16 @@ private fun IssueCertificateButton(
             println("🔘 Issue/View Certificate button clicked (isAlreadyIssued=$isAlreadyIssued)")
             println("📋 requestId=${requestDetail.requestId}, requestTypeId=${requestDetail.requestType.id}, statusId=${requestDetail.status.id}")
 
-            if (isAlreadyIssued) {
-                // ✅ Certificate already issued - view it using configured method
+            val changeTransactionTypes = listOf(10, 11, 12, 13)
+            if (isAlreadyIssued && requestDetail.requestType.id !in changeTransactionTypes) {
+                // ✅ Standard single-cert transaction already issued — view directly
                 viewModel.viewCertificate(
                     requestTypeId = requestDetail.requestType.id,
                     useExternalBrowser = USE_EXTERNAL_BROWSER_FOR_CERTIFICATES
                 )
             } else {
-                // ✅ Certificate not issued yet - issue it
+                // ✅ Change transactions (10/11/12/13) — always use multi-cert flow
+                // ✅ Standard transactions not yet issued — issue now
                 viewModel.issueCertificate(
                     requestId = requestDetail.requestId,
                     requestTypeId = requestDetail.requestType.id,
@@ -948,6 +978,9 @@ private fun ProceedToPaymentButton(
                 statusId == 7 && requestTypeId == 6 -> 2  // Renew Navigation Permit ACCEPTED → Payment step (after Review at step 2)
                 statusId == 7 && requestTypeId == 7 -> 8  // Cancel Permanent Registration ACCEPTED → Payment step
                 statusId == 7 && requestTypeId == 8 -> 3  // Request Inspection ACCEPTED → InspectionPurpose step (before Payment at step 4)
+                statusId == 7 && requestTypeId == 11 -> 4  // Change Ship Name ACCEPTED → Affected Certificates step (before Payment)
+                statusId == 7 && requestTypeId == 12 -> 4  // Change Port of Ship ACCEPTED → Affected Certificates step (before Payment)
+                statusId == 7 && requestTypeId == 13 -> 4  // Change Activity ACCEPTED → Affected Certificates step (before Payment)
 
                 // ✅ Draft/In-Progress requests - navigate based on last completed step from API
                 else -> {
@@ -961,7 +994,9 @@ private fun ProceedToPaymentButton(
                         6 -> 2  // Renew Navigation Permit → payment step
                         7 -> 8  // Cancel Permanent Registration → payment step
                         8 -> 3  // Request Inspection → inspection purpose step
-                        12 -> 4  // Change Port of Ship → payment step (after affected certificates)
+                        11 -> 4  // Change Ship Name → review step (when ACCEPTED, will resume at next step)
+                        12 -> 4  // Change Port of Ship → review step (when ACCEPTED, will resume at next step)
+                        13 -> 4  // Change Activity → review step (when ACCEPTED, will resume at next step)
                         else -> 8  // Default to payment step
                     }
                 }
@@ -2022,6 +2057,20 @@ private fun getTransactionRouteForPayment(
 
         TransactionType.SHIP_PORT_CHANGE ->
             NavRoutes.ShipPortChangeRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
+
+        TransactionType.SHIP_NAME_CHANGE ->
+            NavRoutes.ShipNameChangeRoute.createRouteWithResume(
+                requestId = requestId.toString(),
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
+
+        TransactionType.SHIP_ACTIVITY_CHANGE ->
+            NavRoutes.ShipActivityChangeRoute.createRouteWithResume(
                 requestId = requestId.toString(),
                 lastCompletedStep = lastCompletedStep,
                 hasAcceptance = hasAcceptance

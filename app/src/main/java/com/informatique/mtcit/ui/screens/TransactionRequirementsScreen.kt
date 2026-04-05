@@ -74,7 +74,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionRequirementsScreen(
-    onStart: () -> Unit,
+    onStart: (hasAcceptance: Int) -> Unit,
     onBack: () -> Unit,
     transactionId: Int,
     parentTitleRes: Int? = null,
@@ -217,7 +217,11 @@ fun TransactionRequirementsScreen(
                     )
             ) {
                 Button(
-                    onClick = onStart,
+                    onClick = {
+                        val hasAcceptance = (uiState as? TransactionDetailUiState.Success)
+                            ?.detail?.hasAcceptance ?: 0
+                        onStart(hasAcceptance)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),

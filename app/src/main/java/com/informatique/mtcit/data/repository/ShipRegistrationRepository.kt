@@ -187,6 +187,18 @@ interface ShipRegistrationRepository {
      * GET /api/v1/certificate/{shipInfoId}/affected-certificates/{requestTypeId}
      */
     suspend fun getAffectedCertificates(shipInfoId: Int, requestTypeId: Int): Result<List<com.informatique.mtcit.business.transactions.shared.Certificate>>
+
+    /**
+     * Change ship name
+     * POST /api/v1/change-ship-info/ship-name
+     */
+    suspend fun changeShipName(requestId: Int, shipName: String, shipNameEn: String): Result<com.informatique.mtcit.data.api.ChangeShipNameResponse>
+
+    /**
+     * Change marine activity for a ship
+     * POST /api/v1/change-ship-info/marine-activity
+     */
+    suspend fun changeMarineActivity(requestId: Int, marineActivityId: Int): Result<com.informatique.mtcit.data.api.ChangeActivityResponse>
 }
 
 @Singleton
@@ -392,5 +404,20 @@ class ShipRegistrationRepositoryImpl @Inject constructor(
         println("   shipInfoId: $shipInfoId")
         println("   requestTypeId: $requestTypeId")
         return registrationApiService.getAffectedCertificates(shipInfoId, requestTypeId)
+    }
+
+    override suspend fun changeShipName(requestId: Int, shipName: String, shipNameEn: String): Result<com.informatique.mtcit.data.api.ChangeShipNameResponse> {
+        println("📞 ShipRegistrationRepository: Changing ship name")
+        println("   requestId: $requestId")
+        println("   shipName: $shipName")
+        println("   shipNameEn: $shipNameEn")
+        return registrationApiService.changeShipName(requestId, shipName, shipNameEn)
+    }
+
+    override suspend fun changeMarineActivity(requestId: Int, marineActivityId: Int): Result<com.informatique.mtcit.data.api.ChangeActivityResponse> {
+        println("📞 ShipRegistrationRepository: Changing marine activity")
+        println("   requestId: $requestId")
+        println("   marineActivityId: $marineActivityId")
+        return registrationApiService.changeMarineActivity(requestId, marineActivityId)
     }
 }

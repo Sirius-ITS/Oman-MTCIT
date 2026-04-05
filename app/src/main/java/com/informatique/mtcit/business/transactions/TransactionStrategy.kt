@@ -83,6 +83,30 @@ interface TransactionStrategy {
     }
 
     /**
+     * ✅ INFINITE SCROLL: Load the next page of ships and append to the existing list.
+     * Strategies that support pagination should override this.
+     * After appending, they must call onStepsNeedRebuild?.invoke() to refresh the UI.
+     * @param formData Current form data (used to re-derive owner/company params)
+     */
+    suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        // Default: no-op (strategies that don't support pagination keep this)
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Whether the last page of ships has been reached.
+     * Returns true by default so the load-more trigger is a no-op for strategies
+     * that did not override [loadNextShipsPage].
+     */
+    val isLastShipsPage: Boolean get() = true
+
+    /**
+     * ✅ INFINITE SCROLL: Zero-based index of the last page that was successfully fetched.
+     * Starts at -1 (nothing fetched yet via pagination) for strategies that loaded
+     * all ships at once via [loadShipsForSelectedType].
+     */
+    val currentShipsPage: Int get() = -1
+
+    /**
      * ✅ NEW: Update accumulated form data immediately when field changes
      * This allows getSteps() to have latest data for dynamic step logic
      */

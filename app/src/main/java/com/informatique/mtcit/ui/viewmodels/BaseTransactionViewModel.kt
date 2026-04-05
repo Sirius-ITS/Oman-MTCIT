@@ -97,6 +97,14 @@ abstract class BaseTransactionViewModel(
     protected val _error = MutableStateFlow<AppError?>(null)
     val error: StateFlow<AppError?> = _error.asStateFlow()
 
+    // ✅ Navigation to login (when refresh token is also expired)
+    private val _shouldNavigateToLogin = MutableStateFlow(false)
+    val shouldNavigateToLogin: StateFlow<Boolean> = _shouldNavigateToLogin.asStateFlow()
+
+    fun resetNavigateToLogin() {
+        _shouldNavigateToLogin.value = false
+    }
+
     // Current transaction strategy
     protected var currentStrategy: TransactionStrategy? = null
 
@@ -104,8 +112,24 @@ abstract class BaseTransactionViewModel(
     private val _isProcessingNext = MutableStateFlow(false)
     val isProcessingNext: StateFlow<Boolean> = _isProcessingNext.asStateFlow()
 
+    // ✅ INFINITE SCROLL: tracks whether more ships are being loaded
+    private val _isLoadingMoreShips = MutableStateFlow(false)
+    val isLoadingMoreShips: StateFlow<Boolean> = _isLoadingMoreShips.asStateFlow()
+
+    // ✅ INFINITE SCROLL: expose pagination state so the UI doesn't need to access currentStrategy directly
+    val isLastShipsPage: Boolean get() = currentStrategy?.isLastShipsPage ?: true
+
     val _showToastEvent = MutableStateFlow<String?>(null)
     val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
+
+    /**
+     * ✅ Load full ship core info for "عرض جميع البيانات" bottom sheet.
+     * Subclasses that have access to MarineUnitsApiService override this.
+     * Default returns failure so the button is gracefully non-functional in unsupported VMs.
+     */
+    open suspend fun loadShipCoreInfo(shipInfoId: String): Result<com.informatique.mtcit.business.transactions.shared.CoreShipInfo> {
+        return Result.failure(UnsupportedOperationException("loadShipCoreInfo not implemented"))
+    }
 
 
     // ✅ Success dialog state (for transaction completion)
@@ -561,6 +585,32 @@ abstract class BaseTransactionViewModel(
         }
     }
 
+    /**
+     * ✅ INFINITE SCROLL: Load the next page of ships for the marine unit selector.
+     * Called from the UI when the user scrolls to the end of the list.
+     * Guards against duplicate in-flight loads and respects isLastShipsPage.
+     */
+    fun loadMoreShips() {
+        val strategy = currentStrategy ?: return
+        if (strategy.isLastShipsPage) return
+        if (_isLoadingMoreShips.value) return
+
+        viewModelScope.launch {
+            _isLoadingMoreShips.value = true
+            try {
+                val formData = _uiState.value.formData
+                withContext(Dispatchers.IO) {
+                    strategy.loadNextShipsPage(formData)
+                }
+                // Steps are rebuilt via onStepsNeedRebuild callback inside loadNextShipsPage
+            } catch (e: Exception) {
+                println("❌ loadMoreShips failed: ${e.message}")
+            } finally {
+                _isLoadingMoreShips.value = false
+            }
+        }
+    }
+
     fun previousStep() {
         viewModelScope.launch {
             val currentState = _uiState.value
@@ -578,8 +628,6 @@ abstract class BaseTransactionViewModel(
 
             viewModelScope.launch {
                 navigationUseCase.getPreviousStep(currentState.currentStep)?.let { prevStep ->
-                    // ✅ Check if we're going back FROM marine unit selection step
-                    // If so, we need to check if we should clear ships and refresh steps
                     val currentStepFields =
                         currentState.steps.getOrNull(currentState.currentStep)?.fields?.map { it.id }
                             ?: emptyList()
@@ -588,16 +636,13 @@ abstract class BaseTransactionViewModel(
                     val prevStepFields =
                         currentState.steps.getOrNull(prevStep)?.fields?.map { it.id } ?: emptyList()
                     val isGoingToPersonTypeStep = prevStepFields.contains("selectionPersonType")
-                    // ✅ FIXED: Use correct field ID "selectionData" instead of "commercialRegistration"
                     val isGoingToCommercialRegStep = prevStepFields.contains("selectionData")
 
-                    // ✅ Clear ships ONLY if going back to person type or commercial reg step
                     if (isLeavingMarineUnitStep && (isGoingToPersonTypeStep || isGoingToCommercialRegStep)) {
                         println("🧹 Going back from marine unit selection to person type/commercial reg - clearing ships")
                         val strategy = currentStrategy
                         strategy?.clearLoadedShips()
 
-                        // ✅ Refresh steps to reflect cleared ships
                         val updatedSteps = strategy?.getSteps() ?: currentState.steps
 
                         _uiState.value = currentState.copy(
@@ -610,7 +655,6 @@ abstract class BaseTransactionViewModel(
                             )
                         )
                     } else {
-                        // ✅ Normal back navigation - keep ships cached (DON'T clear them!)
                         println("⬅️ Normal back navigation - keeping ships cached")
                         _uiState.value = currentState.copy(
                             currentStep = prevStep,
@@ -871,14 +915,17 @@ abstract class BaseTransactionViewModel(
                 },
                 onFailure = { error ->
                     println("❌ Token refresh failed: ${error.message}")
-                    // Show error that refresh failed - user needs to login again
-                    _error.value = AppError.Unknown("فشل تحديث الرمز. يرجى تسجيل الدخول مرة أخرى")
+                    // ✅ Refresh token is also expired → clear banner and navigate to login
+                    _error.value = null
+                    _shouldNavigateToLogin.value = true
                     false
                 }
             )
         } catch (e: Exception) {
             println("❌ Exception during token refresh: ${e.message}")
-            _error.value = AppError.Unknown("حدث خطأ أثناء تحديث الرمز: ${e.message}")
+            // ✅ Any unexpected error during refresh → navigate to login
+            _error.value = null
+            _shouldNavigateToLogin.value = true
             false
         }
     }

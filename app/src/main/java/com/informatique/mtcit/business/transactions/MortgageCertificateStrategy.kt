@@ -71,6 +71,12 @@ class MortgageCertificateStrategy @Inject constructor(
     private var banks: List<String> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
+
     // ✅ NEW: Store required documents from API
     private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
     private val requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId()
@@ -282,20 +288,48 @@ class MortgageCertificateStrategy @Inject constructor(
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
             commercialRegNumber = commercialRegNumber,
-            // **********************************************************************************************************
-            //Request Type Id
-            requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId() // ✅ Mortgage Certificate ID
+            requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId(),
+            page = 0
         )
-        println("✅ Loaded ${marineUnits.size} ships")
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
+        println("✅ Loaded ${marineUnits.size} ships (isLast=$_isLastShipsPage)")
         return marineUnits
     }
 
     override suspend fun clearLoadedShips() {
         println("🧹 Clearing loaded ships cache")
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (MortgageCert) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = TransactionType.MORTGAGE_CERTIFICATE.toRequestTypeId(),
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     override fun updateAccumulatedData(data: Map<String, String>) {
@@ -846,6 +880,10 @@ class MortgageCertificateStrategy @Inject constructor(
                         return -1 // Block navigation
                     }
                 }
+            } catch (e: com.informatique.mtcit.common.ApiException) {
+                // ✅ Re-throw ApiException (e.g. 401) so ViewModel can show refresh button
+                println("❌ ApiException in review step: ${e.code} - ${e.message}")
+                throw e
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()

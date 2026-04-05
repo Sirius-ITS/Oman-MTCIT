@@ -85,6 +85,8 @@ class RequestRepository @Inject constructor(
                 TransactionType.RELEASE_MORTGAGE -> "/api/v1/mortgage-redemption-request"
                 TransactionType.CANCEL_PERMANENT_REGISTRATION -> "/api/v1/deletion-requests"
                 TransactionType.SHIP_PORT_CHANGE -> "/api/v1/change-ship-info"
+                TransactionType.SHIP_NAME_CHANGE -> "/api/v1/change-ship-info"
+                TransactionType.SHIP_ACTIVITY_CHANGE -> "/api/v1/change-ship-info"
                 else -> ""
             }
 
@@ -210,6 +212,20 @@ class RequestRepository @Inject constructor(
         formData["deletionRequestId"] = id.toString()
         println("💾 Stored requestId=$id and deletionRequestId=$id in formData for payment step")
 
+        // ✅ FIX: For any status where send-request was already completed (Accepted, Confirmed, etc.)
+        // inject sendRequestMessage + requestNumber so all strategies rebuild WITH the Payment step.
+        // Without this, strategies gate the Payment step on sendRequestMessage != null, find nothing
+        // after REVIEW in the rebuilt list, and fall back to landing the user on the Review step.
+        val reviewWasCompleted = statusId in listOf(3, 7, 11, 12, 13, 14)
+        if (reviewWasCompleted && !formData.containsKey("sendRequestMessage")) {
+            formData["sendRequestMessage"] = "Request sent successfully"
+            println("✅ Injected sendRequestMessage for statusId=$statusId (review already completed)")
+        }
+        if (reviewWasCompleted && !formData.containsKey("requestNumber") && requestSerial > 0) {
+            formData["requestNumber"] = requestSerial.toString()
+            println("✅ Injected requestNumber=$requestSerial for statusId=$statusId")
+        }
+
         // Extract messages
         val message = jsonObject["message"]?.jsonPrimitive?.contentOrNull
         val messageDetails = jsonObject["messageDetails"]?.jsonPrimitive?.contentOrNull
@@ -221,13 +237,23 @@ class RequestRepository @Inject constructor(
         val lastCompletedStep = when {
             // ✅ ACCEPTED status - review is COMPLETED, resume at next step
             statusId == 7 -> {
-                // ✅ SMART: Return index of REVIEW step (typically 8)
-                // The findResumeStepByType function will find the correct NEXT step
-                // based on each strategy's actual step structure:
-                // - Temp Registration: Has CUSTOM (Marine Unit Name) after REVIEW
-                // - Other transactions: Have PAYMENT directly after REVIEW
+                // ✅ Calculate the actual REVIEW step index for this transaction
+                // Different transactions have different step counts before REVIEW
+                val reviewStepIndex = when (transactionType) {
+                    // Change Ship transactions: PersonType→ShipSelection→ChangeInfo→Certificates→REVIEW
+                    // Review is at index 4 (5th step for individual users, 5th after skipping company step)
+                    TransactionType.SHIP_PORT_CHANGE,
+                    TransactionType.SHIP_NAME_CHANGE,
+                    TransactionType.SHIP_ACTIVITY_CHANGE,
+                    TransactionType.CAPTAIN_NAME_CHANGE -> 4
+
+                    // Other transactions: Default to 8
+                    else -> 8
+                }
+
                 println("✅ ACCEPTED status - Review completed, will resume at next step after REVIEW")
-                8  // Index of REVIEW step - findResumeStepByType will find the correct next step
+                println("   Transaction: $transactionType, Review step index: $reviewStepIndex")
+                reviewStepIndex
             }
             // Confirmed, Approved by Authorities, Final Approval
             statusId in listOf(3, 11, 12) -> 8

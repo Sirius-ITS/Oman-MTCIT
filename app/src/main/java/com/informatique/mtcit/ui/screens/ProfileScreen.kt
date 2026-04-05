@@ -80,6 +80,7 @@ import java.util.Locale
 @Composable
 fun ProfileScreen(
     navController: NavController,
+    unreadNotificationCount: Int = 0,
     viewModel: MarineRegistrationViewModel = hiltViewModel()
 ){
     val extraColors = LocalExtraColors.current
@@ -279,7 +280,8 @@ fun ProfileScreen(
             ) {
                 CustomToolbar(
                     navController = navController,
-                    currentRoute = "profileScreen"
+                    currentRoute = "profileScreen",
+                    unreadNotificationCount = unreadNotificationCount
                 )
             }
         }
@@ -544,6 +546,9 @@ fun FormsSectionWithLazyColumn(
     val filteredRequests = remember(requests, searchQuery) {
         var result = requests
 
+        // ✅ Always exclude draft requests (statusId == 1) from the list
+        result = result.filter { request -> request.statusId != 1 }
+
         // Apply search filter (client-side filtering for search query)
         if (searchQuery.isNotBlank()) {
             result = result.filter { request ->
@@ -580,7 +585,7 @@ fun FormsSectionWithLazyColumn(
                             request.statusName.contains("scheduled", ignoreCase = true)
                     FilterType.IN_REVIEW -> request.statusName.contains("قيد المراجعة", ignoreCase = true) ||
                             request.statusName.contains("in review", ignoreCase = true)
-                    FilterType.ISSUED -> request.statusName.contains("تم الإصدار", ignoreCase = true) ||
+                    FilterType.ISSUED -> request.statusName.contains("مصدر", ignoreCase = true) ||
                             request.statusName.contains("issued", ignoreCase = true)
                     else -> true
                 }
@@ -898,7 +903,7 @@ fun FormsSectionWithLazyColumn(
 //                                           request.statusName.contains("scheduled", ignoreCase = true)
 //                    FilterType.IN_REVIEW -> request.statusName.contains("قيد المراجعة", ignoreCase = true) ||
 //                                           request.statusName.contains("in review", ignoreCase = true)
-//                    FilterType.ISSUED -> request.statusName.contains("تم الإصدار", ignoreCase = true) ||
+//                    FilterType.ISSUED -> request.statusName.contains("مصدر", ignoreCase = true) ||
 //                                        request.statusName.contains("issued", ignoreCase = true)
 //                    else -> true
 //                }
@@ -1925,7 +1930,7 @@ fun FilterBottomSheetContent(
         // All Status Cards in Grid
         val statusList = listOf(
             StatusFilterItem(FilterType.ALL, "عدد الطلبات", "671", Color(0xFFE91E63)),
-            StatusFilterItem(FilterType.DRAFT, "مسودة", "0", Color(0xFF9E9E9E)),
+//            StatusFilterItem(FilterType.DRAFT, "مسودة", "0", Color(0xFF9E9E9E)),
             StatusFilterItem(FilterType.REJECTED, "مرفوض", "0", Color(0xFFF44336)),
             StatusFilterItem(FilterType.SEND, "تم الإرسال", "0", Color(0xFFFF9800)),
             StatusFilterItem(FilterType.SCHEDULED, "مجدول", "0", Color(0xFF2196F3)),
@@ -1935,7 +1940,7 @@ fun FilterBottomSheetContent(
             StatusFilterItem(FilterType.REVIEW_RTA, "مراجعة RTA", "0", Color(0xFF673AB7)),
             StatusFilterItem(FilterType.REJECT_AUTHORITIES, "مرفوض", "0", Color(0xFFE91E63)),
             StatusFilterItem(FilterType.APPROVED_FINAL, "موافقة نهائية", "0", Color(0xFF4CAF50)),
-            StatusFilterItem(FilterType.ISSUED, "تم الإصدار", "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.ISSUED, "مصدر", "0", Color(0xFF4CAF50)),
             StatusFilterItem(FilterType.WAITING_INSPECTION, "في انتظار الفحص", "0", Color(0xFF4CAF50)),
         )
 

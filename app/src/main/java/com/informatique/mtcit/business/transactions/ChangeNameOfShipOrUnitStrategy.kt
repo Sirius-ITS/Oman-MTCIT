@@ -4,8 +4,10 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.transactions.marineunit.rules.TemporaryRegistrationRules
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.shared.SharedSteps
+import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.ValidationRule
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -17,15 +19,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.serialization.json.Json
 import javax.inject.Inject
-import com.informatique.mtcit.ui.components.EngineData as UIEngineData
-import com.informatique.mtcit.ui.components.OwnerData as UIOwnerData
 import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
+import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.shared.Certificate
 import com.informatique.mtcit.business.transactions.shared.StepType
-import com.informatique.mtcit.data.repository.CertificateLocalData
+import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.data.model.RequiredDocumentItem
+
+import com.informatique.mtcit.ui.components.DropdownSection
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
 
@@ -36,6 +39,10 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
     private val temporaryRegistrationRules: TemporaryRegistrationRules,
+    private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
+    private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
+    private val paymentManager: com.informatique.mtcit.business.transactions.shared.PaymentManager,
+    private val inspectionFlowManager: com.informatique.mtcit.business.transactions.shared.InspectionFlowManager,
     @ApplicationContext private val appContext: Context
 ) : BaseTransactionStrategy() {
     private val transactionContext: TransactionContext = TransactionType.SHIP_NAME_CHANGE.context
@@ -44,18 +51,128 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     private var shipTypeOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
     private var commercialOptions: List<SelectableItem> = emptyList()
-    private var typeOptions: List<PersonType> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
-    private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
-    private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
-    private var loadedCertificates =  (mutableStateListOf<Certificate>())
+    private var loadedCertificates = (mutableStateListOf<Certificate>())
+    private var typeOptions: List<PersonType> = emptyList()
+    private val requestTypeId = TransactionType.SHIP_NAME_CHANGE.toRequestTypeId()
+
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
+    // Store API error to prevent navigation and show error dialog
+    private var lastApiError: String? = null
+
+    // ✅ NEW: Store created request ID for status update
+    private var createdRequestId: Int? = null
+
+    // ✅ NEW: Store API responses for future actions
+    private val apiResponses: MutableMap<String, Any> = mutableMapOf()
+
+    // ✅ Store shipInfoId for affected certificates and other APIs
+    private var selectedShipInfoId: Int? = null
+
+    // ✅ Store current port from selected ship (port name, not object)
+    private var currentPortOfRegistry: String? = null
+
+    // ✅ NEW: Store loaded inspection authorities
+    private var loadedInspectionAuthorities: List<DropdownSection> = emptyList()
+
+    // ✅ NEW: Store inspection-specific documents (separate from permanent registration documents)
+    private var loadedInspectionDocuments: List<RequiredDocumentItem> = emptyList()
+
+
+    /**
+     * ✅ Override setHasAcceptanceFromApi to also store in formData
+     * This ensures the payment success dialog can access it
+     */
+    override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
+        super.setHasAcceptanceFromApi(hasAcceptanceValue)
+        // ✅ Store in formData so PaymentSuccessDialog can access it
+        accumulatedFormData["hasAcceptance"] = (hasAcceptanceValue == 1).toString()
+        println("🔧 PermanentRegistrationStrategy: Stored hasAcceptance in formData: ${accumulatedFormData["hasAcceptance"]}")
+    }
+
+    /**
+     * Handle inspection dialog confirmation
+     * Called when user clicks "Continue" on inspection required dialog
+     * This will load inspection lookups and inject the inspection purpose step
+     */
+    suspend fun handleInspectionContinue() {
+        println("🔍 ChangePortOfShipOrUnitStrategy: User confirmed inspection requirement")
+        println("   Loading inspection lookups...")
+
+        try {
+            // Get shipInfoId from accumulatedFormData
+            val shipInfoIdStr = accumulatedFormData["coreShipsInfoId"]
+                ?: accumulatedFormData["shipInfoId"]
+                ?: run {
+                    println("❌ No shipInfoId found in formData")
+                    accumulatedFormData["apiError"] = "لم يتم العثور على معرف السفينة"
+                    return
+                }
+
+            val shipInfoId = shipInfoIdStr.toIntOrNull() ?: run {
+                println("❌ Invalid shipInfoId: $shipInfoIdStr")
+                accumulatedFormData["apiError"] = "معرف السفينة غير صالح"
+                return
+            }
+
+            println("   Using shipInfoId: $shipInfoId")
+
+            // Load inspection lookups (purposes, places, authorities)
+            val lookups = inspectionFlowManager.loadInspectionLookups(shipInfoId)
+
+            println("✅ Inspection lookups loaded:")
+            println("   - Purposes: ${lookups.purposes.size}")
+            println("   - Places: ${lookups.places.size}")
+            println("   - Authority sections: ${lookups.authoritySections.size}")
+            println("   - Documents: ${lookups.documents.size}") // ✅ Log documents
+
+            // ✅ CRITICAL: Store authorities AND documents in member variables BEFORE setting showInspectionStep
+            loadedInspectionAuthorities = lookups.authoritySections
+            loadedInspectionDocuments = lookups.documents // ✅ Store inspection documents
+
+            // Mark that inspection step should be shown
+            accumulatedFormData["showInspectionStep"] = "true"
+            accumulatedFormData["inspectionPurposes"] = lookups.purposes.joinToString(",")
+            accumulatedFormData["inspectionPlaces"] = lookups.places.joinToString(",")
+
+            // Clear dialog flag
+            accumulatedFormData.remove("showInspectionDialog")
+
+            println("✅ Inspection lookups loaded, triggering steps rebuild")
+
+            // Trigger steps rebuild to inject inspection step
+            onStepsNeedRebuild?.invoke()
+
+        } catch (e: Exception) {
+            println("❌ Failed to load inspection lookups: ${e.message}")
+            e.printStackTrace()
+            accumulatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+        }
+    }
+
+    /**
+     * Handle inspection dialog cancel
+     * Called when user clicks "Cancel" on inspection required dialog
+     */
+    fun handleInspectionCancel() {
+        println("ℹ️ ChangePortOfShipOrUnitStrategy: User cancelled inspection requirement")
+
+        // Just clear the dialog flag and stay on review step
+        accumulatedFormData.remove("showInspectionDialog")
+
+        // Set flag to show that request is sent but pending inspection
+        accumulatedFormData["requestPendingInspection"] = "true"
+    }
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         // ✅ Get civilId from token
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
-        loadedCertificates.addAll(CertificateLocalData.getSampleCertificates())
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
@@ -80,11 +197,6 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
 
         return mapOf(
             "marineUnits" to emptyList<MarineUnit>(), // ✅ Empty initially
-            "registrationPort" to ports,
-            "ownerNationality" to countries,
-            "ownerCountry" to countries,
-            "registrationCountry" to countries,
-            "unitType" to shipTypes,
             "commercialRegistration" to commercialRegistrations,
             "personType" to personTypes,
             "certificates" to loadedCertificates
@@ -120,17 +232,19 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
             commercialRegNumber = commercialRegNumber,
-            requestTypeId = "14" // ✅ Ship Name Change ID
+            requestTypeId = requestTypeId, // ✅ "11" from TransactionType.SHIP_NAME_CHANGE
+            page = 0
         )
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
 
-        println("✅ Loaded ${marineUnits.size} ships")
-        marineUnits.forEach { unit ->
-            println("   - ${unit.shipName} (ID: ${unit.id})")
-        }
-
+        println("✅ Loaded ${marineUnits.size} ships (isLast=$_isLastShipsPage)")
+        marineUnits.forEach { unit -> println("   - ${unit.shipName} (ID: ${unit.id})") }
         return marineUnits
     }
 
@@ -140,15 +254,40 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
     override suspend fun clearLoadedShips() {
         println("🧹 Clearing loaded ships cache")
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (ChangeName) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = requestTypeId, // ✅ "11" from TransactionType.SHIP_NAME_CHANGE
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     override fun updateAccumulatedData(data: Map<String, String>) {
         accumulatedFormData.putAll(data)
-        println("📦 TemporaryRegistration - Updated accumulated data: $accumulatedFormData")
+        println("📦 ChangeShipName - Updated accumulated data: $accumulatedFormData")
     }
 
     override fun getContext(): TransactionContext {
-        TODO("Not yet implemented")
+        return transactionContext
     }
 
     override fun getSteps(): List<StepData> {
@@ -159,29 +298,114 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شر��ة") {
+        if (selectedPersonType == "شركة") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
-        // Step 3: Marine Unit Selection ( commented for now )
-        /*steps.add(
+        // Step 3: Marine Unit Selection
+        steps.add(
             SharedSteps.marineUnitSelectionStep(
                 units = marineUnits,
                 allowMultipleSelection = false,
-                showAddNewButton = true,
                 showOwnedUnitsWarning = true
-            )
-        )*/
-
-        // Step 4: Marine Unit Name Selection
-        steps.add(
-            SharedSteps.marineUnitNameSelectionStep(
-                showReservationInfo = true
             )
         )
 
-        // Step 5: Shared Certificate Step
-        steps.add(SharedSteps.createCertificateStep(loadedCertificates))
+        // Step 4: Change Name Information
+        steps.add(
+            StepData(
+                titleRes = R.string.change_name_of_ship_or_unit_strategy_info,
+                descriptionRes = R.string.change_name_of_ship_or_unit_strategy_info_desc,
+                stepType = StepType.MARINE_UNIT_NAME_SELECTION,
+                fields = listOf(
+                    FormField.CurrentValueCard(
+                        id = "current_ship_name",
+                        labelRes = R.string.previous_ship_name
+                    ),
+                    FormField.TextField(
+                        id = "new_ship_name_ar",
+                        labelRes = R.string.marine_unit_name_ar,
+                        placeholder = R.string.marine_unit_name_ar_placeholder.toString(),
+                        mandatory = true,
+                        minLength = 3, // ✅ الحد الأدنى 3 أحرف
+                        maxLength = 50 // ✅ الحد الأقصى 50 حرف
+                    ),
+                    FormField.TextField(
+                        id = "new_ship_name_en",
+                        labelRes = R.string.marine_unit_name_en,
+                        placeholder = R.string.marine_unit_name_en_placeholder.toString(),
+                        mandatory = true,
+                        enabled = true,
+                        minLength = 3, // ✅ الحد الأدنى 3 أحرف
+                        maxLength = 50 // ✅ الحد الأقصى 50 حرف
+                    )
+                ),
+                requiredLookups = emptyList()
+            )
+        )
+
+        // Step 5: Affected Certificates (loaded from API)
+        steps.add(SharedSteps.createCertificateStep(
+            certificates = loadedCertificates,
+            titleRes = R.string.change_name_certificate_step_title,
+            descriptionRes = R.string.change_name_certificate_step_desc
+        ))
+
+        // Step 6: Review Step
+        steps.add(SharedSteps.reviewStep())
+
+        // ✅ NEW: Inspection Purpose Step (dynamically added when inspection is required)
+        val showInspectionStep = accumulatedFormData["showInspectionStep"]?.toBoolean() ?: false
+        if (showInspectionStep) {
+            println("📋 Adding Inspection Purpose Step (dynamically injected)")
+
+            // Parse lookups from formData
+            val purposes =
+                accumulatedFormData["inspectionPurposes"]?.split(",")?.filter { it.isNotBlank() }
+                    ?: emptyList()
+            val places =
+                accumulatedFormData["inspectionPlaces"]?.split(",")?.filter { it.isNotBlank() }
+                    ?: emptyList()
+
+            println("   - Purposes: ${purposes.size}")
+            println("   - Places: ${places.size}")
+            println("   - Authority sections: ${loadedInspectionAuthorities.size}")
+            println("   - Inspection Documents: ${loadedInspectionDocuments.size}") // ✅ Log inspection documents
+
+            // ✅ Use inspection-specific documents (NOT permanent registration documents)
+            steps.add(
+                SharedSteps.inspectionPurposeAndAuthorityStep(
+                    inspectionPurposes = purposes,
+                    inspectionPlaces = places,
+                    authoritySections = loadedInspectionAuthorities, // ✅ Use loaded authorities
+                    documents = loadedInspectionDocuments // ✅ Use inspection documents (not requiredDocuments)
+                )
+            )
+        }
+
+        // ✅ Payment Steps - Only show AFTER review/send-request succeeds AND no inspection pending
+        val hasRequestId = accumulatedFormData["sendRequestMessage"] != null
+        val inspectionRequired = accumulatedFormData["showInspectionDialog"]?.toBoolean() ?: false
+
+        println("🔍 Payment step visibility check:")
+        println("   reviewSucceeded: $hasRequestId")
+        println("   inspectionRequired: $inspectionRequired")
+        println("   showInspectionStep: $showInspectionStep")
+
+        // ✅ Only show payment steps AFTER review succeeds AND no inspection is pending
+        if (hasRequestId && !inspectionRequired && !showInspectionStep) {
+            println("✅ Adding payment steps")
+            // Payment Details Step - Shows payment breakdown
+            steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+
+            // Payment Success Step - Only show if payment was successful
+            val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() ?: false
+            if (paymentSuccessful) {
+                steps.add(SharedSteps.paymentSuccessStep())
+            }
+        } else {
+            println("⏭️ Skipping payment steps (inspection required or in progress)")
+        }
 
         println("📋 Total steps count: ${steps.size}")
         return steps
@@ -220,8 +444,305 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
         accumulatedFormData.putAll(data)
 
         println("📦 accumulatedFormData after update: $accumulatedFormData")
+        println("📦 Current step data: $data")
+        println("📦 Accumulated data: $accumulatedFormData")
 
-        // ... rest of existing code
+        val currentStepData = getSteps().getOrNull(step)
+        val stepType = currentStepData?.stepType
+
+        println("🔍 Current step titleRes: ${currentStepData?.titleRes}")
+        println("🔍 Current step stepType: ${currentStepData?.stepType}")
+
+        // ✅ Step 1: Marine Unit Selection (owned_ships)
+        if (currentStepData?.titleRes == R.string.owned_ships) {
+            println("🚢 ✅ Marine Unit Selection step completed - calling proceed-request API...")
+
+            try {
+                // Get the selected ship ID from the form data
+                val selectedShipId = data["selectedMarineUnits"]
+
+                // ✅ Use ShipSelectionManager to handle proceed-request API
+                val result = shipSelectionManager.handleShipSelection(
+                    shipId = selectedShipId,
+                    context = transactionContext
+                )
+
+                when (result) {
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Success -> {
+                        println("✅ Ship selection successful via Manager!")
+                        println("   Request ID: ${result.requestId}")
+
+                        // ✅ Store the created request ID
+                        createdRequestId = result.requestId
+                        accumulatedFormData["requestId"] = result.requestId.toString()
+                        apiResponses["proceedRequest"] = result.response
+
+                        // ✅ Extract and store shipInfoId + current port
+                        val selectedUnitsJson = data["selectedMarineUnits"]
+                        if (selectedUnitsJson != null) {
+                            try {
+                                val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                                val shipIds =
+                                    cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                val firstShipId = shipIds.firstOrNull()
+                                if (firstShipId != null) {
+                                    selectedShipInfoId = firstShipId.toIntOrNull()
+                                    accumulatedFormData["shipInfoId"] = firstShipId
+                                    accumulatedFormData["coreShipsInfoId"] = firstShipId
+                                    println("✅ Stored shipInfoId: $firstShipId")
+
+                                    // ✅ Extract current port from selected ship
+                                    val selectedShip =
+                                        marineUnits.firstOrNull { it.id == firstShipId }
+                                    currentPortOfRegistry = selectedShip?.portOfRegistry?.id
+                                    println("✅ Stored currentPortId: $currentPortOfRegistry")
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ Failed to extract shipInfoId: ${e.message}")
+                            }
+                        }
+                        println("💾 STORED createdRequestId = $createdRequestId")
+                    }
+
+                    is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
+                        println("❌ Ship selection failed: ${result.message}")
+                        lastApiError = result.message
+                        throw ApiException(500, result.message)
+                    }
+                }
+            } catch (e: ApiException) {
+                println("❌ ApiException in ship selection: ${e.message}")
+                lastApiError = e.message ?: "Unknown error"
+                throw e
+            } catch (e: Exception) {
+                println("❌ Exception in ship selection: ${e.message}")
+                val errorMsg =
+                    com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                lastApiError = errorMsg
+                throw ApiException(500, errorMsg)
+            }
+        }
+
+        // ✅ Step: Marine Unit Name Selection
+        if (currentStepData?.stepType == StepType.MARINE_UNIT_NAME_SELECTION) {
+            println("📝 ✅ Marine Unit Name Selection step completed - calling change-ship-info/name API...")
+
+            try {
+                val requestId = accumulatedFormData["requestId"]?.toIntOrNull()
+                    ?: throw ApiException(400, "Missing request ID")
+
+                val newNameAr = data["new_ship_name_ar"]
+                    ?: throw ApiException(400, "Missing new Arabic name")
+                val newNameEn = data["new_ship_name_en"]
+                    ?: throw ApiException(400, "Missing new English name")
+
+                println("📤 Calling API with requestId=$requestId, nameAr=$newNameAr, nameEn=$newNameEn")
+
+                val response = repository.changeShipName(
+                    requestId = requestId,
+                    shipName = newNameAr,
+                    shipNameEn = newNameEn
+                )
+
+                if (response.isSuccess) {
+                    val changeNameResponse = response.getOrNull()
+                    println("✅ Name change successful!")
+                    println("   New Request ID: ${changeNameResponse?.newRequestId}")
+                    println("   New Ship Info ID: ${changeNameResponse?.newShipInfoId}")
+
+                    // ✅ Store the new request ID from API
+                    changeNameResponse?.newRequestId?.let { newId ->
+                        createdRequestId = newId
+                        accumulatedFormData["requestId"] = newId.toString()
+                        println("✅ Stored createdRequestId = $newId")
+                    }
+
+                    // ✅ Store new shipInfoId if provided
+                    changeNameResponse?.newShipInfoId?.let { newShipInfoId ->
+                        selectedShipInfoId = newShipInfoId
+                        accumulatedFormData["coreShipsInfoId"] = newShipInfoId.toString()
+                        println("✅ Updated coreShipsInfoId to: $newShipInfoId")
+                    }
+
+                    apiResponses["changeName"] = changeNameResponse ?: Any()
+                } else {
+                    val error = response.exceptionOrNull()?.message ?: "فشل تغيير اسم السفينة"
+                    println("❌ Name change failed: $error")
+                    lastApiError = error
+                    throw ApiException(500, error)
+                }
+            } catch (e: ApiException) {
+                println("❌ ApiException in name change: ${e.message}")
+                lastApiError = e.message ?: "Unknown error"
+                throw e
+            } catch (e: Exception) {
+                println("❌ Exception in name change: ${e.message}")
+                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                lastApiError = errorMsg
+                throw ApiException(500, errorMsg)
+            }
+        }
+
+        // ✅ Step 3: Affected Certificates (loaded in onStepOpened, not here)
+        // No action needed in processStepData - certificates loaded when step opens
+
+        // ✅ Step 4: Review Step (send-request)
+        if (stepType == StepType.REVIEW) {
+            println("📝 ✅ Review step completed - using ReviewManager...")
+
+            val requestIdInt = createdRequestId
+                ?: throw ApiException(400, "Missing request ID for review step")
+
+            val endpoint = transactionContext.sendRequestEndpoint
+            val contextName = transactionContext.displayName
+
+            println("🚀 Calling ReviewManager.processReviewStep:")
+            println("   Endpoint: $endpoint")
+            println("   RequestId: $requestIdInt")
+            println("   Context: $contextName")
+
+            try {
+                val reviewResult = reviewManager.processReviewStep(
+                    endpoint = endpoint,
+                    requestId = requestIdInt,
+                    transactionName = contextName,
+                    sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
+                )
+
+                when (reviewResult) {
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                        println("✅ Review step processed successfully!")
+                        println("   Message: ${reviewResult.message}")
+                        println("   Need Inspection: ${reviewResult.needInspection}")
+
+                        // ✅ Store response in formData
+                        accumulatedFormData["sendRequestMessage"] = reviewResult.message
+
+                        // ✅ Extract request number for display
+                        val requestNumber =
+                            reviewResult.additionalData?.get("requestNumber")?.toString()
+                                ?: reviewResult.additionalData?.get("requestSerial")?.toString()
+                                ?: accumulatedFormData["requestSerial"]
+                                ?: createdRequestId?.toString()
+                                ?: "N/A"
+
+                        accumulatedFormData["requestNumber"] = requestNumber
+                        println("   Request Number: $requestNumber")
+
+                        // ✅ STEP 1: Get hasAcceptance from formData (set via setHasAcceptanceFromApi)
+                        val hasAcceptanceFromFormData =
+                            accumulatedFormData["hasAcceptance"]?.toBoolean() ?: false
+                        println("   Has Acceptance (from formData): $hasAcceptanceFromFormData")
+
+                        // ✅ STEP 2: Check hasAcceptance FIRST (before inspection)
+                        if (hasAcceptanceFromFormData) {
+                            println("🛑 hasAcceptance=1: Transaction requires acceptance/approval")
+                            println("   Stopping transaction - user must continue from profile later")
+
+                            // Store success message for dialog
+                            accumulatedFormData["successMessage"] = reviewResult.message
+                            accumulatedFormData["requestSubmitted"] = "true"
+
+                            // Return -2 to indicate: success but stop transaction (show dialog)
+                            return -2
+                        }
+
+                        // ✅ STEP 3: Check if inspection is required (from API response)
+                        if (inspectionFlowManager.isInspectionRequired(reviewResult.needInspection)) {
+                            println("🔍 Inspection is required - preparing dialog")
+                            println("📋 Change name request was ALREADY submitted successfully")
+
+                            // Prepare inspection dialog with parent transaction info
+                            // Request Type: 11 = Change Ship Name
+                            inspectionFlowManager.prepareInspectionDialog(
+                                message = "تم إرسال طلب تغيير اسم السفينة بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                formData = accumulatedFormData,
+                                parentRequestId = requestIdInt,
+                                parentRequestType = 11  // Change Ship Name
+                            )
+
+                            println("⚠️ Inspection required - showing dialog and blocking proceed")
+                            return step // Stay on current step to show dialog
+                        }
+
+                        // ✅ STEP 4: Check if this is a NEW request (not resumed)
+                        val isNewRequest =
+                            accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isResumedTransaction: ${accumulatedFormData["isResumedTransaction"]}")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - needInspection: ${reviewResult.needInspection}")
+                        println("   - hasAcceptance (from formData): $hasAcceptanceFromFormData")
+
+                        if (isNewRequest && !reviewResult.needInspection) {
+                            println("✅ NEW request submitted successfully - continuing to payment/next steps")
+                            println("   Transaction will continue normally")
+                            // Continue normally - don't return, let the flow proceed
+                        } else if (!isNewRequest) {
+                            println("✅ RESUMED request - continuing to next steps")
+                            // Continue normally for resumed transactions
+                        }
+
+                        // Trigger UI rebuild
+                        onStepsNeedRebuild?.invoke()
+                    }
+
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                        println("❌ Review step failed: ${reviewResult.message}")
+                        lastApiError = reviewResult.message
+                        throw ApiException(500, reviewResult.message)
+                    }
+                }
+            } catch (e: ApiException) {
+                // ✅ Re-throw ApiException (e.g. 401) so ViewModel can show refresh button
+                println("❌ ApiException in review step: ${e.code} - ${e.message}")
+                throw e
+            } catch (e: Exception) {
+                println("❌ Exception in review step: ${e.message}")
+                e.printStackTrace()
+                lastApiError = e.message ?: "حدث خطأ أثناء إرسال الطلب"
+                throw ApiException(500, e.message ?: "حدث خطأ أثناء إرسال الطلب")
+            }
+        }
+
+        if (currentStepData?.stepType == StepType.PAYMENT) {
+            println("💰 Handling Payment Step using PaymentManager")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = stepType,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment step processed: ${paymentResult.message}")
+
+                    // Trigger UI rebuild so payment details are shown (important for mortgage path)
+                    onStepsNeedRebuild?.invoke()
+
+                    // Check if payment was submitted successfully
+                    val showPaymentSuccessDialog =
+                        accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+                    if (showPaymentSuccessDialog) {
+                        println("✅ Payment submitted successfully - dialog will be shown")
+                        return step
+                    }
+                }
+
+                is StepProcessResult.Error -> {
+                    println("❌ Payment step failed: ${paymentResult.message}")
+                    lastApiError = paymentResult.message
+                    return -1
+                }
+
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No payment action needed")
+                }
+            }
+        }
 
         return step
     }
@@ -230,58 +751,9 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
         return repository.submitRegistration(data)
     }
 
-    override fun handleFieldChange(fieldId: String, value: String, formData: Map<String, String>): Map<String, String> {
-        if (fieldId == "owner_type") {
-            val mutableFormData = formData.toMutableMap()
-            when (value) {
-                "فرد" -> {
-                    mutableFormData.remove("companyName")
-                    mutableFormData.remove("companyRegistrationNumber")
-                }
-            }
-            return mutableFormData
-        }
-
-        // ✅ Handle fishing boat selection from unitType dropdown
-        if (fieldId == "unitType") {
-            println("🔍 DEBUG - unitType changed to: $value")
-
-            // Check if the selected type is fishing boat
-            if (value == "قارب صيد" || value.contains("صيد") || value.contains("Fishing")) {
-                println("✅ Fishing boat selected! Setting flag and storing in accumulated data")
-                isFishingBoat = true
-                fishingBoatDataLoaded = false // Reset loaded flag when type changes
-                accumulatedFormData["isFishingBoat"] = "true"
-                // ✅ Store the unitType mortgageValue immediately
-                accumulatedFormData["unitType"] = value
-            } else {
-                println("❌ Not a fishing boat. Hiding agriculture field")
-                isFishingBoat = false
-                fishingBoatDataLoaded = false
-                accumulatedFormData.remove("isFishingBoat")
-                accumulatedFormData.remove("agricultureRequestNumber")
-                // ✅ Store the unitType mortgageValue immediately
-                accumulatedFormData["unitType"] = value
-            }
-
-            // ✅ Return updated formData to trigger step refresh
-            val updatedFormData = formData.toMutableMap()
-            updatedFormData["unitType"] = value
-            updatedFormData["_triggerRefresh"] = System.currentTimeMillis().toString()
-            return updatedFormData
-        }
-
-        return formData
-    }
-
     override suspend fun onFieldFocusLost(fieldId: String, value: String): FieldFocusResult {
         if (fieldId == "companyRegistrationNumber") {
             return handleCompanyRegistrationLookup(value)
-        }
-
-        // ✅ Handle agriculture request number lookup for fishing boats
-        if (fieldId == "agricultureRequestNumber") {
-            return handleAgricultureRequestLookup(value)
         }
 
         return FieldFocusResult.NoAction
@@ -324,188 +796,101 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
         }
     }
 
-    /**
-     * Handle Ministry of Agriculture request number lookup for fishing boats
-     * Fetches all boat data from Ministry API and auto-fills form fields
-     */
-    private suspend fun handleAgricultureRequestLookup(requestNumber: String): FieldFocusResult {
-        if (requestNumber.isBlank()) {
-            return FieldFocusResult.Error("agricultureRequestNumber", "رقم طلب وزارة الزراعة مطلوب")
-        }
+    override suspend fun onStepOpened(stepIndex: Int) {
+        val step = getSteps().getOrNull(stepIndex) ?: return
 
-        if (requestNumber.length < 5) {
-            return FieldFocusResult.Error("agricultureRequestNumber", "رقم الطلب يجب أن يكون 5 أرقام على الأقل")
-        }
+        // ✅ If this is the name change step, set current name value
+        if (step.stepType == StepType.MARINE_UNIT_NAME_SELECTION) {
+            println("📝 Name change step opened - setting current name value...")
 
-        return try {
-            println("🔍 Fetching fishing boat data from Ministry of Agriculture...")
+            val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
+            if (selectedUnitsJson != null) {
+                try {
+                    val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
+                    val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                    val firstShipId = shipIds.firstOrNull()
 
-            // ✅ Use marineUnitRepository instead of agricultureRepository
-            val result = marineUnitRepository.getFishingBoatData(requestNumber)
+                    if (firstShipId != null) {
+                        val selectedShip = marineUnits.firstOrNull { it.id == firstShipId }
+                        val shipName = selectedShip?.name
 
-            if (result.isSuccess) {
-                val boatData = result.getOrNull()
+                        println("📍 Display current ship name: '$shipName'")
 
-                if (boatData != null) {
-                    println("✅ Boat data loaded successfully from Ministry")
-
-                    // ✅ Mark that data has been loaded
-                    fishingBoatDataLoaded = true
-                    accumulatedFormData["fishingBoatDataLoaded"] = "true"
-
-                    // ✅ Auto-fill ALL form fields with data from Ministry
-                    val fieldsToUpdate = mutableMapOf<String, String>()
-
-                    // Unit Selection Data
-                    fieldsToUpdate["unitType"] = boatData.unitType
-                    fieldsToUpdate["unitClassification"] = boatData.unitClassification
-                    fieldsToUpdate["callSign"] = boatData.callSign
-                    boatData.imoNumber?.let { fieldsToUpdate["imoNumber"] = it }
-                    fieldsToUpdate["registrationPort"] = boatData.registrationPort
-                    boatData.mmsi?.let { fieldsToUpdate["mmsi"] = it }
-                    fieldsToUpdate["manufacturerYear"] = boatData.manufacturerYear
-                    fieldsToUpdate["maritimeActivity"] = boatData.maritimeActivity
-                    boatData.buildingDock?.let { fieldsToUpdate["buildingDock"] = it }
-                    boatData.constructionPool?.let { fieldsToUpdate["constructionPool"] = it }
-                    boatData.buildingMaterial?.let { fieldsToUpdate["buildingMaterial"] = it }
-                    boatData.constructionStartDate?.let { fieldsToUpdate["constructionStartDate"] = it }
-                    boatData.constructionEndDate?.let { fieldsToUpdate["constructionEndDate"] = it }
-                    boatData.buildingCountry?.let { fieldsToUpdate["buildingCountry"] = it }
-                    boatData.firstRegistrationDate?.let { fieldsToUpdate["registrationDate"] = it }
-                    boatData.registrationCountry?.let { fieldsToUpdate["registrationCountry"] = it }
-
-                    // Dimensions
-                    fieldsToUpdate["overallLength"] = boatData.overallLength
-                    fieldsToUpdate["overallWidth"] = boatData.overallWidth
-                    fieldsToUpdate["depth"] = boatData.depth
-                    boatData.height?.let { fieldsToUpdate["height"] = it }
-                    boatData.decksCount?.let { fieldsToUpdate["decksCount"] = it }
-
-                    // Weights
-                    fieldsToUpdate["grossTonnage"] = boatData.grossTonnage
-                    fieldsToUpdate["netTonnage"] = boatData.netTonnage
-                    boatData.staticLoad?.let { fieldsToUpdate["staticLoad"] = it }
-                    boatData.maxPermittedLoad?.let { fieldsToUpdate["maxPermittedLoad"] = it }
-
-                    // Owner Info (Primary Owner - for backward compatibility)
-                    fieldsToUpdate["ownerFullNameAr"] = boatData.ownerFullNameAr
-                    boatData.ownerFullNameEn?.let { fieldsToUpdate["ownerFullNameEn"] = it }
-                    fieldsToUpdate["ownerNationality"] = boatData.ownerNationality
-                    fieldsToUpdate["ownerIdNumber"] = boatData.ownerIdNumber
-                    boatData.ownerPassportNumber?.let { fieldsToUpdate["ownerPassportNumber"] = it }
-                    fieldsToUpdate["ownerMobile"] = boatData.ownerMobile
-                    boatData.ownerEmail?.let { fieldsToUpdate["ownerEmail"] = it }
-                    boatData.ownerAddress?.let { fieldsToUpdate["ownerAddress"] = it }
-                    boatData.ownerCity?.let { fieldsToUpdate["ownerCity"] = it }
-                    fieldsToUpdate["ownerCountry"] = boatData.ownerCountry
-                    boatData.ownerPostalCode?.let { fieldsToUpdate["ownerPostalCode"] = it }
-
-                    // ✅ NEW: Handle Multiple Owners (if provided by Ministry API)
-                    if (!boatData.owners.isNullOrEmpty()) {
-                        println("✅ Ministry API returned ${boatData.owners.size} owners - preparing to auto-fill")
-
-                        // ✅ Convert Ministry API format to UI format
-                        val uiOwners = boatData.owners.map { apiOwner ->
-                            convertApiOwnerToUI(apiOwner)
+                        if (!shipName.isNullOrBlank()) {
+                            accumulatedFormData["current_ship_name"] = shipName
+                            println("✅ Setting current_ship_name = $shipName")
                         }
-
-                        val ownersJson = Json.encodeToString(uiOwners)
-                        fieldsToUpdate["owners"] = ownersJson
-                        fieldsToUpdate["totalOwnersCount"] = boatData.totalOwnersCount ?: boatData.owners.size.toString()
-
-                        println("📋 Owners JSON: $ownersJson")
-                    } else {
-                        println("ℹ️ No multiple owners data from Ministry - using primary owner only")
                     }
-
-                    // ✅ NEW: Handle Engine Information (if provided by Ministry API)
-                    if (!boatData.engines.isNullOrEmpty()) {
-                        println("✅ Ministry API returned ${boatData.engines.size} engines - preparing to auto-fill")
-
-                        // ✅ Convert Ministry API format to UI format
-                        val uiEngines = boatData.engines.map { apiEngine ->
-                            convertApiEngineToUI(apiEngine)
-                        }
-
-                        val enginesJson = Json.encodeToString(uiEngines)
-                        fieldsToUpdate["engines"] = enginesJson
-
-                        println("🔧 Engines JSON: $enginesJson")
-                    } else {
-                        println("ℹ️ No engine data from Ministry - user will need to add manually")
-                    }
-
-                    // Store in accumulated data
-                    accumulatedFormData.putAll(fieldsToUpdate)
-
-                    println("✅ Auto-filled ${fieldsToUpdate.size} fields from Ministry data")
-                    println("   - Engines: ${boatData.engines?.size ?: 0}")
-                    println("   - Owners: ${boatData.owners?.size ?: 0}")
-
-                    FieldFocusResult.UpdateFields(fieldsToUpdate)
-                } else {
-                    FieldFocusResult.Error("agricultureRequestNumber", "لم يتم العثور على بيانات القارب")
+                } catch (e: Exception) {
+                    println("⚠️ Failed to extract current ship name: ${e.message}")
+                    e.printStackTrace()
                 }
-            } else {
-                FieldFocusResult.Error(
-                    "agricultureRequestNumber",
-                    result.exceptionOrNull()?.message ?: "فشل في تحميل بيانات القارب من وزارة الزراعة"
-                )
             }
-        } catch (e: Exception) {
-            println("❌ Error fetching agriculture data: ${e.message}")
-            e.printStackTrace()
-            FieldFocusResult.Error(
-                "agricultureRequestNumber",
-                e.message ?: "حدث خطأ غير متوقع"
-            )
         }
-    }
 
-    /**
-     * Convert Ministry API EngineData to UI EngineData format
-     */
-    private fun convertApiEngineToUI(apiEngine: com.informatique.mtcit.data.repository.EngineData): UIEngineData {
-        return UIEngineData(
-            id = java.util.UUID.randomUUID().toString(),
-            number = apiEngine.engineNumber,
-            type = apiEngine.engineType,
-            power = apiEngine.enginePower,
-            cylinder = apiEngine.cylindersCount,
-            manufacturer = apiEngine.manufacturer,
-            model = apiEngine.model,
-            manufactureYear = apiEngine.manufactureYear,
-            productionCountry = apiEngine.producingCountry,
-            fuelType = apiEngine.fuelType,
-            condition = apiEngine.engineCondition,
-            documentUri = "",
-            documentName = ""
-        )
-    }
+        // ✅ If this is the affected certificates step, load certificates from API
+        if (step.stepType == StepType.AFFECTED_CERTIFICATES) {
+            println("📜 ✅ Affected Certificates step opened - loading from API...")
 
-    /**
-     * Convert Ministry API OwnerData to UI OwnerData format
-     */
-    private fun convertApiOwnerToUI(apiOwner: com.informatique.mtcit.data.repository.OwnerData): UIOwnerData {
-        return UIOwnerData(
-            id = java.util.UUID.randomUUID().toString(),
-            fullName = apiOwner.ownerFullNameAr, // UI uses single fullName field
-            nationality = apiOwner.ownerNationality,
-            idNumber = apiOwner.ownerIdNumber,
-            ownerShipPercentage = apiOwner.ownershipPercentage, // Note: different spelling
-            email = apiOwner.ownerEmail,
-            mobile = apiOwner.ownerMobile,
-            address = apiOwner.ownerAddress,
-            city = apiOwner.ownerCity,
-            country = apiOwner.ownerCountry,
-            postalCode = apiOwner.ownerPostalCode,
-            isCompany = apiOwner.companyName.isNotEmpty(), // Set isCompany if company name exists
-            companyRegistrationNumber = apiOwner.companyRegistrationNumber,
-            companyName = apiOwner.companyName,
-            companyType = "", // Ministry API doesn't provide company type
-            ownershipProofDocument = "", // Document will be empty initially
-            documentName = ""
-        )
+            try {
+                val shipInfoId = accumulatedFormData["shipInfoId"]?.toIntOrNull()
+                    ?: accumulatedFormData["coreShipsInfoId"]?.toIntOrNull()
+                    ?: throw ApiException(400, "Missing shipInfoId for affected certificates")
+
+                println("📤 Calling affected-certificates API with shipInfoId=$shipInfoId, requestTypeId=$requestTypeId")
+
+                val certificates = repository.getAffectedCertificates(
+                    shipInfoId = shipInfoId,
+                    requestTypeId = requestTypeId.toInt()
+                )
+
+                if (certificates.isSuccess) {
+                    val affectedCerts = certificates.getOrNull() ?: emptyList()
+                    println("✅ Loaded ${affectedCerts.size} affected certificates")
+
+                    loadedCertificates.clear()
+                    loadedCertificates.addAll(affectedCerts)
+
+                    onStepsNeedRebuild?.invoke()
+                } else {
+                    val error = certificates.exceptionOrNull()?.message ?: "فشل تحميل الشهادات المتأثرة"
+                    println("❌ Failed to load certificates: $error")
+                }
+            } catch (e: Exception) {
+                println("❌ Exception loading certificates: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        // ✅ If this is the payment step, trigger payment API call
+        if (step.stepType == StepType.PAYMENT) {
+            println("💰 Payment step opened - triggering payment receipt API call...")
+
+            val paymentResult = paymentManager.processStepIfNeeded(
+                stepType = StepType.PAYMENT,
+                formData = accumulatedFormData,
+                requestTypeId = requestTypeId.toInt(),
+                context = transactionContext
+            )
+
+            when (paymentResult) {
+                is StepProcessResult.Success -> {
+                    println("✅ Payment data loaded successfully")
+                }
+                is StepProcessResult.Error -> {
+                    println("❌ Payment error: ${paymentResult.message}")
+                    accumulatedFormData["apiError"] = paymentResult.message
+                }
+                is StepProcessResult.NoAction -> {
+                    println("ℹ️ No action needed for payment")
+                }
+            }
+        }
+
+        println("✅ Finished loading all lookups for step $stepIndex")
+
+        // ✅ Rebuild steps after all lookups complete
+        onStepsNeedRebuild?.invoke()
     }
 
     /**
@@ -514,10 +899,10 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
      */
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         return try {
-            println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
+            println("🔍 ChangeNameOfShipOrUnitStrategy: Validating unit $unitId using TemporaryRegistrationRules")
 
             // Find the selected unit
-            val selectedUnit = marineUnits.firstOrNull { it.id.toString() == unitId }
+            val selectedUnit = marineUnits.firstOrNull { it.id == unitId }
 
             if (selectedUnit == null) {
                 println("❌ Unit not found with id: $unitId")
@@ -552,5 +937,13 @@ class ChangeNameOfShipOrUnitStrategy @Inject constructor(
         println("   Response type: ${response::class.simpleName}")
 
         return completedSteps
+    }
+
+    /**
+     * ✅ CRITICAL: Return accumulatedFormData so values set in onStepOpened
+     * (like current_port_of_registry) are propagated to UI state
+     */
+    override fun getFormData(): Map<String, String> {
+        return accumulatedFormData
     }
 }

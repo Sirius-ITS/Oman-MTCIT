@@ -1,5 +1,6 @@
 package com.informatique.mtcit.business.transactions.shared
 
+import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -96,11 +97,20 @@ class ReviewManager @Inject constructor(
                     ReviewResult.Error("لم يتم استلام رد من الخادم")
                 }
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                val cause = result.exceptionOrNull()
+                val errorMessage = cause?.message ?: "Unknown error"
                 println("❌ Review API call failed: $errorMessage")
                 println("=" .repeat(80))
+                // ✅ Always re-throw any exception so the ViewModel sees the real HTTP code (e.g. 401)
+                // Using cause != null check instead of `is ApiException` to avoid potential type-check issues
+                if (cause != null) throw cause
                 ReviewResult.Error(errorMessage)
             }
+        } catch (e: ApiException) {
+            // ✅ Re-throw ApiException (401, 403, etc.) — do NOT convert to ReviewResult.Error
+            println("❌ ApiException in ReviewManager.processReviewStep: ${e.code} - ${e.message}")
+            println("=" .repeat(80))
+            throw e
         } catch (e: Exception) {
             println("❌ Exception in ReviewManager.processReviewStep: ${e.message}")
             e.printStackTrace()

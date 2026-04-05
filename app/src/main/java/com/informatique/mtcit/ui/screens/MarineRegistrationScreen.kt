@@ -61,7 +61,19 @@ fun MarineRegistrationScreen(
     // ✅ NEW: Observe file viewer dialog state
     val fileViewerState by viewModel.fileViewerState.collectAsStateWithLifecycle()
 
+    // ✅ NEW: Observe login navigation trigger (when refresh token is also expired)
+    val shouldNavigateToLogin by viewModel.shouldNavigateToLogin.collectAsStateWithLifecycle()
+
     val context = LocalContext.current
+
+    // ✅ Navigate to OAuth login when refresh token is also expired
+    LaunchedEffect(shouldNavigateToLogin) {
+        if (shouldNavigateToLogin) {
+            println("🔑 MarineRegistrationScreen: Refresh token expired - navigating to login")
+            viewModel.resetNavigateToLogin()
+            navController.navigate(NavRoutes.OAuthWebViewRoute.route)
+        }
+    }
 
     // ✅ NEW: Show Toast messages
     LaunchedEffect(showToast) {
@@ -419,6 +431,13 @@ private fun getMarineRegistrationTitle(transactionType: TransactionType): String
         TransactionType.RELEASE_MORTGAGE -> localizedApp(R.string.transaction_release_mortgage)
         TransactionType.ISSUE_NAVIGATION_PERMIT -> localizedApp(R.string.transaction_issue_navigation_permit)
         TransactionType.RENEW_NAVIGATION_PERMIT -> localizedApp(R.string.transaction_renew_navigation_permit)
+        TransactionType.SHIP_NAME_CHANGE -> localizedApp(R.string.transaction_ship_name_change)
+        TransactionType.CAPTAIN_NAME_CHANGE -> localizedApp(R.string.transaction_captain_name_change)
+        TransactionType.SHIP_ACTIVITY_CHANGE -> localizedApp(R.string.transaction_ship_activity_change)
+        TransactionType.SHIP_DIMENSIONS_CHANGE -> localizedApp(R.string.transaction_ship_dimensions_change)
+        TransactionType.SHIP_ENGINE_CHANGE -> localizedApp(R.string.transaction_ship_engine_change)
+        TransactionType.SHIP_PORT_CHANGE -> localizedApp(R.string.transaction_ship_port_change)
+        TransactionType.SHIP_OWNERSHIP_CHANGE -> localizedApp(R.string.transaction_ship_ownership_change)
         else -> "Unknown Transaction"
     }
 }

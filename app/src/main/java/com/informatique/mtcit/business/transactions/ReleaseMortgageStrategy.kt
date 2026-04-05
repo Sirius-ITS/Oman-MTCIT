@@ -61,6 +61,12 @@ class ReleaseMortgageStrategy @Inject constructor(
     private var marineUnits: List<MarineUnit> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
+
     // ✅ NEW: Store required documents from API
     private var requiredDocuments: List<com.informatique.mtcit.data.model.RequiredDocumentItem> = emptyList()
 
@@ -150,27 +156,48 @@ class ReleaseMortgageStrategy @Inject constructor(
             else -> Pair(null, null)
         }
 
-        println("🔍 Calling loadShipsForOwner with:")
-        println("   ownerCivilId=$ownerCivilId")
-        println("   commercialRegNumber=$commercialRegNumber")
-        println("   requestTypeId=13 (Release Mortgage)")
-
-        // ✅ Use loadShipsForOwner instead of loadMortgagedShipsForOwner
-        // This will filter ships by requestTypeId and send proper parameters based on person type
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
-            commercialRegNumber = commercialRegNumber, // ✅ null for individuals, CR Number for companies
-            // **********************************************************************************************************
-            //Request Type Id
-            requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId() // ✅ Release Mortgage ID
+            commercialRegNumber = commercialRegNumber,
+            requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId(),
+            page = 0
         )
-        println("✅ Loaded ${marineUnits.size} ships for Release Mortgage")
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
+        println("✅ Loaded ${marineUnits.size} ships for Release Mortgage (isLast=$_isLastShipsPage)")
         return marineUnits
     }
 
     override suspend fun clearLoadedShips() {
         println("🧹 Clearing loaded ships cache")
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (ReleaseMortgage) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = TransactionType.RELEASE_MORTGAGE.toRequestTypeId(),
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     override fun updateAccumulatedData(data: Map<String, String>) {
@@ -539,6 +566,10 @@ class ReleaseMortgageStrategy @Inject constructor(
                         return -1 // Block navigation
                     }
                 }
+            } catch (e: com.informatique.mtcit.common.ApiException) {
+                // ✅ Re-throw ApiException (e.g. 401) so ViewModel can show refresh button
+                println("❌ ApiException in review step: ${e.code} - ${e.message}")
+                throw e
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()

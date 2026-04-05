@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -118,7 +119,7 @@ class PaymentManager @Inject constructor(
 
                                 // ✅ Step 2: Issue certificate (skip payment gateway for free/paid services)
                                 println("   Step 2: Issuing certificate...")
-                                val certResult = issueCertificate(requestTypeId, requestIdInt)
+                                val certResult = issueCertificate(requestTypeId, requestIdInt, formData)
 
                                 certResult.fold(
                                     onSuccess = { certificateUrl ->
@@ -273,6 +274,12 @@ class PaymentManager @Inject constructor(
                                         formData["isPaid"] = "1"
                                         formData["paymentAlreadyCompleted"] = "true"
                                         formData["shouldIssueCertificate"] = "true"
+                                        // ✅ Clear any stale WebView trigger from a previous payment attempt
+                                        // to prevent the payment WebView from opening instead of the certificate UI
+                                        formData.remove("_triggerPaymentWebView")
+                                        formData.remove("paymentRedirectHtml")
+                                        formData.remove("paymentRedirectSuccessUrl")
+                                        formData.remove("paymentRedirectCanceledUrl")
                                         // Don't auto-issue - let user click button to issue
                                         // Skip payment gateway redirect
                                         return@fold StepProcessResult.Success("Payment completed - ready for certificate issuance")
@@ -483,21 +490,21 @@ class PaymentManager @Inject constructor(
     }
 
     /**
-     * ✅ NEW: Issue certificate for free services or already paid requests
-     * Called when finalTotal == 0 or isPaid == 1
+     * ✅ Issue certificate for free services or already paid requests
+     * Returns Result<String> with the primary certificate URL.
+     * For types 10-13 (affected-certificates), also stores all cert numbers in formData.
      */
     private suspend fun issueCertificate(
         requestTypeId: Int,
-        requestId: Int
+        requestId: Int,
+        formData: MutableMap<String, String>? = null
     ): Result<String> {
         return try {
             println("🎫 PaymentManager: Issuing certificate...")
             println("   RequestTypeId: $requestTypeId")
             println("   RequestId: $requestId")
 
-            // Get issuance endpoint from mapping
             val issuanceEndpoint = RequestTypeEndpoint.getIssuanceEndpoint(requestTypeId, requestId)
-
             if (issuanceEndpoint == null) {
                 println("❌ PaymentManager: Issuance not supported for type ID: $requestTypeId")
                 return Result.failure(Exception("إصدار الشهادة غير مدعوم لهذا النوع"))
@@ -505,7 +512,6 @@ class PaymentManager @Inject constructor(
 
             println("📡 PaymentManager: Using issuance endpoint: $issuanceEndpoint")
 
-            // Call issuance API
             val result = withContext(Dispatchers.IO) {
                 userRequestsRepository.issueCertificate(issuanceEndpoint)
             }
@@ -515,16 +521,28 @@ class PaymentManager @Inject constructor(
                     println("✅ PaymentManager: Certificate issued successfully")
                     println("📄 Response message: ${response.message}")
 
-                    // Extract certificate URL from response
-                    val certificateUrl = extractCertificateUrl(response, requestTypeId, requestId)
+                    val extracted = extractCertificateInfo(response, requestTypeId)
 
-                    if (certificateUrl == null) {
+                    // For multi-cert types, store all cert data in formData
+                    if (extracted.allCertificates.isNotEmpty() && formData != null) {
+                        // Store as JSON array: [{"number":"MTCIT-...","typeEn":"Nav license","url":"..."},...]
+                        val jsonArray = extracted.allCertificates.joinToString(
+                            prefix = "[", postfix = "]"
+                        ) { cert ->
+                            """{"number":"${cert.number}","typeEn":"${cert.typeEn}","typeAr":"${cert.typeAr}","url":"${cert.url}"}"""
+                        }
+                        formData["affectedCertificatesList"] = jsonArray
+                        println("✅ Stored ${extracted.allCertificates.size} affected certificates in formData")
+                    }
+
+                    val primaryUrl = extracted.primaryUrl
+                    if (primaryUrl == null) {
                         println("❌ PaymentManager: Failed to extract certificate URL from response")
                         return@fold Result.failure(Exception("Failed to extract certificate URL"))
                     }
 
-                    println("✅ Certificate URL: $certificateUrl")
-                    Result.success(certificateUrl)
+                    println("✅ Primary certificate URL: $primaryUrl")
+                    Result.success(primaryUrl)
                 },
                 onFailure = { error ->
                     println("❌ PaymentManager: Error issuing certificate: ${error.message}")
@@ -538,71 +556,149 @@ class PaymentManager @Inject constructor(
         }
     }
 
+    // ─── Data classes ────────────────────────────────────────────────────────
+
+    private data class CertInfo(
+        val number: String,
+        val typeEn: String,
+        val typeAr: String,
+        val url: String
+    )
+
+    private data class ExtractionResult(
+        val primaryUrl: String?,
+        val allCertificates: List<CertInfo> = emptyList()
+    )
+
+    // ─── Extraction helper ────────────────────────────────────────────────────
+
     /**
-     * ✅ Extract certificate URL from response
+     * Extracts certificate info from the API response.
+     *
+     * Types 10/11/12/13 → AffectedCertificatesAndCountResDto
+     *   { "count": N, "affectedCertificates": [ { "certificationNumber": "...", "certificationType": {...} } ] }
+     *
+     * Other types → single certificationNumber directly in data (or nested object).
      */
-    private fun extractCertificateUrl(
+    private fun extractCertificateInfo(
         response: com.informatique.mtcit.data.model.requests.RequestDetailResponse,
-        requestTypeId: Int,
-        requestId: Int
-    ): String? {
+        requestTypeId: Int
+    ): ExtractionResult {
         return try {
+            val baseUrl = "https://mtimedev.mtcit.gov.om/services"
             val dataObject = response.data.jsonObject
 
-            // ✅ Extract certification number from response (structure varies by transaction type)
+            // ── Types with AffectedCertificatesAndCountResDto ──────────────
+            if (requestTypeId in listOf(10, 11, 12, 13)) {
+                val affectedCerts = dataObject["affectedCertificates"]?.jsonArray
+                if (affectedCerts == null || affectedCerts.isEmpty()) {
+                    println("⚠️ affectedCertificates is null/empty for typeId=$requestTypeId")
+                    return ExtractionResult(primaryUrl = null)
+                }
+
+                val certInfoList = affectedCerts.mapNotNull { element ->
+                    val obj = element.jsonObject
+                    val number = obj["certificationNumber"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                    val typeObj = obj["certificationType"]?.jsonObject
+                    val typeEn = typeObj?.get("nameEn")?.jsonPrimitive?.contentOrNull ?: ""
+                    val typeAr = typeObj?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+                    val certTypeId = typeObj?.get("id")?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+
+                    // URL is determined by the CERTIFICATE TYPE (certificationType.id),
+                    // NOT by the change-transaction type. Each affected certificate has its
+                    // own canonical view URL based on what kind of certificate it is.
+                    val url = buildCertificateViewUrl(baseUrl, certTypeId, number)
+                    println("   🔗 certTypeId=$certTypeId → $url")
+                    CertInfo(number = number, typeEn = typeEn, typeAr = typeAr, url = url)
+                }
+
+                if (certInfoList.isEmpty()) {
+                    println("❌ Could not parse any cert numbers from affectedCertificates")
+                    return ExtractionResult(primaryUrl = null)
+                }
+
+                println("✅ Extracted ${certInfoList.size} affected certificates:")
+                certInfoList.forEach { println("   - ${it.number} (${it.typeEn}) → ${it.url}") }
+
+                return ExtractionResult(
+                    primaryUrl = certInfoList.first().url,
+                    allCertificates = certInfoList
+                )
+            }
+
+            // ── All other types — single certificationNumber ───────────────
             val certNumber = when (requestTypeId) {
                 4 -> {
-                    // Mortgage Certificate: nested in mortgageCertification
                     val mortgageCert = dataObject["mortgageCertification"]?.jsonObject
                     mortgageCert?.get("certificationNumber")?.jsonPrimitive?.contentOrNull
                 }
                 5 -> {
-                    // Mortgage Redemption: nested in mortgageRedemCertification (note: no "ption")
                     val redemptionCert = dataObject["mortgageRedemCertification"]?.jsonObject
                     redemptionCert?.get("certificationNumber")?.jsonPrimitive?.contentOrNull
                 }
-                7 -> {
-                    // Cancel Registration: nested in deletionCertification
-                    val deletionCert = dataObject["deletionCertification"]?.jsonObject
-                    deletionCert?.get("certificationNumber")?.jsonPrimitive?.contentOrNull
-                }
-                else -> {
-                    // Other types: direct field
-                    dataObject["certificationNumber"]?.jsonPrimitive?.contentOrNull
-                }
+                7 -> dataObject["certificationNumber"]?.jsonPrimitive?.contentOrNull
+                else -> dataObject["certificationNumber"]?.jsonPrimitive?.contentOrNull
             }
 
             println("🔍 Extracted certificationNumber: $certNumber")
 
-            if (certNumber != null) {
-                // Build certificate URL using exact format from backend
-                val baseUrl = "https://oman.isfpegypt.com/services"
-                val certificateUrl = when (requestTypeId) {
-                    1 -> "$baseUrl/temporary-registration/cert?certificateNumber=$certNumber&requestId=$requestId" // Temp Registration
-                    2 -> "$baseUrl/permanent-registration/cert?certificateNumber=$certNumber&requestId=$requestId" // Permanent Registration
-                    3 -> "$baseUrl/navigation-license/license-certificate?certificateNumber=$certNumber&requestId=$requestId" // Issue Navigation Permit
-                    4 -> "$baseUrl/mortgage-certificate/cert?certificateNumber=$certNumber&requestId=$requestId" // Mortgage Certificate
-                    5 -> "$baseUrl/mortgage-redemption/cert?certificateNumber=$certNumber&requestId=$requestId" // Release Mortgage
-                    6 -> "$baseUrl/navigation-license-renewal/renewal-license-certificate?certificateNumber=$certNumber&requestId=$requestId" // Renew Navigation Permit
-                    7 -> "$baseUrl/permanent-registration-cancellation/cert?certificateNumber=$certNumber&requestId=$requestId" // Cancel Permanent Registration
-                    8 -> null // Request Inspection - No certificate issuance
-                    else -> null
-                }
-
-                if (certificateUrl != null) {
-                    println("✅ Built certificate URL: $certificateUrl")
-                } else {
-                    println("❌ Certificate URL not supported for requestTypeId: $requestTypeId")
-                }
-                certificateUrl
-            } else {
+            if (certNumber == null) {
                 println("❌ Certificate number not found in response data")
-                null
+                return ExtractionResult(primaryUrl = null)
             }
+
+            val url = when (requestTypeId) {
+                1 -> "$baseUrl/temporary-registration/cert?certificateNumber=$certNumber"
+                2 -> "$baseUrl/permanent-registration/cert?certificateNumber=$certNumber"
+                3 -> "$baseUrl/navigation-license/license-certificate?certificateNumber=$certNumber"
+                4 -> "$baseUrl/mortgage-certificate/cert?certificateNumber=$certNumber"
+                5 -> "$baseUrl/mortgage-redemption/cert?certificateNumber=$certNumber"
+                6 -> "$baseUrl/navigation-license-renewal/renewal-license-certificate?certificateNumber=$certNumber"
+                7 -> "$baseUrl/permanent-registration-cancellation/cert?certificateNumber=$certNumber"
+                else -> null
+            }
+
+            if (url != null) println("✅ Built certificate URL: $url")
+            else println("❌ Certificate URL not supported for requestTypeId: $requestTypeId")
+
+            ExtractionResult(primaryUrl = url)
         } catch (e: Exception) {
             println("❌ Error extracting certificate URL: ${e.message}")
             e.printStackTrace()
-            null
+            ExtractionResult(primaryUrl = null)
         }
+    }
+
+    /**
+     * Builds the correct view URL for a certificate based on its **certificationType.id**.
+     *
+     * This is used for affected certificates returned by the change-info APIs (types 10/11/12/13).
+     * Each affected certificate has its own type (e.g. Permanent Registration, Navigation Renew License)
+     * and must be viewed via that certificate type's own URL — not the change-transaction URL.
+     *
+     * Mapping (certificationType.id → URL path segment):
+     *   1  → Provisional/Temp Registration certificate
+     *   2  → Permanent Registration certificate
+     *   3  → Navigation License certificate
+     *   4  → Navigation License certificate (variant)
+     *   5  → Navigation Renew License certificate
+     *   6  → Mortgage certificate
+     *   7  → Cancellation certificate
+     */
+    private fun buildCertificateViewUrl(baseUrl: String, certTypeId: Int?, certNumber: String): String {
+        val path = when (certTypeId) {
+            1 -> "temporary-registration/cert"
+            2 -> "permanent-registration/cert"
+            3 -> "navigation-license/license-certificate"
+            4 -> "navigation-license/license-certificate"
+            5 -> "navigation-license-renewal/renewal-license-certificate"
+            6 -> "mortgage-certificate/cert"
+            7 -> "permanent-registration-cancellation/cert"
+            else -> {
+                println("⚠️ Unknown certTypeId=$certTypeId — falling back to generic view URL")
+                "certificates/view"
+            }
+        }
+        return "$baseUrl/$path?certificateNumber=$certNumber"
     }
 }

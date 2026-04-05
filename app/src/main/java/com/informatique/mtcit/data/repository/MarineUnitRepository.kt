@@ -34,6 +34,22 @@ interface MarineUnitRepository {
     suspend fun loadMortgagedShipsForOwner(ownerId: String): List<MarineUnit>
 
     /**
+     * ✅ NEW: Load a single page of ships for infinite-scroll pagination
+     * @param ownerCivilId  Civil ID of the owner (required)
+     * @param commercialRegNumber CR Number for companies (optional)
+     * @param requestTypeId Transaction type ID for filtering
+     * @param page          Zero-based page index
+     * @param pageSize      Number of items per page (default 5)
+     */
+    suspend fun loadShipsPage(
+        ownerCivilId: String?,
+        commercialRegNumber: String?,
+        requestTypeId: String? = null,
+        page: Int = 0,
+        pageSize: Int = 5
+    ): com.informatique.mtcit.data.api.ShipsPage
+
+    /**
      * Get the current status of a marine unit
      * Returns: ACTIVE, SUSPENDED, CANCELLED
      */
@@ -266,6 +282,38 @@ class MarineUnitRepositoryImpl @Inject constructor(
         }.getOrElse {
             println("⚠️ Failed to fetch ships from API: ${it.message}")
             emptyList()
+        }
+    }
+
+    /**
+     * ✅ NEW: Load a single page of ships for infinite-scroll pagination
+     */
+    override suspend fun loadShipsPage(
+        ownerCivilId: String?,
+        commercialRegNumber: String?,
+        requestTypeId: String?,
+        page: Int,
+        pageSize: Int
+    ): com.informatique.mtcit.data.api.ShipsPage {
+        val testCivilId = "12345678"
+        val effectiveCivilId = ownerCivilId?.takeIf { it.isNotBlank() } ?: testCivilId
+
+        println("📄 loadShipsPage: page=$page size=$pageSize ownerCivilId=$effectiveCivilId commercialReg=$commercialRegNumber requestType=$requestTypeId")
+
+        return apiService.getMyShipsPage(
+            ownerCivilId = effectiveCivilId,
+            commercialRegNumber = commercialRegNumber?.takeIf { it.isNotBlank() },
+            requestTypeId = requestTypeId,
+            page = page,
+            pageSize = pageSize
+        ).getOrElse { e ->
+            println("⚠️ loadShipsPage failed: ${e.message}")
+            com.informatique.mtcit.data.api.ShipsPage(
+                ships = emptyList(),
+                currentPage = page,
+                totalPages = 0,
+                isLastPage = true
+            )
         }
     }
 

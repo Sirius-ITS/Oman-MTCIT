@@ -362,6 +362,8 @@
     <!-- Settings Screen - Arabic -->
     <string name="settings_language_section">اللغة</string>
     <string name="settings_theme_section">مظهر التطبيق</string>
+    <string name="settings_notifications_section">الإشعارات</string>
+    <string name="settings_receive_notifications">استقبال الإشعارات</string>
     <string name="settings_language_description">تغيير لغة التطبيق</string>
     <string name="settings_theme_description">اختر المظهر المفضل لديك</string>
     <string name="language_arabic">العربية</string>
@@ -957,14 +959,34 @@
     <string name="change_port_of_ship_or_unit_strategy_info_desc">نرجو منكم تعيين ميناء تسجيل السفينة أو الوحدة البحرية من قائمة المواني, وذلك لتأكيد المسؤولية القانونية والإدارية وفقاً لأنظمة المعمول بها.</string>
 
     <string name="current_port_of_registry">ميناء التسجيل الحالي</string>
+    <string name="previous_port_of_registry">الميناء السابق للسفينة</string>
     <string name="new_port_of_registry">ميناء التسجيل الجديد</string>
 
     <string name="change_port_of_ship_or_unit_strategy_info2">الشهادات التي سيتم تعديل ميناء تسجيل السفينة فيها</string>
     <string name="change_port_of_ship_or_unit_strategy_info_desc2">بناءً على طلبك بتغيير ميناء تسجيل السفينة, سيتم اعتماد ميناء تسجيل الجديد رسمياً وتحديثه في الشهادات الموضحة أدناه, وذلك لضمان مطابقة السجلات الرسمية واستمرارية الامتثال للمتطلبات البحرية.</string>
 
+    <string name="change_activity_certificate_step_title">الشهادات المتأثرة بتغيير النشاط البحري</string>
+    <string name="change_activity_certificate_step_desc">بناءً على طلبك بتغيير النشاط البحري للسفينة، سيتم اعتماد النشاط الجديد رسمياً وتحديثه في الشهادات الموضحة أدناه، وذلك لضمان مطابقة السجلات الرسمية واستمرارية الامتثال للمتطلبات البحرية.</string>
+
+    <string name="change_name_certificate_step_title">الشهادات المتأثرة بتغيير اسم السفينة</string>
+    <string name="change_name_certificate_step_desc">بناءً على طلبك بتغيير اسم السفينة، سيتم اعتماد الاسم الجديد رسمياً وتحديثه في الشهادات الموضحة أدناه، وذلك لضمان مطابقة السجلات الرسمية واستمرارية الامتثال للمتطلبات البحرية.</string>
+
+    <string name="change_captain_name_certificate_step_title">الشهادات المتأثرة بتغيير اسم ربان السفينة</string>
+    <string name="change_captain_name_certificate_step_desc">بناءً على طلبك بتغيير اسم ربان السفينة، سيتم اعتماد الاسم الجديد رسمياً وتحديثه في الشهادات الموضحة أدناه، وذلك لضمان مطابقة السجلات الرسمية واستمرارية الامتثال للمتطلبات البحرية.</string>
+
     <string name="change_activity_of_ship_or_unit_strategy_info">اختيار النشاط المطلوب</string>
     <string name="change_activity_of_ship_or_unit_strategy_info_desc">اختيار النشاط المناسب لضمان استيفاء المتطلبات القانونية والإدارية المعمول بها.</string>
     <string name="change_activity_of_ship_or_unit_strategy_info_dropdown">اختر النشاط الجديد</string>
     <string name="change_activity_of_ship_or_unit_strategy_info_dropdown_hint">اختر النشاط المطلوب التغيير اليه</string>
+
+    <string name="current_activity_of_registration">النشاط البحري الحالي</string>
+    <string name="previous_activity_of_registration">النشاط السابق للسفينة</string>
+
+    <!-- Change Name Of Ship Or Unit Strategy -->
+    <string name="change_name_of_ship_or_unit_strategy_info">تغيير اسم السفينة أو الوحدة البحرية</string>
+    <string name="change_name_of_ship_or_unit_strategy_info_desc">يرجى إدخال الاسم الجديد بالعربية والإنجليزية لتحديث السجلات الرسمية.</string>
+
+    <string name="current_ship_name">اسم السفينة الحالي</string>
+    <string name="previous_ship_name">الاسم السابق للسفينة</string>
 
 </resources>

@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,11 +44,14 @@ import com.informatique.mtcit.ui.screens.ShipDataModificationScreen
 import com.informatique.mtcit.ui.screens.TransactionListScreen
 import com.informatique.mtcit.ui.screens.TransactionRequirementsScreen
 import com.informatique.mtcit.ui.viewmodels.LoginViewModel
+import com.informatique.mtcit.ui.viewmodels.NotificationViewModel
 import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import com.informatique.mtcit.viewmodel.ThemeViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.net.URLDecoder
 
@@ -55,16 +59,21 @@ import java.net.URLDecoder
 fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManagerImpl){
 
     val sharedUserViewModel: SharedUserViewModel = hiltViewModel()
+    val notificationViewModel: NotificationViewModel = hiltViewModel()
     val context = LocalContext.current
 
     val navController = rememberNavController()
+    val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
 
-    // ✅ NEW: Check user role on app start and load it into SharedUserViewModel
+    // ✅ Check user role on app start + register FCM token if already logged in
     LaunchedEffect(Unit) {
         val role = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
         if (role != null) {
             sharedUserViewModel.setUserRole(role)
             Log.d("NavHost", "✅ User role loaded: $role")
+
+            // ✅ If already logged in, register FCM token and load notifications
+            registerFcmAndLoadNotifications(context, notificationViewModel)
 
             // ✅ If user is engineer, navigate directly to profile
             if (role.equals("engineer", ignoreCase = true)) {
@@ -128,7 +137,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
     ) {
 
         composable(NavRoutes.HomeRoute.route) {
-            HomePageScreen(navController = navController)
+            HomePageScreen(navController = navController, notificationViewModel = notificationViewModel)
         }
 
         // ✅ Login Screen - handles authentication before accessing transactions
@@ -200,6 +209,9 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                             println("✅ OAuth + Login complete! Setting navigation flag...")
                             shouldNavigateBack = true
 
+                            // ✅ Register FCM token and load notifications after login
+                            registerFcmAndLoadNotifications(context, notificationViewModel)
+
                             // ✅ CRITICAL: Set flag in savedStateHandle so LoginScreen can detect it
                             navController.previousBackStackEntry
                                 ?.savedStateHandle
@@ -218,9 +230,15 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 }
             }
 
+            // ✅ CRITICAL: Generate auth URL only ONCE when composable mounts.
+            // Calling buildAuthUrl() directly as a parameter causes it to be called on every
+            // recomposition, generating a new code_verifier each time and overwriting the stored
+            // one, making PKCE verification fail with "Code mismatch".
+            val authUrl = remember { LoginViewModel.buildAuthUrl() }
+
             OAuthWebViewScreen(
                 navController = navController,
-                authUrl = LoginViewModel.OAUTH_AUTH_URL,
+                authUrl = authUrl,
                 redirectUri = LoginViewModel.OAUTH_REDIRECT_URI,
                 onAuthCodeReceived = { code: String ->
                     println("✅ Authorization code received: $code")
@@ -242,11 +260,16 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                             // ✅ MAIN CATEGORIES / PROFILE SCREEN FLOW: Just exchange token and navigate back
                             println("🔄 OAuth from ${if (isFromMainCategories) "MainCategoriesScreen" else "ProfileScreen"} - exchanging token directly")
 
-                            val result = authRepository.exchangeCodeForToken(code)
+                            val result = authRepository.exchangeCodeForToken(code, LoginViewModel.lastCodeVerifier)
 
                             result.fold(
                                 onSuccess = {
                                     println("✅ Token exchanged successfully - checking user role")
+
+                                    // ✅ Register FCM token and load notifications after login
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        registerFcmAndLoadNotifications(context, notificationViewModel)
+                                    }
 
                                     // ✅ NEW: Check user role and navigate accordingly
                                     val userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
@@ -298,7 +321,8 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             SettingsScreen(
                 navController = navController,
                 sharedUserViewModel = sharedUserViewModel,
-                viewModel = themeViewModel
+                viewModel = themeViewModel,
+                notificationViewModel = notificationViewModel
             )
         }
 
@@ -321,12 +345,12 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         composable(
             route = NavRoutes.ProfileScreenRoute.route)
         { backStackEntry ->
-            ProfileScreen(navController)
+            ProfileScreen(navController, unreadNotificationCount = unreadCount)
         }
         composable(
             route = NavRoutes.NotificationScreen.route)
         { backStackEntry ->
-            NotificationScreen(navController)
+            NotificationScreen(navController, notificationViewModel = notificationViewModel)
         }
         // Transaction List Screen - Shows transactions for selected sub-category
         composable(NavRoutes.TransactionListRoute.route) { backStackEntry ->
@@ -340,18 +364,12 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             val data = backStackEntry.arguments?.getString("transactionId") ?: ""
             val transaction = Json.decodeFromString<Transaction>(data)
 
-            // ✅ Get MainCategoriesViewModel to access TransactionDetail with hasAcceptance
-            val categoriesViewModel: com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel = hiltViewModel()
-
             TransactionRequirementsScreen(
-                onStart = {
-                    // ✅ Get hasAcceptance from the TransactionDetail API response
-                    val hasAcceptanceValue = (categoriesViewModel.transactionDetail.value as? com.informatique.mtcit.ui.viewmodels.TransactionDetailUiState.Success)
-                        ?.detail?.hasAcceptance ?: 0
+                onStart = { hasAcceptanceValue ->
+                    // ✅ hasAcceptance is passed directly from TransactionRequirementsScreen's own viewmodel
 
                     println("🔑 hasAcceptance from TransactionDetail API: $hasAcceptanceValue (${if (hasAcceptanceValue == 1) "requires acceptance" else "continue to payment"})")
 
-                    // ✅ Navigate to LoginScreen first
                     // Map transaction ID to transaction type name
                     val transactionTypeName = when (transaction.id) {
                         4 -> "ISSUE_NAVIGATION_PERMIT"
@@ -370,17 +388,51 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                         else -> "TEMPORARY_REGISTRATION_CERTIFICATE"
                     }
 
-                    println("🚀 Navigating to Login with transactionType: $transactionTypeName")
+                    // ✅ Map transactionTypeName to the exact route string (mirrors LoginScreen logic)
+                    val transactionRoute = when (transactionTypeName) {
+                        "TEMPORARY_REGISTRATION_CERTIFICATE" -> "${NavRoutes.ShipRegistrationRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "PERMANENT_REGISTRATION_CERTIFICATE" -> "${NavRoutes.PermanentRegistrationRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "REQUEST_INSPECTION" -> "${NavRoutes.RequestForInspection.route}?hasAcceptance=$hasAcceptanceValue"
+                        "SUSPEND_REGISTRATION" -> "${NavRoutes.SuspendRegistrationRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "CANCEL_REGISTRATION" -> "${NavRoutes.CancelRegistrationRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "MORTGAGE_CERTIFICATE" -> "${NavRoutes.MortgageCertificateRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "RELEASE_MORTGAGE" -> "${NavRoutes.ReleaseMortgageRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "ISSUE_NAVIGATION_PERMIT" -> "${NavRoutes.IssueNavigationPermitRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "RENEW_NAVIGATION_PERMIT" -> "${NavRoutes.RenewNavigationPermitRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "SHIP_NAME_CHANGE" -> "${NavRoutes.ShipNameChangeRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "CAPTAIN_NAME_CHANGE" -> "${NavRoutes.CaptainNameChangeRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "SHIP_ACTIVITY_CHANGE" -> "${NavRoutes.ShipActivityChangeRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        "SHIP_PORT_CHANGE" -> "${NavRoutes.ShipPortChangeRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                        else -> "${NavRoutes.ShipRegistrationRoute.route}?hasAcceptance=$hasAcceptanceValue"
+                    }
 
-                    navController.navigate(
-                        NavRoutes.LoginRoute.createRoute(
-                            targetTransactionType = transactionTypeName,
-                            categoryId = "0",
-                            subCategoryId = "0",
-                            transactionId = transaction.id.toString(),
-                            hasAcceptance = hasAcceptanceValue.toString()  // ✅ Pass hasAcceptance
-                        )
-                    )
+                    // ✅ Check if user already has a valid (non-expired) token
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val tokenExpired = com.informatique.mtcit.data.datastorehelper.TokenManager
+                            .isTokenExpired(context)
+                        val hasToken = com.informatique.mtcit.data.datastorehelper.TokenManager
+                            .getAccessToken(context) != null
+
+                        if (hasToken && !tokenExpired) {
+                            // ✅ Already logged in — go straight to the transaction screen
+                            println("✅ Token valid — skipping login, navigating directly to: $transactionRoute")
+                            navController.navigate(transactionRoute) {
+                                popUpTo(NavRoutes.TransactionRequirementRoute.route) { inclusive = true }
+                            }
+                        } else {
+                            // ❌ No token or expired — go through login first
+                            println("🔐 Token missing/expired — navigating to LoginRoute for: $transactionTypeName")
+                            navController.navigate(
+                                NavRoutes.LoginRoute.createRoute(
+                                    targetTransactionType = transactionTypeName,
+                                    categoryId = "0",
+                                    subCategoryId = "0",
+                                    transactionId = transaction.id.toString(),
+                                    hasAcceptance = hasAcceptanceValue.toString()
+                                )
+                            )
+                        }
+                    }
                 },
                 onBack = { navController.popBackStack() },
                 // parentTitleRes = parentTitleRes,
@@ -736,31 +788,161 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
         }
 
         // Ship Data Modification Forms
-        composable(NavRoutes.ChangeNameOfShipOrUnitRoute.route) {
+        composable(NavRoutes.ShipNameChangeRoute.route) {
             ShipDataModificationScreen(
                 navController = navController,
                 transactionType = TransactionType.SHIP_NAME_CHANGE
             )
         }
 
+        // ✅ Change Ship Name with resume support
+        composable(
+            route = "${NavRoutes.ShipNameChangeRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
+
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.SHIP_NAME_CHANGE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
+        }
+
+        // ✅ Change Ship Activity with resume support
+        composable(
+            route = "${NavRoutes.ShipActivityChangeRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
+
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.SHIP_ACTIVITY_CHANGE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
+        }
+
+        // ✅ Change Port of Ship with resume support
+        composable(
+            route = "${NavRoutes.ShipPortChangeRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
+                }
+            )
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
+
+            MarineRegistrationScreen(
+                navController = navController,
+                transactionType = TransactionType.SHIP_PORT_CHANGE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
+            )
+        }
+
+        // ✅ Change Captain with hasAcceptance support (base route — no params)
         composable(NavRoutes.CaptainNameChangeRoute.route) {
-            ShipDataModificationScreen(
+            MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.CAPTAIN_NAME_CHANGE
+                transactionType = TransactionType.CAPTAIN_NAME_CHANGE,
+                requestId = null,
+                lastCompletedStep = null,
+                hasAcceptance = 0
             )
         }
 
-        composable(NavRoutes.ChangeActivityOfShipOrUnitRoute.route) {
-            ShipDataModificationScreen(
-                navController = navController,
-                transactionType = TransactionType.SHIP_ACTIVITY_CHANGE
+        // ✅ Change Captain with resume + hasAcceptance support
+        composable(
+            route = "${NavRoutes.CaptainNameChangeRoute.route}?requestId={requestId}&lastCompletedStep={lastCompletedStep}&hasAcceptance={hasAcceptance}",
+            arguments = listOf(
+                navArgument("requestId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("lastCompletedStep") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("hasAcceptance") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = "0"
+                }
             )
-        }
+        ) { backStackEntry ->
+            val requestId = backStackEntry.arguments?.getString("requestId")
+            val lastCompletedStepString = backStackEntry.arguments?.getString("lastCompletedStep")
+            val lastCompletedStep = lastCompletedStepString?.toIntOrNull()
+            val hasAcceptance = backStackEntry.arguments?.getString("hasAcceptance")?.toIntOrNull() ?: 0
 
-        composable(NavRoutes.ShipPortChangeRoute.route) {
-            ShipDataModificationScreen(
+            MarineRegistrationScreen(
                 navController = navController,
-                transactionType = TransactionType.SHIP_PORT_CHANGE
+                transactionType = TransactionType.CAPTAIN_NAME_CHANGE,
+                requestId = requestId,
+                lastCompletedStep = lastCompletedStep,
+                hasAcceptance = hasAcceptance
             )
         }
 
@@ -945,3 +1127,77 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
     }
 
 }
+
+/**
+ * Called after every successful login.
+ * - Loads the notifications-enabled preference into the ViewModel.
+ * - If notifications are enabled AND the token is not yet registered on the server,
+ *   fetches the FCM token (from DataStore cache or Firebase) and registers it.
+ * - Always loads the notification list so the badge count is fresh.
+ *
+ * Safe to call multiple times — it will NOT re-register if already registered.
+ */
+private suspend fun registerFcmAndLoadNotifications(
+    context: android.content.Context,
+    notificationViewModel: NotificationViewModel
+) {
+    try {
+        val userId = com.informatique.mtcit.data.datastorehelper.TokenManager.getCivilId(context)
+            ?: return
+
+        // Always sync the enabled preference into the ViewModel
+        val notificationsEnabled =
+            com.informatique.mtcit.data.datastorehelper.TokenManager.isNotificationsEnabled(context)
+        val alreadyRegistered =
+            com.informatique.mtcit.data.datastorehelper.TokenManager.isFcmRegistered(context)
+
+        withContext(Dispatchers.Main) {
+            notificationViewModel.loadNotificationsEnabled()
+        }
+
+        // Only register if: user has notifications ON and not yet registered
+        if (notificationsEnabled && !alreadyRegistered) {
+            // 1. Try stored token first
+            var fcmToken =
+                com.informatique.mtcit.data.datastorehelper.TokenManager.getFcmToken(context)
+
+            // 2. If not stored yet, fetch directly from Firebase
+            if (fcmToken.isNullOrBlank()) {
+                fcmToken = suspendCancellableCoroutine { cont ->
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+                        .addOnSuccessListener { token ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                com.informatique.mtcit.data.datastorehelper.TokenManager
+                                    .saveFcmToken(context, token)
+                            }
+                            cont.resumeWith(Result.success(token))
+                        }
+                        .addOnFailureListener {
+                            cont.resumeWith(Result.success(null))
+                        }
+                }
+            }
+
+            // 3. Register token — ViewModel will also persist the registered state on success
+            withContext(Dispatchers.Main) {
+                fcmToken?.let { notificationViewModel.registerFcmToken(userId, it) }
+            }
+            Log.d("NavHost", "✅ FCM registration triggered for user=$userId")
+        } else {
+            Log.d(
+                "NavHost",
+                "⏭️ FCM registration skipped — enabled=$notificationsEnabled, alreadyRegistered=$alreadyRegistered"
+            )
+        }
+
+        // Always refresh notification list
+        withContext(Dispatchers.Main) {
+            notificationViewModel.loadNotifications(userId)
+        }
+
+        Log.d("NavHost", "✅ Notifications loaded for user=$userId")
+    } catch (e: Exception) {
+        Log.e("NavHost", "❌ registerFcmAndLoadNotifications failed: ${e.message}")
+    }
+}
+

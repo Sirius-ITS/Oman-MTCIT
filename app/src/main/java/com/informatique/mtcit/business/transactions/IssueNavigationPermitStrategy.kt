@@ -47,15 +47,18 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
     private var countryOptions: List<String> = emptyList()
     private var marineUnits: List<MarineUnit> = emptyList()
-
     private var commercialOptions: List<SelectableItem> = emptyList()
-
     private var typeOptions: List<PersonType> = emptyList()
     private var sailingRegionsOptions: List<NavigationArea> = emptyList()
     private var crewJobTitles: List<String> = emptyList()
-
     private val requestTypeId = TransactionType.ISSUE_NAVIGATION_PERMIT.toRequestTypeId()
     private val transactionContext: TransactionContext = TransactionType.ISSUE_NAVIGATION_PERMIT.context
+
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
     // Cache for accumulated form data (used to decide steps like other strategies)
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
 
@@ -158,22 +161,49 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         println("🔍 Calling loadShipsForOwner with ownerCivilId=$ownerCivilId, commercialRegNumber=$commercialRegNumber")
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
             commercialRegNumber = commercialRegNumber,
-            // **********************************************************************************************************
-            //Request Type Id
-            requestTypeId = TransactionType.ISSUE_NAVIGATION_PERMIT.toRequestTypeId() // ✅ Issue Navigation Permit ID
+            requestTypeId = requestTypeId,
+            page = 0
         )
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
 
-        println("✅ IssueNavigationPermit - Loaded ${marineUnits.size} ships")
+        println("✅ IssueNavigationPermit - Loaded ${marineUnits.size} ships (isLast=$_isLastShipsPage)")
         marineUnits.forEach { println("   - ${it.shipName} (ID: ${it.id})") }
-
         return marineUnits
     }
 
     override suspend fun clearLoadedShips() {
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (IssueNavPermit) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = requestTypeId,
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     override fun updateAccumulatedData(data: Map<String, String>) {

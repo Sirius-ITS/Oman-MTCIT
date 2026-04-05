@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,21 +75,33 @@ import com.informatique.mtcit.ui.models.MainCategory
 import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.theme.fontTypography
+import com.informatique.mtcit.ui.viewmodels.NotificationViewModel
 import android.graphics.Color as AndroidColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomePageScreen(navController: NavController) {
+fun HomePageScreen(
+    navController: NavController,
+    notificationViewModel: NotificationViewModel
+) {
     val categories = LocalCategories.current
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
     val window = (context as? Activity)?.window
+
+    // Collect unread notification count for the bottom bar badge
+    val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
 
     // ✅ NEW: Check user role to hide bottom bar for engineers
     var userRole by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+        // Load notifications so the badge shows on the bottom bar
+        val userId = com.informatique.mtcit.data.datastorehelper.TokenManager.getCivilId(context)
+        if (!userId.isNullOrBlank()) {
+            notificationViewModel.loadNotifications(userId)
+        }
     }
 
     val isEngineer = userRole?.equals("engineer", ignoreCase = true) == true
@@ -217,7 +230,8 @@ fun HomePageScreen(navController: NavController) {
             ) {
                 CustomToolbar(
                     navController = navController ,
-                    currentRoute = "homepage"
+                    currentRoute = "homepage",
+                    unreadNotificationCount = unreadCount
                 )
             }
         }
@@ -229,11 +243,27 @@ fun TopProfileBar(
     navController: NavController
 ) {
     val context = LocalContext.current
+    // Observe the app locale from the composition provider - updates reactively when language changes
+    val appLocale = com.informatique.mtcit.common.util.LocalAppLocale.current
     var userName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
-    // Load user name from token
-    LaunchedEffect(Unit) {
-        userName = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserName(context)
+    // Re-load user name whenever the app locale changes (no deprecated API, no restart needed)
+    LaunchedEffect(appLocale) {
+        val userData = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserData(context)
+        val currentLanguage = appLocale.language
+        userName = if (userData != null) {
+            if (currentLanguage == "ar") {
+                userData.fullNameArabic.takeIf { it.isNotEmpty() }
+                    ?: userData.fullNameEnglish.takeIf { it.isNotEmpty() }
+                    ?: userData.name.takeIf { it.isNotEmpty() }
+            } else {
+                userData.fullNameEnglish.takeIf { it.isNotEmpty() }
+                    ?: userData.fullNameArabic.takeIf { it.isNotEmpty() }
+                    ?: userData.name.takeIf { it.isNotEmpty() }
+            }
+        } else {
+            com.informatique.mtcit.data.datastorehelper.TokenManager.getUserName(context)
+        }
     }
     Row(
         modifier = Modifier
@@ -278,12 +308,7 @@ fun TopProfileBar(
             Column(horizontalAlignment = Alignment.Start) {
                 // Display welcome message with user name if available
                 val welcomeText = if (!userName.isNullOrEmpty()) {
-                    val currentLanguage = java.util.Locale.getDefault().language
-                    if (currentLanguage == "ar") {
-                        "$userName"
-                    } else {
-                        "$userName"
-                    }
+                    "$userName"
                 } else {
                     localizedApp(R.string.empty)
                 }

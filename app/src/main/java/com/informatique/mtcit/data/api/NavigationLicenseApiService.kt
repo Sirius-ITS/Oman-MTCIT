@@ -523,14 +523,53 @@ class NavigationLicenseApiService @Inject constructor(
     }
 
     /**
+     * Add a single crew member (Renew)
+     * POST /navigation-license-renewal-request/{requestId}/crew
+     */
+    suspend fun addCrewMemberRenew(requestId: Long, crew: CrewReqDto): Result<CrewResDto> {
+        return try {
+            val requestJson = json.encodeToString(CrewReqDto.serializer(), crew)
+            println("📤 Adding single crew member (Renew): requestId=$requestId, body=$requestJson")
+
+            when (val response = repo.onPostAuthJson("navigation-license-renewal-request/$requestId/crew", requestJson)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    val data = responseJson.jsonObject.getValue("data").jsonObject
+                    val result = json.decodeFromJsonElement(CrewResDto.serializer(), data)
+                    println("✅ Crew member added successfully with id=${result.id}")
+                    Result.success(result)
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ Error adding single crew member (Renew): ${response.error}")
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in addCrewMemberRenew: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Delete crew member (Renew)
      * DELETE /navigation-license-renewal-request/{requestId}/crew/{crewId}
      */
     suspend fun deleteCrewMemberRenew(requestId: Long, crewId: Long): Result<Unit> {
         return try {
             println("🗑️ Deleting crew member (Renew) - requestId=$requestId, crewId=$crewId")
-            // TODO: Implement when backend provides DELETE support
-            Result.failure(Exception("Delete not implemented yet - waiting for backend"))
+
+            when (val response = repo.onDeleteAuth("navigation-license-renewal-request/$requestId/crew/$crewId")) {
+                is RepoServiceState.Success -> {
+                    println("✅ Crew member deleted successfully")
+                    Result.success(Unit)
+                }
+                is RepoServiceState.Error -> {
+                    println("❌ Error deleting crew member (Renew): ${response.error}")
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
         } catch (e: Exception) {
             println("❌ Exception in deleteCrewMemberRenew: ${e.message}")
             Result.failure(e)
@@ -563,6 +602,130 @@ class NavigationLicenseApiService @Inject constructor(
             }
         } catch (e: Exception) {
             println("❌ Exception in uploadCrewExcelRenew: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    // ========================================
+    // CHANGE CAPTAIN (requestTypeId = 10)
+    // ========================================
+
+    /**
+     * Create a change captain request (CDD §4.1.6)
+     * POST /change-captain/{shipInfoId}/add-request
+     * Body: array of LicShipInfoCrewListReqDto
+     * Response: ResponseDto<ShipNavigationLicenseRequestResDto> → id, requestSerial
+     */
+    /**
+     * Get existing captains for a ship (CDD §4.1.3)
+     * GET /change-captain/{shipInfoId}/captains
+     */
+    suspend fun getExistingCaptains(shipInfoId: Long): Result<List<CrewResDto>> {
+        return try {
+            println("📥 Getting existing captains for shipInfoId=$shipInfoId")
+            when (val response = repo.onGet("change-captain/$shipInfoId/captains")) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Existing captains response: $responseJson")
+                    val dataArray = responseJson.jsonObject["data"]?.jsonArray ?: run {
+                        println("⚠️ No 'data' array in captains response")
+                        return Result.success(emptyList())
+                    }
+                    val captains = dataArray.mapNotNull { element ->
+                        try {
+                            val obj = element.jsonObject
+                            val id = obj["id"]?.jsonPrimitive?.content?.toLongOrNull() ?: return@mapNotNull null
+                            val nameAr = obj["nameAr"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val nameEn = obj["nameEn"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val jobTitleObj = obj["jobTitle"]?.jsonObject
+                            val jobTitleId = jobTitleObj?.get("id")?.jsonPrimitive?.intOrNull ?: 0
+                            val jobTitleNameAr = jobTitleObj?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+                            val jobTitleNameEn = jobTitleObj?.get("nameEn")?.jsonPrimitive?.contentOrNull ?: ""
+                            val civilNo = obj["civilNo"]?.jsonPrimitive?.contentOrNull
+                            val seamenBookNo = obj["seamenBookNo"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val nationalityObj = obj["nationality"]?.jsonObject
+                            val nationalityId = nationalityObj?.get("id")?.jsonPrimitive?.contentOrNull
+                            val nationality = nationalityId?.let {
+                                com.informatique.mtcit.data.dto.CountryResDto(
+                                    id = it,
+                                    nameAr = nationalityObj?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: "",
+                                    nameEn = nationalityObj?.get("nameEn")?.jsonPrimitive?.contentOrNull ?: ""
+                                )
+                            }
+                            CrewResDto(
+                                id = id,
+                                nameAr = nameAr,
+                                nameEn = nameEn,
+                                jobTitle = com.informatique.mtcit.data.dto.JobTitleResDto(
+                                    id = jobTitleId,
+                                    nameAr = jobTitleNameAr,
+                                    nameEn = jobTitleNameEn
+                                ),
+                                civilNo = civilNo,
+                                seamenBookNo = seamenBookNo,
+                                nationality = nationality,
+                                shipNavigationRequestId = 0L,
+                                shipInfoId = shipInfoId
+                            )
+                        } catch (e: Exception) {
+                            println("⚠️ Failed to parse captain entry: ${e.message}")
+                            null
+                        }
+                    }
+                    println("✅ Parsed ${captains.size} existing captains")
+                    Result.success(captains)
+                }
+                is RepoServiceState.Error -> {
+                    val msg = ErrorMessageExtractor.extract(response.error)
+                    println("❌ Get captains error: $msg")
+                    Result.failure(ApiException(response.code, msg))
+                }
+            }
+        } catch (e: ApiException) { throw e }
+        catch (e: Exception) {
+            println("❌ Exception in getExistingCaptains: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createChangeCaptainRequest(
+        shipInfoId: Long,
+        crewList: List<Map<String, String>>
+    ): Result<NavigationRequestResDto> {
+        return try {
+            println("📤 Creating change captain request for shipInfoId=$shipInfoId, crew=${crewList.size}")
+
+            // Build crew JSON array — do NOT include id/apiId (CDD §4.1.6: no id in request body)
+            val crewJson = crewList.joinToString(prefix = "[", postfix = "]") { crew ->
+                val jobTitle = crew["jobTitle"]?.toIntOrNull() ?: 0
+                val nationalityId = crew["nationality"] ?: crew["nationalityId"] ?: ""
+                """{"nameAr":"${crew["nameAr"] ?: ""}","nameEn":"${crew["nameEn"] ?: ""}","jobTitle":$jobTitle,"civilNo":"${crew["civilNo"] ?: ""}","seamenBookNo":"${crew["seamenBookNo"] ?: ""}","nationality":{"id":"$nationalityId"}}"""
+            }
+
+            println("📤 Request body: $crewJson")
+
+            when (val response = repo.onPostAuthJson("change-captain/$shipInfoId/add-request", crewJson)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ Change captain request response: $responseJson")
+
+                    // Response is ResponseDto<ShipNavigationLicenseRequestResDto>
+                    val dataObj = responseJson.jsonObject["data"]?.jsonObject
+                    val id = dataObj?.get("id")?.jsonPrimitive?.content?.toLongOrNull() ?: 0L
+                    val requestSerial = dataObj?.get("requestSerial")?.jsonPrimitive?.intOrNull
+
+                    println("✅ Created change captain request id=$id, serial=$requestSerial")
+                    Result.success(NavigationRequestResDto(id = id, requestSerial = requestSerial))
+                }
+                is RepoServiceState.Error -> {
+                    val msg = ErrorMessageExtractor.extract(response.error)
+                    println("❌ Change captain request error: $msg")
+                    Result.failure(ApiException(response.code, msg))
+                }
+            }
+        } catch (e: ApiException) { throw e }
+        catch (e: Exception) {
+            println("❌ Exception in createChangeCaptainRequest: ${e.message}")
             Result.failure(e)
         }
     }

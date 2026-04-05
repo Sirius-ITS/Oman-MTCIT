@@ -70,6 +70,36 @@ class NavigationLicenseManager @Inject constructor(
     }
 
     // ========================================
+    // CHANGE CAPTAIN (requestTypeId = 10)
+    // ========================================
+
+    /**
+     * Get existing captains for a ship before new entry (CDD §4.1.3)
+     * GET /change-captain/{shipInfoId}/captains
+     * @param shipInfoId The current ship info ID
+     * @return Result with list of existing captains as CrewResDto
+     */
+    suspend fun getExistingCaptains(shipInfoId: Long): Result<List<com.informatique.mtcit.data.dto.CrewResDto>> {
+        println("📥 NavigationLicenseManager: Loading existing captains for shipInfoId=$shipInfoId")
+        return repository.getExistingCaptains(shipInfoId)
+    }
+
+    /**
+     * Create a change captain request (CDD §4.1.6)
+     * POST /change-captain/{shipInfoId}/add-request
+     * @param shipInfoId The current ship info ID
+     * @param crewList   Crew/captain data from the form
+     * @return Result with NavigationRequestResDto (id = new requestId)
+     */
+    suspend fun createChangeCaptainRequest(
+        shipInfoId: Long,
+        crewList: List<Map<String, String>>
+    ): Result<NavigationRequestResDto> {
+        println("⚓ NavigationLicenseManager: Creating change captain request for shipInfoId=$shipInfoId")
+        return repository.createChangeCaptainRequest(shipInfoId, crewList)
+    }
+
+    // ========================================
     // NAVIGATION AREAS MANAGEMENT
     // ========================================
 
@@ -250,7 +280,8 @@ class NavigationLicenseManager @Inject constructor(
 
     /**
      * Add crew members in bulk (Renew transaction)
-     * ✅ ALL sailors are sent with id=null (both new and existing sailors)
+     * ✅ Existing sailors (with apiId) are sent with their real ID so the server recognises them.
+     * ✅ New sailors (without apiId) are sent with id=null.
      * @param requestId Navigation license request ID
      * @param crewData List of crew data from form
      * @return List of created crew members
@@ -262,8 +293,15 @@ class NavigationLicenseManager @Inject constructor(
         println("👥 NavigationLicenseManager: Adding crew bulk (Renew) - count=${crewData.size}")
 
         val crewList = crewData.map { crew ->
-            // ✅ Always send id=null for ALL sailors (new and existing)
-            println("   📋 Processing crew: nameEn=${crew["nameEn"]}, sending with id=null")
+            // ✅ Use the id from the map: existing sailors have their real API id, new sailors have null
+            val crewId = when (val id = crew["id"]) {
+                is Long -> id
+                is Int -> id.toLong()
+                is String -> id.toLongOrNull()
+                else -> null
+            }
+            val isExisting = crewId != null
+            println("   📋 Processing crew: nameEn=${crew["nameEn"]}, id=$crewId ${if (isExisting) "(existing)" else "(new)"}")
 
             // Extract nationality ID from nested map or string
             val nationalityId = when (val nat = crew["nationality"]) {
@@ -280,7 +318,7 @@ class NavigationLicenseManager @Inject constructor(
             }
 
             CrewReqDto(
-                id = null,  // ✅ Always null for all sailors
+                id = crewId,  // ✅ Real ID for existing sailors, null for new ones
                 nameAr = crew["nameAr"]?.toString() ?: "",
                 nameEn = crew["nameEn"]?.toString() ?: "",
                 jobTitle = jobTitleValue,
@@ -392,6 +430,72 @@ class NavigationLicenseManager @Inject constructor(
     // ========================================
     // HELPER METHODS
     // ========================================
+
+    /**
+     * Convert SailorData (UI model) to CrewReqDto (API model)
+     * Handles "ID|Name" format for job and nationality fields
+     */
+    private fun sailorDataToCrewReqDto(sailor: com.informatique.mtcit.ui.components.SailorData): CrewReqDto {
+        // Extract job ID from "ID|Name" format (e.g. "2|ربان" -> 2)
+        val jobId = if (sailor.job.contains("|")) {
+            sailor.job.split("|").firstOrNull()?.toIntOrNull() ?: 0
+        } else {
+            sailor.job.toIntOrNull() ?: 0
+        }
+
+        // Extract nationality ID from "ID|Name" format (e.g. "AE|الإمارات" -> "AE")
+        val nationalityId = if (sailor.nationality.contains("|")) {
+            sailor.nationality.split("|").firstOrNull() ?: ""
+        } else {
+            sailor.nationality
+        }
+
+        return CrewReqDto(
+            id = null, // Do NOT include id in POST/PUT body
+            nameAr = sailor.nameAr,
+            nameEn = sailor.nameEn,
+            jobTitle = jobId,
+            civilNo = sailor.identityNumber.ifBlank { null },
+            seamenBookNo = sailor.seamanPassportNumber,
+            nationality = if (nationalityId.isNotBlank()) CountryReqDto(nationalityId) else null
+        )
+    }
+
+    /**
+     * Add a single crew member immediately (Renew transaction)
+     * POST /navigation-license-renewal-request/{requestId}/crew
+     * @param requestId Navigation license request ID
+     * @param sailor SailorData from UI
+     * @return Added crew member with server-assigned ID
+     */
+    suspend fun addCrewMemberRenewImmediate(
+        requestId: Long,
+        sailor: com.informatique.mtcit.ui.components.SailorData
+    ): Result<CrewResDto> {
+        println("➕ NavigationLicenseManager: Adding single crew member immediately (Renew) - requestId=$requestId")
+        val dto = sailorDataToCrewReqDto(sailor)
+        println("   DTO: nameAr=${dto.nameAr}, nameEn=${dto.nameEn}, jobTitle=${dto.jobTitle}, nationality=${dto.nationality?.id}")
+        return repository.addCrewMemberRenew(requestId, dto)
+    }
+
+    /**
+     * Update a single crew member immediately (Renew transaction)
+     * PUT /navigation-license-renewal-request/{requestId}/crew/{crewId}
+     * @param requestId Navigation license request ID
+     * @param crewId Crew member API ID
+     * @param sailor Updated SailorData from UI
+     * @return Updated crew member
+     */
+    suspend fun updateCrewMemberRenewImmediate(
+        requestId: Long,
+        crewId: Long,
+        sailor: com.informatique.mtcit.ui.components.SailorData
+    ): Result<CrewResDto> {
+        println("✏️ NavigationLicenseManager: Updating single crew member immediately (Renew) - requestId=$requestId, crewId=$crewId")
+        val dto = sailorDataToCrewReqDto(sailor)
+        println("   DTO: nameAr=${dto.nameAr}, nameEn=${dto.nameEn}, jobTitle=${dto.jobTitle}, nationality=${dto.nationality?.id}")
+        return repository.updateCrewMemberRenew(requestId, crewId, dto)
+    }
 
     /**
      * Parse crew data from form fields

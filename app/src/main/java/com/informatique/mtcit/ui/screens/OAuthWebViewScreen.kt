@@ -114,9 +114,22 @@ fun OAuthWebViewScreen(
                                 if (url.startsWith(redirectUri)) {
                                     Log.d("OAuthWebView", "✅ Redirect URI detected!")
 
-                                    // Extract authorization code from URL
                                     val uri = android.net.Uri.parse(url)
-                                    val code = uri.getQueryParameter("code")
+
+                                    // ✅ Try query parameter first (?code=...)
+                                    var code = uri.getQueryParameter("code")
+
+                                    // ✅ If not found, try URL fragment (#code=...&state=...)
+                                    // response_mode=fragment puts params after #
+                                    if (code == null) {
+                                        val fragment = uri.fragment
+                                        if (!fragment.isNullOrEmpty()) {
+                                            Log.d("OAuthWebView", "🔍 Checking fragment: $fragment")
+                                            // Parse fragment as query string
+                                            val fragmentUri = android.net.Uri.parse("https://dummy?$fragment")
+                                            code = fragmentUri.getQueryParameter("code")
+                                        }
+                                    }
 
                                     if (code != null) {
                                         Log.d("OAuthWebView", "✅ Authorization code extracted: $code")

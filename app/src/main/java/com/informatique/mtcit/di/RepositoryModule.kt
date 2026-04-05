@@ -8,6 +8,8 @@ import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepositoryImpl
 import com.informatique.mtcit.data.repository.NavigationLicenseRepository
 import com.informatique.mtcit.data.repository.NavigationLicenseRepositoryImpl
+import com.informatique.mtcit.data.repository.NotificationRepository
+import com.informatique.mtcit.data.repository.NotificationRepositoryImpl
 import com.informatique.mtcit.data.repository.PaymentRepository
 import com.informatique.mtcit.data.repository.PaymentRepositoryImpl
 import com.informatique.mtcit.data.repository.UserRequestsRepository
@@ -60,4 +62,10 @@ abstract class RepositoryModule {
     abstract fun bindUserRequestsRepository(
         impl: UserRequestsRepositoryImpl
     ): UserRequestsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNotificationRepository(
+        impl: NotificationRepositoryImpl
+    ): NotificationRepository
 }

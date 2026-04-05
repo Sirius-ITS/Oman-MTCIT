@@ -10,7 +10,16 @@
 
     <!-- ✅ Backend API configuration -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">omanapi.isfpegypt.com</domain>
+        <domain includeSubdomains="true">mtimedevapi.mtcit.gov.om</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- ✅ Frontend web app -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">mtimedev.mtcit.gov.om</domain>
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />

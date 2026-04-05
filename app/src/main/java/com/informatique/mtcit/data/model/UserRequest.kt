@@ -63,7 +63,7 @@ data class UserRequest(
             11 -> "موافقة الجهات"           // Approved by Authorities
             12 -> "الموافقة النهائية"      // Final Approval
             13 -> "تم اتخاذ الإجراء"        // Action Taken
-            14 -> "تم الإصدار"              // Issued
+            14 -> "مصدر"              // Issued
             15 -> "قيد التحقيق"             // Under Investigation
             16 -> "في انتظار نتائج المعاينة" // Waiting for Inspection
             else -> "غير معروف"             // Unknown

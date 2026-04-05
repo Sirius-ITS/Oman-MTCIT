@@ -15,6 +15,7 @@ import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.model.RequiredDocumentItem
+import com.informatique.mtcit.data.api.MarineUnitsApiService
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.ShipRegistrationRepository
@@ -38,6 +39,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     private val validationUseCase: FormValidationUseCase,
     private val lookupRepository: LookupRepository,
     private val marineUnitRepository: MarineUnitRepository,
+    private val marineUnitsApiService: MarineUnitsApiService,
     private val temporaryRegistrationRules: TemporaryRegistrationRules,
     private val shipSelectionManager: com.informatique.mtcit.business.transactions.shared.ShipSelectionManager,
     private val reviewManager: com.informatique.mtcit.business.transactions.shared.ReviewManager,
@@ -51,21 +53,33 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     private var commercialOptions: List<SelectableItem> = emptyList()
     private var typeOptions: List<PersonType> = emptyList()
     private var accumulatedFormData: MutableMap<String, String> = mutableMapOf()
-    private var loadedCertificates =  (mutableStateListOf<Certificate>())
+    private var loadedCertificates = (mutableStateListOf<Certificate>())
     private val requestTypeId = TransactionType.SHIP_PORT_CHANGE.toRequestTypeId()
+
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
+
     // Store API error to prevent navigation and show error dialog
     private var lastApiError: String? = null
+
     // ✅ NEW: Store created request ID for status update
     private var createdRequestId: Int? = null
+
     // ✅ NEW: Store API responses for future actions
     private val apiResponses: MutableMap<String, Any> = mutableMapOf()
+
     // ✅ Store shipInfoId for affected certificates and other APIs
     private var selectedShipInfoId: Int? = null
+
     // ✅ Store current port from selected ship (port name, not object)
     private var currentPortOfRegistry: String? = null
 
     // ✅ NEW: Store loaded inspection authorities
     private var loadedInspectionAuthorities: List<DropdownSection> = emptyList()
+
     // ✅ NEW: Store inspection-specific documents (separate from permanent registration documents)
     private var loadedInspectionDocuments: List<RequiredDocumentItem> = emptyList()
 
@@ -156,8 +170,13 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     }
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        println("🔑 Owner CivilId from token: $ownerCivilId")
+
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val commercialRegistrations = if (ownerCivilId != null)
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        else emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         // ✅ Don't load sample certificates - they will be loaded from API when needed
@@ -186,12 +205,12 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
         val commercialReg = formData["selectionData"]
 
-        println("=" .repeat(60))
-        println("🔍 DEBUG: PermanentRegistrationStrategy.loadShipsForSelectedType")
-        println("   Transaction Type: PERMANENT_REGISTRATION_CERTIFICATE")
+        println("=".repeat(60))
+        println("🔍 DEBUG: ChangePortOfShipOrUnitStrategy.loadShipsForSelectedType")
+        println("   Transaction Type: SHIP_PORT_CHANGE")
         println("   requestTypeId value: '$requestTypeId' (type: ${requestTypeId.javaClass.simpleName})")
-        println("   Expected: '2' (Permanent Registration)")
-        println("=" .repeat(60))
+        println("   Expected: '12' (Change Port of Ship)")
+        println("=".repeat(60))
 
         println("🚢 loadShipsForSelectedType called - personType=$personType, commercialReg=$commercialReg")
 
@@ -206,10 +225,15 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
+
             "شركة" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
-                Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
+                Pair(
+                    ownerCivilIdFromToken,
+                    commercialReg
+                ) // ✅ Use civilId from token + commercialReg
             }
+
             else -> Pair(null, null)
         }
 
@@ -217,21 +241,21 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         println("   ownerCivilId: $ownerCivilId")
         println("   commercialRegNumber: $commercialRegNumber")
         println("   requestTypeId: $requestTypeId")
-        println("=" .repeat(60))
+        println("=".repeat(60))
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
             commercialRegNumber = commercialRegNumber,
-            // **********************************************************************************************************
-            //Request Type Id
-            requestTypeId = requestTypeId
+            requestTypeId = requestTypeId,
+            page = 0
         )
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
 
-        println("✅ Loaded ${marineUnits.size} ships")
-        marineUnits.forEach { unit ->
-            println("   - ${unit.shipName} (ID: ${unit.id})")
-        }
-
+        println("✅ Loaded ${marineUnits.size} ships (isLast=$_isLastShipsPage)")
+        marineUnits.forEach { unit -> println("   - ${unit.shipName} (ID: ${unit.id})") }
         return marineUnits
     }
 
@@ -241,11 +265,31 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     override suspend fun clearLoadedShips() {
         println("🧹 Clearing loaded ships cache")
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
     }
 
-    override fun updateAccumulatedData(data: Map<String, String>) {
-        accumulatedFormData.putAll(data)
-        println("📦 TemporaryRegistration - Updated accumulated data: $accumulatedFormData")
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (ChangePort) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = requestTypeId,
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     override fun getContext(): TransactionContext {
@@ -280,11 +324,9 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 descriptionRes = R.string.change_port_of_ship_or_unit_strategy_info_desc,
                 stepType = StepType.CHANGE_PORT_INFO, // ✅ Add step type
                 fields = listOf(
-                    FormField.TextField(
+                    FormField.CurrentValueCard(
                         id = "current_port_of_registry",
-                        labelRes = R.string.current_port_of_registry,
-                        mandatory = false,
-                        enabled = false // Read-only
+                        labelRes = R.string.previous_port_of_registry
                     ),
                     FormField.DropDown(
                         id = "portOfRegistryId",
@@ -308,8 +350,12 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
             println("📋 Adding Inspection Purpose Step (dynamically injected)")
 
             // Parse lookups from formData
-            val purposes = accumulatedFormData["inspectionPurposes"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
-            val places = accumulatedFormData["inspectionPlaces"]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+            val purposes =
+                accumulatedFormData["inspectionPurposes"]?.split(",")?.filter { it.isNotBlank() }
+                    ?: emptyList()
+            val places =
+                accumulatedFormData["inspectionPlaces"]?.split(",")?.filter { it.isNotBlank() }
+                    ?: emptyList()
 
             println("   - Purposes: ${purposes.size}")
             println("   - Places: ${places.size}")
@@ -327,16 +373,16 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
             )
         }
 
-        // ✅ NEW: Payment Steps - Only show if we have requestId AND inspection is NOT required
-        val hasRequestId = accumulatedFormData["requestId"] != null
+        // ✅ Payment Steps - Only show AFTER review/send-request succeeds AND no inspection pending
+        val hasRequestId = accumulatedFormData["sendRequestMessage"] != null
         val inspectionRequired = accumulatedFormData["showInspectionDialog"]?.toBoolean() ?: false
 
         println("🔍 Payment step visibility check:")
-        println("   hasRequestId: $hasRequestId")
+        println("   reviewSucceeded: $hasRequestId")
         println("   inspectionRequired: $inspectionRequired")
         println("   showInspectionStep: $showInspectionStep")
 
-        // ✅ Only show payment steps if we have requestId AND no inspection is pending
+        // ✅ Only show payment steps AFTER review succeeds AND no inspection is pending
         if (hasRequestId && !inspectionRequired && !showInspectionStep) {
             println("✅ Adding payment steps")
             // Payment Details Step - Shows payment breakdown
@@ -355,7 +401,10 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         return steps
     }
 
-    override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
+    override fun validateStep(
+        step: Int,
+        data: Map<String, Any>
+    ): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
 
@@ -429,7 +478,8 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                         if (selectedUnitsJson != null) {
                             try {
                                 val cleanJson = selectedUnitsJson.trim().removeSurrounding("[", "]")
-                                val shipIds = cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
+                                val shipIds =
+                                    cleanJson.split(",").map { it.trim().removeSurrounding("\"") }
                                 val firstShipId = shipIds.firstOrNull()
                                 if (firstShipId != null) {
                                     selectedShipInfoId = firstShipId.toIntOrNull()
@@ -438,9 +488,27 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                                     println("✅ Stored shipInfoId: $firstShipId")
 
                                     // ✅ Extract current port from selected ship
-                                    val selectedShip = marineUnits.firstOrNull { it.id == firstShipId }
+                                    val selectedShip =
+                                        marineUnits.firstOrNull { it.id == firstShipId }
                                     currentPortOfRegistry = selectedShip?.portOfRegistry?.id
                                     println("✅ Stored currentPortId: $currentPortOfRegistry")
+
+                                    // ✅ Pre-fetch Arabic port name NOW (at ship-selection time)
+                                    // so accumulatedFormData has the correct value before
+                                    // CHANGE_PORT_INFO step opens and initialises the form field.
+                                    try {
+                                        val coreResult = marineUnitsApiService.getShipCoreInfo(firstShipId)
+                                        coreResult.onSuccess { coreInfo ->
+                                            val arabicPort = coreInfo.portOfRegistry
+                                            if (arabicPort.isNotEmpty()) {
+                                                accumulatedFormData["current_port_of_registry"] = arabicPort
+                                                println("✅ Pre-fetched Arabic port name: $arabicPort")
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        // Non-critical – the step will fall back to English
+                                        println("⚠️ Could not pre-fetch Arabic port name: ${e.message}")
+                                    }
                                 }
                             } catch (e: Exception) {
                                 println("⚠️ Failed to extract shipInfoId: ${e.message}")
@@ -448,6 +516,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                         }
                         println("💾 STORED createdRequestId = $createdRequestId")
                     }
+
                     is com.informatique.mtcit.business.transactions.shared.ShipSelectionResult.Error -> {
                         println("❌ Ship selection failed: ${result.message}")
                         lastApiError = result.message
@@ -460,7 +529,8 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 println("❌ Exception in ship selection: ${e.message}")
-                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                val errorMsg =
+                    com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
                 lastApiError = errorMsg
                 throw ApiException(500, errorMsg)
             }
@@ -520,7 +590,8 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 println("❌ Exception in port change: ${e.message}")
-                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                val errorMsg =
+                    com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
                 lastApiError = errorMsg
                 throw ApiException(500, errorMsg)
             }
@@ -544,93 +615,108 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
             println("   RequestId: $requestIdInt")
             println("   Context: $contextName")
 
-            val reviewResult = reviewManager.processReviewStep(
-                endpoint = endpoint,
-                requestId = requestIdInt,
-                transactionName = contextName,
-                sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
-            )
+            try {
+                val reviewResult = reviewManager.processReviewStep(
+                    endpoint = endpoint,
+                    requestId = requestIdInt,
+                    transactionName = contextName,
+                    sendRequestPostOrPut = transactionContext.sendRequestPostOrPut
+                )
 
                 when (reviewResult) {
-                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
-                    println("✅ Review step processed successfully!")
-                    println("   Message: ${reviewResult.message}")
-                    println("   Need Inspection: ${reviewResult.needInspection}")
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Success -> {
+                        println("✅ Review step processed successfully!")
+                        println("   Message: ${reviewResult.message}")
+                        println("   Need Inspection: ${reviewResult.needInspection}")
 
-                    // ✅ Store response in formData
-                    accumulatedFormData["sendRequestMessage"] = reviewResult.message
+                        // ✅ Store response in formData
+                        accumulatedFormData["sendRequestMessage"] = reviewResult.message
 
-                    // ✅ Extract request number for display
-                    val requestNumber = reviewResult.additionalData?.get("requestNumber")?.toString()
-                        ?: reviewResult.additionalData?.get("requestSerial")?.toString()
-                        ?: accumulatedFormData["requestSerial"]
-                        ?: createdRequestId?.toString()
-                        ?: "N/A"
+                        // ✅ Extract request number for display
+                        val requestNumber =
+                            reviewResult.additionalData?.get("requestNumber")?.toString()
+                                ?: reviewResult.additionalData?.get("requestSerial")?.toString()
+                                ?: accumulatedFormData["requestSerial"]
+                                ?: createdRequestId?.toString()
+                                ?: "N/A"
 
-                    accumulatedFormData["requestNumber"] = requestNumber
-                    println("   Request Number: $requestNumber")
+                        accumulatedFormData["requestNumber"] = requestNumber
+                        println("   Request Number: $requestNumber")
 
-                    // ✅ STEP 1: Get hasAcceptance from formData (set via setHasAcceptanceFromApi)
-                    val hasAcceptanceFromFormData = accumulatedFormData["hasAcceptance"]?.toBoolean() ?: false
-                    println("   Has Acceptance (from formData): $hasAcceptanceFromFormData")
+                        // ✅ STEP 1: Get hasAcceptance from formData (set via setHasAcceptanceFromApi)
+                        val hasAcceptanceFromFormData =
+                            accumulatedFormData["hasAcceptance"]?.toBoolean() ?: false
+                        println("   Has Acceptance (from formData): $hasAcceptanceFromFormData")
 
-                    // ✅ STEP 2: Check hasAcceptance FIRST (before inspection)
-                    if (hasAcceptanceFromFormData) {
-                        println("🛑 hasAcceptance=1: Transaction requires acceptance/approval")
-                        println("   Stopping transaction - user must continue from profile later")
+                        // ✅ STEP 2: Check hasAcceptance FIRST (before inspection)
+                        if (hasAcceptanceFromFormData) {
+                            println("🛑 hasAcceptance=1: Transaction requires acceptance/approval")
+                            println("   Stopping transaction - user must continue from profile later")
 
-                        // Store success message for dialog
-                        accumulatedFormData["successMessage"] = reviewResult.message
-                        accumulatedFormData["requestSubmitted"] = "true"
+                            // Store success message for dialog
+                            accumulatedFormData["successMessage"] = reviewResult.message
+                            accumulatedFormData["requestSubmitted"] = "true"
 
-                        // Return -2 to indicate: success but stop transaction (show dialog)
-                        return -2
+                            // Return -2 to indicate: success but stop transaction (show dialog)
+                            return -2
+                        }
+
+                        // ✅ STEP 3: Check if inspection is required (from API response)
+                        if (inspectionFlowManager.isInspectionRequired(reviewResult.needInspection)) {
+                            println("🔍 Inspection is required - preparing dialog")
+                            println("📋 Change port request was ALREADY submitted successfully")
+
+                            // Prepare inspection dialog with parent transaction info
+                            // Request Type: 12 = Change Port of Ship or Unit
+                            inspectionFlowManager.prepareInspectionDialog(
+                                message = "تم إرسال طلب تغيير ميناء السفينة بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                formData = accumulatedFormData,
+                                parentRequestId = requestIdInt,
+                                parentRequestType = 12  // Change Port of Ship or Unit
+                            )
+
+                            println("⚠️ Inspection required - showing dialog and blocking proceed")
+                            return step // Stay on current step to show dialog
+                        }
+
+                        // ✅ STEP 4: Check if this is a NEW request (not resumed)
+                        val isNewRequest =
+                            accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
+
+                        println("🔍 Post-submission flow decision:")
+                        println("   - isResumedTransaction: ${accumulatedFormData["isResumedTransaction"]}")
+                        println("   - isNewRequest: $isNewRequest")
+                        println("   - needInspection: ${reviewResult.needInspection}")
+                        println("   - hasAcceptance (from formData): $hasAcceptanceFromFormData")
+
+                        if (isNewRequest && !reviewResult.needInspection) {
+                            println("✅ NEW request submitted successfully - continuing to payment/next steps")
+                            println("   Transaction will continue normally")
+                            // Continue normally - don't return, let the flow proceed
+                        } else if (!isNewRequest) {
+                            println("✅ RESUMED request - continuing to next steps")
+                            // Continue normally for resumed transactions
+                        }
+
+                        // Trigger UI rebuild
+                        onStepsNeedRebuild?.invoke()
                     }
 
-                    // ✅ STEP 3: Check if inspection is required (from API response)
-                    if (inspectionFlowManager.isInspectionRequired(reviewResult.needInspection)) {
-                        println("🔍 Inspection is required - preparing dialog")
-                        println("📋 Change port request was ALREADY submitted successfully")
-
-                        // Prepare inspection dialog with parent transaction info
-                        // Request Type: 12 = Change Port of Ship or Unit
-                        inspectionFlowManager.prepareInspectionDialog(
-                            message = "تم إرسال طلب تغيير ميناء السفينة بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
-                            formData = accumulatedFormData,
-                            parentRequestId = requestIdInt,
-                            parentRequestType = 12  // Change Port of Ship or Unit
-                        )
-
-                        println("⚠️ Inspection required - showing dialog and blocking proceed")
-                        return step // Stay on current step to show dialog
+                    is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
+                        println("❌ Review step failed: ${reviewResult.message}")
+                        lastApiError = reviewResult.message
+                        throw ApiException(500, reviewResult.message)
                     }
-
-                    // ✅ STEP 4: Check if this is a NEW request (not resumed)
-                    val isNewRequest = accumulatedFormData["isResumedTransaction"]?.toBoolean() != true
-
-                    println("🔍 Post-submission flow decision:")
-                    println("   - isResumedTransaction: ${accumulatedFormData["isResumedTransaction"]}")
-                    println("   - isNewRequest: $isNewRequest")
-                    println("   - needInspection: ${reviewResult.needInspection}")
-                    println("   - hasAcceptance (from formData): $hasAcceptanceFromFormData")
-
-                    if (isNewRequest && !reviewResult.needInspection) {
-                        println("✅ NEW request submitted successfully - continuing to payment/next steps")
-                        println("   Transaction will continue normally")
-                        // Continue normally - don't return, let the flow proceed
-                    } else if (!isNewRequest) {
-                        println("✅ RESUMED request - continuing to next steps")
-                        // Continue normally for resumed transactions
-                    }
-
-                    // Trigger UI rebuild
-                    onStepsNeedRebuild?.invoke()
                 }
-                is com.informatique.mtcit.business.transactions.shared.ReviewResult.Error -> {
-                    println("❌ Review step failed: ${reviewResult.message}")
-                    lastApiError = reviewResult.message
-                    throw ApiException(500, reviewResult.message)
-                }
+            } catch (e: ApiException) {
+                // ✅ Re-throw ApiException (e.g. 401) so ViewModel can show refresh button
+                println("❌ ApiException in review step: ${e.code} - ${e.message}")
+                throw e
+            } catch (e: Exception) {
+                println("❌ Exception in review step: ${e.message}")
+                e.printStackTrace()
+                lastApiError = e.message ?: "حدث خطأ أثناء إرسال الطلب"
+                throw ApiException(500, e.message ?: "حدث خطأ أثناء إرسال الطلب")
             }
         }
 
@@ -645,25 +731,28 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
             )
 
             when (paymentResult) {
-                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Success -> {
+                is StepProcessResult.Success -> {
                     println("✅ Payment step processed: ${paymentResult.message}")
 
                     // Trigger UI rebuild so payment details are shown (important for mortgage path)
                     onStepsNeedRebuild?.invoke()
 
                     // Check if payment was submitted successfully
-                    val showPaymentSuccessDialog = accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
+                    val showPaymentSuccessDialog =
+                        accumulatedFormData["showPaymentSuccessDialog"]?.toBoolean() ?: false
                     if (showPaymentSuccessDialog) {
                         println("✅ Payment submitted successfully - dialog will be shown")
                         return step
                     }
                 }
-                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.Error -> {
+
+                is StepProcessResult.Error -> {
                     println("❌ Payment step failed: ${paymentResult.message}")
                     lastApiError = paymentResult.message
                     return -1
                 }
-                is com.informatique.mtcit.business.transactions.shared.StepProcessResult.NoAction -> {
+
+                is StepProcessResult.NoAction -> {
                     println("ℹ️ No payment action needed")
                 }
             }
@@ -690,7 +779,10 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
         }
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+            return FieldFocusResult.Error(
+                "companyRegistrationNumber",
+                "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام"
+            )
         }
 
         return try {
@@ -710,10 +802,18 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error(
+                            "companyRegistrationNumber",
+                            "لم يتم العثور على الشركة"
+                        )
                     }
                 }
-                is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
+
+                is BusinessState.Error -> FieldFocusResult.Error(
+                    "companyRegistrationNumber",
+                    result.message
+                )
+
                 is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
@@ -730,11 +830,10 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     override suspend fun onStepOpened(stepIndex: Int) {
         val step = getSteps().getOrNull(stepIndex) ?: return
 
-        // ✅ NEW: If this is the port change step, set current port value
+        // ✅ If this is the port change step, ensure current port shows in Arabic
         if (step.stepType == StepType.CHANGE_PORT_INFO) {
-            println("🔄 Port change step opened - setting current port value...")
+            println("🔄 Port change step opened - ensuring Arabic port name is set...")
 
-            // ✅ Extract current port from selected ship
             val selectedUnitsJson = accumulatedFormData["selectedMarineUnits"]
             if (selectedUnitsJson != null) {
                 try {
@@ -744,20 +843,43 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
 
                     if (firstShipId != null) {
                         val selectedShip = marineUnits.firstOrNull { it.id == firstShipId }
-                        // ✅ portOfRegistry is a PortOfRegistry object with only id field
-                        val portId = selectedShip?.portOfRegistry?.id
 
-                        println("📍 Display current port ID: '$portId'")
+                        // English fallback from list API (nameAr == id for list API responses)
+                        val englishFallback = selectedShip?.portOfRegistry?.id ?: ""
 
-                        // ✅ Set the value in accumulated form data
-                        if (!portId.isNullOrBlank()) {
-                            accumulatedFormData["current_port_of_registry"] = portId
-                            // ✅ Trigger UI update via viewmodel callback
-                            println("✅ Setting current_port_of_registry = $portId")
+                        // Check if Arabic name was already pre-fetched at ship-selection time
+                        val existingValue = accumulatedFormData["current_port_of_registry"] ?: ""
+                        val alreadyArabic = existingValue.isNotBlank() && existingValue != englishFallback
+
+                        if (alreadyArabic) {
+                            // ✅ Arabic name already available — nothing more to do
+                            println("📍 Arabic port already available: $existingValue")
+                        } else {
+                            // ✅ Not pre-fetched yet (or only English) — call detail API now
+                            var portDisplayName = englishFallback
+                            try {
+                                val coreResult = marineUnitsApiService.getShipCoreInfo(firstShipId)
+                                coreResult.onSuccess { coreInfo ->
+                                    if (coreInfo.portOfRegistry.isNotEmpty()) {
+                                        portDisplayName = coreInfo.portOfRegistry
+                                        println("✅ Got Arabic port name from detail API: $portDisplayName")
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ Could not fetch Arabic port name (using fallback): ${e.message}")
+                            }
+
+                            if (portDisplayName.isNotBlank()) {
+                                accumulatedFormData["current_port_of_registry"] = portDisplayName
+                                println("📍 Set current_port_of_registry = '$portDisplayName'")
+                            }
                         }
+
+                        // ✅ Always trigger rebuild so the form field picks up the latest value
+                        onStepsNeedRebuild?.invoke()
                     }
                 } catch (e: Exception) {
-                    println("⚠️ Failed to extract current port: ${e.message}")
+                    println("⚠️ Failed to set current port: ${e.message}")
                     e.printStackTrace()
                 }
             }
@@ -796,7 +918,8 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                     // ✅ Trigger step rebuild to show certificates
                     onStepsNeedRebuild?.invoke()
                 } else {
-                    val error = certificates.exceptionOrNull()?.message ?: "فشل تحميل الشهادات المتأثرة"
+                    val error =
+                        certificates.exceptionOrNull()?.message ?: "فشل تحميل الشهادات المتأثرة"
                     println("❌ Failed to load certificates: $error")
                     accumulatedFormData["apiError"] = error
                 }
@@ -805,7 +928,8 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                 accumulatedFormData["apiError"] = e.message ?: "Unknown error"
             } catch (e: Exception) {
                 println("❌ Exception in loading certificates: ${e.message}")
-                val errorMsg = com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
+                val errorMsg =
+                    com.informatique.mtcit.common.ErrorMessageExtractor.extract(e.message)
                 accumulatedFormData["apiError"] = errorMsg
             }
         }
@@ -827,10 +951,12 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
                     println("✅ Payment receipt loaded - triggering step rebuild")
                     onStepsNeedRebuild?.invoke()
                 }
+
                 is StepProcessResult.Error -> {
                     println("❌ Payment error: ${paymentResult.message}")
                     accumulatedFormData["apiError"] = paymentResult.message
                 }
+
                 is StepProcessResult.NoAction -> {
                     println("ℹ️ No payment action needed")
                 }
@@ -871,7 +997,7 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
      */
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         return try {
-            println("🔍 TemporaryRegistrationStrategy: Validating unit $unitId using TemporaryRegistrationRules")
+            println("🔍 ChangePortOfShipOrUnitStrategy: Validating unit $unitId using TemporaryRegistrationRules")
 
             // Find the selected unit
             val selectedUnit = marineUnits.firstOrNull { it.id.toString() == unitId }
@@ -902,7 +1028,13 @@ class ChangePortOfShipOrUnitStrategy @Inject constructor(
     }
 
     override fun extractCompletedStepsFromApiResponse(response: Any): Set<StepType> {
-        TODO("Not yet implemented")
+        // TODO: Parse the Change Name of Ship or Unit API response to determine completed steps
+        val completedSteps = mutableSetOf<StepType>()
+
+        println("⚠️ ChangeNameOfShipOrUnitStrategy: extractCompletedStepsFromApiResponse not yet implemented")
+        println("   Response type: ${response::class.simpleName}")
+
+        return completedSteps
     }
 
     /**

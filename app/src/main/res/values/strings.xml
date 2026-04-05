@@ -287,6 +287,8 @@
     <!-- Settings Screen -->
     <string name="settings_language_section">Language</string>
     <string name="settings_theme_section">App Theme</string>
+    <string name="settings_notifications_section">Notifications</string>
+    <string name="settings_receive_notifications">Receive Notifications</string>
     <string name="settings_language_description">Change application language</string>
     <string name="settings_theme_description">Choose your preferred theme</string>
     <string name="language_arabic">العربية</string>
@@ -934,14 +936,34 @@
     <string name="change_port_of_ship_or_unit_strategy_info_desc">We ask you to specify the port of registration of the ship or marine unit from the list of ports, in order to confirm legal and administrative responsibility in accordance with applicable regulations.</string>
 
     <string name="current_port_of_registry">Current Port of Registry</string>
+    <string name="previous_port_of_registry">Previous Port of Registry</string>
     <string name="new_port_of_registry">New Port of Registry</string>
 
     <string name="change_port_of_ship_or_unit_strategy_info2">Certificates that will be amended in the ship\'s port of registration</string>
     <string name="change_port_of_ship_or_unit_strategy_info_desc2">Based on your request to change the ship\'s port of registration, the new port of registration will be formally adopted and updated in the certificates shown below, in order to ensure conformity of official records and continued compliance with maritime requirements.</string>
 
+    <string name="change_activity_certificate_step_title">Certificates Affected by Maritime Activity Change</string>
+    <string name="change_activity_certificate_step_desc">Based on your request to change the maritime activity, the new activity will be formally adopted and updated in the certificates shown below, in order to ensure conformity of official records and continued compliance with maritime requirements.</string>
+
+    <string name="change_name_certificate_step_title">Certificates Affected by Ship Name Change</string>
+    <string name="change_name_certificate_step_desc">Based on your request to change the ship\'s name, the new name will be formally adopted and updated in the certificates shown below, in order to ensure conformity of official records and continued compliance with maritime requirements.</string>
+
+    <string name="change_captain_name_certificate_step_title">Certificates Affected by Captain Name Change</string>
+    <string name="change_captain_name_certificate_step_desc">Based on your request to change the captain\'s name, the new name will be formally adopted and updated in the certificates shown below, in order to ensure conformity of official records and continued compliance with maritime requirements.</string>
+
     <string name="change_activity_of_ship_or_unit_strategy_info">Select the desired activity</string>
     <string name="change_activity_of_ship_or_unit_strategy_info_desc">Choosing the appropriate activity to ensure compliance with applicable legal and administrative requirements.</string>
     <string name="change_activity_of_ship_or_unit_strategy_info_dropdown">Choose a new activity</string>
     <string name="change_activity_of_ship_or_unit_strategy_info_dropdown_hint">Select the activity you want to change to</string>
+
+    <string name="current_activity_of_registration">Current Marine Activity</string>
+    <string name="previous_activity_of_registration">Previous Marine Activity</string>
+
+    <!-- Change Name Of Ship Or Unit Strategy -->
+    <string name="change_name_of_ship_or_unit_strategy_info">Changing the name of the ship or marine unit</string>
+    <string name="change_name_of_ship_or_unit_strategy_info_desc">Please enter the new name in both Arabic and English to update the official records.</string>
+
+    <string name="current_ship_name">Current Ship Name</string>
+    <string name="previous_ship_name">Previous Ship Name</string>
 
 </resources>

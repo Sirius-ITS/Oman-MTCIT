@@ -17,12 +17,23 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * ✅ Pagination result for a single page of ships (used by infinite scroll)
+ */
+data class ShipsPage(
+    val ships: List<com.informatique.mtcit.business.transactions.shared.MarineUnit>,
+    val currentPage: Int,
+    val totalPages: Int,
+    val isLastPage: Boolean
+)
 
 @Singleton
 class MarineUnitsApiService @Inject constructor(
@@ -103,7 +114,6 @@ class MarineUnitsApiService @Inject constructor(
             // ✅ Only include commercialNumber if it has a value (for companies)
             val filterJsonElement = kotlinx.serialization.json.buildJsonObject {
                 put("requestTypeId", kotlinx.serialization.json.JsonPrimitive(requestTypeInt))
-                // ✅ Only add commercialNumber field if it exists (companies only)
                 if (commercialNumberForFilter != null) {
                     put("commercialNumber", kotlinx.serialization.json.JsonPrimitive(commercialNumberForFilter))
                 }
@@ -118,215 +128,269 @@ class MarineUnitsApiService @Inject constructor(
                 Base64.NO_WRAP
             )
 
-            val filterParam = "?filter=$base64Filter"
-
             println("🔍 Fetching ships with filter: $filterJson")
             println("📋 Base64 encoded filter: $base64Filter")
 
-            // ✅ FIXED: Make endpoint dynamic based on requestTypeId
-            // Different endpoints for different transaction types:
-            // 1 = Temporary Registration → registration-requests/get-my-ships
-            // 2 = Permanent Registration → perm-registration-requests/get-my-ships
-            // 3 = Deletion → deletion-requests/get-my-ships
-            // 4 = Mortgage → mortgage-request/get-my-ships
-            // 5 = Release Mortgage → mortgage-redemption-request/get-my-ships
-            val baseEndpoint = when (requestTypeInt) {
-                1 -> "registration-requests/get-my-ships"
-                2 -> "perm-registration-requests/get-my-ships"
-                7 -> "deletion-requests/get-my-ships"
-                4 -> "mortgage-request/get-my-ships"
-                5 -> "mortgage-redemption-request/get-my-ships"
-                3 -> "ship-navigation-license-request/get-my-ships"
-                6 -> "navigation-license-renewal-request/get-my-ships"
-                8 -> "inspection-requests/get-my-ships"
-                12 -> "coreshipinfo/get-my-ships"
-                15 -> "inspection-requests/get-my-ships"
-                else -> {
-                    println("⚠️ Unknown requestTypeId: $requestTypeInt, using mortgage endpoint as fallback")
-                    "mortgage-request/get-my-ships"
+            // ✅ All transaction types now use the unified coreshipinfo/get-my-ships endpoint.
+            // The response is always paginated with a Spring Page structure:
+            // { data: { content: [...], totalPages: N, totalElements: N, last: bool, ... } }
+            // URL shape: coreshipinfo/get-my-ships?filter=BASE64&page=0&size=50
+            val baseEndpoint = "coreshipinfo/get-my-ships"
+            val pageSize = 5 // fetch up to 50 ships per page to minimise round-trips
+
+            // ── Helper: fetch a single page and parse content[] ──────────────────────────
+            fun buildPageEndpoint(page: Int): String =
+                "$baseEndpoint?filter=$base64Filter&page=$page&size=$pageSize"
+
+            fun parseOnePage(responseJson: kotlinx.serialization.json.JsonElement): Pair<List<MarineUnit>, Int> {
+                val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+                println("📊 Status Code: $statusCode, Success: $success")
+
+                if (statusCode != 200 || !success) {
+                    throw Exception("Service failed with status: $statusCode")
                 }
+
+                val data = responseJson.jsonObject.getValue("data").jsonObject
+                val contentArray = data["content"]?.jsonArray
+                    ?: throw Exception("Expected 'content' array in response data")
+
+                val totalPages = data["totalPages"]?.jsonPrimitive?.int ?: 1
+                val pageNumber = data["number"]?.jsonPrimitive?.int ?: 0
+
+                println("📦 content[] size: ${contentArray.size}, page: $pageNumber / totalPages: $totalPages")
+
+                val ships = contentArray.mapNotNull { shipItem ->
+                    try {
+                        parseContentShipItem(shipItem.jsonObject)
+                    } catch (e: Exception) {
+                        println("⚠ Failed to parse ship from content[]: ${e.message}")
+                        e.printStackTrace()
+                        null
+                    }
+                }
+                return Pair(ships, totalPages)
             }
+            // ─────────────────────────────────────────────────────────────────────────────
 
-            val endpoint = "$baseEndpoint$filterParam"
-            println("📡 Full API Call: $endpoint")
-            println("   Request Type: $requestTypeInt → $baseEndpoint")
+            // Fetch page 0 first
+            println("📡 Full API Call (page 0): ${buildPageEndpoint(0)}")
+            val firstResponse = repo.onGet(buildPageEndpoint(0))
 
-            when (val response = repo.onGet(endpoint)) {
+            when (firstResponse) {
                 is RepoServiceState.Success -> {
-                    val responseJson = response.response
-                    println("✅ API Response received")
+                    val responseJson = firstResponse.response
+                    println("✅ API Response (page 0) received")
                     println("📄 Response JSON: $responseJson")
 
-                    if (!responseJson.jsonObject.isEmpty()) {
-                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
-                        val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
-                        println("📊 Status Code: $statusCode, Success: $success")
-
-                        if (statusCode == 200 && success) {
-                            val data = responseJson.jsonObject.getValue("data").jsonObject
-
-                            // ✅ FIXED: Handle different API response structures
-                            // - Some transactions: activeCoreShips[] + nonActiveCoreShip[]
-                            // - Change Port (12): content[] with pagination
-                            val activeCoreShips = data["activeCoreShips"]?.jsonArray
-                            val nonActiveCoreShips = data["nonActiveCoreShip"]?.jsonArray
-                            val contentArray = data["content"]?.jsonArray
-
-                            println("📦 activeCoreShips: ${activeCoreShips?.size ?: "null"}")
-                            println("📦 nonActiveCoreShips: ${nonActiveCoreShips?.size ?: "null"}")
-                            println("📦 content array: ${contentArray?.size ?: "null"}")
-
-                            // ✅ Parse ships based on response structure
-                            val allShips = when {
-                                // Structure 1: content[] array (Change Port, etc.)
-                                contentArray != null -> {
-                                    println("📋 Using content[] structure")
-                                    contentArray.mapNotNull { shipItem ->
-                                        try {
-                                            val shipObject = shipItem.jsonObject
-                                            // For content[] structure, shipInfoId is the ID
-                                            val shipInfoId = shipObject["shipInfoId"]?.jsonPrimitive?.content
-                                            val shipName = shipObject["shipName"]?.jsonPrimitive?.content ?: ""
-                                            val imo = shipObject["imo"]?.jsonPrimitive?.content
-                                            val officialNumber = shipObject["officialNumber"]?.jsonPrimitive?.content ?: ""
-                                            val portOfRegistry = shipObject["portOfRegistry"]?.jsonPrimitive?.content ?: ""
-                                            val marineActivityName = shipObject["marineActivityName"]?.jsonPrimitive?.content ?: ""
-                                            val isActive = shipObject["isActive"]?.jsonPrimitive?.boolean ?: true
-
-                                            MarineUnit(
-                                                id = shipInfoId ?: "",
-                                                shipName = shipName,
-                                                imoNumber = imo,
-                                                officialNumber = officialNumber,
-                                                portOfRegistry = PortOfRegistry(id = portOfRegistry),
-                                                marineActivity = MarineActivity(id = 0), // No ID in response, use 0
-                                                isActive = isActive,
-                                                // Default values for fields not in content[] structure
-                                                callSign = "",
-                                                mmsiNumber = "",
-                                                firstRegistrationDate = "",
-                                                requestSubmissionDate = "",
-                                                isTemp = "0",
-                                                shipCategory = ShipCategory(id = 0),
-                                                shipType = ShipType(id = 0),
-                                                proofType = ProofType(id = 0),
-                                                buildCountry = BuildCountry(id = ""),
-                                                buildMaterial = BuildMaterial(id = 0),
-                                                shipBuildYear = "",
-                                                buildEndDate = "",
-                                                grossTonnage = "",
-                                                netTonnage = "",
-                                                deadweightTonnage = "",
-                                                maxLoadCapacity = "",
-                                                totalLength = "",
-                                                totalWidth = "",
-                                                draft = "",
-                                                height = "",
-                                                numberOfDecks = ""
-                                            )
-                                        } catch (e: Exception) {
-                                            println("⚠ Failed to parse ship from content[]: ${e.message}")
-                                            e.printStackTrace()
-                                            null
-                                        }
-                                    }
-                                }
-                                // Structure 2: activeCoreShips[] + nonActiveCoreShip[]
-                                activeCoreShips != null || nonActiveCoreShips != null -> {
-                                    println("📋 Using activeCoreShips/nonActiveCoreShip structure")
-
-                            // ✅ FIXED: Parse active ships using the OUTER id from activeCoreShips
-                            val activeShips = (activeCoreShips ?: emptyList()).mapNotNull { shipItem ->
-                                try {
-                                    // Each item has: id, ship{}, isCurrent, shipInfoEngines[], shipInfoOwners[]
-                                    val outerShipItemObject = shipItem.jsonObject
-                                    val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
-                                    val shipObject = outerShipItemObject.getValue("ship").jsonObject
-
-                                    // ✅ Parse the ship and override the ID with the outer ID
-                                    val marineUnit = parseMarineUnit(shipObject)
-
-                                    // ✅ Override the ship.id with the outer activeCoreShips[].id
-                                    if (outerShipId != null) {
-                                        marineUnit.copy(id = outerShipId, isActive = true)
-                                    } else {
-                                        marineUnit.copy(isActive = true)
-                                    }
-                                } catch (e: Exception) {
-                                    println("⚠ Failed to parse active ship: ${e.message}")
-                                    e.printStackTrace()
-                                    null
-                                }
-                            }
-
-                            // ✅ FIXED: Parse non-active ships using the OUTER id
-                            val nonActiveShips = (nonActiveCoreShips ?: emptyList()).mapNotNull { shipItem ->
-                                try {
-                                    val outerShipItemObject = shipItem.jsonObject
-                                    val outerShipId = outerShipItemObject["id"]?.jsonPrimitive?.content
-                                    val shipObject = outerShipItemObject.getValue("ship").jsonObject
-
-                                    // ✅ Parse the ship and override the ID with the outer ID
-                                    val marineUnit = parseMarineUnit(shipObject)
-
-                                    // ✅ Override the ship.id with the outer nonActiveCoreShip[].id
-                                    if (outerShipId != null) {
-                                        marineUnit.copy(id = outerShipId, isActive = false)
-                                    } else {
-                                        marineUnit.copy(isActive = false)
-                                    }
-                                } catch (e: Exception) {
-                                    println("⚠ Failed to parse non-active ship: ${e.message}")
-                                    e.printStackTrace()
-                                    null
-                                }
-                            }
-
-                                    // Combine both active and non-active ships
-                                    activeShips + nonActiveShips
-                                }
-                                else -> {
-                                    println("⚠ Unknown response structure")
-                                    emptyList()
-                                }
-                            }
-
-                            println("✅ Successfully fetched ${allShips.size} ships")
-                            Result.success(allShips)
-                        } else {
-                            println("❌ Service failed with status: $statusCode")
-                            println("❌ Response body: $responseJson")
-                            Result.failure(Exception("Service failed with status: $statusCode"))
-                        }
-                    } else {
+                    if (responseJson.jsonObject.isEmpty()) {
                         println("❌ Empty response from server")
-                        Result.failure(Exception("Empty response from server"))
+                        return Result.failure(Exception("Empty response from server"))
                     }
+
+                    val (firstPageShips, totalPages) = parseOnePage(responseJson)
+                    val allShips = mutableListOf<MarineUnit>()
+                    allShips.addAll(firstPageShips)
+
+                    // Fetch remaining pages (1 … totalPages-1) if any
+                    if (totalPages > 1) {
+                        println("📄 Paginated response: $totalPages pages total — fetching remaining pages...")
+                        for (page in 1 until totalPages) {
+                            println("📡 Fetching page $page / ${totalPages - 1}")
+                            val pageResponse = repo.onGet(buildPageEndpoint(page))
+                            when (pageResponse) {
+                                is RepoServiceState.Success -> {
+                                    val (pageShips, _) = parseOnePage(pageResponse.response)
+                                    allShips.addAll(pageShips)
+                                    println("   ✅ Page $page: ${pageShips.size} ships added")
+                                }
+                                is RepoServiceState.Error -> {
+                                    println("⚠ Failed to fetch page $page (code: ${pageResponse.code}): ${pageResponse.error} — skipping")
+                                }
+                            }
+                        }
+                    }
+
+                    println("✅ Successfully fetched ${allShips.size} ships total (across $totalPages page(s))")
+                    Result.success(allShips)
                 }
 
                 is RepoServiceState.Error -> {
-                    println("❌ API Error - Code: ${response.code}")
-                    println("❌ Error message: ${response.error}")
-                    println("❌ Error type: ${response.error?.javaClass?.name}")
-                    println("❌ Full error object: $response")
+                    println("❌ API Error - Code: ${firstResponse.code}")
+                    println("❌ Error message: ${firstResponse.error}")
+                    println("❌ Error type: ${firstResponse.error?.javaClass?.name}")
+                    println("❌ Full error object: $firstResponse")
 
-                    // Try to parse error response if it's JSON
                     try {
-                        val errorJson = response.error.toString()
+                        val errorJson = firstResponse.error.toString()
                         println("❌ Error as string: $errorJson")
                     } catch (e: Exception) {
                         println("⚠ Could not stringify error: ${e.message}")
                     }
 
-                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                    Result.failure(Exception("API Error ${firstResponse.code}: ${firstResponse.error}"))
                 }
             }
         } catch (e: Exception) {
             println("❌ Exception in getMyShips: ${e.message}")
             e.printStackTrace()
             Result.failure(Exception("Failed to get ships: ${e.message}"))
-          }
-     }
+        }
+    }
+
+    /**
+     * ✅ Parse a single item from the unified paginated content[] response.
+     *
+     * New flat structure (all transaction types via coreshipinfo/get-my-ships):
+     * {
+     *   "shipInfoId": 3780,
+     *   "shipName": "magal2",
+     *   "registrationNumber": "MTCIT-KHS-2026-507",
+     *   "officialNumber": "2622",
+     *   "portOfRegistry": "PORT OF KHASSAB",   ← plain String, NOT an object
+     *   "marineActivityName": "Coastal Fishing",
+     *   "isActive": true,
+     *   "callSign": "678768"                   ← optional
+     * }
+     */
+    private fun parseContentShipItem(shipObject: kotlinx.serialization.json.JsonObject): MarineUnit {
+        val shipInfoId = shipObject["shipInfoId"]?.jsonPrimitive?.content ?: ""
+        val shipName = shipObject["shipName"]?.jsonPrimitive?.content ?: ""
+        val officialNumber = shipObject["officialNumber"]?.jsonPrimitive?.content ?: ""
+        // portOfRegistry is a plain String in the new unified response (e.g. "PORT OF KHASSAB")
+        // Store as both id and nameAr so the computed property can display it correctly
+        val portOfRegistryStr = shipObject["portOfRegistry"]?.jsonPrimitive?.content ?: ""
+        val marineActivityName = shipObject["marineActivityName"]?.jsonPrimitive?.content ?: ""
+        val isActive = shipObject["isActive"]?.jsonPrimitive?.boolean ?: true
+        val callSign = shipObject["callSign"]?.jsonPrimitive?.content ?: ""
+
+        return MarineUnit(
+            id = shipInfoId,
+            shipName = shipName,
+            marineActivityName = marineActivityName,
+            officialNumber = officialNumber,
+            // ✅ Store the plain-string port name in both id and nameAr fields so the
+            //    computed `registrationPort` property can display it correctly
+            portOfRegistry = PortOfRegistry(id = portOfRegistryStr, nameAr = portOfRegistryStr),
+            marineActivity = MarineActivity(id = 0), // ID not present in this response
+            isActive = isActive,
+            callSign = callSign,
+            // Fields not present in this response — use safe defaults
+            imoNumber = null,
+            mmsiNumber = "",
+            firstRegistrationDate = "",
+            requestSubmissionDate = "",
+            isTemp = "0",
+            shipCategory = ShipCategory(id = 0),
+            shipType = ShipType(id = 0),
+            proofType = ProofType(id = 0),
+            buildCountry = BuildCountry(id = ""),
+            buildMaterial = BuildMaterial(id = 0),
+            shipBuildYear = "",
+            buildEndDate = "",
+            grossTonnage = "",
+            netTonnage = "",
+            deadweightTonnage = "",
+            maxLoadCapacity = "",
+            totalLength = "",
+            totalWidth = "",
+            draft = "",
+            height = "",
+            numberOfDecks = ""
+        )
+    }
+
+    /**
+     * ✅ NEW: Fetch a single page of ships for infinite scroll
+     *
+     * Returns a [ShipsPage] containing the ships on that page plus pagination metadata.
+     * Callers should keep requesting pages (incrementing [page]) until [ShipsPage.isLastPage] is true.
+     *
+     * @param ownerCivilId   Civil ID of the owner (required)
+     * @param commercialRegNumber CR Number for companies (optional)
+     * @param requestTypeId  Transaction type ID for filtering
+     * @param page           Zero-based page index to fetch
+     * @param pageSize       Number of items per page (default 5)
+     */
+    suspend fun getMyShipsPage(
+        ownerCivilId: String?,
+        commercialRegNumber: String? = null,
+        requestTypeId: String? = null,
+        page: Int = 0,
+        pageSize: Int = 5
+    ): Result<ShipsPage> {
+        return try {
+            val requestTypeInt = requestTypeId?.toIntOrNull() ?: 0
+            val commercialNumberForFilter = commercialRegNumber?.takeIf { it.isNotBlank() }
+            val ownerIdForFilter = ownerCivilId?.takeIf { it.isNotBlank() } ?: ""
+
+            if (ownerIdForFilter.isBlank()) {
+                println("❌ getMyShipsPage: No ownerId provided (required)")
+                return Result.failure(IllegalArgumentException("ownerId is required"))
+            }
+
+            val filterJsonElement = kotlinx.serialization.json.buildJsonObject {
+                put("requestTypeId", kotlinx.serialization.json.JsonPrimitive(requestTypeInt))
+                if (commercialNumberForFilter != null) {
+                    put("commercialNumber", kotlinx.serialization.json.JsonPrimitive(commercialNumberForFilter))
+                }
+                put("ownerId", kotlinx.serialization.json.JsonPrimitive(ownerIdForFilter))
+            }
+
+            val filterJson = filterJsonElement.toString()
+            val base64Filter = Base64.encodeToString(
+                filterJson.toByteArray(Charsets.UTF_8),
+                Base64.NO_WRAP
+            )
+
+            val endpoint = "coreshipinfo/get-my-ships?filter=$base64Filter&page=$page&size=$pageSize"
+            println("📡 getMyShipsPage: fetching page=$page size=$pageSize → $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    if (responseJson.jsonObject.isEmpty()) {
+                        return Result.failure(Exception("Empty response from server"))
+                    }
+
+                    val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                    val success = responseJson.jsonObject.getValue("success").jsonPrimitive.boolean
+
+                    if (statusCode != 200 || !success) {
+                        return Result.failure(Exception("Service failed with status: $statusCode"))
+                    }
+
+                    val data = responseJson.jsonObject.getValue("data").jsonObject
+                    val contentArray = data["content"]?.jsonArray
+                        ?: return Result.failure(Exception("Expected 'content' array in response data"))
+
+                    val totalPages = data["totalPages"]?.jsonPrimitive?.int ?: 1
+                    val isLast = data["last"]?.jsonPrimitive?.boolean ?: (page >= totalPages - 1)
+
+                    val ships = contentArray.mapNotNull { shipItem ->
+                        try {
+                            parseContentShipItem(shipItem.jsonObject)
+                        } catch (e: Exception) {
+                            println("⚠ Failed to parse ship from content[]: ${e.message}")
+                            null
+                        }
+                    }
+
+                    println("✅ getMyShipsPage: page=$page ships=${ships.size} totalPages=$totalPages isLast=$isLast")
+                    Result.success(ShipsPage(ships = ships, currentPage = page, totalPages = totalPages, isLastPage = isLast))
+                }
+
+                is RepoServiceState.Error -> {
+                    println("❌ getMyShipsPage error code=${response.code}: ${response.error}")
+                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getMyShipsPage: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get ships page: ${e.message}"))
+        }
+    }
 
     /**
      * ✅ Generic function to parse ship JSON object to MarineUnit model
@@ -337,6 +401,10 @@ class MarineUnitsApiService @Inject constructor(
      * - Mortgaged Ships: data[] (direct array)
      */
     private fun parseMarineUnit(shipJson: kotlinx.serialization.json.JsonObject): MarineUnit {
+        // Helper to extract nameAr from a nested object
+        fun nameAr(key: String) = shipJson[key]?.jsonObject?.get("nameAr")?.jsonPrimitive?.content ?: ""
+        fun nameArObj(obj: kotlinx.serialization.json.JsonObject?) = obj?.get("nameAr")?.jsonPrimitive?.content ?: ""
+
         return MarineUnit(
             // Core Information
             id = shipJson["id"]?.jsonPrimitive?.content ?: "",
@@ -345,10 +413,14 @@ class MarineUnitsApiService @Inject constructor(
             callSign = shipJson["callSign"]?.jsonPrimitive?.content ?: "",
             mmsiNumber = shipJson["mmsiNumber"]?.jsonPrimitive?.content ?: "",
             officialNumber = shipJson["officialNumber"]?.jsonPrimitive?.content ?: "",
+            // ✅ Extract nameAr from nested portOfRegistry object
+            marineActivityName = nameAr("marineActivity"),
 
             // Registration
             portOfRegistry = PortOfRegistry(
-                id = shipJson["portOfRegistry"]?.jsonObject?.get("id")?.jsonPrimitive?.content ?: ""
+                id = shipJson["portOfRegistry"]?.jsonObject?.get("id")?.jsonPrimitive?.content ?: "",
+                nameAr = nameAr("portOfRegistry"),
+                nameEn = shipJson["portOfRegistry"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
             firstRegistrationDate = shipJson["firstRegistrationDate"]?.jsonPrimitive?.content ?: "",
             requestSubmissionDate = shipJson["requestSubmissionDate"]?.jsonPrimitive?.content ?: "",
@@ -356,24 +428,36 @@ class MarineUnitsApiService @Inject constructor(
 
             // Classification
             marineActivity = MarineActivity(
-                id = shipJson["marineActivity"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0
+                id = shipJson["marineActivity"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0,
+                nameAr = nameAr("marineActivity"),
+                nameEn = shipJson["marineActivity"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
             shipCategory = ShipCategory(
-                id = shipJson["shipCategory"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0
+                id = shipJson["shipCategory"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0,
+                nameAr = nameAr("shipCategory"),
+                nameEn = shipJson["shipCategory"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
             shipType = ShipType(
-                id = shipJson["shipType"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0
+                id = shipJson["shipType"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0,
+                nameAr = nameAr("shipType"),
+                nameEn = shipJson["shipType"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
             proofType = ProofType(
-                id = shipJson["proofType"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0
+                id = shipJson["proofType"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0,
+                nameAr = nameAr("proofType"),
+                nameEn = shipJson["proofType"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
 
             // Build Information
             buildCountry = BuildCountry(
-                id = shipJson["buildCountry"]?.jsonObject?.get("id")?.jsonPrimitive?.content ?: ""
+                id = shipJson["buildCountry"]?.jsonObject?.get("id")?.jsonPrimitive?.content ?: "",
+                nameAr = nameAr("buildCountry"),
+                nameEn = shipJson["buildCountry"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
             buildMaterial = BuildMaterial(
-                id = shipJson["buildMaterial"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0
+                id = shipJson["buildMaterial"]?.jsonObject?.get("id")?.jsonPrimitive?.int ?: 0,
+                nameAr = nameAr("buildMaterial"),
+                nameEn = shipJson["buildMaterial"]?.jsonObject?.get("nameEn")?.jsonPrimitive?.content ?: ""
             ),
             shipBuildYear = shipJson["shipBuildYear"]?.jsonPrimitive?.content ?: "",
             buildEndDate = shipJson["buildEndDate"]?.jsonPrimitive?.content ?: "",
@@ -498,6 +582,119 @@ class MarineUnitsApiService @Inject constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(Exception("Failed to get ship: ${e.message}"))
+        }
+    }
+
+    /**
+     * ✅ Get full ship core info by shipInfoId
+     * API: GET /coreshipinfo/ship/{id}
+     *
+     * Returns complete details including engines, owners, and certifications.
+     * Called when user taps "عرض جميع البيانات" in the marine unit selector.
+     */
+    suspend fun getShipCoreInfo(shipInfoId: String): Result<com.informatique.mtcit.business.transactions.shared.CoreShipInfo> {
+        return try {
+            val endpoint = "coreshipinfo/ship/$shipInfoId"
+            println("📡 getShipCoreInfo: fetching $endpoint")
+
+            when (val response = repo.onGet(endpoint)) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("📄 getShipCoreInfo response: $responseJson")
+
+                    val statusCode = responseJson.jsonObject["statusCode"]?.jsonPrimitive?.int ?: 0
+                    val success = responseJson.jsonObject["success"]?.jsonPrimitive?.boolean ?: false
+
+                    if (statusCode == 200 && success) {
+                        val data = responseJson.jsonObject["data"]?.jsonObject
+                            ?: return Result.failure(Exception("Missing data in response"))
+
+                        val shipInfoId2 = data["id"]?.jsonPrimitive?.int ?: 0
+                        val shipObj = data["ship"]?.jsonObject
+
+                        fun str(obj: kotlinx.serialization.json.JsonObject?, key: String) =
+                            obj?.get(key)?.jsonPrimitive?.contentOrNull ?: ""
+                        fun nameAr(obj: kotlinx.serialization.json.JsonObject?, key: String) =
+                            obj?.get(key)?.jsonObject?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+
+                        // Parse engines
+                        val engines = data["shipInfoEngines"]?.jsonArray?.mapNotNull { item ->
+                            try {
+                                val eng = item.jsonObject["engine"]?.jsonObject ?: return@mapNotNull null
+                                com.informatique.mtcit.business.transactions.shared.CoreEngineInfo(
+                                    serialNumber = str(eng, "engineSerialNumber"),
+                                    engineType = eng["engineType"]?.jsonObject?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: "",
+                                    enginePower = eng["enginePower"]?.jsonPrimitive?.contentOrNull ?: "",
+                                    engineStatus = eng["engineStatus"]?.jsonObject?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+                                )
+                            } catch (e: Exception) { null }
+                        } ?: emptyList()
+
+                        // Parse owners
+                        val owners = data["shipInfoOwners"]?.jsonArray?.mapNotNull { item ->
+                            try {
+                                val own = item.jsonObject["owner"]?.jsonObject ?: return@mapNotNull null
+                                com.informatique.mtcit.business.transactions.shared.CoreOwnerInfo(
+                                    ownerName = str(own, "ownerName"),
+                                    ownerCivilId = str(own, "ownerCivilId"),
+                                    ownershipPercentage = own["ownershipPercentage"]?.jsonPrimitive?.double ?: 0.0,
+                                    isRepresentative = own["isRepresentative"]?.jsonPrimitive?.int == 1
+                                )
+                            } catch (e: Exception) { null }
+                        } ?: emptyList()
+
+                        // Parse certifications
+                        val certs = data["shipCertifications"]?.jsonArray?.mapNotNull { item ->
+                            try {
+                                val cert = item.jsonObject
+                                com.informatique.mtcit.business.transactions.shared.CoreCertificationInfo(
+                                    certificationNumber = str(cert, "certificationNumber"),
+                                    issuedDate = str(cert, "issuedDate"),
+                                    expiryDate = str(cert, "expiryDate"),
+                                    certificationType = cert["certificationType"]?.jsonObject?.get("nameAr")?.jsonPrimitive?.contentOrNull ?: ""
+                                )
+                            } catch (e: Exception) { null }
+                        } ?: emptyList()
+
+                        val info = com.informatique.mtcit.business.transactions.shared.CoreShipInfo(
+                            shipInfoId = shipInfoId2,
+                            shipName = str(shipObj, "shipName").ifEmpty { str(shipObj, "name") },
+                            // callSign and imoNumber: try ship object first, then data level as fallback
+                            imoNumber = str(shipObj, "imoNumber").ifEmpty { str(data, "imoNumber") },
+                            callSign = str(shipObj, "callSign").ifEmpty { str(data, "callSign") },
+                            officialNumber = str(shipObj, "officialNumber").ifEmpty { str(data, "officialNumber") },
+                            registrationNumber = str(shipObj, "registrationNumber"),
+                            portOfRegistry = nameAr(shipObj, "portOfRegistry"),
+                            marineActivity = nameAr(shipObj, "marineActivity"),
+                            shipCategory = nameAr(shipObj, "shipCategory"),
+                            shipType = nameAr(shipObj, "shipType"),
+                            buildMaterial = nameAr(shipObj, "buildMaterial"),
+                            shipBuildYear = shipObj?.get("shipBuildYear")?.jsonPrimitive?.contentOrNull ?: "",
+                            buildEndDate = str(shipObj, "buildEndDate"),
+                            grossTonnage = shipObj?.get("grossTonnage")?.jsonPrimitive?.contentOrNull ?: "",
+                            netTonnage = shipObj?.get("netTonnage")?.jsonPrimitive?.contentOrNull ?: "",
+                            vesselLengthOverall = shipObj?.get("vesselLengthOverall")?.jsonPrimitive?.contentOrNull ?: "",
+                            vesselBeam = shipObj?.get("vesselBeam")?.jsonPrimitive?.contentOrNull ?: "",
+                            vesselDraft = shipObj?.get("vesselDraft")?.jsonPrimitive?.contentOrNull ?: "",
+                            isTemp = shipObj?.get("isTemp")?.jsonPrimitive?.int == 1,
+                            engines = engines,
+                            owners = owners,
+                            certifications = certs
+                        )
+                        println("✅ getShipCoreInfo success: ${info.shipName}")
+                        Result.success(info)
+                    } else {
+                        Result.failure(Exception("Service failed with status: $statusCode"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    Result.failure(Exception("API Error ${response.code}: ${response.error}"))
+                }
+            }
+        } catch (e: Exception) {
+            println("❌ Exception in getShipCoreInfo: ${e.message}")
+            e.printStackTrace()
+            Result.failure(Exception("Failed to get ship core info: ${e.message}"))
         }
     }
 

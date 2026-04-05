@@ -6,6 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,9 +25,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
+import com.informatique.mtcit.business.transactions.shared.CoreShipInfo
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.ValidationState
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,22 +43,57 @@ fun MarineUnitSelectorManager(
     showAddNewButton: Boolean = false,
     onSelectionChange: (List<String>) -> Unit,
     validationState: ValidationState = ValidationState.Idle,
-    onMarineUnitSelected: ((String) -> Unit)? = null
+    onMarineUnitSelected: ((String) -> Unit)? = null,
+    // ✅ INFINITE SCROLL params
+    onLoadMore: (() -> Unit)? = null,
+    isLoadingMore: Boolean = false,
+    hasMore: Boolean = false,
+    // ✅ Ship details API fetch for "عرض جميع البيانات"
+    fetchShipDetails: (suspend (String) -> Result<CoreShipInfo>)? = null
 ) {
     val extraColors = LocalExtraColors.current
-    var showBottomSheet by remember { mutableStateOf(false) }
-    var selectedUnitForDetails by remember { mutableStateOf<MarineUnit?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // فصل السفن حسب حالة التفعيل
-    val activeUnits = units.filter { it.isActive }
-    val nonActiveUnits = units.filter { !it.isActive }
+    // ✅ SEARCH: local search query state
+    var searchQuery by remember { mutableStateOf("") }
+
+    // ✅ SEARCH: filter units by name or maritime ID
+    val filteredUnits = remember(units, searchQuery) {
+        if (searchQuery.isBlank()) units
+        else units.filter { unit ->
+            unit.name.contains(searchQuery, ignoreCase = true) ||
+            unit.shipName.contains(searchQuery, ignoreCase = true) ||
+            unit.maritimeId.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    // فصل السفن حسب حالة التفعيل (on filtered list)
+    val activeUnits = filteredUnits.filter { it.isActive }
+    val nonActiveUnits = filteredUnits.filter { !it.isActive }
+
+    // ✅ INFINITE SCROLL: LazyListState to detect when user reaches the end
+    val lazyListState = rememberLazyListState()
+
+    // ✅ INFINITE SCROLL: Trigger load-more when user reaches the last visible item
+    LaunchedEffect(lazyListState, hasMore) {
+        snapshotFlow {
+            val layoutInfo = lazyListState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisible = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            Pair(totalItems, lastVisible)
+        }
+            .distinctUntilChanged()
+            .collect { (totalItems, lastVisible) ->
+                if (totalItems > 0 && lastVisible >= totalItems - 2 && hasMore && !isLoadingMore) {
+                    onLoadMore?.invoke()
+                }
+            }
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (showAddNewButton == true) {
+        if (showAddNewButton) {
             Button(
                 onClick = addNewUnit,
                 modifier = Modifier
@@ -63,9 +103,7 @@ fun MarineUnitSelectorManager(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LocalExtraColors.current.startServiceButton
                 ),
-                border = ButtonDefaults.outlinedButtonBorder(
-                    enabled = true
-                )
+                border = ButtonDefaults.outlinedButtonBorder(enabled = true)
             ) {
                 Text(
                     text = localizedApp(R.string.add_ship),
@@ -76,7 +114,7 @@ fun MarineUnitSelectorManager(
             }
         }
 
-        // NEW: Validation loading indicator
+        // Validation loading indicator
         if (validationState is ValidationState.Validating) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -90,10 +128,7 @@ fun MarineUnitSelectorManager(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "جاري التحقق من الوحدة البحرية...",
@@ -104,114 +139,217 @@ fun MarineUnitSelectorManager(
             }
         }
 
-        // عرض عدد السفن المختارة
-//        if (selectedUnitIds.isNotEmpty()) {
-//            Text(
-//                text = localizedApp(R.string.num_of_ships) + ": ${selectedUnitIds.size}",
-//                style = MaterialTheme.typography.titleMedium,
-//                fontWeight = FontWeight.Medium,
-//                color = extraColors.whiteInDarkMode
-//            )
-//        }
-
-        // السفن النشطة (قابلة للاختيار)
-        activeUnits.forEach { unit ->
-            MarineUnitSelectionCard(
-                unit = unit,
-                isSelected = selectedUnitIds.contains(unit.id),
-                isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id),
-                onToggleSelection = {
-                    if (onMarineUnitSelected != null) {
-                        val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.id)) {
-                                selectedUnitIds - unit.id
-                            } else {
-                                selectedUnitIds + unit.id
+        // ✅ SEARCH: Search bar (only shown when there are ships to search through)
+        if (units.isNotEmpty()) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = extraColors.cardBackground),
+                elevation = CardDefaults.cardElevation(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color(0xFF9E9E9E),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Box(
+                        modifier = Modifier.weight(1f),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 14.sp,
+                                color = extraColors.whiteInDarkMode
+                            ),
+                            singleLine = true,
+                            decorationBox = { innerTextField ->
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "ابحث باسم السفينة أو الرقم البحري",
+                                        fontSize = 14.sp,
+                                        color = Color(0xFFBDBDBD)
+                                    )
+                                }
+                                innerTextField()
                             }
-                        } else {
-                            if (selectedUnitIds.contains(unit.id)) {
-                                emptyList()
-                            } else {
-                                listOf(unit.id)
-                            }
-                        }
-                        onSelectionChange(newSelection)
-                        onMarineUnitSelected(unit.id)
-                    } else {
-                        val newSelection = if (allowMultipleSelection) {
-                            if (selectedUnitIds.contains(unit.id)) {
-                                selectedUnitIds - unit.id
-                            } else {
-                                selectedUnitIds + unit.id
-                            }
-                        } else {
-                            if (selectedUnitIds.contains(unit.id)) {
-                                emptyList()
-                            } else {
-                                listOf(unit.id)
-                            }
-                        }
-                        onSelectionChange(newSelection)
+                        )
                     }
-                },
-                onShowDetails = {
-                    selectedUnitForDetails = unit
-                    showBottomSheet = true
-                },
-                isSelectable = true
-            )
+                    // ✅ Clear button when there's a query
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { searchQuery = "" },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear search",
+                                tint = Color(0xFF9E9E9E),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
 
-        // رسالة تحذير عند وجود سفن غير نشطة
-        if (nonActiveUnits.isNotEmpty()) {
-            NonActiveWarningCard()
-        }
-
-        // السفن غير النشطة (عرض فقط بدون اختيار)
-        nonActiveUnits.forEach { unit ->
-            MarineUnitSelectionCard(
-                unit = unit,
-                isSelected = false,
-                isValidating = false,
-                onToggleSelection = {},
-                onShowDetails = {
-                    selectedUnitForDetails = unit
-                    showBottomSheet = true
-                },
-                isSelectable = false
-            )
-        }
-    }
-
-    // Bottom Sheet للتفاصيل الكاملة
-    if (showBottomSheet && selectedUnitForDetails != null) {
-        ModalBottomSheet(
-            modifier = Modifier.fillMaxHeight(),
-            onDismissRequest = { showBottomSheet = false },
-            sheetState = sheetState,
-            containerColor = extraColors.background,
-            shape = RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp)
+        // ✅ INFINITE SCROLL: LazyColumn for ships list (fixed height avoids nested scroll conflict)
+        val listHeight = if (filteredUnits.isEmpty()) 80.dp else minOf((filteredUnits.size * 88).dp, 480.dp)
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 80.dp, max = listHeight),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            MarineUnitBottomSheet(unit = selectedUnitForDetails!!)
+            // ✅ SEARCH: Empty state when no results
+            if (filteredUnits.isEmpty() && searchQuery.isNotBlank()) {
+                item(key = "no_results") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "لا توجد نتائج لـ \"$searchQuery\"",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF9E9E9E)
+                        )
+                    }
+                }
+            }
+
+            // ✅ Active ships (selectable)
+            items(activeUnits, key = { it.id }) { unit ->
+                MarineUnitSelectionCard(
+                    unit = unit,
+                    isSelected = selectedUnitIds.contains(unit.id),
+                    isValidating = validationState is ValidationState.Validating && selectedUnitIds.contains(unit.id),
+                    onToggleSelection = {
+                        val newSelection = if (allowMultipleSelection) {
+                            if (selectedUnitIds.contains(unit.id)) selectedUnitIds - unit.id
+                            else selectedUnitIds + unit.id
+                        } else {
+                            if (selectedUnitIds.contains(unit.id)) emptyList()
+                            else listOf(unit.id)
+                        }
+                        onSelectionChange(newSelection)
+                        onMarineUnitSelected?.invoke(unit.id)
+                    },
+                    fetchShipDetails = fetchShipDetails,
+                    isSelectable = true
+                )
+            }
+
+            // ✅ Warning card before inactive ships
+            if (nonActiveUnits.isNotEmpty()) {
+                item(key = "non_active_warning") {
+                    NonActiveWarningCard()
+                }
+            }
+
+            // ✅ Inactive ships (display only)
+            items(nonActiveUnits, key = { "inactive_${it.id}" }) { unit ->
+                MarineUnitSelectionCard(
+                    unit = unit,
+                    isSelected = false,
+                    isValidating = false,
+                    onToggleSelection = {},
+                    fetchShipDetails = fetchShipDetails,
+                    isSelectable = false
+                )
+            }
+
+            // ✅ INFINITE SCROLL: Loading footer
+            if (isLoadingMore) {
+                item(key = "loading_more") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "جاري تحميل المزيد...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6B7280)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
+
 }
 
+// ============================================================
+// Selection Card
+// ============================================================
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MarineUnitSelectionCard(
     unit: MarineUnit,
     isSelected: Boolean,
     isValidating: Boolean = false,
     onToggleSelection: () -> Unit,
-    onShowDetails: () -> Unit,
+    fetchShipDetails: (suspend (String) -> Result<CoreShipInfo>)? = null,
     isSelectable: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val rotationAngle by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        label = "rotation"
-    )
+    val rotationAngle by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "rotation")
     val extraColors = LocalExtraColors.current
+
+    // ✅ Per-card details state
+    var coreShipInfo by remember { mutableStateOf<CoreShipInfo?>(null) }
+    var isLoadingDetails by remember { mutableStateOf(false) }
+    var showFullBottomSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // ✅ Auto-fetch details when card first expands (for Arabic names, IMO, callSign)
+    // try/finally ensures isLoadingDetails is ALWAYS reset even if the coroutine is cancelled
+    // (e.g. user expands → collapses → expands rapidly)
+    LaunchedEffect(expanded) {
+        if (expanded && coreShipInfo == null && fetchShipDetails != null) {
+            try {
+                isLoadingDetails = true
+                fetchShipDetails(unit.id).onSuccess { coreShipInfo = it }
+            } finally {
+                isLoadingDetails = false
+            }
+        }
+    }
+
+    // ✅ Derived display values — prefer Arabic from coreShipInfo, fall back to list-API data
+    val displayType     = coreShipInfo?.shipType?.ifEmpty { unit.type } ?: unit.type
+    val displayImo      = coreShipInfo?.imoNumber?.ifEmpty { unit.imoNumber ?: "" } ?: (unit.imoNumber ?: "")
+    val displayCallSign = coreShipInfo?.callSign?.ifEmpty { unit.callSign } ?: unit.callSign
+    val displayMaritimeId = coreShipInfo?.officialNumber?.ifEmpty { unit.maritimeId } ?: unit.maritimeId
+    val displayPort     = coreShipInfo?.portOfRegistry?.ifEmpty { unit.registrationPort } ?: unit.registrationPort
+    val displayActivity = coreShipInfo?.marineActivity?.ifEmpty { unit.activity } ?: unit.activity
     val cardBg = if (isSelectable) extraColors.cardBackground else extraColors.cardBackground.copy(alpha = 0.6f)
     val titleColor = if (isSelectable) extraColors.whiteInDarkMode else extraColors.whiteInDarkMode.copy(alpha = 0.6f)
     val checkboxBorder = if (isSelectable) {
@@ -225,24 +363,15 @@ private fun MarineUnitSelectionCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .then(
-                if (isSelected) {
-                    Modifier.border(2.dp, Color(0xFF1E3A5F), RoundedCornerShape(16.dp))
-                } else {
-                    Modifier
-                }
-            ),
+            .then(if (isSelected) Modifier.border(2.dp, Color(0xFF1E3A5F), RoundedCornerShape(16.dp)) else Modifier),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(cardBg),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Header
+            // Header row
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded }
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -263,7 +392,6 @@ private fun MarineUnitSelectionCard(
                     ) {
                         Text(text = "🚢", fontSize = 20.sp)
                     }
-
                     Text(
                         text = unit.name,
                         style = MaterialTheme.typography.titleMedium,
@@ -274,18 +402,13 @@ private fun MarineUnitSelectionCard(
                     )
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
                         contentDescription = null,
                         tint = Color(0xFF6B7280),
                         modifier = Modifier.rotate(rotationAngle)
                     )
-
-                    // NEW: Show loading indicator if validating
                     if (isValidating) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
@@ -296,15 +419,8 @@ private fun MarineUnitSelectionCard(
                         Box(
                             modifier = Modifier
                                 .size(24.dp)
-                                .border(
-                                    width = 2.dp,
-                                    color = checkboxBorder,
-                                    shape = CircleShape
-                                )
-                                .background(
-                                    color = checkboxFill,
-                                     shape = CircleShape
-                                 )
+                                .border(width = 2.dp, color = checkboxBorder, shape = CircleShape)
+                                .background(color = checkboxFill, shape = CircleShape)
                                 .clickable(enabled = isSelectable, onClick = onToggleSelection),
                             contentAlignment = Alignment.Center
                         ) {
@@ -321,36 +437,63 @@ private fun MarineUnitSelectionCard(
                 }
             }
 
-            // Expanded Content
+            // Expanded content – quick data rows + "عرض جميع البيانات"
             AnimatedVisibility(visible = expanded) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     HorizontalDivider(color = Color(0xFFE5E7EB))
 
-                    MarineInfoRow(label = "نوع الوحدة البحرية", value = unit.type)
-                    MarineInfoRow(label = "رقم IMO", value = unit.imoNumber?.toString() ?: "-")
-                    MarineInfoRow(label = "رمز النداء", value = unit.callSign)
-                    MarineInfoRow(label = "رقم الهوية البحرية", value = unit.maritimeId)
-                    MarineInfoRow(label = "ميناء التسجيل", value = unit.registrationPort)
-                    MarineInfoRow(label = "النشاط البحري", value = unit.activity)
+                    // ✅ Show small loading indicator while fetching Arabic names
+                    if (isLoadingDetails) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "جاري تحميل البيانات...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF9E9E9E)
+                            )
+                        }
+                    }
+
+                    // ✅ Quick data rows using Arabic values from coreShipInfo where available
+                    if (displayType.isNotEmpty()) {
+                        MarineInfoRow(label = "نوع الوحدة البحرية", value = displayType)
+                    }
+                    if (displayImo.isNotEmpty()) {
+                        MarineInfoRow(label = "رقم IMO", value = displayImo)
+                    }
+                    if (displayCallSign.isNotEmpty()) {
+                        MarineInfoRow(label = "رمز النداء", value = displayCallSign)
+                    }
+                    if (displayMaritimeId.isNotEmpty()) {
+                        MarineInfoRow(label = "رقم الهوية البحرية", value = displayMaritimeId)
+                    }
+                    if (displayPort.isNotEmpty()) {
+                        MarineInfoRow(label = "ميناء التسجيل", value = displayPort)
+                    }
+                    if (displayActivity.isNotEmpty()) {
+                        MarineInfoRow(label = "النشاط البحري", value = displayActivity)
+                    }
 
                     Button(
-                        onClick = onShowDetails,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        enabled = true,
+                        onClick = { showFullBottomSheet = true },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = LocalExtraColors.current.startServiceButton
                         ),
-                        border = ButtonDefaults.outlinedButtonBorder(
-                            enabled = true
-                        )
+                        border = ButtonDefaults.outlinedButtonBorder(enabled = true)
                     ) {
                         Text(
                             text = "عرض جميع البيانات",
@@ -363,7 +506,45 @@ private fun MarineUnitSelectionCard(
             }
         }
     }
+
+    // ✅ Full details bottom sheet (per-card)
+    if (showFullBottomSheet) {
+        ModalBottomSheet(
+            modifier = Modifier.fillMaxHeight(),
+            onDismissRequest = { showFullBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = LocalExtraColors.current.background,
+            shape = RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp)
+        ) {
+            when {
+                isLoadingDetails -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(40.dp))
+                            Text(
+                                text = "جاري تحميل بيانات السفينة...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = LocalExtraColors.current.textSubTitle
+                            )
+                        }
+                    }
+                }
+                coreShipInfo != null -> CoreShipInfoBottomSheet(info = coreShipInfo!!)
+                else -> MarineUnitBottomSheet(unit = unit)
+            }
+        }
+    }
 }
+
+// ============================================================
+// Shared info rows
+// ============================================================
 
 @Composable
 private fun MarineInfoRow(label: String, value: String) {
@@ -376,66 +557,33 @@ private fun MarineInfoRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = extraColors.whiteInDarkMode,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = extraColors.textSubTitle,
-            fontSize = 14.sp
-        )
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = extraColors.whiteInDarkMode, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium, color = extraColors.textSubTitle, fontSize = 14.sp)
     }
 }
 
 @Composable
 private fun WarningCard() {
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9E6))
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "تنبيه",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF6B5D00),
-                    fontSize = 14.sp
-                )
+                Text(text = "تنبيه", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6B5D00), fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6B5D00),
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp
+                    style = MaterialTheme.typography.bodyMedium, color = Color(0xFF6B5D00), fontSize = 13.sp, lineHeight = 20.sp
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(Color(0xFFFFA726), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "!",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            Box(modifier = Modifier.size(24.dp).background(Color(0xFFFFA726), CircleShape), contentAlignment = Alignment.Center) {
+                Text(text = "!", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
@@ -449,42 +597,31 @@ private fun NonActiveWarningCard() {
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF4E5))
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(Color(0xFFFFA726), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.size(32.dp).background(Color(0xFFFFA726), CircleShape), contentAlignment = Alignment.Center) {
                 Text("!", color = Color.White, fontWeight = FontWeight.Bold)
             }
-
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "هناك سفن غير نشطة لا يمكن اختيارها",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF6B5D00)
-                )
+                Text(text = "هناك سفن غير نشطة لا يمكن اختيارها", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B5D00))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B5D00)
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B5D00)
                 )
             }
         }
     }
 }
 
-// نقل الـ Bottom Sheet Components هنا كمان
+// ============================================================
+// ✅ NEW: CoreShipInfo bottom sheet (from API /coreshipinfo/ship/{id})
+// ============================================================
+
 @Composable
-private fun MarineUnitBottomSheet(unit: MarineUnit) {
+private fun CoreShipInfoBottomSheet(info: CoreShipInfo) {
     val extraColors = LocalExtraColors.current
     Column(
         modifier = Modifier
@@ -500,81 +637,122 @@ private fun MarineUnitBottomSheet(unit: MarineUnit) {
             color = extraColors.whiteInDarkMode
         )
 
-
-        // Dimensions Section - Show only if has data
-        if (!unit.totalLength.isNullOrEmpty() || !unit.lengthBetweenPerpendiculars.isNullOrEmpty() ||
-            !unit.totalWidth.isNullOrEmpty() || !unit.draft.isNullOrEmpty() ||
-            !unit.height.isNullOrEmpty() || !unit.numberOfDecks.isNullOrEmpty()) {
-            ExpandableBottomSheetSection(
-                title = "الأبعاد",
-                content = {
-                    if (!unit.totalLength.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "الطول الكلي", value = unit.totalLength!!)
-                    }
-                    if (!unit.lengthBetweenPerpendiculars.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "الطول بين العموديين", value = unit.lengthBetweenPerpendiculars!!)
-                    }
-                    if (!unit.totalWidth.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "العرض الكلي", value = unit.totalWidth!!)
-                    }
-                    if (!unit.draft.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "الغاطس", value = unit.draft!!)
-                    }
-                    if (!unit.height.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "الإرتفاع", value = unit.height!!)
-                    }
-                    if (!unit.numberOfDecks.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "عدد الطوابق", value = unit.numberOfDecks!!)
-                    }
-                }
-            )
+        // ── Basic Info ──────────────────────────────────────────
+        ExpandableBottomSheetSection(title = "البيانات الأساسية", initiallyExpanded = true) {
+            if (info.shipName.isNotEmpty())           BottomSheetInfoCard("اسم السفينة", info.shipName)
+            if (info.imoNumber.isNotEmpty())           BottomSheetInfoCard("رقم IMO", info.imoNumber)
+            if (info.callSign.isNotEmpty())            BottomSheetInfoCard("رمز النداء", info.callSign)
+            if (info.officialNumber.isNotEmpty())      BottomSheetInfoCard("الرقم الرسمي", info.officialNumber)
+            if (info.registrationNumber.isNotEmpty())  BottomSheetInfoCard("رقم التسجيل", info.registrationNumber)
+            if (info.portOfRegistry.isNotEmpty())      BottomSheetInfoCard("ميناء التسجيل", info.portOfRegistry)
+            if (info.marineActivity.isNotEmpty())      BottomSheetInfoCard("النشاط البحري", info.marineActivity)
+            if (info.shipCategory.isNotEmpty())        BottomSheetInfoCard("فئة السفينة", info.shipCategory)
+            if (info.shipType.isNotEmpty())            BottomSheetInfoCard("نوع السفينة", info.shipType)
+            if (info.buildMaterial.isNotEmpty())       BottomSheetInfoCard("مادة البناء", info.buildMaterial)
+            if (info.shipBuildYear.isNotEmpty())       BottomSheetInfoCard("سنة البناء", info.shipBuildYear)
+            if (info.buildEndDate.isNotEmpty())        BottomSheetInfoCard("تاريخ انتهاء البناء", info.buildEndDate)
+            BottomSheetInfoCard("نوع التسجيل", if (info.isTemp) "مؤقت" else "دائم")
         }
 
-        // Capacity Section - Show only if has data
-        if (unit.totalCapacity.isNotEmpty() || !unit.containerCapacity.isNullOrEmpty()) {
-            ExpandableBottomSheetSection(
-                title = "السعة والحمولة",
-                content = {
-                    if (unit.totalCapacity.isNotEmpty()) {
-                        BottomSheetInfoCard(label = "الحمولة الإجمالية", value = unit.totalCapacity)
-                    }
-                    if (!unit.containerCapacity.isNullOrEmpty() && unit.containerCapacity != "-") {
-                        BottomSheetInfoCard(label = "سعة الحاويات", value = unit.containerCapacity!!)
-                    }
-                }
-            )
+        // ── Dimensions & Tonnage ───────────────────────────────
+        if (info.vesselLengthOverall.isNotEmpty() || info.vesselBeam.isNotEmpty() ||
+            info.vesselDraft.isNotEmpty() || info.grossTonnage.isNotEmpty() || info.netTonnage.isNotEmpty()) {
+            ExpandableBottomSheetSection(title = "الأبعاد والحمولة") {
+                if (info.vesselLengthOverall.isNotEmpty()) BottomSheetInfoCard("الطول الكلي", "${info.vesselLengthOverall} م")
+                if (info.vesselBeam.isNotEmpty())          BottomSheetInfoCard("العرض", "${info.vesselBeam} م")
+                if (info.vesselDraft.isNotEmpty())         BottomSheetInfoCard("الغاطس", "${info.vesselDraft} م")
+                if (info.grossTonnage.isNotEmpty())        BottomSheetInfoCard("الحمولة الإجمالية", "${info.grossTonnage} طن")
+                if (info.netTonnage.isNotEmpty())          BottomSheetInfoCard("الحمولة الصافية", "${info.netTonnage} طن")
+            }
         }
 
-        // Violations Section - Show only if has violations or detentions
-        if ((!unit.violationsCount.isNullOrEmpty() && unit.violationsCount != "0") ||
-            (!unit.detentionsCount.isNullOrEmpty() && unit.detentionsCount != "0")) {
-            ExpandableBottomSheetSection(
-                title = "المخالفات والاحتجازات",
-                content = {
-                    if (!unit.violationsCount.isNullOrEmpty() && unit.violationsCount != "0") {
-                        BottomSheetInfoCard(label = "عدد المخالفات", value = unit.violationsCount!!)
-                    }
-                    if (!unit.detentionsCount.isNullOrEmpty() && unit.detentionsCount != "0") {
-                        BottomSheetInfoCard(label = "عدد الاحتجازات", value = unit.detentionsCount!!)
-                    }
+        // ── Engines ───────────────────────────────────────────
+        if (info.engines.isNotEmpty()) {
+            ExpandableBottomSheetSection(title = "المحركات (${info.engines.size})") {
+                info.engines.forEachIndexed { index, engine ->
+                    Text(
+                        text = "محرك ${index + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = extraColors.textBlueSubTitle,
+                        modifier = Modifier.padding(top = if (index > 0) 8.dp else 0.dp)
+                    )
+                    if (engine.serialNumber.isNotEmpty()) BottomSheetInfoCard("الرقم التسلسلي", engine.serialNumber)
+                    if (engine.engineType.isNotEmpty())   BottomSheetInfoCard("نوع الوقود", engine.engineType)
+                    if (engine.enginePower.isNotEmpty())  BottomSheetInfoCard("القدرة (حصان)", engine.enginePower)
+                    if (engine.engineStatus.isNotEmpty()) BottomSheetInfoCard("الحالة", engine.engineStatus)
                 }
-            )
+            }
         }
 
-        // Debts Section - Show only if has debts
-        if ((!unit.amountDue.isNullOrEmpty() && unit.amountDue != "0 ريال") ||
-            (!unit.paymentStatus.isNullOrEmpty() && unit.paymentStatus != "مسدد")) {
-            ExpandableBottomSheetSection(
-                title = "الديون والمستحقات",
-                content = {
-                    if (!unit.amountDue.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "المبلغ المستحق", value = unit.amountDue!!)
-                    }
-                    if (!unit.paymentStatus.isNullOrEmpty()) {
-                        BottomSheetInfoCard(label = "حالة السداد", value = unit.paymentStatus!!)
-                    }
+        // ── Owners ────────────────────────────────────────────
+        if (info.owners.isNotEmpty()) {
+            ExpandableBottomSheetSection(title = "الملاك (${info.owners.size})") {
+                info.owners.forEachIndexed { index, owner ->
+                    Text(
+                        text = "مالك ${index + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = extraColors.textBlueSubTitle,
+                        modifier = Modifier.padding(top = if (index > 0) 8.dp else 0.dp)
+                    )
+                    if (owner.ownerName.isNotEmpty())   BottomSheetInfoCard("الاسم", owner.ownerName)
+                    if (owner.ownerCivilId.isNotEmpty()) BottomSheetInfoCard("الرقم المدني", owner.ownerCivilId)
+                    BottomSheetInfoCard("نسبة الملكية", "${owner.ownershipPercentage.toInt()}%")
+                    if (owner.isRepresentative) BottomSheetInfoCard("الصفة", "ممثل قانوني")
                 }
-            )
+            }
+        }
+
+        // ── Certifications ───────────────────────────────────
+        if (info.certifications.isNotEmpty()) {
+            ExpandableBottomSheetSection(title = "الشهادات (${info.certifications.size})") {
+                info.certifications.forEachIndexed { index, cert ->
+                    Text(
+                        text = "شهادة ${index + 1}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = extraColors.textBlueSubTitle,
+                        modifier = Modifier.padding(top = if (index > 0) 8.dp else 0.dp)
+                    )
+                    if (cert.certificationType.isNotEmpty())  BottomSheetInfoCard("النوع", cert.certificationType)
+                    if (cert.certificationNumber.isNotEmpty()) BottomSheetInfoCard("رقم الشهادة", cert.certificationNumber)
+                    if (cert.issuedDate.isNotEmpty())          BottomSheetInfoCard("تاريخ الإصدار", cert.issuedDate)
+                    if (cert.expiryDate.isNotEmpty())          BottomSheetInfoCard("تاريخ الانتهاء", cert.expiryDate)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+// ── Legacy bottom sheet kept for fallback ─────────────────────
+@Composable
+private fun MarineUnitBottomSheet(unit: MarineUnit) {
+    val extraColors = LocalExtraColors.current
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(24.dp).verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(text = "بيانات الوحدة البحرية", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = extraColors.whiteInDarkMode)
+
+        if (unit.totalLength.isNotEmpty() || unit.lengthBetweenPerpendiculars.isNotEmpty() ||
+            unit.totalWidth.isNotEmpty() || unit.draft.isNotEmpty() || unit.height.isNotEmpty() || unit.numberOfDecks.isNotEmpty()) {
+            ExpandableBottomSheetSection(title = "الأبعاد") {
+                if (unit.totalLength.isNotEmpty()) BottomSheetInfoCard("الطول الكلي", unit.totalLength)
+                if (unit.lengthBetweenPerpendiculars.isNotEmpty()) BottomSheetInfoCard("الطول بين العموديين", unit.lengthBetweenPerpendiculars)
+                if (unit.totalWidth.isNotEmpty()) BottomSheetInfoCard("العرض الكلي", unit.totalWidth)
+                if (unit.draft.isNotEmpty()) BottomSheetInfoCard("الغاطس", unit.draft)
+                if (unit.height.isNotEmpty()) BottomSheetInfoCard("الإرتفاع", unit.height)
+                if (unit.numberOfDecks.isNotEmpty()) BottomSheetInfoCard("عدد الطوابق", unit.numberOfDecks)
+            }
+        }
+        if (unit.totalCapacity.isNotEmpty() || unit.containerCapacity.isNotEmpty()) {
+            ExpandableBottomSheetSection(title = "السعة والحمولة") {
+                if (unit.totalCapacity.isNotEmpty()) BottomSheetInfoCard("الحمولة الإجمالية", unit.totalCapacity)
+                if (unit.containerCapacity.isNotEmpty() && unit.containerCapacity != "-") BottomSheetInfoCard("سعة الحاويات", unit.containerCapacity)
+            }
         }
     }
 }
@@ -582,18 +760,9 @@ private fun MarineUnitBottomSheet(unit: MarineUnit) {
 @Composable
 private fun BottomSheetInfoCard(label: String, value: String) {
     val extraColors = LocalExtraColors.current
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(extraColors.cardBackground)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium , color = extraColors.whiteInDarkMode)
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(extraColors.cardBackground)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = extraColors.whiteInDarkMode)
             Text(text = value, fontSize = 14.sp, color = extraColors.textSubTitle)
         }
     }
@@ -602,9 +771,10 @@ private fun BottomSheetInfoCard(label: String, value: String) {
 @Composable
 private fun ExpandableBottomSheetSection(
     title: String,
+    initiallyExpanded: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(initiallyExpanded) }
     val extraColors = LocalExtraColors.current
 
     Card(
@@ -614,25 +784,18 @@ private fun ExpandableBottomSheetSection(
     ) {
         Column {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { expanded = !expanded }
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp , color = extraColors.whiteInDarkMode)
+                Text(text = title, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, color = extraColors.whiteInDarkMode)
                 Icon(
                     imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
                     tint = extraColors.textBlueSubTitle
                 )
             }
-
             AnimatedVisibility(visible = expanded) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     content()
                 }
             }

@@ -71,6 +71,12 @@ class PermanentRegistrationStrategy @Inject constructor(
     private var insuranceCompanyOptions: List<String> = emptyList() // ✅ Add insurance companies
     private var requiredDocuments: List<RequiredDocumentItem> = emptyList() // ✅ Store required documents
 
+    // ✅ INFINITE SCROLL: pagination state
+    private var _currentShipsPage: Int = -1
+    private var _isLastShipsPage: Boolean = true
+    override val currentShipsPage: Int get() = _currentShipsPage
+    override val isLastShipsPage: Boolean get() = _isLastShipsPage
+
     // ✅ NEW: Store loaded inspection authorities
     private var loadedInspectionAuthorities: List<DropdownSection> = emptyList()
     // ✅ NEW: Store inspection-specific documents (separate from permanent registration documents)
@@ -277,25 +283,50 @@ class PermanentRegistrationStrategy @Inject constructor(
         println("   requestTypeId: $requestTypeId")
         println("=" .repeat(60))
 
-        marineUnits = marineUnitRepository.loadShipsForOwner(
+        println("🔍 Loading first page with loadShipsPage(page=0)")
+        val firstPage = marineUnitRepository.loadShipsPage(
             ownerCivilId = ownerCivilId,
             commercialRegNumber = commercialRegNumber,
-            // **********************************************************************************************************
-            //Request Type Id
-            requestTypeId = requestTypeId
+            requestTypeId = requestTypeId,
+            page = 0
         )
+        marineUnits = firstPage.ships
+        _currentShipsPage = 0
+        _isLastShipsPage = firstPage.isLastPage
 
-        println("✅ Loaded ${marineUnits.size} ships")
-        marineUnits.forEach { unit ->
-            println("   - ${unit.shipName} (ID: ${unit.id})")
-        }
-
+        println("✅ Loaded ${marineUnits.size} ships (isLast=$_isLastShipsPage, totalPages=${firstPage.totalPages})")
+        marineUnits.forEach { unit -> println("   - ${unit.shipName} (ID: ${unit.id})") }
         return marineUnits
     }
 
     override suspend fun clearLoadedShips() {
         println("🧹 Clearing loaded ships cache")
         marineUnits = emptyList()
+        _currentShipsPage = -1
+        _isLastShipsPage = true
+    }
+
+    /**
+     * ✅ INFINITE SCROLL: Append next page of ships and rebuild steps.
+     */
+    override suspend fun loadNextShipsPage(formData: Map<String, String>) {
+        if (_isLastShipsPage) return
+        val nextPage = _currentShipsPage + 1
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialReg = formData["selectionData"]?.takeIf { it.isNotBlank() }
+        println("📄 loadNextShipsPage (PermanentReg) page=$nextPage")
+        val result = marineUnitRepository.loadShipsPage(
+            ownerCivilId = ownerCivilId,
+            commercialRegNumber = commercialReg,
+            requestTypeId = requestTypeId,
+            page = nextPage
+        )
+        if (result.ships.isNotEmpty()) {
+            marineUnits = marineUnits + result.ships
+            _currentShipsPage = nextPage
+            _isLastShipsPage = result.isLastPage
+            onStepsNeedRebuild?.invoke()
+        }
     }
 
     // ✅ Load lookups when a step is opened (lazy loading)
@@ -1206,6 +1237,10 @@ class PermanentRegistrationStrategy @Inject constructor(
                                         return -1 // Block navigation
                                     }
                                 }
+                            } catch (e: com.informatique.mtcit.common.ApiException) {
+                                // ✅ Re-throw ApiException (e.g. 401) so ViewModel can show refresh button
+                                println("❌ ApiException in review step: ${e.code} - ${e.message}")
+                                throw e
                             } catch (e: Exception) {
                                 println("❌ Exception in review step: ${e.message}")
                                 e.printStackTrace()

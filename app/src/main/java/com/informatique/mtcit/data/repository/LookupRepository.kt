@@ -41,6 +41,8 @@ interface LookupRepository {
     // ✅ NEW: Get IDs from names for all lookups (for mapper usage)
     fun getPortId(portName: String): String?
     fun getMarineActivityId(activityName: String): Int?
+    /** Given an English activity name from the ships-list API, returns the localized display name. */
+    fun getLocalizedActivityName(englishName: String): String?
     fun getShipTypeId(typeName: String): Int?
     fun getProofTypeId(proofTypeName: String): Int?
     fun getCountryId(countryName: String): String?
@@ -762,6 +764,12 @@ class LookupRepositoryImpl @Inject constructor(
 
     override fun getMarineActivityId(activityName: String): Int? {
         return cachedMarineActivities?.find { getLocalizedName(it.nameAr, it.nameEn) == activityName }?.id
+    }
+
+    override fun getLocalizedActivityName(englishName: String): String? {
+        return cachedMarineActivities
+            ?.find { it.nameEn.equals(englishName, ignoreCase = true) }
+            ?.let { getLocalizedName(it.nameAr, it.nameEn) }
     }
 
     override fun getShipTypeId(typeName: String): Int? {

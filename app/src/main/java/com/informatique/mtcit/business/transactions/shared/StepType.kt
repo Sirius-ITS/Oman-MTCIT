@@ -125,6 +125,16 @@ enum class StepType {
     CHANGE_PORT_INFO,
 
     /**
+     * Change activity of ship or unit information step
+     */
+    CHANGE_ACTIVITY_INFO,
+
+    /**
+     * Change name of ship or unit information step
+     */
+    CHANGE_NAME_INFO,
+
+    /**
      * Affected certificates display step
      */
     AFFECTED_CERTIFICATES,

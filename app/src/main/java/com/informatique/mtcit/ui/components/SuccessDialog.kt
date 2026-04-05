@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.util.Base64
 import java.util.Locale
@@ -38,12 +39,16 @@ fun SuccessDialog(
     items: List<SuccessDialogItem>,
     qrCode: String? = null, // Base64 encoded PNG
     onDismiss: () -> Unit,
-    onViewCertificate: (() -> Unit)? = null // Optional callback to view certificate
+    onViewCertificate: (() -> Unit)? = null, // Single cert (backward compat)
+    onViewCertificates: List<Pair<String, () -> Unit>>? = null // Multiple certs: label → action
 ) {
     val extraColors = LocalExtraColors.current
     val isArabic = Locale.getDefault().language == "ar"
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnClickOutside = false, dismissOnBackPress = true)
+    ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -177,8 +182,54 @@ fun SuccessDialog(
                 }
 
                 // ✅ Fixed buttons at bottom (always visible)
-                if (onViewCertificate != null) {
-                    // Show two buttons: View Certificate and Close
+                if (!onViewCertificates.isNullOrEmpty()) {
+                    // ── Multiple affected certificates ────────────────────────
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 280.dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 0.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        onViewCertificates.forEach { (label, action) ->
+                            Button(
+                                onClick = action,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = extraColors.blue1
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            border = BorderStroke(1.dp, extraColors.blue1),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isArabic) "إغلاق" else "Close",
+                                color = extraColors.blue1,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else if (onViewCertificate != null) {
+                    // ── Single certificate ────────────────────────────────────
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

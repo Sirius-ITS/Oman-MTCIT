@@ -236,7 +236,9 @@ sealed class FormField(
         val nationalities: List<String> = emptyList(),
         val placeholder: String? = null,
         override val error: String? = null,
-        override val mandatory: Boolean = false
+        override val mandatory: Boolean = false,
+        /** When true, editing an existing sailor only allows changing nameAr/nameEn */
+        val editNameOnly: Boolean = false
     ) : FormField(id, label, labelRes, value, error, mandatory) {
         override fun copyWithValue(newValue: String) =
             copy(value = newValue, error = null)
@@ -387,6 +389,24 @@ sealed class FormField(
 
         override fun copyWithError(newError: String?) =
             copy(error = newError)
+    }
+
+    /**
+     * CurrentValueCard — read-only display card that shows the value of a field
+     * before a change operation (e.g. current port, current name, current activity).
+     * Matches the iOS PreviousMarineActivityCard design.
+     */
+    data class CurrentValueCard(
+        override val id: String,
+        override val label: String = "",
+        override val labelRes: Int = 0,
+        override val value: String = "",
+        override val error: String? = null,
+        override val mandatory: Boolean = false
+    ) : FormField(id, label, labelRes, value, error, mandatory) {
+
+        override fun copyWithValue(newValue: String) = copy(value = newValue, error = null)
+        override fun copyWithError(newError: String?) = copy(error = newError)
     }
 
     /**

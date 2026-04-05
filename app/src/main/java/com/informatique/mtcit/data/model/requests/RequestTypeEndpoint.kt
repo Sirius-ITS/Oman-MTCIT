@@ -66,11 +66,32 @@ enum class RequestTypeEndpoint(
         issuanceEndpoint = null // ✅ Inspection requests do not have certificate issuance
     ),
 
-    // 12. Change Port of Ship or Unit (تغيير ميناء السفينة)
+    // 10. Change Captain (تغيير الربان)
+    CHANGE_CAPTAIN(
+        requestTypeId = 10,
+        endpointPath = "change-captain",
+        issuanceEndpoint = "certificate/issue-affected-certificates/10/{requestId}" // ✅ CDD §4.1.14
+    ),
+
+    // 11. Change Name of Ship (تغيير اسم السفينة)
+    CHANGE_NAME_OF_SHIP(
+        requestTypeId = 11,
+        endpointPath = "change-ship-info",
+        issuanceEndpoint = "certificate/issue-affected-certificates/11/{requestId}" // ✅ CDD §4.1.10
+    ),
+
+    // 12. Change Port of Ship (تغيير ميناء السفينة)
     CHANGE_PORT_OF_SHIP(
         requestTypeId = 12,
         endpointPath = "change-ship-info",
-        issuanceEndpoint = "certificate/{requestId}/change-ship-info-certificate" // ✅ Certificate issuance endpoint
+        issuanceEndpoint = "certificate/issue-affected-certificates/12/{requestId}" // ✅ CDD §4.1.13
+    ),
+
+    // 13. Change Activity of Ship (تغيير نشاط السفينة)
+    CHANGE_ACTIVITY_OF_SHIP(
+        requestTypeId = 13,
+        endpointPath = "change-ship-info",
+        issuanceEndpoint = "certificate/issue-affected-certificates/13/{requestId}" // ✅ CDD §4.1.12
     ),
 
     ;

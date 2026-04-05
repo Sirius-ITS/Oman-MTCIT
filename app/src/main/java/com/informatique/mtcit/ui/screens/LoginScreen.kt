@@ -77,9 +77,9 @@ fun LoginScreen(
                             "ISSUE_NAVIGATION_PERMIT" -> "${NavRoutes.IssueNavigationPermitRoute.route}?hasAcceptance=$hasAcceptance"
                             "RENEW_NAVIGATION_PERMIT" -> "${NavRoutes.RenewNavigationPermitRoute.route}?hasAcceptance=$hasAcceptance"
                             "SUSPEND_NAVIGATION_PERMIT" -> "${NavRoutes.SuspendNavigationPermitRoute.route}?hasAcceptance=$hasAcceptance"
-                            "SHIP_NAME_CHANGE" -> "${NavRoutes.ChangeNameOfShipOrUnitRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SHIP_NAME_CHANGE" -> "${NavRoutes.ShipNameChangeRoute.route}?hasAcceptance=$hasAcceptance"
                             "CAPTAIN_NAME_CHANGE" -> "${NavRoutes.CaptainNameChangeRoute.route}?hasAcceptance=$hasAcceptance"
-                            "SHIP_ACTIVITY_CHANGE" -> "${NavRoutes.ChangeActivityOfShipOrUnitRoute.route}?hasAcceptance=$hasAcceptance"
+                            "SHIP_ACTIVITY_CHANGE" -> "${NavRoutes.ShipActivityChangeRoute.route}?hasAcceptance=$hasAcceptance"
                             "SHIP_PORT_CHANGE" -> "${NavRoutes.ShipPortChangeRoute.route}?hasAcceptance=$hasAcceptance"
                             "SHIP_OWNERSHIP_CHANGE" -> "${NavRoutes.ShipOwnershipChangeRoute.route}?hasAcceptance=$hasAcceptance"
                             else -> "${NavRoutes.ShipRegistrationRoute.route}?hasAcceptance=$hasAcceptance"
@@ -148,9 +148,9 @@ fun LoginScreen(
                     "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
                     "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
                     "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
-                    "SHIP_NAME_CHANGE" -> NavRoutes.ChangeNameOfShipOrUnitRoute.route
+                    "SHIP_NAME_CHANGE" -> NavRoutes.ShipNameChangeRoute.route
                     "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
-                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ChangeActivityOfShipOrUnitRoute.route
+                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
                     "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
                     "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
                     else -> NavRoutes.ShipRegistrationRoute.route

@@ -336,9 +336,14 @@ fun SailorListManager(
     sailors: List<SailorData>,
     jobs: List<String>,
     nationalities: List<String> = emptyList(),
-    hasExcelFile: Boolean = false, // ✅ NEW: Disable add sailor button if Excel file is uploaded
+    hasExcelFile: Boolean = false,
+    /** When true: editing an existing sailor only allows changing nameAr/nameEn */
+    editNameOnly: Boolean = false,
     onSailorChange: (List<SailorData>) -> Unit,
-    onTotalCountChange: ((String) -> Unit)? = null
+    onTotalCountChange: ((String) -> Unit)? = null,
+    // ✅ NEW: immediate API callbacks (null = local-only, used by non-Renew transactions)
+    onSaveSailorImmediate: ((SailorData) -> Unit)? = null,
+    onDeleteSailorImmediate: ((SailorData) -> Unit)? = null,
 ) {
     val extraColors = LocalExtraColors.current
     val context = LocalContext.current
@@ -530,7 +535,10 @@ fun SailorListManager(
                         showBottomSheet = true
                     },
                     onDelete = {
-                        onSailorChange(sailors.filter { it.id != sailor.id })
+                        onSailorChange(sailors.filter { it.id != sailor.id }) // always update local state
+                        if (sailor.apiId != null) {
+                            onDeleteSailorImmediate?.invoke(sailor) // API call only for existing sailors
+                        }
                     }
                 )
             }
@@ -573,6 +581,7 @@ fun SailorListManager(
             sailor = editingSailor,
             jobs = jobs,
             nationalities = nationalities,
+            editNameOnly = editNameOnly && editingSailor != null,
             onDismiss = { showBottomSheet = false },
             onSave = { sailorData ->
                 if (editingSailor != null) {
@@ -580,7 +589,7 @@ fun SailorListManager(
                 } else {
                     onSailorChange(sailors + sailorData)
                 }
-
+                onSaveSailorImmediate?.invoke(sailorData) // ✅ trigger immediate API (add or update)
                 showBottomSheet = false
             }
         )

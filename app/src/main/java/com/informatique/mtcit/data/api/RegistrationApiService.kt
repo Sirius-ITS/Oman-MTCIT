@@ -53,6 +53,22 @@ data class ChangePortResponse(
 )
 
 /**
+ * Response from change ship name API
+ */
+data class ChangeShipNameResponse(
+    val newRequestId: Int,
+    val newShipInfoId: Int?
+)
+
+/**
+ * Response from change marine activity API
+ */
+data class ChangeActivityResponse(
+    val newRequestId: Int,
+    val newShipInfoId: Int?
+)
+
+/**
  * API Service for Ship Registration Requests
  */
 @Singleton
@@ -1842,34 +1858,40 @@ class RegistrationApiService @Inject constructor(
                     println("✅ API Response received: $responseJson")
 
                     if (!responseJson.jsonObject.isEmpty()) {
-                        val statusCode = responseJson.jsonObject.getValue("statusCode").jsonPrimitive.int
+                        // ✅ Port change returns ResponseDto<ChangeShipInfoReqResDto>: { "data": { "id": 1212 ... }, "message": "..." }
+                        // Also handle direct response (root "id") for robustness
+                        val hasDataWrapper = responseJson.jsonObject.containsKey("data")
+                        val hasDirectId = responseJson.jsonObject.containsKey("id")
 
-                        if (statusCode == 200 || statusCode == 201) {
-                            // ✅ Extract the new request ID from data.id
-                            val newRequestId = responseJson.jsonObject["data"]
-                                ?.jsonObject?.get("id")
-                                ?.jsonPrimitive?.int
-                                ?: requestId // fallback to original if not found
+                        val newRequestId: Int
+                        val newShipInfoId: Int?
 
-                            val newShipInfoId = responseJson.jsonObject["data"]
-                                ?.jsonObject?.get("shipInfo")
-                                ?.jsonObject?.get("id")
-                                ?.jsonPrimitive?.int
-
-                            println("✅ Port changed successfully!")
-                            println("   New Request ID: $newRequestId")
-                            println("   New Ship Info ID: $newShipInfoId")
-
-                            Result.success(ChangePortResponse(
-                                newRequestId = newRequestId,
-                                newShipInfoId = newShipInfoId
-                            ))
-                        } else {
-                            val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "Failed to change port of registry"
-                            println("❌ API returned error: $message (Status: $statusCode)")
-                            Result.failure(ApiException(statusCode, message))
+                        when {
+                            hasDataWrapper -> {
+                                val dataObj = responseJson.jsonObject["data"]?.jsonObject
+                                newRequestId = dataObj?.get("id")?.jsonPrimitive?.int ?: requestId
+                                newShipInfoId = dataObj?.get("shipInfo")?.jsonObject?.get("id")?.jsonPrimitive?.int
+                            }
+                            hasDirectId -> {
+                                newRequestId = responseJson.jsonObject["id"]?.jsonPrimitive?.int ?: requestId
+                                newShipInfoId = responseJson.jsonObject["shipInfo"]?.jsonObject?.get("id")?.jsonPrimitive?.int
+                            }
+                            else -> {
+                                val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
+                                    ?: "Failed to change port of registry"
+                                println("❌ Unexpected response format: $message")
+                                return Result.failure(ApiException(500, message))
+                            }
                         }
+
+                        println("✅ Port changed successfully!")
+                        println("   New Request ID: $newRequestId")
+                        println("   New Ship Info ID: $newShipInfoId")
+
+                        Result.success(ChangePortResponse(
+                            newRequestId = newRequestId,
+                            newShipInfoId = newShipInfoId
+                        ))
                     } else {
                         println("❌ Empty response from API")
                         Result.failure(ApiException(500, "Empty response from server"))
@@ -1962,6 +1984,166 @@ class RegistrationApiService @Inject constructor(
             println("❌ Exception in getAffectedCertificates: ${e.message}")
             e.printStackTrace()
             Result.failure(ApiException(500, "Failed to get certificates: ${e.message}"))
+        }
+    }
+
+    /**
+     * Change ship name
+     * POST /api/v1/change-ship-info/ship-name
+     * Body: { "id": requestId, "shipName": "اسم جديد", "shipNameEn": "New Name" }
+     */
+    suspend fun changeShipName(requestId: Int, shipName: String, shipNameEn: String): Result<ChangeShipNameResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Changing ship name...")
+            println("    requestId: $requestId")
+            println("    shipName: $shipName")
+            println("    shipNameEn: $shipNameEn")
+
+            // Build request body
+            val requestBody = buildJsonObject {
+                put("id", requestId)
+                put("shipName", shipName)
+                put("shipNameEn", shipNameEn)
+            }
+
+            println("📤 Request Body: $requestBody")
+
+            when (val response = repo.onPostAuth("change-ship-info/name", requestBody.toString())) {
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        // ✅ Ship name API returns ChangeShipInfoReqResDto directly (root "id"),
+                        // but handle ResponseDto wrapper ("data.id") for robustness
+                        val hasDirectId = responseJson.jsonObject.containsKey("id")
+                        val hasDataWrapper = responseJson.jsonObject.containsKey("data")
+
+                        val newRequestId: Int
+                        val newShipInfoId: Int?
+
+                        when {
+                            hasDirectId -> {
+                                newRequestId = responseJson.jsonObject["id"]?.jsonPrimitive?.int ?: requestId
+                                newShipInfoId = responseJson.jsonObject["shipInfo"]?.jsonObject?.get("id")?.jsonPrimitive?.int
+                            }
+                            hasDataWrapper -> {
+                                val dataObj = responseJson.jsonObject["data"]?.jsonObject
+                                newRequestId = dataObj?.get("id")?.jsonPrimitive?.int ?: requestId
+                                newShipInfoId = dataObj?.get("shipInfo")?.jsonObject?.get("id")?.jsonPrimitive?.int
+                            }
+                            else -> {
+                                val statusCode = responseJson.jsonObject["statusCode"]?.jsonPrimitive?.int ?: 500
+                                val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to change ship name"
+                                println("❌ API returned error: $message (Status: $statusCode)")
+                                return Result.failure(ApiException(statusCode, message))
+                            }
+                        }
+
+                        println("✅ Ship name changed successfully!")
+                        println("    New Request ID: $newRequestId")
+                        println("    New Ship Info ID: $newShipInfoId")
+
+                        Result.success(ChangeShipNameResponse(
+                            newRequestId = newRequestId,
+                            newShipInfoId = newShipInfoId
+                        ))
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ API Error: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in changeShipName: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to change ship name: ${e.message}"))
+        }
+    }
+
+    /**
+     * Change marine activity for a ship
+     * POST /api/v1/change-ship-info/activity
+     * Body: { "id": shipInfoId, "activityId": 3 }
+     */
+    suspend fun changeMarineActivity(requestId: Int, marineActivityId: Int): Result<ChangeActivityResponse> {
+        return try {
+            println("🚀 RegistrationApiService: Changing marine activity...")
+            println("    requestId: $requestId")
+            println("    marineActivityId: $marineActivityId")
+
+            // Build request body — CDD: field is "activityId", endpoint is "activity"
+            val requestBody = buildJsonObject {
+                put("id", requestId)
+                put("activityId", marineActivityId)  // ✅ CDD: activityId (not marineActivityId)
+            }
+
+            println("📤 Request Body: $requestBody")
+
+            when (val response = repo.onPostAuth("change-ship-info/activity", requestBody.toString())) {  // ✅ CDD: /activity (not /marine-activity)
+                is RepoServiceState.Success -> {
+                    val responseJson = response.response
+                    println("✅ API Response received: $responseJson")
+
+                    if (!responseJson.jsonObject.isEmpty()) {
+                        // ✅ Activity API returns ChangeShipInfoReqResDto directly (root "id"),
+                        // but handle ResponseDto wrapper ("data.id") for robustness
+                        val hasDirectId = responseJson.jsonObject.containsKey("id")
+                        val hasDataWrapper = responseJson.jsonObject.containsKey("data")
+
+                        val newRequestId: Int
+                        val newShipInfoId: Int?
+
+                        when {
+                            hasDirectId -> {
+                                newRequestId = responseJson.jsonObject["id"]?.jsonPrimitive?.int ?: requestId
+                                newShipInfoId = responseJson.jsonObject["shipInfo"]?.jsonObject?.get("id")?.jsonPrimitive?.int
+                            }
+                            hasDataWrapper -> {
+                                val dataObj = responseJson.jsonObject["data"]?.jsonObject
+                                newRequestId = dataObj?.get("id")?.jsonPrimitive?.int ?: requestId
+                                newShipInfoId = dataObj?.get("shipInfo")?.jsonObject?.get("id")?.jsonPrimitive?.int
+                            }
+                            else -> {
+                                val statusCode = responseJson.jsonObject["statusCode"]?.jsonPrimitive?.int ?: 500
+                                val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content ?: "Failed to change marine activity"
+                                println("❌ API returned error: $message (Status: $statusCode)")
+                                return Result.failure(ApiException(statusCode, message))
+                            }
+                        }
+
+                        println("✅ Marine activity changed successfully!")
+                        println("    New Request ID: $newRequestId")
+                        println("    New Ship Info ID: $newShipInfoId")
+
+                        Result.success(ChangeActivityResponse(
+                            newRequestId = newRequestId,
+                            newShipInfoId = newShipInfoId
+                        ))
+                    } else {
+                        println("❌ Empty response from API")
+                        Result.failure(ApiException(500, "Empty response from server"))
+                    }
+                }
+                is RepoServiceState.Error -> {
+                    val errorMessage = ErrorMessageExtractor.extract(response.error)
+                    println("❌ API Error: $errorMessage")
+                    Result.failure(ApiException(response.code, errorMessage))
+                }
+            }
+        } catch (e: ApiException) {
+            throw e
+        } catch (e: Exception) {
+            println("❌ Exception in changeMarineActivity: ${e.message}")
+            e.printStackTrace()
+            Result.failure(ApiException(500, "Failed to change marine activity: ${e.message}"))
         }
     }
 }

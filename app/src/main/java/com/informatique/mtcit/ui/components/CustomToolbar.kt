@@ -25,7 +25,8 @@ import com.informatique.mtcit.ui.components.localizedApp
 @Composable
 fun CustomToolbar(
     navController: NavController,
-    currentRoute: String? = null
+    currentRoute: String? = null,
+    unreadNotificationCount: Int = 0
 ) {
     val selectedTab = when (currentRoute) {
         "homepage" -> 0
@@ -36,7 +37,7 @@ fun CustomToolbar(
     Column(
         modifier = Modifier
             .width(360.dp)
-            .widthIn( max = 440.dp)
+            .widthIn(max = 440.dp)
             .background(Color.Transparent)
     ) {
         // الشريط السفلي
@@ -80,11 +81,12 @@ fun CustomToolbar(
                     }
                 )
 
-                // Notifications Tab
-                TabItem(
+                // Notifications Tab with badge
+                TabItemWithBadge(
                     icon = Icons.Default.Notifications,
                     label = localizedApp(R.string.notification),
                     isSelected = selectedTab == 2,
+                    badgeCount = unreadNotificationCount,
                     onClick = {
                         navController.navigate("notificationScreen") {
                             popUpTo("homepage") { saveState = true }
@@ -113,11 +115,13 @@ fun TabItem(
         onClick = onClick,
         shape = RoundedCornerShape(25.dp),
         color = backgroundColor,
-        modifier = Modifier.padding(horizontal = 4.dp , vertical = 4.dp)
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(110.dp).padding( horizontal = 4.dp, vertical = 2.dp)
+            modifier = Modifier
+                .width(110.dp)
+                .padding(horizontal = 4.dp, vertical = 2.dp)
         ) {
             Icon(
                 imageVector = icon,
@@ -125,16 +129,71 @@ fun TabItem(
                 tint = iconColor.copy(alpha = 0.9f),
                 modifier = Modifier.size(32.dp)
             )
-//            if (isSelected) {
-                Text(
-                    text = label,
-                    fontSize = 12.sp,
-                    color = textColor.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Center,
-//                    modifier = Modifier.width(65.dp)
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = textColor.copy(alpha = 0.9f),
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+fun TabItemWithBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isSelected: Boolean,
+    badgeCount: Int = 0,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) Color(0xFFE3F2FD) else Color.Transparent
+    val iconColor = if (isSelected) Color(0xFF2196F3) else LocalExtraColors.current.whiteInDarkMode
+    val textColor = if (isSelected) Color(0xFF2196F3) else LocalExtraColors.current.whiteInDarkMode
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(25.dp),
+        color = backgroundColor,
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .width(110.dp)
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            BadgedBox(
+                badge = {
+                    if (badgeCount > 0) {
+                        Badge(
+                            containerColor = Color(0xFFE53935),
+                            contentColor = Color.White
+                        ) {
+                            Text(
+                                text = if (badgeCount > 99) "99+" else badgeCount.toString(),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = iconColor.copy(alpha = 0.9f),
+                    modifier = Modifier.size(32.dp)
                 )
-//            }
+            }
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = textColor.copy(alpha = 0.9f),
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }

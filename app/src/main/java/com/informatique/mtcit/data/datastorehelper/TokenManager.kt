@@ -3,6 +3,7 @@ package com.informatique.mtcit.data.datastorehelper
 import android.content.Context
 import android.util.Base64
 import android.util.Log
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -20,6 +21,50 @@ object TokenManager {
     private val TOKEN_TYPE_KEY = stringPreferencesKey("token_type")
     private val EXPIRES_IN_KEY = longPreferencesKey("expires_in")
     private val TOKEN_TIMESTAMP_KEY = longPreferencesKey("token_timestamp")
+    private val CIVIL_ID_KEY = stringPreferencesKey("civil_id")
+    private val FCM_TOKEN_KEY = stringPreferencesKey("fcm_token")
+    private val FCM_REGISTERED_KEY = booleanPreferencesKey("fcm_registered")
+    private val NOTIFICATIONS_ENABLED_KEY = booleanPreferencesKey("notifications_enabled")
+
+    // FCM token methods
+    suspend fun saveFcmToken(context: Context, token: String) {
+        context.dataStore.edit { prefs ->
+            prefs[FCM_TOKEN_KEY] = token
+        }
+        Log.d("TokenManager", "✅ FCM token saved")
+    }
+
+    suspend fun getFcmToken(context: Context): String? {
+        return context.dataStore.data
+            .map { prefs -> prefs[FCM_TOKEN_KEY] }
+            .first()
+    }
+
+    /** Persist whether the FCM token is currently registered on the server. */
+    suspend fun saveFcmRegistered(context: Context, registered: Boolean) {
+        context.dataStore.edit { prefs -> prefs[FCM_REGISTERED_KEY] = registered }
+        Log.d("TokenManager", "✅ FCM registered state saved: $registered")
+    }
+
+    /** Returns true if the FCM token has already been registered on the server. */
+    suspend fun isFcmRegistered(context: Context): Boolean {
+        return context.dataStore.data
+            .map { prefs -> prefs[FCM_REGISTERED_KEY] ?: false }
+            .first()
+    }
+
+    /** Persist the user's notification preference (switch state). Defaults to true. */
+    suspend fun saveNotificationsEnabled(context: Context, enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[NOTIFICATIONS_ENABLED_KEY] = enabled }
+        Log.d("TokenManager", "✅ Notifications enabled state saved: $enabled")
+    }
+
+    /** Returns true if the user has notifications enabled (default true when never set). */
+    suspend fun isNotificationsEnabled(context: Context): Boolean {
+        return context.dataStore.data
+            .map { prefs -> prefs[NOTIFICATIONS_ENABLED_KEY] ?: true }
+            .first()
+    }
 
     // Legacy token methods (kept for backward compatibility)
     suspend fun saveToken(context: Context, token: String) {
@@ -49,6 +94,13 @@ object TokenManager {
             expiresIn?.let { prefs[EXPIRES_IN_KEY] = it }
             prefs[TOKEN_TIMESTAMP_KEY] = System.currentTimeMillis()
         }
+    }
+
+    suspend fun saveCivilId(context: Context, civilId: String) {
+        context.dataStore.edit { prefs ->
+            prefs[CIVIL_ID_KEY] = civilId
+        }
+        Log.d("TokenManager", "✅ Civil ID persisted to DataStore: $civilId")
     }
 
     suspend fun getAccessToken(context: Context): String? {
@@ -98,6 +150,7 @@ object TokenManager {
             preferences.remove(TOKEN_TYPE_KEY)
             preferences.remove(EXPIRES_IN_KEY)
             preferences.remove(TOKEN_TIMESTAMP_KEY)
+            preferences.remove(CIVIL_ID_KEY)
             preferences.clear() // Clear everything to be sure
         }
 
@@ -137,17 +190,31 @@ object TokenManager {
 
     /**
      * Get user name from token
+     * Supports both old token format (name/given_name/family_name) and
+     * new token format (FullNameArabic/FullNameEnglish)
      */
     suspend fun getUserName(context: Context): String? {
         val token = getAccessToken(context) ?: return null
         val payload = decodeJwtPayload(token)
-        return payload?.optString("name")?.takeIf { it.isNotEmpty() }
+        // Try new field names first (mtimedevidp), then fall back to old field names (omankeycloak)
+        return payload?.optString("FullNameArabic")?.takeIf { it.isNotEmpty() }
+            ?: payload?.optString("FullNameEnglish")?.takeIf { it.isNotEmpty() }
+            ?: payload?.optString("name")?.takeIf { it.isNotEmpty() }
     }
 
     /**
      * Get civil ID from token (this will be used as ownerId)
      */
     suspend fun getCivilId(context: Context): String? {
+        // ✅ First: check the value persisted from userinfo endpoint (most reliable)
+        val storedCivilId = context.dataStore.data
+            .map { prefs -> prefs[CIVIL_ID_KEY] }
+            .first()
+        if (!storedCivilId.isNullOrEmpty()) {
+            Log.d("TokenManager", "✅ Civil ID from DataStore: $storedCivilId")
+            return storedCivilId
+        }
+
         val token = getAccessToken(context) ?: run {
             Log.w("TokenManager", "⚠️ No access token found when getting civil ID")
             return null
@@ -162,16 +229,14 @@ object TokenManager {
         // Log all available fields in the token
         Log.d("TokenManager", "📋 JWT Token fields: ${payload.keys().asSequence().toList()}")
 
-        // Try different possible field names for civil ID
+        // Try different possible field names for civil ID in the JWT payload
         val civilId = payload.optString("civilId")?.takeIf { it.isNotEmpty() }
             ?: payload.optString("civil_id")?.takeIf { it.isNotEmpty() }
-            ?: payload.optString("sub")?.takeIf { it.isNotEmpty() }
-            ?: payload.optString("preferred_username")?.takeIf { it.isNotEmpty() }
 
         if (civilId != null) {
-            Log.d("TokenManager", "✅ Found civil ID in token: $civilId")
+            Log.d("TokenManager", "✅ Found civil ID in JWT payload: $civilId")
         } else {
-            Log.w("TokenManager", "⚠️ No civil ID found in token. Available fields: ${payload.keys().asSequence().toList()}")
+            Log.w("TokenManager", "⚠️ No civil ID found in token or DataStore. Available JWT fields: ${payload.keys().asSequence().toList()}")
         }
 
         return civilId
@@ -197,19 +262,36 @@ object TokenManager {
 
     /**
      * Get all user data from token
+     * Supports both old token format (name/given_name/family_name) and
+     * new token format (FullNameArabic/FullNameEnglish)
      */
     suspend fun getUserData(context: Context): UserData? {
         val token = getAccessToken(context) ?: return null
         val payload = decodeJwtPayload(token) ?: return null
 
         return try {
+            // New token fields (mtimedevidp.mtcit.gov.om)
+            val fullNameArabic = payload.optString("FullNameArabic", "")
+            val fullNameEnglish = payload.optString("FullNameEnglish", "")
+            // Old token fields (omankeycloak) - kept for backward compatibility
+            val name = payload.optString("name", "")
+            val givenName = payload.optString("given_name", "")
+            val familyName = payload.optString("family_name", "")
+
+            // Prefer new fields, fall back to old
+            val resolvedName = fullNameArabic.takeIf { it.isNotEmpty() }
+                ?: fullNameEnglish.takeIf { it.isNotEmpty() }
+                ?: name
+
             UserData(
-                name = payload.optString("name", ""),
+                name = resolvedName,
                 civilId = payload.optString("civilId", ""),
                 email = payload.optString("email", ""),
                 preferredUsername = payload.optString("preferred_username", ""),
-                givenName = payload.optString("given_name", ""),
-                familyName = payload.optString("family_name", "")
+                givenName = givenName,
+                familyName = familyName,
+                fullNameArabic = fullNameArabic,
+                fullNameEnglish = fullNameEnglish
             )
         } catch (e: Exception) {
             Log.e("TokenManager", "Failed to extract user data: ${e.message}", e)
@@ -271,6 +353,8 @@ object TokenManager {
 
     /**
      * Data class to hold user information from JWT token
+     * Supports both old format (name/given_name/family_name) and
+     * new format (FullNameArabic/FullNameEnglish)
      */
     data class UserData(
         val name: String,
@@ -278,6 +362,8 @@ object TokenManager {
         val email: String,
         val preferredUsername: String,
         val givenName: String,
-        val familyName: String
+        val familyName: String,
+        val fullNameArabic: String = "",
+        val fullNameEnglish: String = ""
     )
 }

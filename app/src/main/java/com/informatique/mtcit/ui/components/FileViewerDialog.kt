@@ -228,7 +228,7 @@ fun NativeFileViewerWithUrl(
                             request: WebResourceRequest?
                         ): WebResourceResponse? {
                             request?.url?.let { uri ->
-                                if (uri.host == "oman.isfpegypt.com") {
+                                if (uri.host == "mtimedev.mtcit.gov.om") {
                                     try {
                                         val connection = URL(uri.toString()).openConnection() as HttpURLConnection
                                         connection.setRequestProperty("Authorization", "Bearer $authToken")
@@ -343,7 +343,7 @@ fun NativeFileViewerWithUrl(
                             android.util.Log.d("WebView", "✅ Page finished: $url")
 
                             // Check if we're on Keycloak login page (not an error, just needs authentication)
-                            val isKeycloakPage = url?.contains("omankeycloak.isfpegypt.com") == true
+                            val isKeycloakPage = url?.contains("mtimedevidp.mtcit.gov.om") == true || url?.contains("omankeycloak.isfpegypt.com") == true
 
                             // Mark as success if no main frame errors
                             if (!hasMainFrameError) {
@@ -509,7 +509,7 @@ fun NativeFileViewerWithUrl(
                             cookieManager.setAcceptThirdPartyCookies(this, true)
 
                             // Set auth token as cookie for the domain
-                            val domain = "oman.isfpegypt.com"
+                            val domain = "mtimedev.mtcit.gov.om"
                             val cookie = "Authorization=Bearer $token; Domain=$domain; Path=/; Secure"
                             cookieManager.setCookie("https://$domain", cookie)
                             cookieManager.flush()

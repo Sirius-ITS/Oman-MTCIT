@@ -9,6 +9,7 @@ import com.informatique.mtcit.common.ResourceProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import androidx.lifecycle.viewModelScope
+import com.informatique.mtcit.business.transactions.ChangeNameOfShipOrUnitStrategy
 import com.informatique.mtcit.business.transactions.ChangePortOfShipOrUnitStrategy
 import kotlinx.coroutines.launch
 import com.informatique.mtcit.business.transactions.MarineUnitValidatable
@@ -160,6 +161,13 @@ class MarineRegistrationViewModel @Inject constructor(
     }
 
     /**
+     * ✅ Override: fetch full ship details for "عرض جميع البيانات"
+     */
+    override suspend fun loadShipCoreInfo(shipInfoId: String): Result<com.informatique.mtcit.business.transactions.shared.CoreShipInfo> {
+        return marineUnitsApiService.getShipCoreInfo(shipInfoId)
+    }
+
+    /**
      * NEW: Called when user selects a marine unit in Marine Unit Selection step
      * Triggers validation for Mortgage Certificate and Release Mortgage transactions
      * For Temporary Registration: NO validation here - validation happens at submit
@@ -203,6 +211,11 @@ class MarineRegistrationViewModel @Inject constructor(
 
                     TransactionType.SHIP_PORT_CHANGE -> {
                         val strategy = currentStrategy as? ChangePortOfShipOrUnitStrategy
+                        strategy?.validateMarineUnitSelection(unitId, userId)
+                    }
+
+                    TransactionType.SHIP_NAME_CHANGE -> {
+                        val strategy = currentStrategy as? ChangeNameOfShipOrUnitStrategy
                         strategy?.validateMarineUnitSelection(unitId, userId)
                     }
 
@@ -1220,6 +1233,14 @@ class MarineRegistrationViewModel @Inject constructor(
                         println("✅ Calling ChangePortOfShipOrUnitStrategy.handleInspectionContinue()")
                         strategy.handleInspectionContinue()
                     }
+                    is com.informatique.mtcit.business.transactions.ChangeNameOfShipOrUnitStrategy -> {
+                        println("✅ Calling ChangeNameOfShipOrUnitStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
+                    is com.informatique.mtcit.business.transactions.ChangeActivityOfShipOrUnitStrategy -> {
+                        println("✅ Calling ChangeActivityOfShipOrUnitStrategy.handleInspectionContinue()")
+                        strategy.handleInspectionContinue()
+                    }
                     else -> {
                         println("⚠️ Current strategy does not support inspection continue")
                     }
@@ -1289,7 +1310,11 @@ class MarineRegistrationViewModel @Inject constructor(
             TransactionType.MORTGAGE_CERTIFICATE,
             TransactionType.RELEASE_MORTGAGE,
             TransactionType.ISSUE_NAVIGATION_PERMIT,
-            TransactionType.RENEW_NAVIGATION_PERMIT -> true
+            TransactionType.RENEW_NAVIGATION_PERMIT,
+            TransactionType.SHIP_NAME_CHANGE,  // ✅ Ship modification transactions
+            TransactionType.SHIP_PORT_CHANGE,
+            TransactionType.SHIP_ACTIVITY_CHANGE,
+            TransactionType.CAPTAIN_NAME_CHANGE -> true  // ✅ Change Captain transaction
             else -> false
         }
     }
@@ -1847,6 +1872,107 @@ class MarineRegistrationViewModel @Inject constructor(
                 println("❌ Exception deleting owner: ${e.message}")
                 e.printStackTrace()
             }
+        }
+    }
+
+    // ============================================================
+    // SAILOR IMMEDIATE API CALLS (Renew Navigation Permit only)
+    // ============================================================
+
+    /**
+     * Save (add or update) a crew member immediately via API.
+     * - apiId == null  → POST (new member); on success, patches formData with returned apiId
+     * - apiId != null  → PUT  (existing member)
+     */
+    fun saveSailorImmediate(sailor: com.informatique.mtcit.ui.components.SailorData) {
+        viewModelScope.launch {
+            try {
+                val strategy = currentStrategy
+                if (strategy !is com.informatique.mtcit.business.transactions.RenewNavigationPermitStrategy) {
+                    println("⚠️ saveSailorImmediate: strategy is not RenewNavigationPermitStrategy — skipping")
+                    return@launch
+                }
+
+                val result = if (sailor.apiId != null) {
+                    println("✏️ Updating crew member via PUT — apiId=${sailor.apiId}")
+                    strategy.updateCrewMemberImmediate(sailor)
+                } else {
+                    println("➕ Adding new crew member via POST")
+                    strategy.addCrewMemberImmediate(sailor)
+                }
+
+                result
+                    .onSuccess { crewResponse ->
+                        println("✅ Crew member saved, server id=${crewResponse.id}")
+                        // For new sailors: patch the sailors JSON with the server-assigned apiId
+                        // so subsequent edits/deletes know to use PUT/DELETE instead of POST
+                        if (sailor.apiId == null) {
+                            updateUiState { state ->
+                                val currentJson = state.formData["sailors"] ?: "[]"
+                                val patchedJson = patchSailorApiId(currentJson, sailor.id, crewResponse.id)
+                                state.copy(
+                                    formData = state.formData.toMutableMap()
+                                        .apply { put("sailors", patchedJson) }
+                                )
+                            }
+                        }
+                    }
+                    .onFailure { error ->
+                        println("❌ saveSailorImmediate failed: ${error.message}")
+                        _showToastEvent.value = error.message ?: "فشل في حفظ بيانات فرد الطاقم"
+                    }
+            } catch (e: Exception) {
+                println("❌ Exception in saveSailorImmediate: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Delete a crew member immediately via DELETE API.
+     * Local list removal is already handled by SailorListManager before this is called.
+     */
+    fun deleteSailorImmediate(sailor: com.informatique.mtcit.ui.components.SailorData) {
+        viewModelScope.launch {
+            try {
+                val strategy = currentStrategy
+                if (strategy !is com.informatique.mtcit.business.transactions.RenewNavigationPermitStrategy) {
+                    println("⚠️ deleteSailorImmediate: strategy is not RenewNavigationPermitStrategy — skipping")
+                    return@launch
+                }
+
+                strategy.deleteCrewMemberImmediate(sailor)
+                    .onSuccess {
+                        println("✅ Crew member deleted via API")
+                    }
+                    .onFailure { error ->
+                        println("❌ deleteSailorImmediate failed: ${error.message}")
+                        _showToastEvent.value = error.message ?: "فشل في حذف فرد الطاقم"
+                    }
+            } catch (e: Exception) {
+                println("❌ Exception in deleteSailorImmediate: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Patch the apiId of one sailor (identified by local UUID) inside the sailors JSON string.
+     * Called after a successful POST to store the server-assigned crew ID so that
+     * subsequent edits/deletes correctly use PUT/DELETE instead of POST.
+     */
+    private fun patchSailorApiId(sailorsJson: String, localId: String, newApiId: Long): String {
+        return try {
+            val jsonParser = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            val serializer = kotlinx.serialization.builtins.ListSerializer(
+                com.informatique.mtcit.ui.components.SailorData.serializer()
+            )
+            val list = jsonParser.decodeFromString(serializer, sailorsJson)
+            val updated = list.map { s -> if (s.id == localId) s.copy(apiId = newApiId) else s }
+            jsonParser.encodeToString(serializer, updated)
+        } catch (e: Exception) {
+            println("⚠️ patchSailorApiId failed: ${e.message}")
+            sailorsJson // return original on failure — next save will retry POST
         }
     }
 

@@ -94,6 +94,8 @@ class FormValidationUseCase @Inject constructor(
             is FormField.MultiSelectDropDown -> field.copy(value = value)
             is FormField.PaymentDetails -> field.copy(value = value)
             is FormField.CertificatesList -> field.copy(value = value)
+            is FormField.CurrentValueCard -> field.copy(value = value)
+
         }
     }
 

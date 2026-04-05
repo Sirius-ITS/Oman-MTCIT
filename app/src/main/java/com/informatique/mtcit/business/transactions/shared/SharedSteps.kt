@@ -19,12 +19,14 @@ object SharedSteps {
 
     // Create Certificate Step (used in all ship modification transactions)
     fun createCertificateStep(
-        certificates: List<Certificate>
+        certificates: List<Certificate>,
+        titleRes: Int = R.string.change_port_of_ship_or_unit_strategy_info2,
+        descriptionRes: Int = R.string.change_port_of_ship_or_unit_strategy_info_desc2
     ): StepData {
         return StepData(
             stepType = StepType.AFFECTED_CERTIFICATES, // ✅ Added
-            titleRes = R.string.change_port_of_ship_or_unit_strategy_info2,
-            descriptionRes = R.string.change_port_of_ship_or_unit_strategy_info_desc2,
+            titleRes = titleRes,
+            descriptionRes = descriptionRes,
             fields = listOf(
                 FormField.CertificatesList(
                     id = "certificate",
@@ -113,7 +115,8 @@ object SharedSteps {
         jobs: List<String>,
         includeUploadFile: Boolean = true,
         includeDownloadFile: Boolean = true,
-        nationalities: List<String> = emptyList()
+        nationalities: List<String> = emptyList(),
+        editNameOnly: Boolean = false
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -138,7 +141,8 @@ object SharedSteps {
                     value = "[]",
                     jobs = jobs,
                     nationalities = nationalities,
-                    mandatory = false
+                    mandatory = false,
+                    editNameOnly = editNameOnly
                 )
             )
         }
@@ -1699,6 +1703,7 @@ data class MarineUnit(
     // Core Ship Information
     val id: String = "",                                    // معرف فريد (string to match API ids)
     val shipName: String = "",                           // اسم السفينة
+    val marineActivityName: String = "",                 // اسم النشاط البحري (من API مباشرة)
     val imoNumber: String? = null,                     // رقم IMO
     val callSign: String = "",                           // رمز النداء
     val mmsiNumber: String = "",                            // رقم MMSI
@@ -1748,44 +1753,62 @@ data class MarineUnit(
     val isActive: Boolean = true                    // حالة تفعيل السفينة (نشطة/غير نشطة)
 ) {
      // Computed properties for UI compatibility
-     val maritimeId: String get() = mmsiNumber  // Use MMSI as maritimeId
-     val name: String get() = shipName                     // Alias for shipName
-     val type: String get() = "نوع ${shipType.id}"         // TODO: Map shipType.id to Arabic name
-     val registrationPort: String get() = portOfRegistry.id // TODO: Map port ID to name
-     val activity: String get() = "نشاط ${marineActivity.id}" // TODO: Map activity ID to Arabic name
-     val isOwned: Boolean get() = true // TODO: Determine ownership from API or user context
+     /** رقم الهوية البحرية: يستخدم officialNumber من قائمة السفن (أو mmsiNumber إن توفر) */
+     val maritimeId: String get() = officialNumber.ifEmpty { mmsiNumber }
+     val name: String get() = shipName
+     /** نوع الوحدة البحرية: من اسم نوع السفينة أو الفئة إن توفر */
+     val type: String get() = shipType.nameAr.ifEmpty { shipCategory.nameAr }
+     /** ميناء التسجيل: من الاسم العربي إن توفر وإلا الـ id */
+     val registrationPort: String get() = portOfRegistry.nameAr.ifEmpty { portOfRegistry.id }
+     /** النشاط البحري: من marineActivityName المباشر أولاً ثم الكائن المتداخل */
+     val activity: String get() = marineActivityName.ifEmpty { marineActivity.nameAr }
+     val isOwned: Boolean get() = true
      val registrationStatus: String get() = if (isTemp == "1" || isTemp == "true") "TEMPORARY" else "PERMANENT"
      val registrationType: String get() = if (isTemp == "1" || isTemp == "true") "TEMPORARY" else "PERMANENT"
      val totalCapacity: String get() = if (grossTonnage.isNotEmpty()) "${grossTonnage} طن" else ""
-}
+ }
 
 // Nested data classes
 data class PortOfRegistry(
-    val id: String                                  // معرف الميناء
+    val id: String,                                 // معرف الميناء
+    val nameAr: String = "",                        // الاسم بالعربية
+    val nameEn: String = ""                         // الاسم بالإنجليزية
 )
 
 data class MarineActivity(
-    val id: Int                                     // معرف النشاط البحري
+    val id: Int,                                    // معرف النشاط البحري
+    val nameAr: String = "",                        // الاسم بالعربية
+    val nameEn: String = ""
 )
 
 data class ShipCategory(
-    val id: Int                                     // معرف فئة السفينة
+    val id: Int,                                    // معرف فئة السفينة
+    val nameAr: String = "",
+    val nameEn: String = ""
 )
 
 data class ShipType(
-    val id: Int                                     // معرف نوع السفينة
+    val id: Int,                                    // معرف نوع السفينة
+    val nameAr: String = "",
+    val nameEn: String = ""
 )
 
 data class ProofType(
-    val id: Int                                     // معرف نوع الإثبات
+    val id: Int,                                    // معرف نوع الإثبات
+    val nameAr: String = "",
+    val nameEn: String = ""
 )
 
 data class BuildCountry(
-    val id: String                                  // كود الدولة (ISO)
+    val id: String,                                 // كود الدولة (ISO)
+    val nameAr: String = "",
+    val nameEn: String = ""
 )
 
 data class BuildMaterial(
-    val id: Int                                     // معرف مادة البناء
+    val id: Int,                                    // معرف مادة البناء
+    val nameAr: String = "",
+    val nameEn: String = ""
 )
 
 // Response wrapper
