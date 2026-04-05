@@ -25,6 +25,8 @@ import com.informatique.mtcit.util.UriPermissionManager
 import com.informatique.mtcit.ui.components.SuccessDialog
 import com.informatique.mtcit.ui.components.SuccessDialogItem
 import kotlinx.coroutines.launch
+import com.informatique.mtcit.common.util.LocalAppLocale
+import androidx.compose.ui.res.stringResource
 
 
 /**
@@ -72,6 +74,24 @@ fun MarineRegistrationScreen(
             println("🔑 MarineRegistrationScreen: Refresh token expired - navigating to login")
             viewModel.resetNavigateToLogin()
             navController.navigate(NavRoutes.OAuthWebViewRoute.route)
+        }
+    }
+
+    // ✅ Observe re-auth completion: NavHost sets this flag after the transaction-screen OAuth
+    // flow successfully exchanges the code for a new token. We clear any lingering error so
+    // the user can immediately retry their last action (e.g. "Accept & Send").
+    DisposableEffect(navController.currentBackStackEntry) {
+        val handle = navController.currentBackStackEntry?.savedStateHandle
+        val observer = androidx.lifecycle.Observer<Boolean> { refreshed ->
+            if (refreshed == true) {
+                println("✅ MarineRegistrationScreen: Token re-authenticated - clearing lingering error")
+                handle?.set("transaction_token_refreshed", false)
+                viewModel.clearError()
+            }
+        }
+        handle?.getLiveData<Boolean>("transaction_token_refreshed")?.observeForever(observer)
+        onDispose {
+            handle?.getLiveData<Boolean>("transaction_token_refreshed")?.removeObserver(observer)
         }
     }
 
@@ -129,8 +149,16 @@ fun MarineRegistrationScreen(
     LaunchedEffect(transactionType, isResuming, requestId) {
         // Check if we're currently resuming - if yes, skip normal initialization
         if (!isResuming && requestId == null) {
-            println("🆕 Normal initialization for transaction type: $transactionType")
-            viewModel.initializeTransaction(transactionType)
+            // ✅ FIX: Skip re-initialization if the ViewModel already has this transaction type
+            // loaded and ready. This prevents a full state reset (including canProceedToNext)
+            // when the composable re-enters the composition after returning from the OAuth
+            // re-auth flow (OAuthWebViewScreen push → popBackStack).
+            if (uiState.isInitialized && uiState.transactionType == transactionType) {
+                println("⏭️ Skipping initialization - already initialized for: $transactionType")
+            } else {
+                println("🆕 Normal initialization for transaction type: $transactionType")
+                viewModel.initializeTransaction(transactionType)
+            }
         } else {
             println("⏭️ Skipping normal initialization - resume in progress (isResuming=$isResuming, requestId=$requestId)")
         }
@@ -388,24 +416,24 @@ fun MarineRegistrationScreen(
 
     // ✅ NEW: Request Submission Success Dialog
     requestSubmissionSuccess?.let { result ->
-        val isArabic = java.util.Locale.getDefault().language == "ar"
+        val isArabic = LocalAppLocale.current.language == "ar"
 
         SuccessDialog(
             title = result.message,
             items = listOf(
                 SuccessDialogItem(
-                    label = if (isArabic) "رقم الطلب" else "Request Number",
+                    label = stringResource(R.string.request_number),
                     value = result.requestNumber,
                     icon = "📄"
                 ),
                 SuccessDialogItem(
-                    label = if (isArabic) "الحالة" else "Status",
-                    value = if (isArabic) "تم الإرسال بنجاح" else "Submitted Successfully",
+                    label = stringResource(R.string.status),
+                    value = stringResource(R.string.submitted_successfully),
                     icon = "✅"
                 ),
                 SuccessDialogItem(
-                    label = if (isArabic) "الخطوة التالية" else "Next Step",
-                    value = if (isArabic) "راجع 'طلباتي' في الملف الشخصي للمتابعة" else "Check 'My Requests' in your profile to continue",
+                    label = stringResource(R.string.next_step),
+                    value = stringResource(R.string.check_my_requests_in_your_profile_to_continue),
                     icon = "👉"
                 )
             ),

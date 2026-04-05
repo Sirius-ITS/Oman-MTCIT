@@ -2,6 +2,7 @@ package com.informatique.mtcit.data.model.requests
 
 import kotlinx.serialization.json.*
 import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Extracts and structures ship data from API response
@@ -47,6 +48,12 @@ object ShipDataExtractor {
 
             // 7. Insurance Info
             extractInsuranceInfo(dataObject)?.let { sections.add(it) }
+
+            // 8. Navigation Areas (change transactions: types 10/11/12/13)
+            extractNavRequestAreas(dataObject)?.let { sections.add(it) }
+
+            // 9. Crew List (change captain / navigation permit transactions)
+            extractCrewLists(dataObject)?.let { sections.add(it) }
 
         } catch (e: Exception) {
             println("❌ Error extracting ship data: ${e.message}")
@@ -557,6 +564,124 @@ object ShipDataExtractor {
     }
 
     /**
+     * Extract navigation request areas (navRequestAreas) — present in change transactions (10/11/12/13)
+     */
+    private fun extractNavRequestAreas(dataObject: JsonObject): RequestDetailSection? {
+        val areasArray = dataObject["navRequestAreas"]?.jsonArray ?: return null
+        if (areasArray.isEmpty()) return null
+
+        val fields = mutableListOf<RequestDetailField>()
+        areasArray.forEachIndexed { index, element ->
+            val area = element.jsonObject
+            val areaName = getLocalizedName(area)
+            if (areaName.isNotBlank()) {
+                fields.add(RequestDetailField.SimpleField(
+                    label = "${getLocalizedLabel("area")} ${index + 1}",
+                    value = areaName
+                ))
+            }
+        }
+
+        return if (fields.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("navigation_areas"),
+                fields = fields
+            )
+        } else null
+    }
+
+    /**
+     * Extract crew list (crewLists) — present in change-captain and navigation-permit transactions
+     */
+    private fun extractCrewLists(dataObject: JsonObject): RequestDetailSection? {
+        val crewArray = dataObject["crewLists"]?.jsonArray ?: return null
+        if (crewArray.isEmpty()) return null
+
+        val crewItems = mutableListOf<List<RequestDetailField>>()
+
+        crewArray.forEach { element ->
+            val crew = element.jsonObject
+            val fields = mutableListOf<RequestDetailField>()
+
+            // Name (Arabic)
+            crew["nameAr"]?.jsonPrimitive?.contentOrNull?.let {
+                if (it.isNotBlank()) {
+                    fields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("crew_name_ar"),
+                        value = it
+                    ))
+                }
+            }
+
+            // Name (English)
+            crew["nameEn"]?.jsonPrimitive?.contentOrNull?.let {
+                if (it.isNotBlank()) {
+                    fields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("crew_name_en"),
+                        value = it
+                    ))
+                }
+            }
+
+            // Job Title
+            crew["jobTitle"]?.jsonObject?.let { jobTitle ->
+                val jobName = getLocalizedName(jobTitle)
+                if (jobName.isNotBlank()) {
+                    fields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("job_title"),
+                        value = jobName
+                    ))
+                }
+            }
+
+            // Civil Number
+            crew["civilNo"]?.jsonPrimitive?.contentOrNull?.let {
+                if (it.isNotBlank()) {
+                    fields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("civil_id"),
+                        value = it
+                    ))
+                }
+            }
+
+            // Seaman Book Number
+            crew["seamenBookNo"]?.jsonPrimitive?.contentOrNull?.let {
+                if (it.isNotBlank()) {
+                    fields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("seamen_book_no"),
+                        value = it
+                    ))
+                }
+            }
+
+            // Nationality
+            crew["nationality"]?.jsonObject?.let { nationality ->
+                val nationalityName = getLocalizedName(nationality)
+                if (nationalityName.isNotBlank()) {
+                    fields.add(RequestDetailField.SimpleField(
+                        label = getLocalizedLabel("nationality"),
+                        value = nationalityName
+                    ))
+                }
+            }
+
+            if (fields.isNotEmpty()) {
+                crewItems.add(fields)
+            }
+        }
+
+        return if (crewItems.isNotEmpty()) {
+            RequestDetailSection(
+                title = getLocalizedLabel("crew_list"),
+                fields = listOf(RequestDetailField.ArrayField(
+                    label = getLocalizedLabel("crew_list"),
+                    items = crewItems
+                ))
+            )
+        } else null
+    }
+
+    /**
      * Extract insurance information
      */
     private fun extractInsuranceInfo(dataObject: JsonObject): RequestDetailSection? {
@@ -572,7 +697,7 @@ object ShipDataExtractor {
      * Get localized name from object (nameAr/nameEn)
      */
     private fun getLocalizedName(jsonObject: JsonObject): String {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = AppLanguage.isArabic
         return if (isArabic) {
             jsonObject["nameAr"]?.jsonPrimitive?.contentOrNull
                 ?: jsonObject["name"]?.jsonPrimitive?.contentOrNull
@@ -694,7 +819,7 @@ object ShipDataExtractor {
                 engineer["nameEn"]?.jsonPrimitive?.contentOrNull?.let { nameEn ->
                     engineerFields.add(RequestDetailField.SimpleField(
                         label = getLocalizedLabel("engineer_name"),
-                        value = if (Locale.getDefault().language == "ar") nameAr else nameEn
+                        value = if (AppLanguage.isArabic) nameAr else nameEn
                     ))
                 }
             }
@@ -896,99 +1021,110 @@ object ShipDataExtractor {
      * Get localized label for field keys
      */
     private fun getLocalizedLabel(key: String): String {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = AppLanguage.isArabic
 
         return when (key) {
             // Sections
-            "ship_information" -> if (isArabic) "معلومات السفينة" else "Ship Information"
-            "dimensions" -> if (isArabic) "الأبعاد" else "Dimensions"
-            "weights_tonnage" -> if (isArabic) "الأوزان والحمولة" else "Weights & Tonnage"
-            "engines" -> if (isArabic) "المحركات" else "Engines"
-            "owners" -> if (isArabic) "المالكون" else "Owners"
-            "documents" -> if (isArabic) "المستندات" else "Documents"
+            "ship_information" -> if (AppLanguage.isArabic) "معلومات السفينة" else "Ship Information"
+            "dimensions" -> if (AppLanguage.isArabic) "الأبعاد" else "Dimensions"
+            "weights_tonnage" -> if (AppLanguage.isArabic) "الأوزان والحمولة" else "Weights & Tonnage"
+            "engines" -> if (AppLanguage.isArabic) "المحركات" else "Engines"
+            "owners" -> if (AppLanguage.isArabic) "المالكون" else "Owners"
+            "documents" -> if (AppLanguage.isArabic) "رفع المستندات" else "Documents"
 
             // Ship Basic Info
-            "imo_number" -> if (isArabic) "رقم IMO" else "IMO Number"
-            "call_sign" -> if (isArabic) "رمز النداء" else "Call Sign"
-            "mmsi_number" -> if (isArabic) "رقم MMSI" else "MMSI Number"
-            "official_number" -> if (isArabic) "الرقم الرسمي" else "Official Number"
-            "port_of_registry" -> if (isArabic) "ميناء التسجيل" else "Port of Registry"
-            "marine_activity" -> if (isArabic) "النشاط البحري" else "Marine Activity"
-            "ship_category" -> if (isArabic) "فئة السفينة" else "Ship Category"
-            "ship_type" -> if (isArabic) "نوع السفينة" else "Ship Type"
-            "build_country" -> if (isArabic) "بلد الصنع" else "Build Country"
-            "build_material" -> if (isArabic) "مادة البناء" else "Build Material"
-            "build_year" -> if (isArabic) "سنة الصنع" else "Build Year"
-            "build_end_date" -> if (isArabic) "تاريخ انتهاء البناء" else "Build End Date"
-            "first_registration_date" -> if (isArabic) "تاريخ أول تسجيل" else "First Registration Date"
-            "decks_number" -> if (isArabic) "عدد الطوابق" else "Number of Decks"
+            "imo_number" -> if (AppLanguage.isArabic) "رقم IMO" else "IMO Number"
+            "call_sign" -> if (AppLanguage.isArabic) "رمز النداء" else "Call Sign"
+            "mmsi_number" -> if (AppLanguage.isArabic) "رقم الهوية البحرية (MMSI)" else "Maritime ID (MMSI)"
+            "official_number" -> if (AppLanguage.isArabic) "الرقم الرسمي" else "Official Number"
+            "port_of_registry" -> if (AppLanguage.isArabic) "ميناء التسجيل" else "Port of Registry"
+            "marine_activity" -> if (AppLanguage.isArabic) "النشاط البحري" else "Marine Activity"
+            "ship_category" -> if (AppLanguage.isArabic) "فئة السفينة" else "Ship Category"
+            "ship_type" -> if (AppLanguage.isArabic) "نوع السفينة" else "Ship Type"
+            "build_country" -> if (AppLanguage.isArabic) "بلد الصنع" else "Build Country"
+            "build_material" -> if (AppLanguage.isArabic) "مادة البناء" else "Build Material"
+            "build_year" -> if (AppLanguage.isArabic) "سنة الصنع" else "Build Year"
+            "build_end_date" -> if (AppLanguage.isArabic) "تاريخ انتهاء البناء" else "Build End Date"
+            "first_registration_date" -> if (AppLanguage.isArabic) "تاريخ أول تسجيل" else "First Registration Date"
+            "decks_number" -> if (AppLanguage.isArabic) "عدد الطوابق" else "Number of Decks"
 
             // Dimensions
-            "length_overall" -> if (isArabic) "الطول الإجمالي" else "Length Overall"
-            "beam_width" -> if (isArabic) "العرض" else "Beam (Width)"
-            "draft" -> if (isArabic) "الغاطس" else "Draft"
-            "height" -> if (isArabic) "الارتفاع" else "Height"
-            "meters" -> if (isArabic) "متر" else "m"
+            "length_overall" -> if (AppLanguage.isArabic) "الطول الإجمالي" else "Length Overall"
+            "beam_width" -> if (AppLanguage.isArabic) "العرض" else "Beam (Width)"
+            "draft" -> if (AppLanguage.isArabic) "الغاطس" else "Draft"
+            "height" -> if (AppLanguage.isArabic) "الارتفاع" else "Height"
+            "meters" -> if (AppLanguage.isArabic) "متر" else "m"
 
             // Weights
-            "gross_tonnage" -> if (isArabic) "الحمولة الإجمالية" else "Gross Tonnage"
-            "net_tonnage" -> if (isArabic) "الحمولة الصافية" else "Net Tonnage"
-            "deadweight_tonnage" -> if (isArabic) "حمولة الوزن الساكن" else "Deadweight Tonnage"
-            "max_load_capacity" -> if (isArabic) "أقصى سعة تحميل" else "Max Load Capacity"
-            "tons" -> if (isArabic) "طن" else "tons"
+            "gross_tonnage" -> if (AppLanguage.isArabic) "الحمولة الإجمالية (طن)" else "Gross Tonnage (tons)"
+            "net_tonnage" -> if (AppLanguage.isArabic) "الحمولة الصافية (طن)" else "Net Tonnage (tons)"
+            "deadweight_tonnage" -> if (AppLanguage.isArabic) "حمولة الوزن الساكن" else "Deadweight Tonnage"
+            "max_load_capacity" -> if (AppLanguage.isArabic) "أقصى سعة تحميل" else "Max Load Capacity"
+            "tons" -> if (AppLanguage.isArabic) "طن" else "tons"
 
             // Engines
-            "engine_serial" -> if (isArabic) "الرقم التسلسلي" else "Serial Number"
-            "engine_type" -> if (isArabic) "نوع المحرك" else "Engine Type"
-            "engine_power" -> if (isArabic) "قوة المحرك" else "Engine Power"
-            "cylinders" -> if (isArabic) "عدد الأسطوانات" else "Cylinders"
-            "engine_model" -> if (isArabic) "الموديل" else "Model"
-            "manufacturer" -> if (isArabic) "الشركة المصنعة" else "Manufacturer"
-            "manufacturing_country" -> if (isArabic) "بلد التصنيع" else "Manufacturing Country"
-            "hp" -> if (isArabic) "حصان" else "HP"
+            "engine_serial" -> if (AppLanguage.isArabic) "الرقم التسلسلي" else "Serial Number"
+            "engine_type" -> if (AppLanguage.isArabic) "نوع المحرك" else "Engine Type"
+            "engine_power" -> if (AppLanguage.isArabic) "قوة المحرك (حصان)" else "Engine Power (HP)"
+            "cylinders" -> if (AppLanguage.isArabic) "عدد الأسطوانات" else "Cylinders"
+            "engine_model" -> if (AppLanguage.isArabic) "الموديل" else "Model"
+            "manufacturer" -> if (AppLanguage.isArabic) "الشركة المصنعة" else "Manufacturer"
+            "manufacturing_country" -> if (AppLanguage.isArabic) "بلد التصنيع" else "Manufacturing Country"
+            "hp" -> if (AppLanguage.isArabic) "حصان" else "HP"
 
             // Owners
-            "owner_name_ar" -> if (isArabic) "اسم المالك (عربي)" else "Owner Name (Arabic)"
-            "owner_name_en" -> if (isArabic) "اسم المالك (إنجليزي)" else "Owner Name (English)"
-            "civil_id" -> if (isArabic) "الرقم المدني" else "Civil ID"
-            "ownership_percentage" -> if (isArabic) "نسبة الملكية" else "Ownership %"
-            "address" -> if (isArabic) "العنوان" else "Address"
-            "phone" -> if (isArabic) "الهاتف" else "Phone"
-            "email" -> if (isArabic) "البريد الإلكتروني" else "Email"
-            "is_representative" -> if (isArabic) "الممثل القانوني" else "Legal Representative"
+            "owner_name_ar" -> if (AppLanguage.isArabic) "اسم المالك (بالعربية)" else "Owner Name (Arabic)"
+            "owner_name_en" -> if (AppLanguage.isArabic) "اسم المالك (بالانجليزية)" else "Owner Name (English)"
+            "civil_id" -> if (AppLanguage.isArabic) "الرقم المدني" else "Civil ID"
+            "ownership_percentage" -> if (AppLanguage.isArabic) "نسبة الملكية" else "Ownership %"
+            "address" -> if (AppLanguage.isArabic) "العنوان" else "Address"
+            "phone" -> if (AppLanguage.isArabic) "الهاتف" else "Phone"
+            "email" -> if (AppLanguage.isArabic) "أدخل البريد الإلكتروني" else "Email:"
+            "is_representative" -> if (AppLanguage.isArabic) "الممثل القانوني" else "Legal Representative"
 
             // Documents
-            "document" -> if (isArabic) "مستند" else "Document"
+            "document" -> if (AppLanguage.isArabic) "مستند" else "Document"
+
+            // Navigation Areas (change transactions)
+            "navigation_areas" -> if (AppLanguage.isArabic) "مناطق الإبحار" else "Navigation Areas"
+            "area" -> if (AppLanguage.isArabic) "منطقة" else "Area"
+
+            // Crew List
+            "crew_list" -> if (AppLanguage.isArabic) "قائمة طاقم الملاحة" else "Crew List"
+            "crew_name_ar" -> if (AppLanguage.isArabic) "الاسم (عربي)" else "Name (Arabic)"
+            "crew_name_en" -> if (AppLanguage.isArabic) "الاسم (إنجليزي)" else "Name (English)"
+            "seamen_book_no" -> if (AppLanguage.isArabic) "رقم كتيب البحار" else "Seaman Book No."
+            "nationality" -> if (AppLanguage.isArabic) "الجنسية" else "Nationality:"
 
             // Common
-            "yes" -> if (isArabic) "نعم" else "Yes"
-            "no" -> if (isArabic) "لا" else "No"
+            "yes" -> if (AppLanguage.isArabic) "نعم" else "Yes"
+            "no" -> if (AppLanguage.isArabic) "لا" else "No"
 
             // ✅ Scheduled Inspection Fields
-            "scheduled_inspection_info" -> if (isArabic) "معلومات الجدولة" else "Scheduling Information"
-            "scheduled_date" -> if (isArabic) "موعد المعاينة المجدول" else "Scheduled Date"
-            "inspection_request_details" -> if (isArabic) "تفاصيل طلب المعاينة" else "Inspection Request Details"
-            "request_number" -> if (isArabic) "رقم الطلب" else "Request Number"
-            "inspection_purpose" -> if (isArabic) "الغرض من المعاينة" else "Inspection Purpose"
-            "authority" -> if (isArabic) "الجهة" else "Authority"
-            "request_status" -> if (isArabic) "حالة الطلب" else "Request Status"
-            "inspection_date" -> if (isArabic) "تاريخ المعاينة" else "Inspection Date"
-            "inspection_place" -> if (isArabic) "مكان المعاينة" else "Inspection Place"
-            "place_port" -> if (isArabic) "ميناء المكان" else "Place Port"
-            "assigned_engineers" -> if (isArabic) "المهندسون المعينون" else "Assigned Engineers"
-            "engineer" -> if (isArabic) "مهندس" else "Engineer"
-            "engineer_name" -> if (isArabic) "اسم المهندس" else "Engineer Name"
-            "national_id" -> if (isArabic) "الرقم الوطني" else "National ID"
-            "job_title" -> if (isArabic) "المسمى الوظيفي" else "Job Title"
-            "engineer_port" -> if (isArabic) "الميناء" else "Port"
-            "work_orders" -> if (isArabic) "أوامر العمل" else "Work Orders"
-            "work_order" -> if (isArabic) "أمر عمل" else "Work Order"
-            "inspection_engineer" -> if (isArabic) "مهندس المعاينة" else "Inspection Engineer"
-            "work_order_status" -> if (isArabic) "حالة أمر العمل" else "Work Order Status"
-            "work_order_result" -> if (isArabic) "نتيجة أمر العمل" else "Work Order Result"
-            "result_status" -> if (isArabic) "حالة النتيجة" else "Result Status"
-            "inspection_decision" -> if (isArabic) "قرار المعاينة" else "Inspection Decision"
-            "inspection_answers" -> if (isArabic) "إجابات قائمة الفحص" else "Inspection Checklist Answers"
+            "scheduled_inspection_info" -> if (AppLanguage.isArabic) "معلومات الجدولة" else "Scheduling Information"
+            "scheduled_date" -> if (AppLanguage.isArabic) "موعد المعاينة المجدول" else "Scheduled Date"
+            "inspection_request_details" -> if (AppLanguage.isArabic) "تفاصيل طلب المعاينة" else "Inspection Request Details"
+            "request_number" -> if (AppLanguage.isArabic) "رقم الطلب" else "Request Number"
+            "inspection_purpose" -> if (AppLanguage.isArabic) "الغرض من المعاينة" else "Inspection Purpose"
+            "authority" -> if (AppLanguage.isArabic) "الجهة" else "Authority"
+            "request_status" -> if (AppLanguage.isArabic) "حالة الطلب" else "Request Status"
+            "inspection_date" -> if (AppLanguage.isArabic) "تاريخ المعاينة" else "Inspection Date"
+            "inspection_place" -> if (AppLanguage.isArabic) "مكان المعاينة" else "Inspection Place"
+            "place_port" -> if (AppLanguage.isArabic) "ميناء المكان" else "Place Port"
+            "assigned_engineers" -> if (AppLanguage.isArabic) "المهندسون المعينون" else "Assigned Engineers"
+            "engineer" -> if (AppLanguage.isArabic) "مهندس" else "Engineer"
+            "engineer_name" -> if (AppLanguage.isArabic) "اسم المهندس" else "Engineer Name"
+            "national_id" -> if (AppLanguage.isArabic) "الرقم القومي" else "National ID:"
+            "job_title" -> if (AppLanguage.isArabic) "المسمى الوظيفي" else "Job Title"
+            "engineer_port" -> if (AppLanguage.isArabic) "الميناء" else "Port"
+            "work_orders" -> if (AppLanguage.isArabic) "أوامر العمل" else "Work Orders"
+            "work_order" -> if (AppLanguage.isArabic) "أمر عمل" else "Work Order"
+            "inspection_engineer" -> if (AppLanguage.isArabic) "مهندس المعاينة" else "Inspection Engineer"
+            "work_order_status" -> if (AppLanguage.isArabic) "حالة أمر العمل" else "Work Order Status"
+            "work_order_result" -> if (AppLanguage.isArabic) "نتيجة أمر العمل" else "Work Order Result"
+            "result_status" -> if (AppLanguage.isArabic) "حالة النتيجة" else "Result Status"
+            "inspection_decision" -> if (AppLanguage.isArabic) "قرار المعاينة" else "Inspection Decision"
+            "inspection_answers" -> if (AppLanguage.isArabic) "إجابات قائمة الفحص" else "Inspection Checklist Answers"
 
             else -> key
         }

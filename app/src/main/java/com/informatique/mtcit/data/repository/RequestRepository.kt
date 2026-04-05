@@ -15,6 +15,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Repository for managing user requests (الاستمارات)
@@ -314,7 +315,7 @@ class RequestRepository @Inject constructor(
 
         shipObject?.let { ship ->
             println("🔍 DEBUG - Parsing ship data from draft...")
-            println("   Current language: ${java.util.Locale.getDefault().language}")
+            println("   Current language: ${AppLanguage.code}")
 
             // ✅ Basic ship identification fields
             ship["callSign"]?.jsonPrimitive?.contentOrNull?.let {
@@ -393,7 +394,7 @@ class RequestRepository @Inject constructor(
 
             // ✅ FIX: Use LOCALIZED names (getLocalizedName) so dropdowns can find them
             // This matches how LookupRepository returns data
-            val currentLanguage = java.util.Locale.getDefault().language
+            val currentLanguage = AppLanguage.code
 
             val portObject = ship["portOfRegistry"]?.jsonObject
             portObject?.let { port ->
@@ -476,7 +477,7 @@ class RequestRepository @Inject constructor(
         }
 
         // Get current language for localized names
-        val currentLanguage = java.util.Locale.getDefault().language
+        val currentLanguage = AppLanguage.code
 
         // ✅ Extract engine data as JSON array for EngineListManager
         val enginesArray = shipInfoObject?.get("shipInfoEngines")?.jsonArray

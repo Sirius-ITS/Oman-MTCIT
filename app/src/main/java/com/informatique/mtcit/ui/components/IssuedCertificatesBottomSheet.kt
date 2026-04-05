@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.util.Locale
+import com.informatique.mtcit.common.util.LocalAppLocale
+import androidx.compose.ui.res.stringResource
 
 /**
  * Data class representing a single issued certificate item for the bottom sheet.
@@ -46,7 +48,7 @@ fun IssuedCertificatesBottomSheet(
     onDismiss: () -> Unit
 ) {
     val extraColors = LocalExtraColors.current
-    val isArabic = Locale.getDefault().language == "ar"
+    val isArabic = LocalAppLocale.current.language == "ar"
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -107,10 +109,7 @@ fun IssuedCertificatesBottomSheet(
 
             // ── Disclaimer note ────────────────────────────────────────────
             Text(
-                text = if (isArabic)
-                    "الشهادات السابقة تم إلغاؤها (Expired) وهي متاحة فقط في السجل التاريخي."
-                else
-                    "Previous certificates have been cancelled (Expired) and are only available in the historical record.",
+                text = stringResource(R.string.previous_certificates_have_been_cancelled_expired_and_are_only_available_in_the),
                 fontSize = 12.sp,
                 color = extraColors.textSubTitle.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
@@ -130,7 +129,7 @@ fun IssuedCertificatesBottomSheet(
                 border = BorderStroke(1.dp, extraColors.blue1)
             ) {
                 Text(
-                    text = if (isArabic) "إغلاق" else "Close",
+                    text = stringResource(R.string.close),
                     color = extraColors.blue1,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -171,10 +170,7 @@ private fun IssuedCertCard(
         ) {
             // ── Certificate number (top) ────────────────────────────────
             Text(
-                text = if (isArabic)
-                    "رقم الشهادة: ${cert.number}"
-                else
-                    "Certificate No: ${cert.number}",
+                text = stringResource(R.string.certificate_no_cert_number),
                 fontSize = 12.sp,
                 color = extraColors.textSubTitle.copy(alpha = 0.7f),
                 textAlign = TextAlign.Start,
@@ -208,7 +204,7 @@ private fun IssuedCertCard(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
-                    text = if (isArabic) "عرض الشهادة" else "View Certificate",
+                    text = stringResource(R.string.view_certificate),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold

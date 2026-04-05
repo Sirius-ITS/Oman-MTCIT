@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,11 +44,13 @@ import com.informatique.mtcit.ui.viewmodels.ValidationState
 import com.informatique.mtcit.ui.components.ErrorBanner
 import io.ktor.client.request.forms.formData
 import java.util.Locale
+import com.informatique.mtcit.common.util.LocalAppLocale
 import androidx.core.net.toUri
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import androidx.compose.ui.res.stringResource
 
 
 /**
@@ -80,8 +83,10 @@ fun TransactionFormContent(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Track declaration acceptance state for review step
-    var declarationAccepted by remember { mutableStateOf(false) }
+    // Track declaration acceptance state for review step.
+    // ✅ Stored in ViewModel (not local composable state) so it survives navigation round-trips
+    // such as the OAuth re-auth flow (OAuthWebViewScreen push → popBackStack).
+    val declarationAccepted by viewModel.declarationAccepted.collectAsState()
 
     // ✅ CHANGED: Detect review step by StepType.REVIEW instead of empty fields
     val isReviewStep = uiState.steps.getOrNull(uiState.currentStep)?.stepType == com.informatique.mtcit.business.transactions.shared.StepType.REVIEW
@@ -213,7 +218,7 @@ fun TransactionFormContent(
     val isFreeService = uiState.formData["isFreeService"]?.toBoolean() ?: false
     // Parse multiple affected certificates stored as JSON array by PaymentManager
     val affectedCertificatesJson = uiState.formData["affectedCertificatesList"] ?: ""
-    val isArabicLocale = Locale.getDefault().language == "ar"
+    val isArabicLocale = LocalAppLocale.current.language == "ar"
 
     val affectedCertsList: List<AffectedCert> = remember(affectedCertificatesJson) {
         parseAffectedCertificates(affectedCertificatesJson)
@@ -225,16 +230,16 @@ fun TransactionFormContent(
             if (isFreeService) {
                 add(
                     SuccessDialogItem(
-                        label = if (isArabic) "نوع الخدمة" else "Service Type",
-                        value = if (isArabic) "مجانية" else "Free",
+                        label = stringResource(R.string.service_type),
+                        value = stringResource(R.string.free),
                         icon = "🎁"
                     )
                 )
             }
             add(
                 SuccessDialogItem(
-                    label = if (isArabic) "حالة الشهادة" else "Certificate Status",
-                    value = if (isArabic) "مصدر" else "Issued",
+                    label = stringResource(R.string.certificate_status),
+                    value = stringResource(R.string.issued),
                     icon = "✅"
                 )
             )
@@ -269,7 +274,7 @@ fun TransactionFormContent(
                 )
             }
             IssuedCertificatesBottomSheet(
-                title = if (isArabic) "تم إصدار الشهادات بنجاح" else "Certificates Issued Successfully",
+                title = stringResource(R.string.certificates_issued_successfully),
                 items = issuedCertItems,
                 onDismiss = {
                     onFieldValueChange("shouldShowCertificate", "false")
@@ -280,7 +285,7 @@ fun TransactionFormContent(
         } else {
             // ── SuccessDialog for standard single-certificate transactions ─
             SuccessDialog(
-                title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
+                title = stringResource(R.string.certificate_issued_successfully),
                 items = items,
                 onDismiss = {
                     onFieldValueChange("shouldShowCertificate", "false")
@@ -625,8 +630,9 @@ fun TransactionFormContent(
                     onViewFile = onViewFile,
                     onRemoveFile = onRemoveFile,
                     allSteps = uiState.steps,
+                    declarationAccepted = declarationAccepted,
                     onDeclarationChange = { accepted ->
-                        declarationAccepted = accepted
+                        viewModel.setDeclarationAccepted(accepted)
                     },
                     onTriggerNext = { viewModel.nextStep() },
                     validationState = if (viewModel is MarineRegistrationViewModel) {
@@ -773,7 +779,7 @@ fun GenericNavigationBottomBar(
                             val buttonText = when {
                                 shouldIssueCertificate || isFreeService || paymentAlreadyCompleted || paymentCompleted -> {
                                     // Show "Issue Certificate" for free services, already paid, or just paid
-                                    if (Locale.getDefault().language == "ar")
+                                    if (LocalAppLocale.current.language == "ar")
                                         "اصدار الشهادة"
                                     else "Issue Certificate"
                                 }

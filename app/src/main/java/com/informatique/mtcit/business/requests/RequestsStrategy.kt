@@ -8,7 +8,7 @@ import com.informatique.mtcit.data.model.requests.RequestItem
 import com.informatique.mtcit.data.model.requests.RequestsApiResponse
 import com.informatique.mtcit.data.model.requests.UserRequestUiModel
 import com.informatique.mtcit.data.repository.UserRequestsRepository
-import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -172,6 +172,13 @@ class RequestsStrategy @Inject constructor(
         val requestTypeName = item.getRequestTypeDisplayName()
         val requestTypeId = item.requestTypeId ?: item.requestType?.id ?: 8 // Default to inspection (8)
 
+        // ✅ Store both AR and EN so the composable can switch live without re-fetch
+        val requestTypeNameAr = item.requestType?.nameAr?.takeIf { it.isNotBlank() }
+            ?: item.requestTypeName?.takeIf { it.isNotBlank() }   // flat server field (likely AR)
+            ?: TransactionType.getDisplayName(requestTypeId, true)
+        val requestTypeNameEn = item.requestType?.nameEn?.takeIf { it.isNotBlank() }
+            ?: TransactionType.getDisplayName(requestTypeId, false)
+
         println("🔍 Mapping request: id=${item.id}, requestNumber=$requestNumber, statusId=$statusId, statusName=$localizedStatusName, shipName=$shipName, requestType=$requestTypeName")
 
         return UserRequestUiModel(
@@ -179,6 +186,8 @@ class RequestsStrategy @Inject constructor(
             requestSerial = requestNumber,
             requestTypeId = requestTypeId,
             requestTypeName = requestTypeName,
+            requestTypeNameAr = requestTypeNameAr,
+            requestTypeNameEn = requestTypeNameEn,
             shipId = item.shipId ?: item.ship?.id ?: item.shipInfo?.ship?.id,
             shipName = shipName ?: getLocalizedText("no_ship"),
             shipNumber = item.shipNumber ?: "",
@@ -213,11 +222,10 @@ class RequestsStrategy @Inject constructor(
      * Get localized text
      */
     private fun getLocalizedText(key: String): String {
-        val isArabic = Locale.getDefault().language == "ar"
         return when (key) {
-            "unknown_request_type" -> if (isArabic) "نوع طلب غير معروف" else "Unknown Request Type"
-            "no_ship" -> if (isArabic) "لا توجد سفينة" else "No Ship"
-            else -> if (isArabic) "غير معروف" else "Unknown"
+            "unknown_request_type" -> if (AppLanguage.isArabic) "نوع طلب غير معروف" else "Unknown Request Type"
+            "no_ship" -> if (AppLanguage.isArabic) "لا توجد سفينة" else "No Ship"
+            else -> if (AppLanguage.isArabic) "غير معروف" else "Unknown"
         }
     }
 

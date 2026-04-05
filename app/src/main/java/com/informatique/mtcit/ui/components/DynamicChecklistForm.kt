@@ -21,6 +21,8 @@ import com.informatique.mtcit.data.model.ChecklistAnswer
 import com.informatique.mtcit.data.model.ChecklistItem
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.util.Locale
+import com.informatique.mtcit.common.util.LocalAppLocale
+import androidx.compose.ui.res.stringResource
 
 /**
  * Dynamic Checklist Form — matches iOS checklistItemView exactly
@@ -41,7 +43,7 @@ fun DynamicChecklistForm(
     isReadOnly: Boolean = (existingAnswers != null && onAnswersChanged == null)
 ) {
     val extraColors = LocalExtraColors.current
-    val isArabic = Locale.getDefault().language == "ar"
+    val isArabic = LocalAppLocale.current.language == "ar"
 
     // State for answers (checklistItemId -> answer value)
     val answers = remember(existingAnswers) {
@@ -107,8 +109,8 @@ fun DynamicChecklistForm(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 listOf(
-                                    "true" to if (isArabic) "نعم" else "True",
-                                    "false" to if (isArabic) "لا" else "False"
+                                    "true" to stringResource(R.string.true),
+                                    "false" to stringResource(R.string.false)
                                 ).forEach { (option, label) ->
                                     val isSelected = currentAnswer == option
                                     Row(
@@ -219,7 +221,7 @@ fun DynamicChecklistForm(
                                 maxLines = 8,
                                 placeholder = {
                                     Text(
-                                        if (isArabic) "اكتب هنا..." else "Write here...",
+                                        stringResource(R.string.write_here),
                                         color = Color.Gray.copy(alpha = 0.5f), fontSize = 14.sp
                                     )
                                 }
@@ -272,7 +274,7 @@ private fun ChecklistItemField(
                     value = value,
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
-                    placeholder = if (isArabic) "أدخل الإجابة" else "Enter answer",
+                    placeholder = stringResource(R.string.enter_answer),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )
@@ -284,7 +286,7 @@ private fun ChecklistItemField(
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
                     isNumeric = true,
-                    placeholder = if (isArabic) "أدخل رقم" else "Enter number",
+                    placeholder = stringResource(R.string.enter_number),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )
@@ -296,7 +298,7 @@ private fun ChecklistItemField(
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
                     isDecimal = true,
-                    placeholder = if (isArabic) "أدخل رقم عشري" else "Enter decimal number",
+                    placeholder = stringResource(R.string.enter_decimal_number),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )
@@ -318,7 +320,7 @@ private fun ChecklistItemField(
                         enabled = !isReadOnly,
                         placeholder = {
                             Text(
-                                if (isArabic) "أدخل النص" else "Enter text",
+                                stringResource(R.string.enter_text),
                                 color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                             )
                         },
@@ -359,7 +361,7 @@ private fun ChecklistItemField(
                     },
                     options = choices.map { it.answer },
                     label = label,
-                    placeholder = if (isArabic) "اختر من القائمة" else "Select from list",
+                    placeholder = stringResource(R.string.select_from_list),
                     mandatory = item.isMandatory,
                     isLoading = false,
                     enabled = !isReadOnly
@@ -395,7 +397,7 @@ private fun ChecklistItemField(
                     value = value,
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
-                    placeholder = if (isArabic) "أدخل الإجابة" else "Enter answer",
+                    placeholder = stringResource(R.string.enter_answer),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )

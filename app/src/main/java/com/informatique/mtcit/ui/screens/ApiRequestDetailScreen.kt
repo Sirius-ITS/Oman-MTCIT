@@ -1,4 +1,4 @@
-﻿package com.informatique.mtcit.ui.screens
+package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
@@ -55,6 +55,8 @@ import com.informatique.mtcit.ui.viewmodels.RequestDetailViewModel
 import com.informatique.mtcit.ui.viewmodels.CertificateData
 import kotlinx.coroutines.launch
 import java.util.Locale
+import com.informatique.mtcit.common.util.LocalAppLocale
+import androidx.compose.ui.res.stringResource
 
 // =====================================================================
 // 🔧 CERTIFICATE VIEWER CONFIGURATION
@@ -176,7 +178,7 @@ fun ApiRequestDetailScreen(
     }
 
     // ✅ Affected Certificates Bottom Sheet for change transactions (types 10/11/12/13)
-    val isArabicLang = Locale.getDefault().language == "ar"
+    val isArabicLang = LocalAppLocale.current.language == "ar"
     if (affectedCertificatesList.isNotEmpty()) {
         val issuedItems = affectedCertificatesList.map { cert ->
             IssuedCertItem(
@@ -205,18 +207,18 @@ fun ApiRequestDetailScreen(
         val certData = certificateData!!
         println("🎉 Showing certificate issuance dialog: ${certData.certificationNumber}")
 
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = LocalAppLocale.current.language == "ar"
         val items = buildList {
             add(
                 SuccessDialogItem(
-                    label = if (isArabic) "رقم الشهادة" else "Certificate Number",
+                    label = stringResource(R.string.certificate_number),
                     value = certData.certificationNumber,
                     icon = "📄"
                 )
             )
             add(
                 SuccessDialogItem(
-                    label = if (isArabic) "تاريخ الإصدار" else "Issued Date",
+                    label = stringResource(R.string.issued_date),
                     value = certData.issuedDate,
                     icon = "📅"
                 )
@@ -224,7 +226,7 @@ fun ApiRequestDetailScreen(
             if (!certData.expiryDate.isNullOrEmpty()) {
                 add(
                     SuccessDialogItem(
-                        label = if (isArabic) "تاريخ الانتهاء" else "Expiry Date",
+                        label = stringResource(R.string.expiry_date),
                         value = certData.expiryDate,
                         icon = "⏰"
                     )
@@ -233,7 +235,7 @@ fun ApiRequestDetailScreen(
         }
 
         SuccessDialog(
-            title = if (isArabic) "تم إصدار الشهادة بنجاح" else "Certificate Issued Successfully",
+            title = stringResource(R.string.certificate_issued_successfully),
             items = items,
             qrCode = certData.certificationQrCode,
             onDismiss = {
@@ -256,7 +258,7 @@ fun ApiRequestDetailScreen(
                     println("❌ Request type ID not available")
                     android.widget.Toast.makeText(
                         context,
-                        if (isArabic) "فشل في عرض الشهادة" else "Failed to view certificate",
+                        stringResource(R.string.failed_to_view_certificate),
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -312,7 +314,7 @@ fun ApiRequestDetailScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = if (Locale.getDefault().language == "ar") "تفاصيل الطلب" else "Request Details",
+                            text = if (LocalAppLocale.current.language == "ar") "تفاصيل الطلب" else "Request Details",
                             color = Color.White,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
@@ -374,7 +376,7 @@ fun ApiRequestDetailScreen(
                         else -> {
                             // Fallback
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = if (Locale.getDefault().language == "ar") "حدث خطأ" else "An error occurred",
+                                message = if (LocalAppLocale.current.language == "ar") "حدث خطأ" else "An error occurred",
                                 onDismiss = { viewModel.clearAppError() }
                             )
                         }
@@ -441,7 +443,7 @@ private fun LoadingState(extraColors: com.informatique.mtcit.ui.theme.ExtraColor
         ) {
             CircularProgressIndicator(color = extraColors.blue1)
             Text(
-                text = if (Locale.getDefault().language == "ar")
+                text = if (LocalAppLocale.current.language == "ar")
                     "جاري تحميل البيانات..."
                 else "Loading data...",
                 color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
@@ -461,7 +463,7 @@ private fun ErrorState(
         is com.informatique.mtcit.common.AppError.ApiError -> error.message
         is com.informatique.mtcit.common.AppError.Unauthorized -> error.message
         is com.informatique.mtcit.common.AppError.Unknown -> error.message
-        else -> if (Locale.getDefault().language == "ar") "حدث خطأ غير متوق��" else "An error occurred"
+        else -> if (LocalAppLocale.current.language == "ar") "حدث خطأ غير متوق��" else "An error occurred"
     }
 
     Box(
@@ -497,7 +499,7 @@ private fun ErrorState(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = if (Locale.getDefault().language == "ar") "إعادة المحاولة" else "Retry",
+                    text = if (LocalAppLocale.current.language == "ar") "إعادة المحاولة" else "Retry",
                     color = Color.White
                 )
             }
@@ -802,7 +804,7 @@ private fun BottomActionButtons(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (Locale.getDefault().language == "ar")
+                                text = if (LocalAppLocale.current.language == "ar")
                                     "متابعة التعديل"
                                 else "Continue Editing",
                                 color = Color.White,
@@ -826,7 +828,7 @@ private fun BottomActionButtons(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (Locale.getDefault().language == "ar")
+                                text = if (LocalAppLocale.current.language == "ar")
                                     "تقديم طلب جديد"
                                 else "Submit New Request",
                                 color = Color.White,
@@ -890,13 +892,13 @@ private fun IssueCertificateButton(
     val buttonText = when {
         isAlreadyIssued -> {
             // Certificate already issued - show "View Certificate" text
-            if (Locale.getDefault().language == "ar")
+            if (LocalAppLocale.current.language == "ar")
                 "عرض الشهادة"
             else "View Certificate"
         }
         else -> {
             // Not yet issued - show "Issue and Display Certificate" text
-            if (Locale.getDefault().language == "ar")
+            if (LocalAppLocale.current.language == "ar")
                 "اصدار و عرض الشهادة"
             else "Issue and Display Certificate"
         }
@@ -1028,7 +1030,7 @@ private fun ProceedToPaymentButton(
         shape = RoundedCornerShape(12.dp)
     ) {
         Text(
-            text = if (Locale.getDefault().language == "ar")
+            text = if (LocalAppLocale.current.language == "ar")
                 "متابعة الدفع"
             else "Continue to Payment",
             color = Color.White,
@@ -1079,7 +1081,7 @@ private fun StatusInfoMessages(
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = if (Locale.getDefault().language == "ar")
+                            text = if (LocalAppLocale.current.language == "ar")
                                 "طلبك قيد المراجعة من قبل الجهات المختصة"
                             else "Your request is under review by the authorities",
                             fontSize = 14.sp,
@@ -1117,7 +1119,7 @@ private fun StatusInfoMessages(
                                 modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                text = if (Locale.getDefault().language == "ar")
+                                text = if (LocalAppLocale.current.language == "ar")
                                     "تم رفض الطلب"
                                 else "Request Rejected",
                                 fontSize = 16.sp,
@@ -1162,7 +1164,7 @@ private fun StatusInfoMessages(
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            text = if (Locale.getDefault().language == "ar")
+                            text = if (LocalAppLocale.current.language == "ar")
                                 "تم قبول الطلب بنجاح"
                             else "Request Approved Successfully",
                             fontSize = 14.sp,
@@ -1181,7 +1183,7 @@ private fun StatusHeaderCard(
     requestDetail: com.informatique.mtcit.data.model.requests.RequestDetailUiModel,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors
 ) {
-    val isAr = Locale.getDefault().language == "ar"
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Card(
         modifier = Modifier
@@ -1209,7 +1211,7 @@ private fun StatusHeaderCard(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = if (isAr) "رقم الطلب" else "Request Number",
+                        text = stringResource(R.string.request_number),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
@@ -1244,7 +1246,7 @@ private fun StatusHeaderCard(
             // ─── Request Type ───
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = if (isAr) "نوع الطلب" else "Request Type",
+                    text = stringResource(R.string.request_type),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
@@ -1261,7 +1263,7 @@ private fun StatusHeaderCard(
 //            requestDetail.shipName?.let { shipName ->
 //                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
 //                    Text(
-//                        text = if (isAr) "اسم السفينة" else "Ship Name",
+//                        text = stringResource(R.string.ship_name),
 //                        fontSize = 12.sp,
 //                        fontWeight = FontWeight.Normal,
 //                        color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
@@ -1278,9 +1280,9 @@ private fun StatusHeaderCard(
             // ─── Message ───
             val displayMessage = requestDetail.message?.takeIf { it.isNotEmpty() }
                 ?: when (requestDetail.status.id) {
-                    2, 10 -> if (isAr) "تعذر اعتماد الطلب" else "Request could not be approved"
-                    3, 7, 11, 12, 13, 14 -> if (isAr) "تم اعتماد الطلب بنجاح" else "Request approved successfully"
-                    6 -> if (isAr) "تم تحديد موعد المعاينة" else "Inspection appointment scheduled"
+                    2, 10 -> stringResource(R.string.request_could_not_be_approved)
+                    3, 7, 11, 12, 13, 14 -> stringResource(R.string.request_approved_successfully)
+                    6 -> stringResource(R.string.inspection_appointment_scheduled)
                     else -> null
                 }
 
@@ -1306,18 +1308,9 @@ private fun StatusHeaderCard(
             // ─── Message Details (if available) ───
             val displayMessageDetails = requestDetail.messageDetails?.takeIf { it.isNotEmpty() }
                 ?: when (requestDetail.status.id) {
-                    2, 10 -> if (isAr)
-                        "نأسف لإبلاغكم بأنه تم رفض الطلب بعد مراجعته، وذلك لعدم استيفاء بعض المتطلبات. يرجى الاطلاع على تفاصيل الرفض أدناه، مع إمكانية تصحيح الملاحظات وإعادة التقديم في حال رغبتكم."
-                    else
-                        "We regret to inform you that your request has been rejected after review due to unmet requirements."
-                    3, 7, 11, 12, 13, 14 -> if (isAr)
-                        "نود إحاطتكم علماً بإنه تم تأكيد طلبكم بنجاح بعد استيفاء جميع المتطلبات اللازمة. يمكنكم الآن متابعة الخطوة التالية ضمن مسار الخدمة وفق الإجراءات المعتمدة."
-                    else
-                        "Your request has been successfully confirmed after meeting all requirements."
-                    6 -> if (isAr)
-                        "يسرنا إعلامكم بأنه تم تحديد موعد للمعاينة. يرجى التأكد من الالتزام بالحضور في الموعد المحدد لضمان استكمال المعاملة بسلاسة ووفق الأطر الزمنية المعتمدة."
-                    else
-                        "We are pleased to inform you that an inspection appointment has been scheduled."
+                    2, 10 -> stringResource(R.string.we_regret_to_inform_you_that_your_request_has_been_rejected_after_review_due_to)
+                    3, 7, 11, 12, 13, 14 -> stringResource(R.string.your_request_has_been_successfully_confirmed_after_meeting_all_requirements)
+                    6 -> stringResource(R.string.we_are_pleased_to_inform_you_that_an_inspection_appointment_has_been_scheduled)
                     else -> null
                 }
 
@@ -1531,7 +1524,7 @@ private fun RenderField(
                 field.items.forEachIndexed { index, itemFields ->
                     // Item group header
                     Text(
-                        text = "${if (Locale.getDefault().language == "ar") "العنصر" else "Item"} ${index + 1}",
+                        text = "${if (LocalAppLocale.current.language == "ar") "العنصر" else "Item"} ${index + 1}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = extraColors.blue1,
@@ -1677,7 +1670,7 @@ private fun AssignedEngineersCard(
     workOrders: List<com.informatique.mtcit.data.model.requests.EngineerWorkOrder>,
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors
 ) {
-    val isAr = Locale.getDefault().language == "ar"
+    val isAr = LocalAppLocale.current.language == "ar"
     var isExpanded by remember { mutableStateOf(false) }
 
     val chevronRotation by animateFloatAsState(
@@ -1716,7 +1709,7 @@ private fun AssignedEngineersCard(
                 )
                 // Title — fills space
                 Text(
-                    text = if (isAr) "قائمة المهندسين المعينين" else "Assigned Engineers",
+                    text = stringResource(R.string.assigned_engineers_2),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = extraColors.whiteInDarkMode,
@@ -1851,7 +1844,7 @@ private fun EngineerChecklistSection(
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
     onAnswerChanged: (itemId: Int, answer: String) -> Unit = { _, _ -> }
 ) {
-    val isArabic = Locale.getDefault().language == "ar"
+    val isArabic = LocalAppLocale.current.language == "ar"
 
     Card(
         modifier = Modifier
@@ -1879,7 +1872,7 @@ private fun EngineerChecklistSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isArabic) "قائمة الفحص" else "Inspection Checklist",
+                    text = stringResource(R.string.inspection_checklist),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = extraColors.whiteInDarkMode
@@ -1902,7 +1895,7 @@ private fun EngineerChecklistSection(
 
                 checklistItems.isEmpty() -> {
                     Text(
-                        text = if (isArabic) "لا توجد قائمة فحص متاحة" else "No checklist available",
+                        text = stringResource(R.string.no_checklist_available),
                         fontSize = 14.sp,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -1930,7 +1923,7 @@ private fun EngineerChecklistSection(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isArabic) "تم إكمال الفحص - عرض النتائج فقط" else "Inspection completed - View only",
+                                text = stringResource(R.string.inspection_completed_view_only),
                                 fontSize = 13.sp,
                                 color = Color(0xFF1976D2)
                             )
@@ -1954,7 +1947,7 @@ private fun EngineerChecklistSection(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (isArabic) "يمكن ملء وتعديل القائمة" else "Checklist can be filled and edited",
+                                text = stringResource(R.string.checklist_can_be_filled_and_edited),
                                 fontSize = 13.sp,
                                 color = Color(0xFFF57C00)
                             )
@@ -2095,7 +2088,7 @@ private fun ApproveInspectionButton(
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
     modifier: Modifier = Modifier
 ) {
-    val isArabic = Locale.getDefault().language == "ar"
+    val isArabic = LocalAppLocale.current.language == "ar"
     val checklistItems by viewModel.checklistItems.collectAsState()
     val checklistAnswers by viewModel.checklistAnswers.collectAsState()
     val inspectionDecisions by viewModel.inspectionDecisions.collectAsState()
@@ -2168,7 +2161,7 @@ private fun ApproveInspectionButton(
                 enabled = isDraftButtonEnabled
             ) {
                 Text(
-                    text = if (isArabic) "حفظ مسودة" else "Save as Draft",
+                    text = stringResource(R.string.save_as_draft),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -2195,7 +2188,7 @@ private fun ApproveInspectionButton(
                 enabled = isSubmitButtonEnabled
             ) {
                 Text(
-                    text = if (isArabic) "اعتماد نتيجة المعاينة" else "Approve inspection result",
+                    text = stringResource(R.string.approve_inspection_result),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -2226,7 +2219,7 @@ private fun ApproveInspectionButton(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = if (isArabic) "اختر القرار" else "Select Decision",
+                    text = stringResource(R.string.select_decision),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = extraColors.whiteInDarkMode,
@@ -2247,7 +2240,7 @@ private fun ApproveInspectionButton(
 
                     inspectionDecisions.isEmpty() -> {
                         Text(
-                            text = if (isArabic) "لا توجد قرارات متاحة" else "No decisions available",
+                            text = stringResource(R.string.no_decisions_available),
                             modifier = Modifier.padding(16.dp),
                             color = extraColors.whiteInDarkMode
                         )
@@ -2294,7 +2287,7 @@ private fun ApproveInspectionButton(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = if (isArabic) "تاريخ الانتهاء *" else "Expiry Date *",
+                                text = stringResource(R.string.expiry_date_2),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.whiteInDarkMode,
@@ -2327,7 +2320,7 @@ private fun ApproveInspectionButton(
                                     enabled = false,
                                     placeholder = {
                                         Text(
-                                            if (isArabic) "اختر تاريخ الانتهاء" else "Select expiry date",
+                                            stringResource(R.string.select_expiry_date),
                                             color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                                         )
                                     },
@@ -2358,12 +2351,12 @@ private fun ApproveInspectionButton(
                                         TextButton(
                                             onClick = { showDateDialog = false }
                                         ) {
-                                            Text(if (isArabic) "تأكيد" else "OK")
+                                            Text(stringResource(R.string.ok_2))
                                         }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showDateDialog = false }) {
-                                            Text(if (isArabic) "إلغاء" else "Cancel")
+                                            Text(stringResource(R.string.cancel))
                                         }
                                     }
                                 ) {
@@ -2384,7 +2377,7 @@ private fun ApproveInspectionButton(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = if (isArabic) "ملاحظات الرفض" else "Refuse Notes",
+                                text = stringResource(R.string.refuse_notes),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.whiteInDarkMode,
@@ -2399,7 +2392,7 @@ private fun ApproveInspectionButton(
                                 },
                                 placeholder = {
                                     Text(
-                                        if (isArabic) "أدخل سبب الرفض" else "Enter refusal reason",
+                                        stringResource(R.string.enter_refusal_reason),
                                         color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                                     )
                                 },
@@ -2479,7 +2472,7 @@ private fun ApproveInspectionButton(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (isArabic) "تأكيد" else "Confirm",
+                                text = stringResource(R.string.confirm),
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold

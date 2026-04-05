@@ -7,6 +7,7 @@ import com.informatique.mtcit.ui.components.SelectableItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -715,7 +716,7 @@ class LookupRepositoryImpl @Inject constructor(
      * Get localized name based on current language
      */
     private fun getLocalizedName(arabicName: String, englishName: String): String {
-        val currentLanguage = Locale.getDefault().language
+        val currentLanguage = AppLanguage.code
         return if (currentLanguage == "ar") arabicName else englishName
     }
 

@@ -1,6 +1,7 @@
 package com.informatique.mtcit.data.model
 
 import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Request Status Enum
@@ -40,11 +41,11 @@ enum class RequestStatus(val statusId: Int, val arabicName: String, val englishN
         fun getStatusName(statusId: Int): String {
             val status = fromStatusId(statusId)
             return if (status != null) {
-                val currentLanguage = Locale.getDefault().language
+                val currentLanguage = AppLanguage.code
                 if (currentLanguage == "ar") status.arabicName else status.englishName
             } else {
                 // Return "Unknown" in the appropriate language
-                if (Locale.getDefault().language == "ar") "غير معروف" else "Unknown"
+                if (AppLanguage.isArabic) "غير معروف" else "Unknown"
             }
         }
 
@@ -58,7 +59,7 @@ enum class RequestStatus(val statusId: Int, val arabicName: String, val englishN
             return if (status != null) {
                 if (isArabic) status.arabicName else status.englishName
             } else {
-                if (isArabic) "غير معروف" else "Unknown"
+                if (AppLanguage.isArabic) "غير معروف" else "Unknown"
             }
         }
     }
@@ -67,7 +68,7 @@ enum class RequestStatus(val statusId: Int, val arabicName: String, val englishN
      * Get localized name based on current locale
      */
     fun getLocalizedName(): String {
-        val currentLanguage = Locale.getDefault().language
+        val currentLanguage = AppLanguage.code
         return if (currentLanguage == "ar") arabicName else englishName
     }
 }

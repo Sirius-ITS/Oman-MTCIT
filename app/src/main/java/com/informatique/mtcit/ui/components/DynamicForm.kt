@@ -34,6 +34,7 @@ fun DynamicStepForm(
     onRemoveFile: ((String) -> Unit)? = null,
     allSteps: List<StepData> = emptyList(), // Add parameter to pass all steps for review
     onDeclarationChange: ((Boolean) -> Unit)? = null, // Changed to declaration callback
+    declarationAccepted: Boolean = false, // ✅ Controlled declaration state from ViewModel
     onTriggerNext: () -> Unit, // ✅ أضف الـ parameter ده
     // NEW: Validation parameters
     validationState: com.informatique.mtcit.ui.viewmodels.ValidationState = com.informatique.mtcit.ui.viewmodels.ValidationState.Idle,
@@ -91,6 +92,7 @@ fun DynamicStepForm(
         ReviewStepContent(
             steps = allSteps,
             formData = formData,
+            declarationAccepted = declarationAccepted,
             onDeclarationChange = onDeclarationChange,
             onViewFile = onViewFile
         )

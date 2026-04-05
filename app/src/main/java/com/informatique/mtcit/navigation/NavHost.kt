@@ -303,9 +303,46 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                                 }
                             )
                         } else {
-                            // ✅ UNKNOWN FLOW: Log and navigate back
-                            println("⚠️ OAuth from unknown screen - navigating back")
-                            navController.popBackStack()
+                            // ✅ TRANSACTION SCREEN RE-AUTH FLOW
+                            // Handles the case where a transaction screen navigates here after
+                            // 401 + expired refresh token. We must exchange the code for a new
+                            // access token so the user can continue where they left off.
+                            println("🔄 OAuth from transaction screen (re-auth) - exchanging token directly")
+
+                            val result = authRepository.exchangeCodeForToken(code, LoginViewModel.lastCodeVerifier)
+
+                            result.fold(
+                                onSuccess = {
+                                    println("✅ Token re-exchanged successfully for transaction screen")
+
+                                    // Register FCM token and load notifications after re-login
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        registerFcmAndLoadNotifications(context, notificationViewModel)
+                                    }
+
+                                    val userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+                                    sharedUserViewModel.setUserRole(userRole)
+
+                                    if (userRole?.equals("engineer", ignoreCase = true) == true) {
+                                        println("🔧 Engineer detected after transaction re-login - navigating to profile")
+                                        navController.navigate(NavRoutes.ProfileScreenRoute.route) {
+                                            popUpTo(NavRoutes.HomeRoute.route) { inclusive = false }
+                                            launchSingleTop = true
+                                        }
+                                    } else {
+                                        println("👤 Client re-authenticated - notifying transaction screen and popping back")
+                                        // Signal the transaction screen that re-auth succeeded
+                                        navController.previousBackStackEntry
+                                            ?.savedStateHandle
+                                            ?.set("transaction_token_refreshed", true)
+                                        navController.popBackStack()
+                                    }
+                                },
+                                onFailure = { error ->
+                                    println("❌ Token exchange failed during transaction re-auth: ${error.message}")
+                                    navController.popBackStack()
+                                }
+                            )
                         }
                     }
                 }

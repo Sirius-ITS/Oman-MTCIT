@@ -1,8 +1,8 @@
 package com.informatique.mtcit.data.model.requests
 
 import com.informatique.mtcit.business.transactions.TransactionType
+import com.informatique.mtcit.common.util.AppLanguage
 import kotlinx.serialization.Serializable
-import java.util.Locale
 
 /**
  * API Response Models for User Requests
@@ -85,7 +85,7 @@ data class RequestItem(
      * Falls back to TransactionType.getDisplayName (covers all 22 official types).
      */
     fun getRequestTypeDisplayName(): String {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = AppLanguage.isArabic
         // Prefer flat requestTypeName when available (already localized by server or cached)
         requestTypeName?.takeIf { it.isNotBlank() }?.let { return it }
         // Pick the right locale from the nested requestType object
@@ -98,7 +98,7 @@ data class RequestItem(
         val typeId = requestTypeId ?: requestType?.id
         if (typeId != null) return TransactionType.getDisplayName(typeId)
         // Last resort default
-        return if (isArabic) "طلب معاينة" else "Inspection Request"
+        return if (AppLanguage.isArabic) "طلب معاينة" else "Inspection Request"
     }
 
     /**
@@ -204,7 +204,9 @@ data class UserRequestUiModel(
     val id: Int,
     val requestSerial: String, // e.g., "1252/2025"
     val requestTypeId: Int,
-    val requestTypeName: String,
+    val requestTypeName: String,         // pre-computed (kept for compatibility)
+    val requestTypeNameAr: String = requestTypeName, // Arabic name for live switching
+    val requestTypeNameEn: String = requestTypeName, // English name for live switching
     val shipId: Int?,
     val shipName: String,
     val shipNumber: String,

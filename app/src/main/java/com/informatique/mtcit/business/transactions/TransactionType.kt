@@ -1,6 +1,6 @@
 package com.informatique.mtcit.business.transactions
 
-import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 /**
  * Enum representing different types of transactions in the system
  * Each transaction now has its own TransactionContext with API endpoints
@@ -265,56 +265,41 @@ enum class TransactionType(
          * Names match the official backend RegMdRequestTypeEnum (all 22 types).
          * Mirrors RequestDetailParser.getRequestTypeName() so every screen is consistent.
          */
-        fun getDisplayName(typeId: Int): String {
-            val ar = Locale.getDefault().language == "ar"
+        /**
+         * Locale-aware overload – pass isArabic explicitly so composables can call with
+         * a reactive value from LocalAppLocale.current, avoiding the need for app restart.
+         */
+        fun getDisplayName(typeId: Int, isArabic: Boolean): String {
+            val ar = isArabic
             return when (typeId) {
-                1  -> if (ar) "إصدار شهادة تسجيل مؤقتة للسفن والوحدات البحرية"
-                      else "Temporary Registration Certificate for Ships and Marine Units"
-                2  -> if (ar) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية"
-                      else "Permanent Registration Certificate for Ships and Marine Units"
-                3  -> if (ar) "إصدار تصريح ملاحة للسفن والوحدات البحرية"
-                      else "Navigation Permit for Ships and Marine Units"
-                4  -> if (ar) "إصدار شهادة رهن للسفن والوحدات البحرية"
-                      else "Mortgage Certificate for Ships and Marine Units"
-                5  -> if (ar) "إصدار شهادة فك رهن للسفن والوحدات البحرية"
-                      else "Mortgage Release Certificate for Ships and Marine Units"
-                6  -> if (ar) "تجديد تصريح ملاحة للسفن والوحدات البحرية"
-                      else "Navigation Permit Renewal for Ships and Marine Units"
-                7  -> if (ar) "إصدار شهادة شطب التسجيل الدائمة للسفينة أو الوحدة البحرية"
-                      else "Cancellation of Permanent Registration Certificate"
-                8  -> if (ar) "تقديم طلب معاينة للسفن والوحدات البحرية"
-                      else "Inspection Request for Ships and Marine Units"
-                9  -> if (ar) "اضافة / تعديل على ملف سفينة / الوحدة البحرية"
-                      else "Add / Edit Ship or Marine Unit File"
-                10 -> if (ar) "طلب تغيير اسم ربان السفينة أو الوحدة البحرية"
-                      else "Change Captain Name of Ship or Marine Unit"
-                11 -> if (ar) "طلب تغيير اسم السفينة أو الوحدة البحرية"
-                      else "Change Ship or Marine Unit Name"
-                12 -> if (ar) "طلب تغيير ميناء تسجيل السفينة أو الوحدة البحرية"
-                      else "Change Ship or Marine Unit Registration Port"
-                13 -> if (ar) "طلب تغيير نشاط السفينة أو الوحدة البحرية"
-                      else "Change Ship or Marine Unit Activity"
-                14 -> if (ar) "ايقاف تصريح ملاحة للسفن والوحدات البحرية"
-                      else "Suspend Navigation Permit for Ships and Marine Units"
-                15 -> if (ar) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية التي عمرها يتعدى (20 سنة)"
-                      else "Permanent Registration Certificate for Ships and Marine Units Over 20 Years"
-                16 -> if (ar) "إصدار شهادة تسجيل وحدة بحرية مسجَّلة بنظام التسجيل الموازي"
-                      else "Parallel Registration Certificate for Marine Units"
-                17 -> if (ar) "تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني"
-                      else "Suspend Parallel Registration Certificate (Under Omani Flag)"
-                18 -> if (ar) "فك تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني"
-                      else "Unsuspend Parallel Registration Certificate (Under Omani Flag)"
-                19 -> if (ar) "تعليق شهادة تسجيل دائمة للسفن والوحدات البحرية"
-                      else "Suspend Permanent Registration Certificate"
-                20 -> if (ar) "طلب تغيير ملاك السفينة أو الوحدة البحرية"
-                      else "Change Ship or Marine Unit Owners"
-                21 -> if (ar) "طلب تغيير أبعاد السفينة أو الوحدة البحرية"
-                      else "Change Ship or Marine Unit Dimensions"
-                22 -> if (ar) "طلب استبدال محرك السفينة أو الوحدة البحرية"
-                      else "Change Ship or Marine Unit Engine"
-                else -> if (ar) "نوع غير معروف" else "Unknown Type"
+                1  -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل مؤقتة للسفن والوحدات البحرية" else "Temporary Registration Certificate for Ships and Marine Units"
+                2  -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية" else "Permanent Registration Certificate for Ships and Marine Units"
+                3  -> if (AppLanguage.isArabic) "إصدار تصريح ملاحة للسفن والوحدات البحرية" else "Navigation Permit for Ships and Marine Units"
+                4  -> if (AppLanguage.isArabic) "إصدار شهادة رهن للسفن والوحدات البحرية" else "Mortgage Certificate for Ships and Marine Units"
+                5  -> if (AppLanguage.isArabic) "إصدار شهادة فك رهن للسفن والوحدات البحرية" else "Mortgage Release Certificate for Ships and Marine Units"
+                6  -> if (AppLanguage.isArabic) "تجديد تصريح ملاحة للسفن والوحدات البحرية" else "Navigation Permit Renewal for Ships and Marine Units"
+                7  -> if (AppLanguage.isArabic) "إصدار شهادة شطب التسجيل الدائمة للسفينة أو الوحدة البحرية" else "Cancellation of Permanent Registration Certificate"
+                8  -> if (AppLanguage.isArabic) "تقديم طلب معاينة للسفن والوحدات البحرية" else "Inspection Request for Ships and Marine Units"
+                9  -> if (AppLanguage.isArabic) "اضافة / تعديل على ملف سفينة / الوحدة البحرية" else "Add / Edit Ship or Marine Unit File"
+                10 -> if (AppLanguage.isArabic) "طلب تغيير اسم ربان السفينة أو الوحدة البحرية" else "Change Captain Name of Ship or Marine Unit"
+                11 -> if (AppLanguage.isArabic) "طلب تغيير اسم السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Name"
+                12 -> if (AppLanguage.isArabic) "طلب تغيير ميناء تسجيل السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Registration Port"
+                13 -> if (AppLanguage.isArabic) "طلب تغيير نشاط السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Activity"
+                14 -> if (AppLanguage.isArabic) "ايقاف تصريح ملاحة للسفن والوحدات البحرية" else "Suspend Navigation Permit for Ships and Marine Units"
+                15 -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية التي عمرها يتعدى (20 سنة)" else "Permanent Registration Certificate for Ships and Marine Units Over 20 Years"
+                16 -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل وحدة بحرية مسجَّلة بنظام التسجيل الموازي" else "Parallel Registration Certificate for Marine Units"
+                17 -> if (AppLanguage.isArabic) "تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني" else "Suspend Parallel Registration Certificate (Under Omani Flag)"
+                18 -> if (AppLanguage.isArabic) "فك تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني" else "Unsuspend Parallel Registration Certificate (Under Omani Flag)"
+                19 -> if (AppLanguage.isArabic) "تعليق شهادة تسجيل دائمة للسفن والوحدات البحرية" else "Suspend Permanent Registration Certificate"
+                20 -> if (AppLanguage.isArabic) "طلب تغيير ملاك السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Owners"
+                21 -> if (AppLanguage.isArabic) "طلب تغيير أبعاد السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Dimensions"
+                22 -> if (AppLanguage.isArabic) "طلب استبدال محرك السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Engine"
+                else -> if (AppLanguage.isArabic) "نوع غير معروف" else "Unknown Type"
             }
         }
+
+        /** Single-arg overload – delegates to the explicit-locale overload using AppLanguage. */
+        fun getDisplayName(typeId: Int): String = getDisplayName(typeId, AppLanguage.isArabic)
     }
 }
 

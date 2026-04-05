@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,10 +66,14 @@ fun ReviewStepContent(
     formData: Map<String, String>,
     modifier: Modifier = Modifier,
     onDeclarationChange: ((Boolean) -> Unit)? = null, // Add declaration callback
-    onViewFile: ((String, String) -> Unit)? = null // Add file viewing callback
+    onViewFile: ((String, String) -> Unit)? = null, // Add file viewing callback
+    declarationAccepted: Boolean = false // ✅ Controlled by ViewModel; no local duplicate state
 ) {
     val extraColors = LocalExtraColors.current
-    var declarationAccepted by remember { mutableStateOf(false) }
+    // ✅ declarationAccepted is now driven by the parent ViewModel (via DynamicStepForm →
+    // TransactionFormContent), so there is no local mutableStateOf here. This eliminates
+    // the duplicate-state / out-of-sync bug and ensures the value survives the
+    // OAuth re-auth navigation round-trip.
 
     // ✅ Get payment amount from formData
     val paymentAmount = formData["paymentFinalTotal"]?.toDoubleOrNull() ?: 0.0
@@ -163,7 +168,6 @@ fun ReviewStepContent(
             DeclarationSection(
                 isAccepted = declarationAccepted,
                 onAcceptanceChange = { accepted ->
-                    declarationAccepted = accepted
                     onDeclarationChange?.invoke(accepted)
                 }
             )

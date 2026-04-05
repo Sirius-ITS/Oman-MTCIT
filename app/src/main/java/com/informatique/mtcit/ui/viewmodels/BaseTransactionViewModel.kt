@@ -122,6 +122,15 @@ abstract class BaseTransactionViewModel(
     val _showToastEvent = MutableStateFlow<String?>(null)
     val showToastEvent: StateFlow<String?> = _showToastEvent.asStateFlow()
 
+    // ✅ Declaration accepted state - stored in ViewModel so it survives navigation round-trips
+    // (e.g. OAuth re-auth: OAuthWebView push → pop back to transaction screen)
+    private val _declarationAccepted = MutableStateFlow(false)
+    val declarationAccepted: StateFlow<Boolean> = _declarationAccepted.asStateFlow()
+
+    fun setDeclarationAccepted(accepted: Boolean) {
+        _declarationAccepted.value = accepted
+    }
+
     /**
      * ✅ Load full ship core info for "عرض جميع البيانات" bottom sheet.
      * Subclasses that have access to MarineUnitsApiService override this.
@@ -228,6 +237,9 @@ abstract class BaseTransactionViewModel(
 
                 // Now get steps (which will use the loaded options)
                 val steps = currentStrategy?.getSteps() ?: emptyList()
+
+                // ✅ Reset declaration accepted for a fresh transaction
+                _declarationAccepted.value = false
 
                 _uiState.value = _uiState.value.copy(
                     steps = steps,

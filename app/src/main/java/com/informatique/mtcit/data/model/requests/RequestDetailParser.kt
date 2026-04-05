@@ -2,6 +2,7 @@ package com.informatique.mtcit.data.model.requests
 
 import kotlinx.serialization.json.*
 import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Utility to parse dynamic JSON request detail responses
@@ -239,7 +240,7 @@ object RequestDetailParser {
                 val ir = dataObject["inspectionRequest"]?.jsonObject
                 val scheduledDate = dataObject["scheduledDate"]?.jsonPrimitive?.contentOrNull ?: ""
                 if (ir != null) {
-                    val isArabic = Locale.getDefault().language == "ar"
+                    val isArabic = AppLanguage.isArabic
                     val reqNumber = ir["requestNumber"]?.jsonPrimitive?.contentOrNull ?: ""
                     val sName = ir["shipInfo"]?.jsonObject?.get("ship")?.jsonObject
                         ?.get("shipName")?.jsonPrimitive?.contentOrNull ?: ""
@@ -275,7 +276,7 @@ object RequestDetailParser {
         // ✅ Extract work orders (assigned engineers list)
         val engineerWorkOrders: List<EngineerWorkOrder> = if (isScheduledInspection) {
             try {
-                val isArabic = Locale.getDefault().language == "ar"
+                val isArabic = AppLanguage.isArabic
                 dataObject["workOrders"]?.jsonArray?.map { element ->
                     val wo = element.jsonObject
                     val eng = wo["inspectionEngineer"]?.jsonObject
@@ -345,7 +346,7 @@ object RequestDetailParser {
      * Get localized value based on current locale
      */
     private fun getLocalizedValue(jsonObject: JsonObject, fallbackKey: String): String {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = AppLanguage.isArabic
 
         return when {
             isArabic -> jsonObject["nameAr"]?.jsonPrimitive?.contentOrNull
@@ -359,57 +360,35 @@ object RequestDetailParser {
      * Used as fallback when the API response does not include nameAr / nameEn.
      */
     private fun getRequestTypeName(typeId: Int): String {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = AppLanguage.isArabic
         return when (typeId) {
             // ── Ship Registration Services ────────────────────────────────
-            1  -> if (isArabic) "إصدار شهادة تسجيل مؤقتة للسفن والوحدات البحرية"
-                  else "Temporary Registration Certificate for Ships and Marine Units"
-            2  -> if (isArabic) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية"
-                  else "Permanent Registration Certificate for Ships and Marine Units"
-            15 -> if (isArabic) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية التي عمرها يتعدى (20 سنة)"
-                  else "Permanent Registration Certificate for Ships and Marine Units Over 20 Years"
-            16 -> if (isArabic) "إصدار شهادة تسجيل وحدة بحرية مسجَّلة بنظام التسجيل الموازي"
-                  else "Parallel Registration Certificate for Marine Units"
-            19 -> if (isArabic) "تعليق شهادة تسجيل دائمة للسفن والوحدات البحرية"
-                  else "Suspend Permanent Registration Certificate"
-            17 -> if (isArabic) "تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل المواز�� للعمل تحت العلم العُماني"
-                  else "Suspend Parallel Registration Certificate (Under Omani Flag)"
-            18 -> if (isArabic) "فك تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني"
-                  else "Unsuspend Parallel Registration Certificate (Under Omani Flag)"
-            7  -> if (isArabic) "إصدار شهادة شطب التسجيل الدائمة للسفينة أو الوحدة البحرية"
-                  else "Cancellation of Permanent Registration Certificate"
-            4  -> if (isArabic) "إصدار شهادة رهن للسفن والوحدات البحرية"
-                  else "Mortgage Certificate for Ships and Marine Units"
-            5  -> if (isArabic) "إصدار شهادة فك رهن للسفن والوحدات البحرية"
-                  else "Mortgage Release Certificate for Ships and Marine Units"
+            1  -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل مؤقتة للسفن والوحدات البحرية" else "Temporary Registration Certificate for Ships and Marine Units"
+            2  -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية" else "Permanent Registration Certificate for Ships and Marine Units"
+            15 -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل دائمة للسفن والوحدات البحرية التي عمرها يتعدى (20 سنة)" else "Permanent Registration Certificate for Ships and Marine Units Over 20 Years"
+            16 -> if (AppLanguage.isArabic) "إصدار شهادة تسجيل وحدة بحرية مسجَّلة بنظام التسجيل الموازي" else "Parallel Registration Certificate for Marine Units"
+            19 -> if (AppLanguage.isArabic) "تعليق شهادة تسجيل دائمة للسفن والوحدات البحرية" else "Suspend Permanent Registration Certificate"
+            17 -> if (AppLanguage.isArabic) "تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل المواز�� للعمل تحت العلم العُماني" else "Suspend Parallel Registration Certificate (Under Omani Flag)"
+            18 -> if (AppLanguage.isArabic) "فك تعليق شهادة تسجيل وحدة بحرية بنظام التسجيل الموازي للعمل تحت العلم العُماني" else "Unsuspend Parallel Registration Certificate (Under Omani Flag)"
+            7  -> if (AppLanguage.isArabic) "إصدار شهادة شطب التسجيل الدائمة للسفينة أو الوحدة البحرية" else "Cancellation of Permanent Registration Certificate"
+            4  -> if (AppLanguage.isArabic) "إصدار شهادة رهن للسفن والوحدات البحرية" else "Mortgage Certificate for Ships and Marine Units"
+            5  -> if (AppLanguage.isArabic) "إصدار شهادة فك رهن للسفن والوحدات البحرية" else "Mortgage Release Certificate for Ships and Marine Units"
             // ── Ship Data Modification Services ──────────────────────────
-            9  -> if (isArabic) "اضافة / تعديل على ملف سفينة / الوحدة البحرية"
-                  else "Add / Edit Ship or Marine Unit File"
-            21 -> if (isArabic) "طلب تغيير أبعاد السفينة أو الوحدة البحرية"
-                  else "Change Ship or Marine Unit Dimensions"
-            22 -> if (isArabic) "طلب استبدال محرك السفينة أو الوحدة البحرية"
-                  else "Change Ship or Marine Unit Engine"
-            12 -> if (isArabic) "طلب تغيير ميناء تسجيل السفينة أو الوحدة البحرية"
-                  else "Change Ship or Marine Unit Registration Port"
-            20 -> if (isArabic) "طلب تغيير ملاك السفينة أو الوحدة البحرية"
-                  else "Change Ship or Marine Unit Owners"
-            11 -> if (isArabic) "طلب تغيير اسم السفينة أو الوحدة البحرية"
-                  else "Change Ship or Marine Unit Name"
-            10 -> if (isArabic) "طلب تغيير اسم ربان السفينة أو الوحدة البحرية"
-                  else "Change Captain Name of Ship or Marine Unit"
-            13 -> if (isArabic) "طلب تغيير نشاط السفينة أو الوحدة البحرية"
-                  else "Change Ship or Marine Unit Activity"
+            9  -> if (AppLanguage.isArabic) "اضافة / تعديل على ملف سفينة / الوحدة البحرية" else "Add / Edit Ship or Marine Unit File"
+            21 -> if (AppLanguage.isArabic) "طلب تغيير أبعاد السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Dimensions"
+            22 -> if (AppLanguage.isArabic) "طلب استبدال محرك السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Engine"
+            12 -> if (AppLanguage.isArabic) "طلب تغيير ميناء تسجيل السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Registration Port"
+            20 -> if (AppLanguage.isArabic) "طلب تغيير ملاك السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Owners"
+            11 -> if (AppLanguage.isArabic) "طلب تغيير اسم السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Name"
+            10 -> if (AppLanguage.isArabic) "طلب تغيير اسم ربان السفينة أو الوحدة البحرية" else "Change Captain Name of Ship or Marine Unit"
+            13 -> if (AppLanguage.isArabic) "طلب تغيير نشاط السفينة أو الوحدة البحرية" else "Change Ship or Marine Unit Activity"
             // ── Navigation Permits / Licences ─────────────────────────────
-            3  -> if (isArabic) "إصدار تصريح ملاحة للسفن والوحدات البحرية"
-                  else "Navigation Permit for Ships and Marine Units"
-            6  -> if (isArabic) "تجديد تصريح ملاحة للسفن والوحدات البحرية"
-                  else "Navigation Permit Renewal for Ships and Marine Units"
-            14 -> if (isArabic) "ايقاف تصريح ملاحة للسفن والوحدات البحرية"
-                  else "Suspend Navigation Permit for Ships and Marine Units"
+            3  -> if (AppLanguage.isArabic) "إصدار تصريح ملاحة للسفن والوحدات البحرية" else "Navigation Permit for Ships and Marine Units"
+            6  -> if (AppLanguage.isArabic) "تجديد تصريح ملاحة للسفن والوحدات البحرية" else "Navigation Permit Renewal for Ships and Marine Units"
+            14 -> if (AppLanguage.isArabic) "ايقاف تصريح ملاحة للسفن والوحدات البحرية" else "Suspend Navigation Permit for Ships and Marine Units"
             // ── Inspection Services ───────────────────────────────────────
-            8  -> if (isArabic) "تقديم طلب معاينة للسفن والوحدات البحرية"
-                  else "Inspection Request for Ships and Marine Units"
-            else -> if (isArabic) "نوع غير معروف" else "Unknown Type"
+            8  -> if (AppLanguage.isArabic) "تقديم طلب معاينة للسفن والوحدات البحرية" else "Inspection Request for Ships and Marine Units"
+            else -> if (AppLanguage.isArabic) "نوع غير معروف" else "Unknown Type"
         }
     }
 
@@ -417,25 +396,25 @@ object RequestDetailParser {
      * Get status name from ID
      */
     private fun getStatusName(statusId: Int): String {
-        val isArabic = Locale.getDefault().language == "ar"
+        val isArabic = AppLanguage.isArabic
         return when (statusId) {
-            1 -> if (isArabic) "مسودة" else "Draft"
-            2 -> if (isArabic) "مرفوض" else "Rejected"
-            3 -> if (isArabic) "معلق" else "Pending"
-            4 -> if (isArabic) "تم الإرسال" else "Submitted"
-            5 -> if (isArabic) "قيد الانتظار" else "Waiting"
-            6 -> if (isArabic) "مجدول" else "Scheduled"
-            7 -> if (isArabic) "مقبول" else "Accepted"
-            8 -> if (isArabic) "قيد التنفيذ" else "In Progress"
-            9 -> if (isArabic) "مكتمل" else "Completed"
-            10 -> if (isArabic) "ملغي" else "Cancelled"
-            11 -> if (isArabic) "منتهي" else "Expired"
-            12 -> if (isArabic) "موقوف" else "Suspended"
-            13 -> if (isArabic) "جاهز للإصدار" else "Ready for Issuance"
-            14 -> if (isArabic) "مصدر" else "Issued"
-            15 -> if (isArabic) "قيد المراجعة" else "Under Review"
-            16 -> if (isArabic) "يتطلب معلومات إضافية" else "Requires Additional Information"
-            else -> if (isArabic) "غير معروف" else "Unknown"
+            1 -> if (AppLanguage.isArabic) "مسودة" else "Draft"
+            2 -> if (AppLanguage.isArabic) "مرفوض" else "Rejected"
+            3 -> if (AppLanguage.isArabic) "معلق" else "Pending"
+            4 -> if (AppLanguage.isArabic) "تم الإرسال" else "Submitted"
+            5 -> if (AppLanguage.isArabic) "قيد الانتظار" else "Waiting"
+            6 -> if (AppLanguage.isArabic) "مجدول" else "Scheduled"
+            7 -> if (AppLanguage.isArabic) "مقبول" else "Accepted"
+            8 -> if (AppLanguage.isArabic) "قيد التنفيذ" else "In Progress"
+            9 -> if (AppLanguage.isArabic) "مكتمل" else "Completed"
+            10 -> if (AppLanguage.isArabic) "ملغي" else "Cancelled"
+            11 -> if (AppLanguage.isArabic) "منتهي" else "Expired"
+            12 -> if (AppLanguage.isArabic) "موقوف" else "Suspended"
+            13 -> if (AppLanguage.isArabic) "جاهز للإصدار" else "Ready for Issuance"
+            14 -> if (AppLanguage.isArabic) "مصدر" else "Issued"
+            15 -> if (AppLanguage.isArabic) "قيد المراجعة" else "Under Review"
+            16 -> if (AppLanguage.isArabic) "يتطلب معلومات إضافية" else "Requires Additional Information"
+            else -> if (AppLanguage.isArabic) "غير معروف" else "Unknown"
         }
     }
 }

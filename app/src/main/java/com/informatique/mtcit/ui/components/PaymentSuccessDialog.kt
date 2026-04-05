@@ -2,6 +2,8 @@ package com.informatique.mtcit.ui.components
 
 import androidx.compose.runtime.Composable
 import java.util.Locale
+import com.informatique.mtcit.common.util.LocalAppLocale
+import androidx.compose.ui.res.stringResource
 
 /**
  * Payment Success Dialog - Wrapper around unified SuccessDialog
@@ -17,22 +19,22 @@ fun PaymentSuccessDialog(
     timestamp: String,
     onDismiss: () -> Unit
 ) {
-    val isArabic = Locale.getDefault().language == "ar"
+    val isArabic = LocalAppLocale.current.language == "ar"
 
     // Build items list for payment details
     val items = listOf(
         SuccessDialogItem(
-            label = if (isArabic) "رقم الإيصال" else "Receipt Number",
+            label = stringResource(R.string.receipt_number),
             value = receiptNumber,
             icon = "📄"
         ),
         SuccessDialogItem(
-            label = if (isArabic) "المبلغ المدفوع" else "Paid Amount",
+            label = stringResource(R.string.paid_amount),
             value = paidAmount,
             icon = "💰"
         ),
         SuccessDialogItem(
-            label = if (isArabic) "التاريخ والوقت" else "Date & Time",
+            label = stringResource(R.string.date_time),
             value = timestamp,
             icon = "⏰"
         )

@@ -28,6 +28,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.util.Base64
 import java.util.Locale
+import com.informatique.mtcit.common.util.LocalAppLocale
+import androidx.compose.ui.res.stringResource
 
 /**
  * Unified Success Dialog - Used for payment, certificate issuance, and other success scenarios
@@ -43,7 +45,7 @@ fun SuccessDialog(
     onViewCertificates: List<Pair<String, () -> Unit>>? = null // Multiple certs: label → action
 ) {
     val extraColors = LocalExtraColors.current
-    val isArabic = Locale.getDefault().language == "ar"
+    val isArabic = LocalAppLocale.current.language == "ar"
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -136,7 +138,7 @@ fun SuccessDialog(
                     // QR Code (if provided)
                     if (!qrCode.isNullOrEmpty()) {
                         Text(
-                            text = if (isArabic) "رمز QR" else "QR Code",
+                            text = stringResource(R.string.qr_code),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
@@ -173,7 +175,7 @@ fun SuccessDialog(
                         } else {
                             // If QR code decoding fails, show error message
                             Text(
-                                text = if (isArabic) "خطأ في تحميل رمز QR" else "Error loading QR code",
+                                text = stringResource(R.string.error_loading_qr_code),
                                 fontSize = 12.sp,
                                 color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
                             )
@@ -221,7 +223,7 @@ fun SuccessDialog(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (isArabic) "إغلاق" else "Close",
+                                text = stringResource(R.string.close),
                                 color = extraColors.blue1,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -251,7 +253,7 @@ fun SuccessDialog(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (isArabic) "عرض الشهادة" else "View Certificate",
+                                text = stringResource(R.string.view_certificate),
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -268,7 +270,7 @@ fun SuccessDialog(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = if (isArabic) "إغلاق" else "Close",
+                                text = stringResource(R.string.close),
                                 color = extraColors.blue1,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -289,7 +291,7 @@ fun SuccessDialog(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = if (isArabic) "حسناً" else "OK",
+                            text = stringResource(R.string.ok),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
