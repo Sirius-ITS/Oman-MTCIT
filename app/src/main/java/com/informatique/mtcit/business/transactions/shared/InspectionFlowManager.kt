@@ -7,6 +7,7 @@ import com.informatique.mtcit.ui.components.DropdownSection
 import com.informatique.mtcit.ui.viewmodels.StepData
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * ✅ InspectionFlowManager
@@ -285,7 +286,7 @@ class InspectionFlowManager @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception handling inspection purpose step: ${e.message}")
             e.printStackTrace()
-            val errorMsg = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+            val errorMsg = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}" else "An error occurred while submitting the inspection request: ${e.message}"
             formData["apiError"] = errorMsg
             return StepProcessResult.Error(errorMsg)
         }

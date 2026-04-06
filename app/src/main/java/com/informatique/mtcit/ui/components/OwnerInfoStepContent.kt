@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.util.UriCache
 import kotlinx.serialization.Serializable
@@ -69,6 +70,7 @@ fun OwnerFormBottomSheet(
     onViewFile: ((String, String) -> Unit)? = null // ✅ For viewing draft documents
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
 
@@ -118,6 +120,51 @@ fun OwnerFormBottomSheet(
 
     // Track if user has uploaded a new document (replaces draft)
     var hasNewDocument by remember { mutableStateOf(false) }
+
+    // ── Inline format-validation errors ────────────────────────────
+    var ownerNameError by remember { mutableStateOf<String?>(null) }
+    var ownerNameEnError by remember { mutableStateOf<String?>(null) }
+    var ownerShipPercentageError by remember { mutableStateOf<String?>(null) }
+    var idNumberError by remember { mutableStateOf<String?>(null) }
+    var mobileError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var addressError by remember { mutableStateOf<String?>(null) }
+
+    fun validateOwnerName(v: String) {
+        ownerNameError = if (v.isNotBlank() && !v.matches(Regex("^[\u0600-\u06FF\\s]+\$")))
+            if (isAr) "يجب أن يحتوي على أحرف عربية فقط" else "Must contain Arabic letters only"
+        else null
+    }
+    fun validateOwnerNameEn(v: String) {
+        ownerNameEnError = if (v.isNotBlank() && !v.matches(Regex("^[a-zA-Z\\s]+\$")))
+            if (isAr) "يجب أن يحتوي على أحرف إنجليزية فقط" else "Must contain English letters only"
+        else null
+    }
+    fun validateOwnerShipPercentage(v: String) {
+        ownerShipPercentageError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
+    fun validateIdNumber(v: String) {
+        idNumberError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
+    fun validateMobile(v: String) {
+        mobileError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
+    fun validateEmail(v: String) {
+        emailError = if (v.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(v).matches())
+            if (isAr) "البريد الإلكتروني غير صالح" else "Invalid email address"
+        else null
+    }
+    fun validateAddress(v: String) {
+        addressError = if (v.isNotBlank() && !v.matches(Regex("^[\u0600-\u06FFa-zA-Z0-9\\s]+\$")))
+            if (isAr) "يجب أن يحتوي على أحرف عربية أو إنجليزية أو أرقام فقط" else "Must contain Arabic/English letters or digits only"
+        else null
+    }
 
     println("🔧 OwnerFormBottomSheet: isDraft=$isDraftDocument, refNum=$draftDocumentRefNum, fileName=$draftDocumentFileName, uri=$documentUri")
 
@@ -206,7 +253,7 @@ fun OwnerFormBottomSheet(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Person,
-                                contentDescription = "فرد",
+                                contentDescription = if (isAr) "فرد" else "Individual",
                                 tint = if (!isCompany) extraColors.startServiceButton
                                 else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
                                 modifier = Modifier.size(32.dp)
@@ -248,7 +295,7 @@ fun OwnerFormBottomSheet(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Business,
-                                contentDescription = "شركة",
+                                contentDescription = if (isAr) "شركة" else "Company",
                                 tint = if (isCompany) extraColors.startServiceButton
                                 else extraColors.whiteInDarkMode.copy(alpha = 0.6f),
                                 modifier = Modifier.size(32.dp)
@@ -311,11 +358,13 @@ fun OwnerFormBottomSheet(
                 CustomTextField(
                     value = ownerName,
                     onValueChange = { ownerName = it },
+                    onFocusLost = { validateOwnerName(it) },
                     label = localizedApp(R.string.owner_name_arabic),
                     mandatory = true,
                     placeholder = localizedApp(R.string.owner_name_arabic),
                     enabled = true,
-                    maxLength = 100
+                    maxLength = 100,
+                    error = ownerNameError
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -324,11 +373,13 @@ fun OwnerFormBottomSheet(
                 CustomTextField(
                     value = ownerNameEn,
                     onValueChange = { ownerNameEn = it },
+                    onFocusLost = { validateOwnerNameEn(it) },
                     label = localizedApp(R.string.owner_name_english),
                     mandatory = true,
                     placeholder = localizedApp(R.string.owner_name_english),
                     enabled = true,
-                    maxLength = 100
+                    maxLength = 100,
+                    error = ownerNameEnError
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -337,12 +388,14 @@ fun OwnerFormBottomSheet(
                 CustomTextField(
                     value = idNumber,
                     onValueChange = { idNumber = it },
+                    onFocusLost = { validateIdNumber(it) },
                     label = localizedApp(R.string.owner_id_number),
                     isNumeric = true,
                     mandatory = true,
                     placeholder = localizedApp(R.string.owner_id_number),
                     enabled = true,
-                    maxLength = 20
+                    maxLength = 20,
+                    error = idNumberError
                 )
             }
 
@@ -352,12 +405,14 @@ fun OwnerFormBottomSheet(
             CustomTextField(
                 value = ownerShipPercentage,
                 onValueChange = { ownerShipPercentage = it },
+                onFocusLost = { validateOwnerShipPercentage(it) },
                 label = localizedApp(R.string.enter_ownershippercentage),
                 mandatory = true,
                 placeholder = localizedApp(R.string.enter_ownershippercentage),
                 enabled = true,
-                maxLength = 5 ,
-                minLength = 2
+                maxLength = 5,
+                minLength = 2,
+                error = ownerShipPercentageError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -375,11 +430,13 @@ fun OwnerFormBottomSheet(
             CustomTextField(
                 value = email,
                 onValueChange = { email = it },
+                onFocusLost = { validateEmail(it) },
                 label = localizedApp(R.string.email),
                 mandatory = true,
                 placeholder = localizedApp(R.string.email),
                 enabled = true,
-                maxLength = 100
+                maxLength = 100,
+                error = emailError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -388,12 +445,14 @@ fun OwnerFormBottomSheet(
             CustomTextField(
                 value = mobile,
                 onValueChange = { mobile = it },
+                onFocusLost = { validateMobile(it) },
                 label = localizedApp(R.string.owner_mobile),
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.owner_mobile),
                 enabled = true,
-                maxLength = 30
+                maxLength = 30,
+                error = mobileError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -402,11 +461,13 @@ fun OwnerFormBottomSheet(
             CustomTextField(
                 value = address,
                 onValueChange = { address = it },
+                onFocusLost = { validateAddress(it) },
                 label = localizedApp(R.string.owner_address),
                 mandatory = true,
                 placeholder = localizedApp(R.string.owner_address),
                 enabled = true,
-                maxLength = 300
+                maxLength = 300,
+                error = addressError
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -466,6 +527,22 @@ fun OwnerFormBottomSheet(
 
                 Button(
                     onClick = {
+                        // Re-validate format fields on save
+                        if (!isCompany) {
+                            validateOwnerName(ownerName)
+                            validateOwnerNameEn(ownerNameEn)
+                            validateIdNumber(idNumber)
+                        }
+                        validateOwnerShipPercentage(ownerShipPercentage)
+                        validateEmail(email)
+                        validateMobile(mobile)
+                        validateAddress(address)
+
+                        val hasErrors = ownerNameError != null || ownerNameEnError != null ||
+                                ownerShipPercentageError != null || idNumberError != null ||
+                                mobileError != null || emailError != null || addressError != null
+                        if (hasErrors) return@Button
+
                         val ownerData = OwnerData(
                             id = owner?.id ?: java.util.UUID.randomUUID().toString(),
                             dbId = owner?.dbId, // Preserve database ID for existing owners

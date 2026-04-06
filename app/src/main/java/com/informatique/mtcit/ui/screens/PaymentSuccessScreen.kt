@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.coroutines.delay
 
@@ -34,6 +36,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun PaymentSuccessScreen(navController: NavController) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     val scrollState = rememberScrollState()
 
     var showContent by remember { mutableStateOf(false) }
@@ -100,7 +103,7 @@ fun PaymentSuccessScreen(navController: NavController) {
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
-                            text = "إيصال دفع",
+                            text = if (isAr) "إيصال دفع" else "Payment Receipt",
                             fontSize = 22.sp,
                             color = Color.White,
                             fontWeight = FontWeight.Medium
@@ -129,7 +132,7 @@ fun PaymentSuccessScreen(navController: NavController) {
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "رجوع",
+                                contentDescription = if (isAr) "رجوع" else "Back",
                                 tint = extraColors.iconBack2
                             )
                         }
@@ -173,7 +176,7 @@ fun PaymentSuccessScreen(navController: NavController) {
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "تحميل الإيصال",
+                                    text = if (isAr) "تحميل الإيصال" else "Download Receipt",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Normal
                                 )
@@ -214,7 +217,7 @@ fun PaymentSuccessScreen(navController: NavController) {
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = "طباعة الإيصال",
+                                    text = if (isAr) "طباعة الإيصال" else "Print Receipt",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Normal
                                 )
@@ -249,7 +252,7 @@ fun PaymentSuccessScreen(navController: NavController) {
 
                     // Receipt Card
                     ReceiptCard(
-                        serviceName = "إصدار شهادة تسجيل مؤقتة للسفينة أو الوحدة البحرية",
+                        serviceName = if (isAr) "إصدار شهادة تسجيل مؤقتة للسفينة أو الوحدة البحرية" else "Issuing Temporary Registration Certificate for Ship or Marine Unit",
                         paymentNumber = "283648",
                         amount = "55,00",
                         date = "10/08/2025",
@@ -272,6 +275,7 @@ fun PaymentSuccessScreen(navController: NavController) {
 @Composable
 private fun SuccessHeader() {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val scale by infiniteTransition.animateFloat(
@@ -325,7 +329,7 @@ private fun SuccessHeader() {
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "تمت عملية الدفع بنجاح",
+                    text = if (isAr) "تمت عملية الدفع بنجاح" else "Payment completed successfully",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Medium,
                     color = extraColors.whiteInDarkMode,
@@ -346,6 +350,7 @@ private fun ReceiptCard(
     recipient: String
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -390,7 +395,7 @@ private fun ReceiptCard(
                 }
 
                 Text(
-                    text = "إيصال دفع",
+                    text = if (isAr) "إيصال دفع" else "Payment Receipt",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Normal,
                     color = extraColors.whiteInDarkMode
@@ -422,7 +427,7 @@ private fun ReceiptCard(
 
             // Service Name
             ReceiptInfoRow(
-                label = "اسم الخدمة",
+                label = if (isAr) "اسم الخدمة" else "Service Name",
                 value = serviceName
             )
 
@@ -454,7 +459,7 @@ private fun ReceiptCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "رقم الدفع",
+                        text = if (isAr) "رقم الدفع" else "Payment Number",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
@@ -498,14 +503,14 @@ private fun ReceiptCard(
                 ) {
                     Column {
                         Text(
-                            text = "المبلغ الإجمالي",
+                            text = if (isAr) "المبلغ الإجمالي" else "Total Amount",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "$amount ر.ع",
+                            text = if (isAr) "$amount ر.ع" else "$amount OMR",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.whiteInDarkMode
@@ -544,15 +549,15 @@ private fun ReceiptCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Additional Info
-            ReceiptInfoRow(label = "التاريخ", value = date)
+            ReceiptInfoRow(label = if (isAr) "التاريخ" else "Date", value = date)
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            ReceiptInfoRow(label = "اسم السفينة", value = vesselName)
+            ReceiptInfoRow(label = if (isAr) "اسم السفينة" else "Ship Name", value = vesselName)
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            ReceiptInfoRow(label = "المستلم", value = recipient)
+            ReceiptInfoRow(label = if (isAr) "المستلم" else "Recipient", value = recipient)
         }
     }
 }
@@ -606,6 +611,7 @@ private fun ReceiptInfoRow(
 @Composable
 private fun InfoMessage() {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Box(
         modifier = Modifier
@@ -646,7 +652,7 @@ private fun InfoMessage() {
             }
 
             Text(
-                text = "تم إصدار هذا الإيصال من الجهة المختصة لتوثيق استلام المبلغ وفق الإجراءات المالية المعتمدة",
+                text = if (isAr) "تم إصدار هذا الإيصال من الجهة المختصة لتوثيق استلام المبلغ وفق الإجراءات المالية المعتمدة" else "This receipt was issued by the competent authority to document receipt of the amount per approved financial procedures",
                 fontSize = 12.sp,
                 color = extraColors.whiteInDarkMode.copy(alpha = 0.75f),
                 lineHeight = 18.sp,

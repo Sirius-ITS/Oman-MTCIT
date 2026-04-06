@@ -29,6 +29,7 @@ import com.informatique.mtcit.data.model.RequiredDocumentItem
 import com.informatique.mtcit.util.UserHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.launch
+import com.informatique.mtcit.common.util.AppLanguage
 
 class RequestInspectionStrategy @Inject constructor(
     private val repository: ShipRegistrationRepository,
@@ -78,7 +79,6 @@ class RequestInspectionStrategy @Inject constructor(
     // ✅ NEW: Store required documents from API
     private var requiredDocuments: List<RequiredDocumentItem> = emptyList()
     private var isFishingBoat: Boolean = false // ✅ Track if selected type is fishing boat
-    private var fishingBoatDataLoaded: Boolean = false // ✅ Track if data loaded from Ministry
     private val requestTypeId = TransactionType.REQUEST_FOR_INSPECTION.toRequestTypeId()
     // ✅ Override the callback property from TransactionStrategy interface
     override var onStepsNeedRebuild: (() -> Unit)? = null
@@ -118,7 +118,7 @@ class RequestInspectionStrategy @Inject constructor(
         }
         println("✅ Fetched ${requiredDocumentsList.size} required documents:")
         requiredDocumentsList.forEach { docItem ->
-            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            val mandatoryText = if (docItem.document.isMandatory == 1) if (AppLanguage.isArabic) "إلزامي" else "Mandatory" else if (AppLanguage.isArabic) "اختياري" else "Optional"
             println("   - ${docItem.document.nameAr} ($mandatoryText)")
         }
 
@@ -157,11 +157,11 @@ class RequestInspectionStrategy @Inject constructor(
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد" , "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة" , "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -239,7 +239,7 @@ class RequestInspectionStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -312,8 +312,7 @@ class RequestInspectionStrategy @Inject constructor(
                     includeProofDocument = false,
                     includeConstructionDates = true,
                     includeRegistrationCountry = true,
-                    isFishingBoat = isFishingBoat,
-                    fishingBoatDataLoaded = fishingBoatDataLoaded
+                    isFishingBoat = isFishingBoat
                 )
             )
 
@@ -697,7 +696,7 @@ class RequestInspectionStrategy @Inject constructor(
                 } catch (e: Exception) {
                     println("❌ Exception submitting inspection request: ${e.message}")
                     e.printStackTrace()
-                    accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}" else "An error occurred while submitting the inspection request: ${e.message}"
                     return -1
                 }
             }
@@ -733,7 +732,7 @@ class RequestInspectionStrategy @Inject constructor(
                         if (needInspection) {
                             println("🔍 Inspection required for this request")
                             accumulatedFormData["showInspectionDialog"] = "true"
-                            accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: "في إنتظار نتيجه الفحص الفني"
+                            accumulatedFormData["inspectionMessage"] = sendRequestMessage ?: if (AppLanguage.isArabic) "في إنتظار نتيجه الفحص الفني" else "Awaiting technical inspection result"
                             return step
                         }
                     }
@@ -753,7 +752,7 @@ class RequestInspectionStrategy @Inject constructor(
                         val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
                         if (requestIdInt == null) {
                             println("❌ No requestId available for review step")
-                            accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على رقم الطلب" else "Request number not found"
                             return -1
                         }
 
@@ -835,7 +834,7 @@ class RequestInspectionStrategy @Inject constructor(
                         } catch (e: Exception) {
                             println("❌ Exception in review step: ${e.message}")
                             e.printStackTrace()
-                            accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب: ${e.message}" else "An error occurred while submitting the request: ${e.message}"
                             return -1
                         }
                     }
@@ -1183,7 +1182,7 @@ class RequestInspectionStrategy @Inject constructor(
 
             if (selectedUnit == null) {
                 println("❌ Unit not found with id: $unitId")
-                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
+                return ValidationResult.Error(if (AppLanguage.isArabic) "الوحدة البحرية المختارة غير موجودة" else "Selected marine unit not found")
             }
 
             println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
@@ -1202,7 +1201,7 @@ class RequestInspectionStrategy @Inject constructor(
         } catch (e: Exception) {
             println("❌ Validation error: ${e.message}")
             e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+            ValidationResult.Error(e.message ?: if (AppLanguage.isArabic) "فشل التحقق من حالة الفحص" else "Failed to verify inspection status")
         }
     }
 
@@ -1228,7 +1227,7 @@ class RequestInspectionStrategy @Inject constructor(
         } catch (e: Exception) {
             println("❌ Validation error: ${e.message}")
             e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+            ValidationResult.Error(e.message ?: if (AppLanguage.isArabic) "فشل التحقق من حالة الفحص" else "Failed to verify inspection status")
         }
     }
 
@@ -1239,7 +1238,7 @@ class RequestInspectionStrategy @Inject constructor(
     // ✅ NEW: Implement TransactionStrategy interface methods for generic transaction handling
 
     override fun getTransactionTypeName(): String {
-        return "طلب معاينة"
+        return if (AppLanguage.isArabic) "طلب معاينة" else "Inspection Request"
     }
 
     override fun getCreatedRequestId(): Int? {

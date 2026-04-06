@@ -9,6 +9,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.business.transactions.shared.Certificate
+import com.informatique.mtcit.common.util.AppLanguage
 
 @Composable
 fun CertificatesList(
@@ -24,7 +25,7 @@ fun CertificatesList(
     ) {
 
         Text(
-            text = " قائمة الشهادات المتأثرة (${certificates.size})",
+            text = if (AppLanguage.isArabic) " قائمة الشهادات المتأثرة (${certificates.size})" else " Affected Certificates (${certificates.size})",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth()
@@ -37,7 +38,7 @@ fun CertificatesList(
                     .padding(vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("لا يوجد شهادات متاحة", fontSize = 16.sp)
+                Text(if (AppLanguage.isArabic) "لا يوجد شهادات متاحة" else "No certificates available", fontSize = 16.sp)
             }
         } else {
             certificates.forEach { certificate ->

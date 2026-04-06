@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.business.validation.rules.FormatValidationRules
 
 /**
  * Shared data classes used by ViewModels
@@ -249,7 +251,7 @@ abstract class BaseTransactionViewModel(
                     canProceedToNext = navigationUseCase.canProceedToNext(0, steps, emptyMap())
                 )
             } catch (e: Exception) {
-                _error.value = AppError.Initialization(e.message ?: "Failed to initialize transaction")
+                _error.value = AppError.Initialization(e.message ?: "فشل في تهيئة المعاملة", e.message ?: "Failed to initialize transaction")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isInitialized = false
@@ -274,7 +276,7 @@ abstract class BaseTransactionViewModel(
                     strategy.clearLoadedShips()
 
                     // ✅ Clear commercial registration data if changing from "شركة" to "فرد"
-                    if (oldPersonType == "شركة" && value == "فرد") {
+                    if ((oldPersonType == "شركة" || oldPersonType == "Company") && (value == "فرد" || value == "Individual")) {
                         println("🧹 Changing from شركة to فرد - clearing commercial registration data")
                         // ✅ FIXED: The actual field ID is "selectionData" not "commercialRegistration"
                         newFormData.remove("selectionData")
@@ -377,11 +379,11 @@ abstract class BaseTransactionViewModel(
                     println("   hasCommercialRegData = $hasCommercialRegData")
 
                     val shouldLoadShips = when {
-                        isPersonTypeStep && personType == "فرد" -> {
+                        isPersonTypeStep && (personType == "فرد" || personType == "Individual") -> {
                             println("✅ Should load ships: Individual person type selected")
                             true
                         }
-                        isPersonTypeStep && personType == "شركة" -> {
+                        isPersonTypeStep && (personType == "شركة" || personType == "Company") -> {
                             println("ℹ️ Company selected - will load ships after commercial reg step")
                             false
                         }
@@ -409,9 +411,9 @@ abstract class BaseTransactionViewModel(
                             // ✅ Special handling for 401 Unauthorized errors
                             if (e.code == 401) {
                                 println("🔐 401 Unauthorized - Token expired or invalid")
-                                _error.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة")
+                                _error.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة", e.message ?: "Session has expired. Please refresh the token to continue")
                             } else {
-                                _error.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                                _error.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم", e.message ?: "A server error occurred")
                             }
 
                             // ✅ Only show banner, no toast
@@ -424,7 +426,7 @@ abstract class BaseTransactionViewModel(
                             e.printStackTrace()
 
                             // Show error to user - banner only, no toast
-                            _error.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء معالجة البيانات")
+                            _error.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء معالجة البيانات", e.message ?: "An error occurred while processing data")
                             // Toast removed - banner is sufficient for error display
 
                             // Don't proceed to next step
@@ -633,7 +635,7 @@ abstract class BaseTransactionViewModel(
                 if (prevStep != null && currentState.lockedSteps.contains(prevStep)) {
                     println("🔒 Cannot go back to locked step $prevStep (resumed transaction)")
                     _showToastEvent.value =
-                        "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة"
+                        if (AppLanguage.isArabic) "لا يمكن الرجوع إلى الخطوات السابقة في المعاملات المستأنفة" else "Cannot go back to previous steps in resumed transactions"
                     return@launch
                 }
             }
@@ -689,7 +691,7 @@ abstract class BaseTransactionViewModel(
             // ✅ NEW: Prevent navigation to locked steps (resumed transaction)
             if (currentState.isResumedTransaction && currentState.lockedSteps.contains(stepIndex)) {
                 println("🔒 Cannot navigate to locked step $stepIndex (resumed transaction)")
-                _showToastEvent.value = "لا يمكن الوصول إلى هذه الخطوة في المعاملات المستأنفة"
+                _showToastEvent.value = if (AppLanguage.isArabic) "لا يمكن الوصول إلى هذه الخطوة في المعاملات المستأنفة" else "Cannot access this step in resumed transactions"
                 return@launch
             }
 
@@ -764,12 +766,12 @@ abstract class BaseTransactionViewModel(
                     },
                     onFailure = { exception ->
                         _submissionState.value = UIState.Failure(exception)
-                        _error.value = AppError.Submission(exception.message ?: "Unknown error")
+                        _error.value = AppError.Submission(exception.message ?: "خطأ غير معروف", exception.message ?: "Unknown error")
                     }
                 )
             } catch (e: Exception) {
                 _submissionState.value = UIState.Failure(e)
-                _error.value = AppError.Submission(e.message ?: "Unknown error")
+                _error.value = AppError.Submission(e.message ?: "خطأ غير معروف", e.message ?: "Unknown error")
             }
         }
     }
@@ -828,13 +830,25 @@ abstract class BaseTransactionViewModel(
                     }
 
                     is FieldFocusResult.NoAction -> {
-                        // Nothing to do
+                        // ✅ Run format validation as fallback for known step-level fields
+                        val formatError = FormatValidationRules.validateFieldFormat(fieldId, value)
+                        val currentState = _uiState.value
+                        val newErrors = currentState.fieldErrors.toMutableMap()
+                        if (formatError != null) {
+                            newErrors[fieldId] = formatError
+                        } else {
+                            // Clear stale format error when the value becomes valid
+                            newErrors.remove(fieldId)
+                        }
+                        if (newErrors != currentState.fieldErrors) {
+                            _uiState.value = currentState.copy(fieldErrors = newErrors)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 val currentState = _uiState.value
                 val newErrors = currentState.fieldErrors.toMutableMap()
-                newErrors[fieldId] = e.message ?: "حدث خطأ غير متوقع"
+                newErrors[fieldId] = e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred"
                 _uiState.value = currentState.copy(fieldErrors = newErrors)
             } finally {
                 // Remove loading state

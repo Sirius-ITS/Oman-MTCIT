@@ -218,6 +218,7 @@ import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.theme.ExtraColors
 import com.informatique.mtcit.ui.theme.LocalExtraColors
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Generic Owner List Manager Component
@@ -468,7 +469,7 @@ fun ModernOwnerCard(
                         if (owner.companyType.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(12.dp))
                             InfoRow(
-                                label = "نوع الشركة",
+                                label = if (AppLanguage.isArabic) "نوع الشركة" else "Company Type",
                                 value = owner.companyType,
                                 extraColors = extraColors
                             )
@@ -492,7 +493,7 @@ fun ModernOwnerCard(
                         if (owner.nationality.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(12.dp))
                             InfoRow(
-                                label = "الجنسية",
+                                label = if (AppLanguage.isArabic) "الجنسية" else "Nationality",
                                 value = owner.nationality,
                                 extraColors = extraColors
                             )
@@ -535,7 +536,7 @@ fun ModernOwnerCard(
                     if (owner.city.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         InfoRow(
-                            label = "المدينة",
+                            label = if (AppLanguage.isArabic) "المدينة" else "City",
                             value = owner.city,
                             extraColors = extraColors
                         )
@@ -544,7 +545,7 @@ fun ModernOwnerCard(
                     if (owner.country.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         InfoRow(
-                            label = "الدولة",
+                            label = if (AppLanguage.isArabic) "الدولة" else "Country",
                             value = owner.country,
                             extraColors = extraColors
                         )
@@ -553,7 +554,7 @@ fun ModernOwnerCard(
                     if (owner.postalCode.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(12.dp))
                         InfoRow(
-                            label = "الرمز البريدي",
+                            label = if (AppLanguage.isArabic) "الرمز البريدي" else "Postal Code",
                             value = owner.postalCode,
                             extraColors = extraColors
                         )

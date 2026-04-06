@@ -20,9 +20,8 @@ import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.data.model.ChecklistAnswer
 import com.informatique.mtcit.data.model.ChecklistItem
 import com.informatique.mtcit.ui.theme.LocalExtraColors
-import java.util.Locale
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
+import com.informatique.mtcit.R
 
 /**
  * Dynamic Checklist Form — matches iOS checklistItemView exactly
@@ -109,8 +108,8 @@ fun DynamicChecklistForm(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 listOf(
-                                    "true" to stringResource(R.string.true),
-                                    "false" to stringResource(R.string.false)
+                                    "true" to localizedApp(R.string.yes),
+                                    "false" to localizedApp(R.string.no)
                                 ).forEach { (option, label) ->
                                     val isSelected = currentAnswer == option
                                     Row(
@@ -221,7 +220,7 @@ fun DynamicChecklistForm(
                                 maxLines = 8,
                                 placeholder = {
                                     Text(
-                                        stringResource(R.string.write_here),
+                                        localizedApp(R.string.write_here),
                                         color = Color.Gray.copy(alpha = 0.5f), fontSize = 14.sp
                                     )
                                 }
@@ -274,7 +273,7 @@ private fun ChecklistItemField(
                     value = value,
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
-                    placeholder = stringResource(R.string.enter_answer),
+                    placeholder = localizedApp(R.string.enter_answer),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )
@@ -286,7 +285,7 @@ private fun ChecklistItemField(
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
                     isNumeric = true,
-                    placeholder = stringResource(R.string.enter_number),
+                    placeholder = localizedApp(R.string.enter_number),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )
@@ -298,7 +297,7 @@ private fun ChecklistItemField(
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
                     isDecimal = true,
-                    placeholder = stringResource(R.string.enter_decimal_number),
+                    placeholder = localizedApp(R.string.enter_decimal_number),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )
@@ -320,7 +319,7 @@ private fun ChecklistItemField(
                         enabled = !isReadOnly,
                         placeholder = {
                             Text(
-                                stringResource(R.string.enter_text),
+                                localizedApp(R.string.enter_text),
                                 color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                             )
                         },
@@ -361,7 +360,7 @@ private fun ChecklistItemField(
                     },
                     options = choices.map { it.answer },
                     label = label,
-                    placeholder = stringResource(R.string.select_from_list),
+                    placeholder = localizedApp(R.string.select_from_list),
                     mandatory = item.isMandatory,
                     isLoading = false,
                     enabled = !isReadOnly
@@ -370,7 +369,7 @@ private fun ChecklistItemField(
 
             "CHECKBOX", "BOOLEAN" -> {
                 CustomCheckBox(
-                    checked = value.lowercase() in listOf("true", "yes", "نعم", "1"),
+                    checked = value.lowercase() in listOf("true", "yes", if (isArabic) "نعم" else "Yes", "1"),
                     onCheckedChange = { checked ->
                         if (!isReadOnly) {
                             onValueChange(if (checked) "true" else "false")
@@ -397,7 +396,7 @@ private fun ChecklistItemField(
                     value = value,
                     onValueChange = if (isReadOnly) { _ -> } else onValueChange,
                     label = label,
-                    placeholder = stringResource(R.string.enter_answer),
+                    placeholder = localizedApp(R.string.enter_answer),
                     mandatory = item.isMandatory,
                     enabled = !isReadOnly
                 )

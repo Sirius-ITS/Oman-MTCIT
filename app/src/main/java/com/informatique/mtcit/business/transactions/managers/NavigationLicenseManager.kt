@@ -149,10 +149,12 @@ class NavigationLicenseManager @Inject constructor(
      */
     suspend fun updateNavigationAreasRenew(
         requestId: Long,
-        areaIds: List<Int>
+        areaIds: List<Int>,
+        lastNavLicId: Long? = null,
+        passengersNo: Int? = null
     ): Result<Unit> {
         println("✏️ NavigationLicenseManager: Updating navigation areas (Renew)")
-        return repository.updateNavigationAreasRenew(requestId, areaIds).map { Unit }
+        return repository.updateNavigationAreasRenew(requestId, areaIds, lastNavLicId, passengersNo).map { Unit }
     }
 
     // ========================================

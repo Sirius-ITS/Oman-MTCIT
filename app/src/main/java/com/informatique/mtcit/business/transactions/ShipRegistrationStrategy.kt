@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Ship Registration transaction - UPDATED to use SharedSteps
@@ -186,14 +187,14 @@ class ShipRegistrationStrategy @Inject constructor(
         // Handle owner type change
         if (fieldId == "owner_type") {
             when (value) {
-                "فرد" -> {
+                "فرد" , "Individual" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
-                "شركة" -> {
+                "شركة" , "Company" -> {
                     // Company fields will be shown and are required
                 }
-                "شراكة" -> {
+                "شراكة" , "Partnership" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
@@ -217,13 +218,13 @@ class ShipRegistrationStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
         if (registrationNumber.length < 3) {
             return FieldFocusResult.Error(
                 "companyRegistrationNumber",
-                "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام"
+                if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits"
             )
         }
 
@@ -231,7 +232,7 @@ class ShipRegistrationStrategy @Inject constructor(
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
                 .catch { throwable ->
-                    throw Exception("حدث خطأ أثناء البحث عن الشركة: ${throwable.message}")
+                    throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${throwable.message}" else "An error occurred while searching for the company: ${throwable.message}")
                 }
                 .first()
 
@@ -246,7 +247,7 @@ class ShipRegistrationStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> {
@@ -257,7 +258,7 @@ class ShipRegistrationStrategy @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 }

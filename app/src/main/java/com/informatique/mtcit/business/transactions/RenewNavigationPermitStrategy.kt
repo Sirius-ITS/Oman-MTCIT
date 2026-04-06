@@ -27,6 +27,8 @@ import javax.inject.Inject
 import android.content.Context
 import com.informatique.mtcit.business.transactions.shared.PaymentManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.business.validation.rules.FormatValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
 import com.informatique.mtcit.ui.components.SailorData
@@ -34,6 +36,7 @@ import com.informatique.mtcit.ui.components.SailorData
 // Added imports for API error handling and message extraction
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.ErrorMessageExtractor
+import com.informatique.mtcit.common.util.AppLanguage
 
 
 /**
@@ -112,36 +115,36 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         println("   Using shipInfoId: $shipInfoId")
 
-        // Load inspection lookups (purposes, places, authorities)
-        val lookups = inspectionFlowManager.loadInspectionLookups(shipInfoId)
+        try {
+            // Load inspection lookups (purposes, places, authorities)
+            val lookups = inspectionFlowManager.loadInspectionLookups(shipInfoId)
 
-        println("✅ Inspection lookups loaded:")
-        println("   - Purposes: ${lookups.purposes.size}")
-        println("   - Places: ${lookups.places.size}")
-        println("   - Authority sections: ${lookups.authoritySections.size}")
-        println("   - Documents: ${lookups.documents.size}") // ✅ Log documents
+            println("✅ Inspection lookups loaded:")
+            println("   - Purposes: ${lookups.purposes.size}")
+            println("   - Places: ${lookups.places.size}")
+            println("   - Authority sections: ${lookups.authoritySections.size}")
+            println("   - Documents: ${lookups.documents.size}")
 
-        // ✅ CRITICAL: Store authorities AND documents in member variables BEFORE setting showInspectionStep
-        loadedInspectionAuthorities = lookups.authoritySections
-        loadedInspectionDocuments = lookups.documents // ✅ Store inspection documents
+            // ✅ CRITICAL: Store authorities AND documents in member variables BEFORE setting showInspectionStep
+            loadedInspectionAuthorities = lookups.authoritySections
+            loadedInspectionDocuments = lookups.documents
 
-        // Mark that inspection step should be shown
-        accumulatedFormData["showInspectionStep"] = "true"
-        accumulatedFormData["inspectionPurposes"] = lookups.purposes.joinToString(",")
-        accumulatedFormData["inspectionPlaces"] = lookups.places.joinToString(",")
+            // Mark that inspection step should be shown
+            accumulatedFormData["showInspectionStep"] = "true"
+            accumulatedFormData["inspectionPurposes"] = lookups.purposes.joinToString(",")
+            accumulatedFormData["inspectionPlaces"] = lookups.places.joinToString(",")
 
-        // Clear dialog flag
-        accumulatedFormData.remove("showInspectionDialog")
+            // Clear dialog flag
+            accumulatedFormData.remove("showInspectionDialog")
 
-        println("✅ Inspection lookups loaded:")
-        println("   - Purposes: ${lookups.purposes.size}")
-        println("   - Places: ${lookups.places.size}")
-        println("   - Authority groups: ${lookups.authoritySections.size}")
-        println("   - Documents: ${lookups.documents.size}")
-
-        println("✅ Inspection lookups stored in formData, triggering steps rebuild")
-        // Trigger step rebuild to inject inspection step
-        onStepsNeedRebuild?.invoke()
+            println("✅ Inspection lookups stored in formData, triggering steps rebuild")
+            // Trigger step rebuild to inject inspection step
+            onStepsNeedRebuild?.invoke()
+        } catch (e: Exception) {
+            println("❌ Failed to load inspection lookups: ${e.message}")
+            e.printStackTrace()
+            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل تحميل بيانات المعاينة: ${e.message}" else "Failed to load inspection data: ${e.message}"
+        }
     }
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
@@ -149,12 +152,12 @@ class RenewNavigationPermitStrategy @Inject constructor(
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         println("🔑 Owner CivilId from token: $ownerCivilId")
 
-        // ✅ Load countries with full data for nationality dropdown (format: "ID|NameAr")
+        // ✅ Load countries with full data for nationality dropdown (format: "ID|LocalizedName")
         val countriesRaw = lookupRepository.getCountriesRaw()
-        val countriesFormatted = countriesRaw.map { "${it.id}|${it.nameAr}" }
+        val countriesFormatted = countriesRaw.map { "${it.id}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}" }
 
         // For backward compatibility with other parts
-        val countriesNames = countriesRaw.map { it.nameAr }
+        val countriesNames = countriesRaw.map { if (AppLanguage.isArabic) it.nameAr else it.nameEn }
 
         // ✅ Handle null civilId - return empty list if no token
         val commercialRegistrations = if (ownerCivilId != null) {
@@ -222,8 +225,8 @@ class RenewNavigationPermitStrategy @Inject constructor(
                 "crewJobTitles" -> {
                     if (crewJobTitles.isEmpty()) {
                         val jobs = lookupRepository.getCrewJobTitlesRaw()
-                        // Format as "ID|NameAr" for dropdown
-                        crewJobTitles = jobs.map { "${it.id}|${it.nameAr}" }
+                        // Format as "ID|LocalizedName" for dropdown
+                        crewJobTitles = jobs.map { "${it.id}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}" }
                         println("✅ Loaded ${crewJobTitles.size} crew job titles: ${crewJobTitles.take(3)}")
                     }
                     // ✅ Load existing crew for renew
@@ -242,9 +245,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
         onStepsNeedRebuild?.invoke()
     }
 
-    override fun getContext(): TransactionContext {
-        TODO("Not yet implemented")
-    }
+    override fun getContext(): TransactionContext = transactionContext
 
     /**
      * ✅ Load existing navigation areas from previous license
@@ -281,7 +282,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
                             // apiArea.id may be Long, sailingRegionsOptions use Int ids
                             val apiId = try { apiArea.id.toInt() } catch (_: Exception) { null }
                             apiId?.let { id ->
-                                sailingRegionsOptions.firstOrNull { it.id == id }?.nameAr
+                                sailingRegionsOptions.firstOrNull { it.id == id }?.let {
+                                    if (AppLanguage.isArabic) it.nameAr else it.nameEn
+                                }
                             }
                         }.distinct()
 
@@ -296,7 +299,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
                             val fallbackNames = areas.mapNotNull { apiArea ->
                                 val nameAr = try { apiArea.areaNameAr } catch (_: Exception) { null }
                                 nameAr?.let { apiName ->
-                                    sailingRegionsOptions.firstOrNull { it.nameAr == apiName }?.nameAr
+                                    sailingRegionsOptions.firstOrNull { it.nameAr == apiName }?.let {
+                                        if (AppLanguage.isArabic) it.nameAr else it.nameEn
+                                    }
                                 }
                             }.distinct()
 
@@ -317,7 +322,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
             .onFailure { error ->
                 println("❌ Failed to load existing navigation areas: ${error.message}")
                 val msg = when (error) {
-                    is ApiException -> error.message ?: "فشل في تحميل مناطق الإبحار"
+                    is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في تحميل مناطق الإبحار" else "Failed to load sailing areas"
                     else -> ErrorMessageExtractor.extract(error.message)
                 }
                 accumulatedFormData["apiError"] = msg
@@ -363,13 +368,13 @@ class RenewNavigationPermitStrategy @Inject constructor(
                     try {
                         // Convert each CrewResDto to SailorData format
                         val sailorsJsonArray = crew.map { crewMember ->
-                            // Format: job = "ID|NameAr" (e.g., "1|ربان")
-                            val jobFormatted = "${crewMember.jobTitle.id}|${crewMember.jobTitle.nameAr}"
+                            // Format: job = "ID|LocalizedName"
+                            val jobFormatted = "${crewMember.jobTitle.id}|${if (AppLanguage.isArabic) crewMember.jobTitle.nameAr else crewMember.jobTitle.nameEn}"
 
-                            // Format: nationality = "ID|NameAr" (e.g., "UY|أوروغواي")
+                            // Format: nationality = "ID|LocalizedName"
                             val nationalityFormatted = crewMember.nationality?.let {
                                 println("🌍 Crew nationality details: id=${it.id}, nameAr=${it.nameAr}, nameEn=${it.nameEn}, isoCode=${it.isoCode}, capitalAr=${it.capitalAr}")
-                                "${it.id}|${it.nameAr}"
+                                "${it.id}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}"
                             } ?: ""
 
                             // Build JSON object string manually to match SailorData structure
@@ -410,7 +415,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
             .onFailure { error ->
                 println("❌ Failed to load existing crew: ${error.message}")
                 val msg = when (error) {
-                    is ApiException -> error.message ?: "فشل في تحميل بيانات الطاقم"
+                    is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في تحميل بيانات الطاقم" else "Failed to load crew data"
                     else -> ErrorMessageExtractor.extract(error.message)
                 }
                 accumulatedFormData["apiError"] = msg
@@ -433,11 +438,11 @@ class RenewNavigationPermitStrategy @Inject constructor(
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد", "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة", "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -502,7 +507,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -516,15 +521,19 @@ class RenewNavigationPermitStrategy @Inject constructor(
         )
         // Build sailing regions step and inject any pre-populated selection from accumulatedFormData
         val sailingStep = SharedSteps.sailingRegionsStep(
-            sailingRegions = sailingRegionsOptions.map { it.nameAr }
+            sailingRegions = sailingRegionsOptions.map { if (AppLanguage.isArabic) it.nameAr else it.nameEn }
         )
         val prepopValue = accumulatedFormData["sailingRegions"]
-        if (!prepopValue.isNullOrBlank()) {
+        val prepopPassengersNo = accumulatedFormData["passengersNo"]
+        if (!prepopValue.isNullOrBlank() || !prepopPassengersNo.isNullOrBlank()) {
             val modifiedFields = sailingStep.fields.map { field ->
-                // If this is the multiselect field, set its value to the prepopulated JSON
-                if (field.id == "sailingRegions" && field is FormField.MultiSelectDropDown) {
-                    field.copy(value = prepopValue)
-                } else field
+                when {
+                    field.id == "sailingRegions" && field is FormField.MultiSelectDropDown && !prepopValue.isNullOrBlank() ->
+                        field.copy(value = prepopValue)
+                    field.id == "passengersNo" && field is FormField.TextField && !prepopPassengersNo.isNullOrBlank() ->
+                        field.copy(value = prepopPassengersNo)
+                    else -> field
+                }
             }
             steps.add(sailingStep.copy(fields = modifiedFields))
         } else {
@@ -584,7 +593,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         // ✅ NEW: Payment Steps - Only show if we have requestId AND inspection is NOT required
         val hasRequestId = accumulatedFormData["requestId"] != null
-        val inspectionRequired = accumulatedFormData["showInspectionStep"]?.toBoolean() ?: false
+        val inspectionRequired = accumulatedFormData["showInspectionDialog"]?.toBoolean() ?: false
 
         println("🔍 Payment step visibility check:")
         println("   hasRequestId: $hasRequestId")
@@ -618,7 +627,27 @@ class RenewNavigationPermitStrategy @Inject constructor(
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+        val rules = getValidationRulesForStep(step, stepData)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = rules
+        )
+    }
+
+    /**
+     * Get validation rules based on step content
+     */
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        val fieldIds = stepData.fields.map { it.id }
+        val rules = mutableListOf<ValidationRule>()
+
+        if (fieldIds.contains("passengersNo")) {
+            rules.add(FormatValidationRules.numericOnly("passengersNo"))
+        }
+
+        return rules
     }
 
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
@@ -710,7 +739,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                                         }
 
                                         createRes.onFailure { err ->
-                                            val msg = err.message ?: "فشل في إنشاء طلب تجديد"
+                                            val msg = err.message ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب تجديد" else "Failed to create renewal request"
                                             lastApiError = msg
                                             println("❌ createRenewalRequestSimple failed: $msg")
                                             throw ApiException(500, msg)
@@ -746,7 +775,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                         }
                     } catch (e: ApiException) {
                         // Re-throw after storing for UI
-                        lastApiError = e.message ?: "خطأ في النداء"
+                        lastApiError = e.message ?: if (AppLanguage.isArabic) "خطأ في النداء" else "Call error"
                         throw e
                     } catch (e: Exception) {
                         println("❌ Exception in ship selection: ${e.message}")
@@ -799,7 +828,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                 } catch (e: Exception) {
                     println("❌ Exception processing inspection step: ${e.message}")
                     e.printStackTrace()
-                    accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}" else "An error occurred while submitting the inspection request: ${e.message}"
                     return -1
                 }
             }
@@ -854,7 +883,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                 val incomingPersonType = data["selectionPersonType"]
                 val currentPersonType =
                     incomingPersonType ?: accumulatedFormData["selectionPersonType"]
-                if (currentPersonType == "فرد") {
+                if (currentPersonType == "فرد" || currentPersonType == "Individual") {
                     val stepsList = getSteps()
                     val marineStepIndex =
                         stepsList.indexOfFirst { it.titleRes == R.string.owned_ships }
@@ -885,7 +914,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                         ?: accumulatedFormData["selectedMarineUnit"]
                         ?: throw com.informatique.mtcit.common.ApiException(
                             400,
-                            "معرف السفينة غير موجود"
+                            if (AppLanguage.isArabic) "معرف السفينة غير موجود" else "Ship ID not found"
                         )
 
                     println("🔍 Extracted shipInfoId from formData: $shipInfoIdString")
@@ -897,7 +926,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                             shipInfoIdString.substring(2, shipInfoIdString.length - 2).toIntOrNull()
                                 ?: throw com.informatique.mtcit.common.ApiException(
                                     400,
-                                    "تنسيق معرف السفينة غير صحيح"
+                                    if (AppLanguage.isArabic) "تنسيق معرف السفينة غير صحيح" else "Invalid ship ID format"
                                 )
                         }
 
@@ -906,7 +935,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                             shipInfoIdString.trim('[', ']', '"').toIntOrNull()
                                 ?: throw com.informatique.mtcit.common.ApiException(
                                     400,
-                                    "تنسيق معرف السفينة غير صحيح"
+                                    if (AppLanguage.isArabic) "تنسيق معرف السفينة غير صحيح" else "Invalid ship ID format"
                                 )
                         }
 
@@ -915,7 +944,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                             shipInfoIdString.toIntOrNull()
                                 ?: throw com.informatique.mtcit.common.ApiException(
                                     400,
-                                    "معرف السفينة غير صحيح"
+                                    if (AppLanguage.isArabic) "معرف السفينة غير صحيح" else "Invalid ship ID"
                                 )
                         }
                     }
@@ -944,7 +973,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                                 // ✅ Show inspection required dialog with continue option and parent transaction info
                                 // Request Type: 5 = Renew Navigation Permit
                                 inspectionFlowManager.prepareInspectionDialog(
-                                    message = "تم إرسال طلب تجديد تصريح الإبحار بنجاح (رقم الطلب: $requestId).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                    message = if (AppLanguage.isArabic) "تم إرسال طلب تجديد تصريح الإبحار بنجاح (رقم الطلب: $requestId).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة." else "Navigation permit renewal request submitted successfully (Request No: $requestId).\n\nThe ship requires an inspection. Please continue to submit an inspection request.",
                                     formData = accumulatedFormData,
                                     allowContinue = true,
                                     parentRequestId = requestId.toInt(),  // Convert Long to Int
@@ -985,7 +1014,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                                     // Set success flags for ViewModel to show dialog
                                     accumulatedFormData["requestSubmitted"] = "true"
                                     accumulatedFormData["requestNumber"] = requestNumber
-                                    accumulatedFormData["successMessage"] = "تم إرسال الطلب بنجاح"
+                                    accumulatedFormData["successMessage"] = if (AppLanguage.isArabic) "تم إرسال الطلب بنجاح" else "Request submitted successfully"
                                     accumulatedFormData["needInspection"] = "false"
 
                                     // Return -2 to indicate: success but show dialog and stop
@@ -1003,10 +1032,15 @@ class RenewNavigationPermitStrategy @Inject constructor(
                         },
                         onFailure = { error ->
                             println("❌ Failed to check inspection preview: ${error.message}")
-                            // On error, show error message and block
+                            val msg = when (error) {
+                                is ApiException -> error.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء التحقق من المعاينة" else "An error occurred while verifying the inspection"
+                                else -> ErrorMessageExtractor.extract(error.message)
+                            }
                             accumulatedFormData["apiError"] =
-                                "حدث خطأ أثناء التحقق من المعاينة: ${error.message}"
-                            return -1 // Block navigation
+                                if (AppLanguage.isArabic) "حدث خطأ أثناء التحقق من المعاينة: $msg" else "An error occurred while verifying the inspection: $msg"
+                            // Re-throw so ViewModel can show refresh button / error banner
+                            if (error is ApiException) throw error
+                            else throw ApiException(500, msg)
                         }
                     )
 
@@ -1015,7 +1049,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
                     println("❌ Exception in review step: ${e.message}")
                     e.printStackTrace()
                     accumulatedFormData["apiError"] =
-                        "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                        if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب: ${e.message}" else "An error occurred while submitting the request: ${e.message}"
                     return -1
                 }
             }
@@ -1048,9 +1082,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
         println("🔍 Parsed selected names: $selectedNames")
         println("🔍 Available regions in cache: ${sailingRegionsOptions.map { "${it.id}:${it.nameAr}" }}")
 
-        // ✅ Map names to IDs
+        // ✅ Map names to IDs (match against localized name to be consistent with display)
         val selectedAreaIds = sailingRegionsOptions
-            .filter { area -> selectedNames.contains(area.nameAr) }
+            .filter { area -> selectedNames.contains(if (AppLanguage.isArabic) area.nameAr else area.nameEn) }
             .map { it.id }
 
         if (selectedAreaIds.isEmpty()) {
@@ -1062,6 +1096,11 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
         println("✅ Selected navigation areas: names=$selectedNames, ids=$selectedAreaIds")
 
+        // ✅ Extract passengersNo from form data
+        val passengersNoStr = data["passengersNo"] ?: accumulatedFormData["passengersNo"]
+        val passengersNo = passengersNoStr?.trim()?.toIntOrNull()
+        println("🔍 passengersNo: $passengersNo")
+
         // Ensure we have a request ID
         val requestId = navigationRequestId
         if (requestId == null) {
@@ -1072,16 +1111,21 @@ class RenewNavigationPermitStrategy @Inject constructor(
         // ✅ ALWAYS use PUT API for renewal (update existing areas)
         // This is called whether user modified the areas or not
         println("🔄 Calling PUT /api/v1/navigation-license-renewal-request/$requestId/navigation-areas")
-        println("   Sending areaIds: $selectedAreaIds")
+        println("   Sending areaIds: $selectedAreaIds, lastNavLicId: $lastNavLicId, passengersNo: $passengersNo")
 
-        navigationLicenseManager.updateNavigationAreasRenew(requestId, selectedAreaIds)
+        navigationLicenseManager.updateNavigationAreasRenew(
+            requestId = requestId,
+            areaIds = selectedAreaIds,
+            lastNavLicId = lastNavLicId,
+            passengersNo = passengersNo
+        )
             .onSuccess {
                 println("✅ Navigation areas updated successfully via PUT API")
             }
             .onFailure { error ->
                 println("❌ Failed to update navigation areas: ${error.message}")
                 val msg = when (error) {
-                    is ApiException -> error.message ?: "فشل في تحديث مناطق الإبحار"
+                    is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في تحديث مناطق الإبحار" else "Failed to update sailing areas"
                     else -> ErrorMessageExtractor.extract(error.message)
                 }
                 accumulatedFormData["apiError"] = msg
@@ -1120,7 +1164,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
      */
     suspend fun addCrewMemberImmediate(sailor: SailorData): Result<com.informatique.mtcit.data.dto.CrewResDto> {
         val requestId = ensureRequestCreated()
-            ?: return Result.failure(Exception("فشل في الحصول على معرف الطلب"))
+            ?: return Result.failure(Exception(if (AppLanguage.isArabic) "فشل في الحصول على معرف الطلب" else "Failed to get request ID"))
         return navigationLicenseManager.addCrewMemberRenewImmediate(requestId, sailor)
     }
 
@@ -1130,9 +1174,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
      */
     suspend fun updateCrewMemberImmediate(sailor: SailorData): Result<com.informatique.mtcit.data.dto.CrewResDto> {
         val requestId = ensureRequestCreated()
-            ?: return Result.failure(Exception("فشل في الحصول على معرف الطلب"))
+            ?: return Result.failure(Exception(if (AppLanguage.isArabic) "فشل في الحصول على معرف الطلب" else "Failed to get request ID"))
         val crewId = sailor.apiId
-            ?: return Result.failure(Exception("لا يوجد معرف API لفرد الطاقم"))
+            ?: return Result.failure(Exception(if (AppLanguage.isArabic) "لا يوجد معرف API لفرد الطاقم" else "No API ID for crew member"))
         return navigationLicenseManager.updateCrewMemberRenewImmediate(requestId, crewId, sailor)
     }
 
@@ -1142,9 +1186,9 @@ class RenewNavigationPermitStrategy @Inject constructor(
      */
     suspend fun deleteCrewMemberImmediate(sailor: SailorData): Result<Unit> {
         val requestId = ensureRequestCreated()
-            ?: return Result.failure(Exception("فشل في الحصول على معرف الطلب"))
+            ?: return Result.failure(Exception(if (AppLanguage.isArabic) "فشل في الحصول على معرف الطلب" else "Failed to get request ID"))
         val crewId = sailor.apiId
-            ?: return Result.failure(Exception("لا يوجد معرف API لفرد الطاقم"))
+            ?: return Result.failure(Exception(if (AppLanguage.isArabic) "لا يوجد معرف API لفرد الطاقم" else "No API ID for crew member"))
         return navigationLicenseManager.deleteCrewMemberRenew(requestId, crewId)
     }
 
@@ -1183,7 +1227,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
             .onFailure { error ->
                 println("❌ Failed to create navigation license renewal request: ${error.message}")
                 val msg = when (error) {
-                    is ApiException -> error.message ?: "فشل في إنشاء طلب تجديد"
+                    is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب تجديد" else "Failed to create renewal request"
                     else -> ErrorMessageExtractor.extract(error.message)
                 }
                 accumulatedFormData["apiError"] = msg
@@ -1204,7 +1248,7 @@ class RenewNavigationPermitStrategy @Inject constructor(
         if (fieldId == "owner_type") {
             val mutableFormData = formData.toMutableMap()
             when (value) {
-                "فرد" -> {
+                "فرد", "Individual" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
@@ -1223,17 +1267,17 @@ class RenewNavigationPermitStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits")
         }
 
         return try {
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
-                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
+                .catch { throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${it.message}" else "An error occurred while searching for the company: ${it.message}") }
                 .first()
 
             when (result) {
@@ -1247,14 +1291,14 @@ class RenewNavigationPermitStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
                 is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 

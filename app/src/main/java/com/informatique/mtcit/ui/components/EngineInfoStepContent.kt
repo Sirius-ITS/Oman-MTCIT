@@ -19,11 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.util.UriCache
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.serialization.Serializable
@@ -57,12 +57,13 @@ fun EngineFormBottomSheet(
     countries: List<String>,
     fuelTypes: List<String>,
     engineConditions: List<String>,
-    engineTypes: List<String>, // Added engineTypes parameter
+    engineTypes: List<String>,
     onDismiss: () -> Unit,
     onSave: (EngineData) -> Unit,
     onViewFile: ((String, String) -> Unit)? = null // ✅ For viewing draft documents
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
 
@@ -104,6 +105,45 @@ fun EngineFormBottomSheet(
 
     // Track if user has uploaded a new document (replaces draft)
     var hasNewDocument by remember { mutableStateOf(false) }
+
+    // ── Inline format-validation errors ────────────────────────────
+    var numberError by remember { mutableStateOf<String?>(null) }
+    var powerError by remember { mutableStateOf<String?>(null) }
+    var cylinderError by remember { mutableStateOf<String?>(null) }
+    var manufacturerError by remember { mutableStateOf<String?>(null) }
+    var modelError by remember { mutableStateOf<String?>(null) }
+    var manufactureYearError by remember { mutableStateOf<String?>(null) }
+
+    fun validateNumber(v: String) {
+        numberError = if (v.isNotBlank() && !v.matches(Regex("^[a-zA-Z0-9]+$")))
+            if (isAr) "يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" else "Must contain English letters and digits only"
+        else null
+    }
+    fun validatePower(v: String) {
+        powerError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
+    fun validateCylinder(v: String) {
+        cylinderError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
+    fun validateManufacturer(v: String) {
+        manufacturerError = if (v.isNotBlank() && !v.matches(Regex("^[\u0600-\u06FFa-zA-Z0-9\\s]+\$")))
+            if (isAr) "يجب أن يحتوي على أحرف عربية أو إنجليزية أو أرقام فقط" else "Must contain Arabic/English letters or digits only"
+        else null
+    }
+    fun validateModel(v: String) {
+        modelError = if (v.isNotBlank() && !v.matches(Regex("^[\u0600-\u06FFa-zA-Z0-9\\s]+\$")))
+            if (isAr) "يجب أن يحتوي على أحرف عربية أو إنجليزية أو أرقام فقط" else "Must contain Arabic/English letters or digits only"
+        else null
+    }
+    fun validateManufactureYear(v: String) {
+        manufactureYearError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
 
     println("🔧 EngineFormBottomSheet: isDraft=$isDraftDocument, refNum=$draftDocumentRefNum, fileName=$draftDocumentFileName, uri=$documentUri")
 
@@ -161,11 +201,13 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = number,
                 onValueChange = { number = it },
+                onFocusLost = { validateNumber(it) },
                 label = localizedApp(R.string.engine_no_title),
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_no_title),
                 enabled = true,
-                maxLength = 10
+                maxLength = 10,
+                error = numberError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -187,13 +229,15 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = power,
                 onValueChange = { power = it },
+                onFocusLost = { validatePower(it) },
                 label = localizedApp(R.string.engine_power_title),
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_power_title),
                 enabled = true,
                 maxLength = 6,
-                minLength = 2
+                minLength = 2,
+                error = powerError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -202,13 +246,15 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = cylinder,
                 onValueChange = { cylinder = it },
+                onFocusLost = { validateCylinder(it) },
                 label = localizedApp(R.string.engine_cylinders_title),
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_cylinders_title),
                 enabled = true,
                 maxLength = 3,
-                minLength = 0
+                minLength = 0,
+                error = cylinderError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -217,10 +263,12 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = manufacturer,
                 onValueChange = { manufacturer = it },
+                onFocusLost = { validateManufacturer(it) },
                 label = localizedApp(R.string.engine_manufacturer_title),
                 placeholder = localizedApp(R.string.engine_manufacturer_title),
                 mandatory = true,
-                maxLength = 50
+                maxLength = 50,
+                error = manufacturerError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -229,11 +277,13 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = model,
                 onValueChange = { model = it },
+                onFocusLost = { validateModel(it) },
                 label = localizedApp(R.string.engine_model_title),
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_model_title),
                 enabled = true,
-                maxLength = 10
+                maxLength = 10,
+                error = modelError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -242,12 +292,14 @@ fun EngineFormBottomSheet(
             CustomTextField(
                 value = manufactureYear,
                 onValueChange = { manufactureYear = it },
+                onFocusLost = { validateManufactureYear(it) },
                 label = localizedApp(R.string.engine_manufacture_year_title),
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.engine_manufacture_year_title),
                 enabled = true,
-                maxLength = 4
+                maxLength = 4,
+                error = manufactureYearError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -346,6 +398,19 @@ fun EngineFormBottomSheet(
 
                 Button(
                     onClick = {
+                        // Re-validate all fields on save
+                        validateNumber(number)
+                        validatePower(power)
+                        validateCylinder(cylinder)
+                        validateManufacturer(manufacturer)
+                        validateModel(model)
+                        validateManufactureYear(manufactureYear)
+
+                        val hasErrors = numberError != null || powerError != null ||
+                                cylinderError != null || manufacturerError != null ||
+                                modelError != null || manufactureYearError != null
+                        if (hasErrors) return@Button
+
                         println("🔧 EngineForm: Save button clicked")
                         println("   - number: $number")
                         println("   - type: $type")

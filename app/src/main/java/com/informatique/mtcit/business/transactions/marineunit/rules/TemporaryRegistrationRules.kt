@@ -4,6 +4,8 @@ import com.informatique.mtcit.business.transactions.marineunit.*
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 /**
  * Business rules for Temporary Registration Certificate transaction
@@ -33,8 +35,8 @@ class TemporaryRegistrationRules @Inject constructor(
             println("🆕 NEW marine unit detected: ${unit.name}, treating as not verified")
             return MarineUnitValidationResult.Ineligible.CustomError(
                 unit = unit,
-                reason = "الوحدة البحرية غير مفحوصة",
-                suggestion = "يجب إجراء الفحص أولاً قبل التسجيل المؤقت"
+                reason = if (isArabic) "الوحدة البحرية غير مفحوصة" else "Marine unit has not been inspected",
+                suggestion = if (isArabic) "يجب إجراء الفحص أولاً قبل التسجيل المؤقت" else "Inspection must be performed first"
             )
         }
 
@@ -61,16 +63,16 @@ class TemporaryRegistrationRules @Inject constructor(
         if (!inspectionStatus.isInspected && inspectionStatus.status == "PENDING") {
             return MarineUnitValidationResult.Ineligible.CustomError(
                 unit = unit,
-                reason = "الطلب قيد المعالجة",
-                suggestion = "يرجى الانتظار حتى اكتمال عملية التحقق من الفحص"
+                reason = if (AppLanguage.isArabic) "الطلب قيد المعالجة" else "Request Under Processing",
+                suggestion = if (isArabic) "يرجى الانتظار حتى اكتمال عملية التحقق من الفحص" else "Please wait until the inspection verification is complete"
             )
         }
 
         // Scenario 3: Not verified or rejected (any other status)
         return MarineUnitValidationResult.Ineligible.CustomError(
             unit = unit,
-            reason = "الوحدة البحرية غير مفحوصة أو تم رفض الفحص",
-            suggestion = inspectionStatus.remarks ?: "يجب إجراء الفحص أولاً قبل التسجيل المؤقت"
+            reason = if (isArabic) "الوحدة البحرية غير مفحوصة أو تم رفض الفحص" else "Marine unit has not been inspected or inspection was rejected",
+            suggestion = inspectionStatus.remarks ?: if (isArabic) "يجب إجراء الفحص أولاً قبل التسجيل المؤقت" else "Inspection must be performed first"
         )
     }
 
@@ -88,23 +90,23 @@ class TemporaryRegistrationRules @Inject constructor(
 
             is MarineUnitValidationResult.Ineligible.CustomError -> {
                 // Scenario 2 & 3: Show RequestDetailScreen with appropriate message
-                val isPending = result.reason.contains("قيد المعالجة")
+                val isPending = result.reason.contains(if (AppLanguage.isArabic) "قيد المعالجة" else "Under Processing")
 
                 MarineUnitNavigationAction.ShowComplianceDetailScreen(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         ComplianceIssue(
-                            category = "حالة الفحص",
-                            title = if (isPending) "الطلب قيد المعالجة" else "الوحدة غير مفحوصة",
+                            category = if (isArabic) "حالة الفحص" else "Inspection Status",
+                            title = if (isPending) if (AppLanguage.isArabic) "الطلب قيد المعالجة" else "Request Under Processing" else "الوحدة غير مفحوصة",
                             description = result.reason,
                             severity = if (isPending) IssueSeverity.WARNING else IssueSeverity.BLOCKING,
                             details = result.suggestion?.let {
-                                mapOf("الحل المقترح" to it)
+                                mapOf((if (isArabic) "الحل المقترح" else "Suggested Solution") to it)
                             } ?: emptyMap()
                         )
                     ),
                     rejectionReason = result.reason + (result.suggestion?.let { "\n\n$it" } ?: ""),
-                    rejectionTitle = if (isPending) "طلب قيد المعالجة" else "تم رفض الطلب"
+                    rejectionTitle = if (isPending) if (AppLanguage.isArabic) "طلب قيد المعالجة" else "Request Under Processing" else if (AppLanguage.isArabic) "تم رفض الطلب" else "Request Rejected"
                 )
             }
 
@@ -114,17 +116,17 @@ class TemporaryRegistrationRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         ComplianceIssue(
-                            category = "سبب الرفض",
-                            title = "الوحدة غير مؤهلة",
+                            category = if (isArabic) "سبب الرفض" else "Rejection Reason",
+                            title = if (isArabic) "الوحدة غير مؤهلة" else "Unit Not Eligible",
                             description = result.reason,
                             severity = IssueSeverity.BLOCKING,
                             details = result.suggestion?.let {
-                                mapOf("الحل المقترح" to it)
+                                mapOf((if (isArabic) "الحل المقترح" else "Suggested Solution") to it)
                             } ?: emptyMap()
                         )
                     ),
                     rejectionReason = result.reason + (result.suggestion?.let { "\n\n$it" } ?: ""),
-                    rejectionTitle = "تم رفض الطلب"
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب" else "Request Rejected"
                 )
             }
         }
@@ -132,7 +134,7 @@ class TemporaryRegistrationRules @Inject constructor(
 
     override fun allowMultipleSelection(): Boolean = false
 
-    override fun getStepTitle(): String = "اختيار الوحدة البحرية للتسجيل المؤقت"
+    override fun getStepTitle(): String = if (isArabic) "اختيار الوحدة البحرية للتسجيل المؤقت" else "Select Marine Unit for Temporary Registration"
 
-    override fun getStepDescription(): String = "اختر الوحدة البحرية التي ترغب في تسجيلها مؤقتاً"
+    override fun getStepDescription(): String = if (isArabic) "اختر الوحدة البحرية التي ترغب في تسجيلها مؤقتاً" else "Select the marine unit you want to temporarily register"
 }

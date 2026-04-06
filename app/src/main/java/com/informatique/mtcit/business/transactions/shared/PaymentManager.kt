@@ -12,6 +12,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Shared manager for handling payment-related API calls
@@ -507,7 +508,7 @@ class PaymentManager @Inject constructor(
             val issuanceEndpoint = RequestTypeEndpoint.getIssuanceEndpoint(requestTypeId, requestId)
             if (issuanceEndpoint == null) {
                 println("❌ PaymentManager: Issuance not supported for type ID: $requestTypeId")
-                return Result.failure(Exception("إصدار الشهادة غير مدعوم لهذا النوع"))
+                return Result.failure(Exception(if (AppLanguage.isArabic) "إصدار الشهادة غير مدعوم لهذا النوع" else "Certificate issuance not supported for this type"))
             }
 
             println("📡 PaymentManager: Using issuance endpoint: $issuanceEndpoint")

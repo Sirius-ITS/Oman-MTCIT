@@ -217,6 +217,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -248,6 +249,7 @@ fun DynamicStepper(
 
     // Detect if RTL (Arabic)
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val isAr = LocalAppLocale.current.language == "ar"
 
     // Format numbers based on language
     fun formatNumber(number: Int): String {
@@ -262,8 +264,8 @@ fun DynamicStepper(
         }
     }
 
-    val stepText = if (isRtl) "خطوة" else "Step"
-    val ofText = if (isRtl) "من" else "of"
+    val stepText = if (isRtl) if (isAr) "خطوة" else "Step" else "Step"
+    val ofText = if (isRtl) if (isAr) "من" else "of" else "of"
 
     Column(
         modifier = modifier

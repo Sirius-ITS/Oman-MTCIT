@@ -29,6 +29,7 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -44,7 +45,7 @@ fun CustomMultiSelectDropdown(
     leadingIcon: ImageVector? = null,
     placeholder: String? = null,
     isLoading: Boolean = false,
-    loadingMessage: String? = "جاري التحميل...",
+    loadingMessage: String? = if (isArabic) "جاري التحميل..." else "Loading...",
     maxSelection: Int? = null,
     showSelectionCount: Boolean = true
 ) {
@@ -270,7 +271,7 @@ fun CustomMultiSelectDropdown(
                     onValueChange = { searchQuery = it },
                     placeholder = {
                         Text(
-                            "بحث...",
+                            if (isArabic) "بحث..." else "Search...",
                             color = extraColors.textSubTitle
                         )
                     },
@@ -372,7 +373,7 @@ fun CustomMultiSelectDropdown(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "لا توجد نتائج",
+                                    if (isArabic) "لا توجد نتائج" else "No results",
                                     color = extraColors.whiteInDarkMode.copy(alpha = 0.6f),
                                     fontSize = 14.sp
                                 )
@@ -401,7 +402,7 @@ fun CustomMultiSelectDropdown(
                             ),
                             shape = RoundedCornerShape(18.dp)
                         ) {
-                            Text("مسح الكل", color = Color.White)
+                            Text(if (isArabic) "مسح الكل" else "Clear All", color = Color.White)
                         }
                     }
 
@@ -421,7 +422,7 @@ fun CustomMultiSelectDropdown(
                         ),
                         shape = RoundedCornerShape(18.dp)
                     ) {
-                        Text("تم", color = Color.White)
+                        Text(if (isArabic) "تم" else "Done", color = Color.White)
                     }
                 }
             }

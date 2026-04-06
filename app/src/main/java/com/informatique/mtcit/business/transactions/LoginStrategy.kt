@@ -6,6 +6,7 @@ import com.informatique.mtcit.business.usecases.FormValidationUseCase
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.ui.viewmodels.StepData
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Login/Registration Strategy
@@ -85,7 +86,7 @@ class LoginStrategy @Inject constructor(
             if (selectedMethod.isNullOrBlank()) {
                 return Pair(
                     false,
-                    mapOf("registrationMethod" to "يجب اختيار طريقة تسجيل الدخول")
+                    mapOf("registrationMethod" to if (AppLanguage.isArabic) "يجب اختيار طريقة تسجيل الدخول" else "Login method must be selected")
                 )
             }
         }
@@ -109,7 +110,7 @@ class LoginStrategy @Inject constructor(
                 if (phoneNumber.isNullOrEmpty()) {
                     return Pair(
                         false,
-                        mapOf("mobilePhoneNumber" to "يجب إدخال رقم الهاتف المحمول أولاً")
+                        mapOf("mobilePhoneNumber" to if (AppLanguage.isArabic) "يجب إدخال رقم الهاتف المحمول أولاً" else "Mobile phone number must be entered first")
                     )
                 }
             }

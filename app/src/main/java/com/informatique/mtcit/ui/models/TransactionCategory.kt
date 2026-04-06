@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 /**
  * Main Category Model (e.g., Marine Affairs, Building Permits)
@@ -42,11 +43,11 @@ data class Transaction(
     // Legacy numeric count - kept for compatibility but prefer `steps.size` when available
     val stepCount: Int = 3,
     val isAvailable: Boolean = true,
-    val fees: String = "10 ريال",
+    val fees: String = if (isArabic) "10 ريال" else "10 OMR",
     // New: list of requirement descriptions to show in TransactionRequirementsScreen
     val requirements: Requirement? = null,
     // New: estimated duration string (shown in list and forwarded to requirements screen)
-    val duration: String = "4-1 أيام",
+    val duration: String = if (isArabic) "4-1 أيام" else "1-4 Days",
     // New: optional explicit step titles. If empty, UI will fallback to generic "خطوة N" using stepCount
     val steps: List<String> = emptyList()
 )
@@ -104,40 +105,40 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.transaction_temporary_registration_certificate_desc,
                             route = NavRoutes.ShipRegistrationRoute.route,
                             routeInfo = "route-1",
-                            fees = "50 ر.ع",
+                            fees = if (isArabic) "50 ر.ع" else "50 OMR",
                             requirements = Requirement(
                                 id = "temporary_registration_certificate_id",
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "50 ريال",
-                                        label = "رسوم الخدمة",
+                                        value = if (isArabic) "50 ريال" else "50 OMR",
+                                        label = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                         ),
 
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.Timer,
-                                        value = "10 دقائق",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "10 دقائق" else "10 Minutes",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المستندات المطلوبة",
+                                        title = if (isArabic) "المستندات المطلوبة" else "Required Documents",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)",
+                                                title = if (isArabic) "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)" else "Ship Construction Certificate or Sales Contract in Case of Purchase (Mandatory)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "مستندات المعاينة ستتم داخل دورة المعاينة",
+                                                title = if (isArabic) "مستندات المعاينة ستتم داخل دورة المعاينة" else "Inspection Documents Will Be Processed Within the Inspection Cycle",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -145,53 +146,53 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "رسوم الخدمة",
+                                        title = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   25 ر.ع   " ,
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   25 ر.ع   " else "   25 OMR   ") ,
                                                 subTitle = null,
-                                                value = "25 ر.ع"
+                                                value = if (isArabic) "25 ر.ع" else "25 OMR"
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   30  ر.ع   ",
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   30  ر.ع   " else "   30 OMR   "),
                                                 subTitle = null,
-                                                value = "30 ر.ع"
+                                                value = if (isArabic) "30 ر.ع" else "30 OMR"
                                             )
                                         )
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "خطوات طلب الخدمة",
+                                        title = if (isArabic) "خطوات طلب الخدمة" else "Service Request Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "إدخال بيانات الوحدة البحرية",
+                                                title = if (isArabic) "إدخال بيانات الوحدة البحرية" else "Enter Marine Unit Data",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "تسجيل الأبعاد الخاصة بالوحدة",
+                                                title = if (isArabic) "تسجيل الأبعاد الخاصة بالوحدة" else "Register Unit Dimensions",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إدخال الأوزان والحمولات المعتمدة",
+                                                title = if (isArabic) "إدخال الأوزان والحمولات المعتمدة" else "Enter Approved Weights and Tonnages",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "تعبئة بيانات المحركات الخاصة بالوحدة",
+                                                title = if (isArabic) "تعبئة بيانات المحركات الخاصة بالوحدة" else "Fill Engine Data for the Unit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -199,19 +200,19 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "شروط الخدمة",
+                                        title = if (isArabic) "شروط الخدمة" else "Service Conditions",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "مالك السفينة / الموكل من مالك السفينة",
+                                                title = if (isArabic) "مالك السفينة / الموكل من مالك السفينة" else "Ship Owner / Authorized by Ship Owner",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ان يكون مواطن عماني مقيم",
+                                                title = if (isArabic) "ان يكون مواطن عماني مقيم" else "Must Be an Omani Resident Citizen",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -219,8 +220,8 @@ fun getMainCategories(): List<MainCategory> {
                                     )
                                 )
                             ),
-                            duration = "10 دقائق",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
+                            duration = if (isArabic) "10 دقائق" else "10 Minutes",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         ),
                         Transaction(
                             id = "permanent_registration_certificate",
@@ -228,75 +229,75 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.transaction_permanent_registration_certificate_desc,
                             route = "permanent_registration_form",
                             routeInfo = "route-2",
-                            fees = "50 ر.ع",
+                            fees = if (isArabic) "50 ر.ع" else "50 OMR",
                             requirements = Requirement(
                                 id = "temporary_registration_certificate_id",
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "50 ريال",
-                                        label = "رسوم الخدمة",
+                                        value = if (isArabic) "50 ريال" else "50 OMR",
+                                        label = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                     ),
 
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.Timer,
-                                        value = "10 دقائق",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "10 دقائق" else "10 Minutes",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المستندات المطلوبة",
+                                        title = if (isArabic) "المستندات المطلوبة" else "Required Documents",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "مستندات المعاينة ستتم داخل دورة المعاينةشهادة بناء السفينة أو عقد بيع في حالة الشراء وشهادة شطب في حالة تغيير الجنسية للعلم العماني (الزامي)",
+                                                title = if (isArabic) "مستندات المعاينة ستتم داخل دورة المعاينةشهادة بناء السفينة أو عقد بيع في حالة الشراء وشهادة شطب في حالة تغيير الجنسية للعلم العماني (الزامي)" else "Inspection documents will be within the inspection cycle. Construction certificate or sale contract for purchase, and cancellation certificate for flag change to Omani flag (Mandatory)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "مستندات المعاينة ستتم داخل دورة المعاينة",
+                                                title = if (isArabic) "مستندات المعاينة ستتم داخل دورة المعاينة" else "Inspection Documents Will Be Processed Within the Inspection Cycle",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "وثيقة التأمين سارية",
+                                                title = if (isArabic) "وثيقة التأمين سارية" else "Valid Insurance Policy",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ترخيص هيئة تنظيم الاتصالات",
+                                                title = if (isArabic) "ترخيص هيئة تنظيم الاتصالات" else "Telecommunications Regulatory Authority License",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ترخيص النشاط",
+                                                title = if (isArabic) "ترخيص النشاط" else "Activity License",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "الملاك ونصيب كل مالك",
+                                                title = if (isArabic) "الملاك ونصيب كل مالك" else "Owners and Each Owner's Share",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "التفويض بالإدارة في حالة وجود أكثر من مالك",
+                                                title = if (isArabic) "التفويض بالإدارة في حالة وجود أكثر من مالك" else "Management Authorization if More Than One Owner",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -304,60 +305,60 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "رسوم الخدمة",
+                                        title = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   25 ر.ع   " ,
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   25 ر.ع   " else "   25 OMR   ") ,
                                                 subTitle = null,
-                                                value = "25 ر.ع"
+                                                value = if (isArabic) "25 ر.ع" else "25 OMR"
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   30  ر.ع   ",
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   30  ر.ع   " else "   30 OMR   "),
                                                 subTitle = null,
-                                                value = "30 ر.ع"
+                                                value = if (isArabic) "30 ر.ع" else "30 OMR"
                                             )
                                         )
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "خطوات طلب الخدمة",
+                                        title = if (isArabic) "خطوات طلب الخدمة" else "Service Request Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "تحديد نوع المستخدم",
+                                                title = if (isArabic) "تحديد نوع المستخدم" else "Define User Type",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "حدد السجل التجاري لنشاطك اختياري، بناء على الخطوة (1)",
+                                                title = if (isArabic) "حدد السجل التجاري لنشاطك اختياري، بناء على الخطوة (1)" else "Select Commercial Registration for Your Activity (Optional, based on Step 1)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "التحقق من وجود شهادة تسجيل مؤقتة للوحدة البحرية",
+                                                title = if (isArabic) "التحقق من وجود شهادة تسجيل مؤقتة للوحدة البحرية" else "Verify Temporary Registration Certificate Exists for the Marine Unit",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إدخال بيانات الوحدة البحرية",
+                                                title = if (isArabic) "إدخال بيانات الوحدة البحرية" else "Enter Marine Unit Data",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إدخال الأبعاد الخاصة بالوحدة",
+                                                title = if (isArabic) "إدخال الأبعاد الخاصة بالوحدة" else "Enter Unit Dimensions",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -365,61 +366,61 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "شروط الخدمة",
+                                        title = if (isArabic) "شروط الخدمة" else "Service Conditions",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "مالك السفينة / الموكل من مالك السفينة",
+                                                title = if (isArabic) "مالك السفينة / الموكل من مالك السفينة" else "Ship Owner / Authorized by Ship Owner",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ان تكون السفينة ليست من السفن المحظور استقبالها",
+                                                title = if (isArabic) "ان تكون السفينة ليست من السفن المحظور استقبالها" else "The Ship Must Not Be on the Prohibited Reception List",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "أن يكون مواطن عماني / مقيم",
+                                                title = if (isArabic) "أن يكون مواطن عماني / مقيم" else "Must Be an Omani Citizen / Resident",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "وجود ترخيص من هيئة تنظيم الاتصالات",
+                                                title = if (isArabic) "وجود ترخيص من هيئة تنظيم الاتصالات" else "Have a Telecommunications Regulatory Authority License",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "وجود وثيقة تأمين بحري ساري",
+                                                title = if (isArabic) "وجود وثيقة تأمين بحري ساري" else "Have a Valid Marine Insurance Policy",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "موافقة وزارة الثروة الزراعية السمكية ( سيتم جلب الموافقة في حالة عدم وجودها )",
+                                                title = if (isArabic) "موافقة وزارة الثروة الزراعية السمكية ( سيتم جلب الموافقة في حالة عدم وجودها )" else "Ministry of Agricultural Wealth and Fisheries Approval (Will be fetched if not present)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "وجود معاينة ( سيتم التحويل لدورة المعاينات في حالة عدم وجود معاينة )",
+                                                title = if (isArabic) "وجود معاينة ( سيتم التحويل لدورة المعاينات في حالة عدم وجود معاينة )" else "Inspection Required (Will be transferred to inspection cycle if no inspection exists)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ترخيص مزاولة نشاط في حالة سفينة خدمة طبقا لنوع الخدمة",
+                                                title = if (isArabic) "ترخيص مزاولة نشاط في حالة سفينة خدمة طبقا لنوع الخدمة" else "Activity License for Service Ships According to Service Type",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -427,8 +428,8 @@ fun getMainCategories(): List<MainCategory> {
                                     )
                                 )
                             ),
-                            duration = "5-1 أيام",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام")
+                            duration = if (isArabic) "5-1 أيام" else "1-5 Days",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         ),
                         Transaction(
                             id = "permanent_registration_certificate",
@@ -436,8 +437,8 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.transaction_permanent_registration_certificate_desc,
                             route = NavRoutes.PermanentRegistrationRoute.route,
                             routeInfo = "route-2",
-                            duration = "10 دقائق",
-                            steps = listOf("ملء النموذج", "رفع المستندات" ,"استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
+                            duration = if (isArabic) "10 دقائق" else "10 Minutes",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents" ,if (isArabic) "استلام" else "Receive")
                         ),
                         Transaction(
                             id = "suspend_permanent_registration",
@@ -465,40 +466,40 @@ fun getMainCategories(): List<MainCategory> {
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "20 ريال",
-                                        label = "الرسوم"
+                                        value = if (isArabic) "20 ريال" else "20 OMR",
+                                        label = if (isArabic) "الرسوم" else "Fees"
 
                                     ),
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "5-1 أيام",
-                                        label = "المدة الزمنية"
+                                        value = if (isArabic) "5-1 أيام" else "1-5 Days",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration"
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات",
+                                        title = if (isArabic) "المتطلبات" else "Requirements",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية" else "Copy of Identity Card",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)" else "Ship Photo (New and Clear)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم",
+                                                title = if (isArabic) "إيصال دفع الرسوم" else "Fee Payment Receipt",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -506,26 +507,26 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "المتطلبات 2",
+                                        title = if (isArabic) "المتطلبات 2" else "Requirements 2",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية2",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية2" else "Copy of Identity Card 2",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)2",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)2" else "Ship Photo (New and Clear) 2",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم2",
+                                                title = if (isArabic) "إيصال دفع الرسوم2" else "Fee Payment Receipt 2",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -533,26 +534,26 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات 3",
+                                        title = if (isArabic) "المتطلبات 3" else "Requirements 3",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية 3",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية 3" else "Copy of Identity Card 3",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة) 3",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة) 3" else "Ship Photo (New and Clear) 3",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم 3",
+                                                title = if (isArabic) "إيصال دفع الرسوم 3" else "Fee Payment Receipt 3",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -560,8 +561,8 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                 )
                             ),
-                            duration = "5-1 أيام",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام")
+                            duration = if (isArabic) "5-1 أيام" else "1-5 Days",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         ),
                         Transaction(
                             id = "release_mortgage",
@@ -575,39 +576,39 @@ fun getMainCategories(): List<MainCategory> {
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "20 ريال",
-                                        label = "الرسوم"
+                                        value = if (isArabic) "20 ريال" else "20 OMR",
+                                        label = if (isArabic) "الرسوم" else "Fees"
                                     ),
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "5-1 أيام",
-                                        label = "المدة الزمنية"
+                                        value = if (isArabic) "5-1 أيام" else "1-5 Days",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration"
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات",
+                                        title = if (isArabic) "المتطلبات" else "Requirements",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية" else "Copy of Identity Card",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)" else "Ship Photo (New and Clear)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم",
+                                                title = if (isArabic) "إيصال دفع الرسوم" else "Fee Payment Receipt",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -615,26 +616,26 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "المتطلبات 2",
+                                        title = if (isArabic) "المتطلبات 2" else "Requirements 2",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية2",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية2" else "Copy of Identity Card 2",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)2",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)2" else "Ship Photo (New and Clear) 2",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم2",
+                                                title = if (isArabic) "إيصال دفع الرسوم2" else "Fee Payment Receipt 2",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -642,26 +643,26 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات 3",
+                                        title = if (isArabic) "المتطلبات 3" else "Requirements 3",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية 3",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية 3" else "Copy of Identity Card 3",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة) 3",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة) 3" else "Ship Photo (New and Clear) 3",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم 3",
+                                                title = if (isArabic) "إيصال دفع الرسوم 3" else "Fee Payment Receipt 3",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -669,8 +670,8 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                 )
                             ),
-                            duration = "5-1 أيام",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام")
+                            duration = if (isArabic) "5-1 أيام" else "1-5 Days",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         )
                     )
                 ),
@@ -685,40 +686,40 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.request_for_inspection_des,
                             route = NavRoutes.RequestForInspection.route,
                             routeInfo = "route-3",
-                            fees = "50 ر.ع",
+                            fees = if (isArabic) "50 ر.ع" else "50 OMR",
                             requirements = Requirement(
                                 id = "temporary_registration_certificate_id",
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "50 ريال",
-                                        label = "رسوم الخدمة",
+                                        value = if (isArabic) "50 ريال" else "50 OMR",
+                                        label = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                     ),
 
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.Timer,
-                                        value = "10 دقائق",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "10 دقائق" else "10 Minutes",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المستندات المطلوبة",
+                                        title = if (isArabic) "المستندات المطلوبة" else "Required Documents",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)",
+                                                title = if (isArabic) "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)" else "Ship Construction Certificate or Sales Contract in Case of Purchase (Mandatory)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "مستندات المعاينة ستتم داخل دورة المعاينة",
+                                                title = if (isArabic) "مستندات المعاينة ستتم داخل دورة المعاينة" else "Inspection Documents Will Be Processed Within the Inspection Cycle",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -726,53 +727,53 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "رسوم الخدمة",
+                                        title = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   25 ر.ع   " ,
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   25 ر.ع   " else "   25 OMR   ") ,
                                                 subTitle = null,
-                                                value = "25 ر.ع"
+                                                value = if (isArabic) "25 ر.ع" else "25 OMR"
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   30  ر.ع   ",
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   30  ر.ع   " else "   30 OMR   "),
                                                 subTitle = null,
-                                                value = "30 ر.ع"
+                                                value = if (isArabic) "30 ر.ع" else "30 OMR"
                                             )
                                         )
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "خطوات طلب الخدمة",
+                                        title = if (isArabic) "خطوات طلب الخدمة" else "Service Request Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "إدخال بيانات الوحدة البحرية",
+                                                title = if (isArabic) "إدخال بيانات الوحدة البحرية" else "Enter Marine Unit Data",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "تسجيل الأبعاد الخاصة بالوحدة",
+                                                title = if (isArabic) "تسجيل الأبعاد الخاصة بالوحدة" else "Register Unit Dimensions",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إدخال الأوزان والحمولات المعتمدة",
+                                                title = if (isArabic) "إدخال الأوزان والحمولات المعتمدة" else "Enter Approved Weights and Tonnages",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "تعبئة بيانات المحركات الخاصة بالوحدة",
+                                                title = if (isArabic) "تعبئة بيانات المحركات الخاصة بالوحدة" else "Fill Engine Data for the Unit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -780,19 +781,19 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "شروط الخدمة",
+                                        title = if (isArabic) "شروط الخدمة" else "Service Conditions",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "مالك السفينة / الموكل من مالك السفينة",
+                                                title = if (isArabic) "مالك السفينة / الموكل من مالك السفينة" else "Ship Owner / Authorized by Ship Owner",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ان يكون مواطن عماني مقيم",
+                                                title = if (isArabic) "ان يكون مواطن عماني مقيم" else "Must Be an Omani Resident Citizen",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -800,8 +801,8 @@ fun getMainCategories(): List<MainCategory> {
                                     )
                                 )
                             ),
-                            duration = "10 دقائق",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
+                            duration = if (isArabic) "10 دقائق" else "10 Minutes",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         ),
                         Transaction(
                             id = "request_for_inspection",
@@ -809,40 +810,40 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.request_for_inspection_des,
                             route = NavRoutes.RequestForInspection.route,
                             routeInfo = "route-3",
-                            fees = "50 ر.ع",
+                            fees = if (isArabic) "50 ر.ع" else "50 OMR",
                             requirements = Requirement(
                                 id = "temporary_registration_certificate_id",
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "50 ريال",
-                                        label = "رسوم الخدمة",
+                                        value = if (isArabic) "50 ريال" else "50 OMR",
+                                        label = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                     ),
 
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.Timer,
-                                        value = "10 دقائق",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "10 دقائق" else "10 Minutes",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المستندات المطلوبة",
+                                        title = if (isArabic) "المستندات المطلوبة" else "Required Documents",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)",
+                                                title = if (isArabic) "شهادة بناء السفينة او عقد بيع في حالة الشراء(الزامي)" else "Ship Construction Certificate or Sales Contract in Case of Purchase (Mandatory)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "مستندات المعاينة ستتم داخل دورة المعاينة",
+                                                title = if (isArabic) "مستندات المعاينة ستتم داخل دورة المعاينة" else "Inspection Documents Will Be Processed Within the Inspection Cycle",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -850,53 +851,53 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "رسوم الخدمة",
+                                        title = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   25 ر.ع   " ,
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   25 ر.ع   " else "   25 OMR   ") ,
                                                 subTitle = null,
-                                                value = "25 ر.ع"
+                                                value = if (isArabic) "25 ر.ع" else "25 OMR"
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" +  "   30  ر.ع   ",
+                                                title = (if (isArabic) "الرسوم اللازم دفعها للحصول على شهادة تسجيل مؤقتة" else "Fees Required to Obtain a Temporary Registration Certificate") + (if (isArabic) "   30  ر.ع   " else "   30 OMR   "),
                                                 subTitle = null,
-                                                value = "30 ر.ع"
+                                                value = if (isArabic) "30 ر.ع" else "30 OMR"
                                             )
                                         )
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "خطوات طلب الخدمة",
+                                        title = if (isArabic) "خطوات طلب الخدمة" else "Service Request Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "إدخال بيانات الوحدة البحرية",
+                                                title = if (isArabic) "إدخال بيانات الوحدة البحرية" else "Enter Marine Unit Data",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "تسجيل الأبعاد الخاصة بالوحدة",
+                                                title = if (isArabic) "تسجيل الأبعاد الخاصة بالوحدة" else "Register Unit Dimensions",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إدخال الأوزان والحمولات المعتمدة",
+                                                title = if (isArabic) "إدخال الأوزان والحمولات المعتمدة" else "Enter Approved Weights and Tonnages",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "تعبئة بيانات المحركات الخاصة بالوحدة",
+                                                title = if (isArabic) "تعبئة بيانات المحركات الخاصة بالوحدة" else "Fill Engine Data for the Unit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -904,19 +905,19 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 1,
-                                        title = "شروط الخدمة",
+                                        title = if (isArabic) "شروط الخدمة" else "Service Conditions",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "مالك السفينة / الموكل من مالك السفينة",
+                                                title = if (isArabic) "مالك السفينة / الموكل من مالك السفينة" else "Ship Owner / Authorized by Ship Owner",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "ان يكون مواطن عماني مقيم",
+                                                title = if (isArabic) "ان يكون مواطن عماني مقيم" else "Must Be an Omani Resident Citizen",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -924,8 +925,8 @@ fun getMainCategories(): List<MainCategory> {
                                     )
                                 )
                             ),
-                            duration = "10 دقائق",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام","استلام")
+                            duration = if (isArabic) "10 دقائق" else "10 Minutes",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         ),
 
 
@@ -947,46 +948,46 @@ fun getMainCategories(): List<MainCategory> {
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
-                                        value = "20 ريال",
-                                        label = "الرسوم",
+                                        value = if (isArabic) "20 ريال" else "20 OMR",
+                                        label = if (isArabic) "الرسوم" else "Fees",
                                         icon = Icons.Default.MonetizationOn
                                     ),
                                     ServiceSummary(
                                         type = "steps",
                                         value = "4",
-                                        label = "الخطوات",
+                                        label = if (isArabic) "الخطوات" else "Steps",
                                         icon = Icons.Default.MonetizationOn
                                     ),
                                     ServiceSummary(
                                         type = "duration",
-                                        value = "5-1 أيام",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "5-1 أيام" else "1-5 Days",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                         icon = Icons.Default.MonetizationOn
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات",
+                                        title = if (isArabic) "المتطلبات" else "Requirements",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية" else "Copy of Identity Card",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)" else "Ship Photo (New and Clear)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم",
+                                                title = if (isArabic) "إيصال دفع الرسوم" else "Fee Payment Receipt",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -994,33 +995,33 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "خطوات الخدمة",
+                                        title = if (isArabic) "خطوات الخدمة" else "Service Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "ملء النموذج",
+                                                title = if (isArabic) "ملء النموذج" else "Fill the Form",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "رفع المستندات",
+                                                title = if (isArabic) "رفع المستندات" else "Upload Documents",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "مراجعة الطلب",
+                                                title = if (isArabic) "مراجعة الطلب" else "Review Request",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 4,
                                                 stepNo = 4,
-                                                title = "استلام التصريح",
+                                                title = if (isArabic) "استلام التصريح" else "Receive Permit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1040,46 +1041,46 @@ fun getMainCategories(): List<MainCategory> {
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
-                                        value = "20 ريال",
-                                        label = "الرسوم",
+                                        value = if (isArabic) "20 ريال" else "20 OMR",
+                                        label = if (isArabic) "الرسوم" else "Fees",
                                         icon = Icons.Default.MonetizationOn
                                     ),
                                     ServiceSummary(
                                         type = "steps",
                                         value = "4",
-                                        label = "الخطوات",
+                                        label = if (isArabic) "الخطوات" else "Steps",
                                         icon = Icons.Default.MonetizationOn
                                     ),
                                     ServiceSummary(
                                         type = "duration",
-                                        value = "5-1 أيام",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "5-1 أيام" else "1-5 Days",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                         icon = Icons.Default.MonetizationOn
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات",
+                                        title = if (isArabic) "المتطلبات" else "Requirements",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية" else "Copy of Identity Card",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)" else "Ship Photo (New and Clear)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم",
+                                                title = if (isArabic) "إيصال دفع الرسوم" else "Fee Payment Receipt",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1087,33 +1088,33 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "خطوات الخدمة",
+                                        title = if (isArabic) "خطوات الخدمة" else "Service Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "ملء النموذج",
+                                                title = if (isArabic) "ملء النموذج" else "Fill the Form",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "رفع المستندات",
+                                                title = if (isArabic) "رفع المستندات" else "Upload Documents",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "مراجعة الطلب",
+                                                title = if (isArabic) "مراجعة الطلب" else "Review Request",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 4,
                                                 stepNo = 4,
-                                                title = "استلام التصريح",
+                                                title = if (isArabic) "استلام التصريح" else "Receive Permit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1153,40 +1154,40 @@ fun getMainCategories(): List<MainCategory> {
                                     ServiceSummary(
                                         type = "fee",
                                         icon = Icons.Default.MonetizationOn,
-                                        value = "50 ريال",
-                                        label = "رسوم الخدمة",
+                                        value = if (isArabic) "50 ريال" else "50 OMR",
+                                        label = if (isArabic) "رسوم الخدمة" else "Service Fees",
                                     ),
 
                                     ServiceSummary(
                                         type = "duration",
                                         icon = Icons.Default.Timer,
-                                        value = "10 دقائق",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "10 دقائق" else "10 Minutes",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات",
+                                        title = if (isArabic) "المتطلبات" else "Requirements",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية" else "Copy of Identity Card",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)" else "Ship Photo (New and Clear)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم",
+                                                title = if (isArabic) "إيصال دفع الرسوم" else "Fee Payment Receipt",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1194,33 +1195,33 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "خطوات الخدمة",
+                                        title = if (isArabic) "خطوات الخدمة" else "Service Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "ملء النموذج",
+                                                title = if (isArabic) "ملء النموذج" else "Fill the Form",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "رفع المستندات",
+                                                title = if (isArabic) "رفع المستندات" else "Upload Documents",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "مراجعة الطلب",
+                                                title = if (isArabic) "مراجعة الطلب" else "Review Request",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 4,
                                                 stepNo = 4,
-                                                title = "استلام التصريح",
+                                                title = if (isArabic) "استلام التصريح" else "Receive Permit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1228,33 +1229,33 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 3,
-                                        title = "خطوات الخدمة",
+                                        title = if (isArabic) "خطوات الخدمة" else "Service Steps",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "ملء النموذج",
+                                                title = if (isArabic) "ملء النموذج" else "Fill the Form",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "رفع المستندات",
+                                                title = if (isArabic) "رفع المستندات" else "Upload Documents",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "مراجعة الطلب",
+                                                title = if (isArabic) "مراجعة الطلب" else "Review Request",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 4,
                                                 stepNo = 4,
-                                                title = "استلام التصريح",
+                                                title = if (isArabic) "استلام التصريح" else "Receive Permit",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1349,46 +1350,46 @@ fun getMainCategories(): List<MainCategory> {
                             descriptionRes = R.string.transaction_cancel_permanent_registration_desc,
                             route = NavRoutes.CancelRegistrationRoute.route,
                             routeInfo = "route-4",
-                            fees = "20 ريال",
+                            fees = if (isArabic) "20 ريال" else "20 OMR",
                             requirements = Requirement(
                                 id = "temporary_registration_certificate_id",
                                 serviceSummaryList = listOf(
                                     ServiceSummary(
                                         type = "fee",
-                                        value = "20 ريال",
-                                        label = "الرسوم",
+                                        value = if (isArabic) "20 ريال" else "20 OMR",
+                                        label = if (isArabic) "الرسوم" else "Fees",
                                         icon = Icons.Default.Timer,
                                     ),
                                     ServiceSummary(
                                         type = "duration",
-                                        value = "5-1 أيام",
-                                        label = "المدة الزمنية",
+                                        value = if (isArabic) "5-1 أيام" else "1-5 Days",
+                                        label = if (isArabic) "المدة الزمنية" else "Duration",
                                         icon = Icons.Default.Timer,
                                     )
                                 ),
                                 serviceInfoList = listOf(
                                     ServiceInfo(
                                         id = 1,
-                                        title = "المتطلبات",
+                                        title = if (isArabic) "المتطلبات" else "Requirements",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية" else "Copy of Identity Card",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)" else "Ship Photo (New and Clear)",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم",
+                                                title = if (isArabic) "إيصال دفع الرسوم" else "Fee Payment Receipt",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1396,26 +1397,26 @@ fun getMainCategories(): List<MainCategory> {
                                     ),
                                     ServiceInfo(
                                         id = 2,
-                                        title = "المتطلبات 2",
+                                        title = if (isArabic) "المتطلبات 2" else "Requirements 2",
                                         data = listOf(
                                             ServiceInfoSteps(
                                                 id = 1,
                                                 stepNo = 1,
-                                                title = "نسخة من بطاقة الهوية2",
+                                                title = if (isArabic) "نسخة من بطاقة الهوية2" else "Copy of Identity Card 2",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 2,
                                                 stepNo = 2,
-                                                title = "صورة للسفينة (جديدة وواضحة)2",
+                                                title = if (isArabic) "صورة للسفينة (جديدة وواضحة)2" else "Ship Photo (New and Clear) 2",
                                                 subTitle = null,
                                                 value = null
                                             ),
                                             ServiceInfoSteps(
                                                 id = 3,
                                                 stepNo = 3,
-                                                title = "إيصال دفع الرسوم2",
+                                                title = if (isArabic) "إيصال دفع الرسوم2" else "Fee Payment Receipt 2",
                                                 subTitle = null,
                                                 value = null
                                             )
@@ -1423,8 +1424,8 @@ fun getMainCategories(): List<MainCategory> {
                                     )
                                 )
                             ),
-                            duration = "3-1 أيام",
-                            steps = listOf("ملء النموذج", "رفع المستندات", "مراجعة الطلب", "استلام")
+                            duration = if (isArabic) "3-1 أيام" else "1-3 Days",
+                            steps = listOf(if (isArabic) "ملء النموذج" else "Fill the Form", if (isArabic) "رفع المستندات" else "Upload Documents", if (isArabic) "مراجعة الطلب" else "Review Request", if (isArabic) "استلام" else "Receive")
                         ),
                         Transaction(
                             id = "mortgage_certificate",

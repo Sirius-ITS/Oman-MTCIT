@@ -1,6 +1,7 @@
 package com.informatique.mtcit.business.transactions.marineunit
 
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Sealed class representing the result of marine unit validation
@@ -27,8 +28,8 @@ sealed class MarineUnitValidationResult {
             override val unit: MarineUnit,
             val actualOwner: String? = null
         ) : Ineligible() {
-            override val reason = "الوحدة البحرية غير مسجلة باسمك"
-            override val suggestion = "يرجى اختيار وحدة بحرية مملوكة لك"
+            override val reason = if (AppLanguage.isArabic) "الوحدة البحرية غير مسجلة باسمك" else "Marine unit is not registered in your name"
+            override val suggestion = if (AppLanguage.isArabic) "يرجى اختيار وحدة بحرية مملوكة لك" else "Please select a marine unit owned by you"
         }
 
         data class AlreadyMortgaged(
@@ -36,46 +37,46 @@ sealed class MarineUnitValidationResult {
             val bankName: String,
             val mortgageEndDate: String
         ) : Ineligible() {
-            override val reason = "الوحدة البحرية مرهونة بالفعل لدى $bankName"
-            override val suggestion = "يمكنك تقديم طلب فك الرهن أولاً"
+            override val reason = if (AppLanguage.isArabic) "الوحدة البحرية مرهونة بالفعل لدى $bankName" else "Marine unit is already mortgaged to $bankName"
+            override val suggestion = if (AppLanguage.isArabic) "يمكنك تقديم طلب فك الرهن أولاً" else "You can submit a mortgage release request first"
         }
 
         data class NotMortgaged(
             override val unit: MarineUnit
         ) : Ineligible() {
-            override val reason = "الوحدة البحرية غير مرهونة"
-            override val suggestion = "هذه المعاملة لفك الرهن فقط. اختر وحدة مرهونة"
+            override val reason = if (AppLanguage.isArabic) "الوحدة البحرية غير مرهونة" else "Marine unit is not mortgaged"
+            override val suggestion = if (AppLanguage.isArabic) "هذه المعاملة لفك الرهن فقط. اختر وحدة مرهونة" else "This transaction is for mortgage release only. Select a mortgaged unit"
         }
 
         data class TemporaryRegistration(
             override val unit: MarineUnit
         ) : Ineligible() {
-            override val reason = "الوحدة لديها شهادة تسجيل مؤقتة فقط"
-            override val suggestion = "يجب الحصول على شهادة تسجيل دائمة أولاً"
+            override val reason = if (AppLanguage.isArabic) "الوحدة لديها شهادة تسجيل مؤقتة فقط" else "Unit only has a temporary registration certificate"
+            override val suggestion = if (AppLanguage.isArabic) "يجب الحصول على شهادة تسجيل دائمة أولاً" else "Must obtain a permanent registration certificate first"
         }
 
         data class SuspendedOrCancelled(
             override val unit: MarineUnit,
             val status: String
         ) : Ineligible() {
-            override val reason = "حالة التسجيل: $status"
-            override val suggestion = "لا يمكن إجراء هذه المعاملة على وحدة متوقفة أو ملغاة"
+            override val reason = if (AppLanguage.isArabic) "حالة التسجيل: $status" else "Registration status: $status"
+            override val suggestion = if (AppLanguage.isArabic) "لا يمكن إجراء هذه المعاملة على وحدة متوقفة أو ملغاة" else "Cannot perform this transaction on a suspended or cancelled unit"
         }
 
         data class HasViolations(
             override val unit: MarineUnit,
             val violationsCount: Int
         ) : Ineligible() {
-            override val reason = "لا يمكن رهن وحدة بحرية لديها مخالفات نشطة ($violationsCount مخالفة)"
-            override val suggestion = "يجب تسوية المخالفات أولاً قبل تقديم طلب الرهن"
+            override val reason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية لديها مخالفات نشطة ($violationsCount مخالفة)" else "Cannot mortgage a unit with active violations ($violationsCount violations)"
+            override val suggestion = if (AppLanguage.isArabic) "يجب تسوية المخالفات أولاً قبل تقديم طلب الرهن" else "Must settle violations first before submitting a mortgage request"
         }
 
         data class HasDetentions(
             override val unit: MarineUnit,
             val detentionsCount: Int
         ) : Ineligible() {
-            override val reason = "لا يمكن رهن وحدة بحرية محتجزة ($detentionsCount احتجاز)"
-            override val suggestion = "يجب فك الاحتجاز أولاً قبل تقديم طلب الرهن"
+            override val reason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية محتجزة ($detentionsCount احتجاز)" else "Cannot mortgage a detained unit ($detentionsCount detentions)"
+            override val suggestion = if (AppLanguage.isArabic) "يجب فك الاحتجاز أولاً قبل تقديم طلب الرهن" else "Must release detention first before submitting a mortgage request"
         }
 
         data class CustomError(

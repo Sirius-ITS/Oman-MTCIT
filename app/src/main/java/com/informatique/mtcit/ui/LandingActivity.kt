@@ -61,6 +61,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import java.util.Locale
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.LocalAppLocale
 
 @AndroidEntryPoint
 class LandingActivity: BaseActivity() {
@@ -100,6 +101,13 @@ class LandingActivity: BaseActivity() {
             val lang by languageViewModel.languageFlow.collectAsState(initial = "ar")
             val currentLocale = Locale(lang)
             val themeOption by themeViewModel.theme.collectAsState(initial = ThemeOption.SYSTEM_DEFAULT)
+
+            // ✅ FIX: Keep Locale.getDefault() in sync with the runtime language so that
+            // non-Composable code (ViewModels, AppLanguage.isAr, etc.) always
+            // sees the correct locale without needing an app restart.
+            androidx.compose.runtime.LaunchedEffect(lang) {
+                Locale.setDefault(Locale(lang))
+            }
             val categories by landingViewModel.categories.collectAsState()
 
             // State to control splash visibility
@@ -151,6 +159,7 @@ class LandingActivity: BaseActivity() {
         var logoOffset by remember { mutableFloatStateOf(30f) }
         var logoOpacity by remember { mutableFloatStateOf(0f) }
         var textOpacity by remember { mutableFloatStateOf(0f) }
+        val isAr = LocalAppLocale.current.language == "ar"
 
         // Stripes animation
         val stripesAnimOffset by animateFloatAsState(
@@ -378,7 +387,7 @@ class LandingActivity: BaseActivity() {
                             .alpha(textAnimOpacity)
                     ) {
                         Text(
-                            text = "وزارة النقل والاتصالات وتقنية المعلومات",
+                            text = if (isAr) "وزارة النقل والاتصالات وتقنية المعلومات" else "Ministry of Transport, Communications and IT",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF333333),
@@ -429,7 +438,7 @@ class LandingActivity: BaseActivity() {
                     AnimatedLoaderBars(omanBlue, omanRed)
 
                     Text(
-                        text = "سلطنة عُمان",
+                        text = if (isAr) "سلطنة عُمان" else "Sultanate of Oman",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
                         color = Color(0xFF4D4D4D),

@@ -76,6 +76,32 @@ object DateValidationRules {
     }
 
     /**
+     * Date field value must be today or later (i.e. not in the past).
+     * Used for insurance expiry date in Permanent Registration.
+     */
+    fun notBeforeTomorrow(fieldId: String) = ValidationRule.CustomValidation(
+        fieldIds = listOf(fieldId),
+        errorFieldId = fieldId,
+        errorMessage = if (com.informatique.mtcit.common.util.AppLanguage.isArabic)
+            "يجب أن يكون التاريخ اليوم أو في المستقبل"
+        else
+            "Date must be today or a future date"
+    ) { fields ->
+        val value = (fields.find { it.id == fieldId } as? FormField.DatePicker)?.value
+        if (value.isNullOrBlank()) return@CustomValidation true
+        try {
+            val selected = dateFormat.parse(value)
+            val today = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            }.time
+            selected != null && !selected.before(today)
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    /**
      * Get all date-related validation rules
      */
     fun getAllDateRules(): List<ValidationRule> = listOf(

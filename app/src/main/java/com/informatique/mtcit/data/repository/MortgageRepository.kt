@@ -2,6 +2,7 @@ package com.informatique.mtcit.data.repository
 
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Represents the mortgage status of a marine unit
@@ -47,11 +48,11 @@ class MortgageRepositoryImpl @Inject constructor(
             "3" -> MortgageStatus(
                 isMortgaged = true,
                 mortgageId = "MTG-2024-001",
-                bankName = "بنك مسقط",
+                bankName = if (AppLanguage.isArabic) "بنك مسقط" else "Bank Muscat",
                 startDate = "2024-01-15",
                 endDate = "2029-01-15",
                 isApprovedBank = true,
-                mortgageAmount = "50000 ر.ع"
+                mortgageAmount = if (AppLanguage.isArabic) "50000 ر.ع" else "50000 OMR"
             )
             else -> MortgageStatus(isMortgaged = false)
         }

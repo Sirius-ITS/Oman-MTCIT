@@ -83,7 +83,7 @@ class RequestsViewModel @Inject constructor(
                 if (civilId == null) {
                     println("⚠️ RequestsViewModel: No token found, triggering login flow")
                     setLoading(false)
-                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول. الرجاء تسجيل الدخول للمتابعة")
+                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول. الرجاء تسجيل الدخول للمتابعة", "Access token not found. Please log in to continue")
                     return@launch
                 }
 
@@ -130,13 +130,16 @@ class RequestsViewModel @Inject constructor(
 
                 if (e.code == 401) {
                     println("🔐 401 Unauthorized - Token expired or invalid")
-                    _appError.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة")
+                    _appError.value = AppError.Unauthorized(
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                        "Session has expired. Please refresh the token to continue"
+                    )
                 } else {
-                    _appError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                    _appError.value = AppError.ApiError(e.code, "حدث خطأ في الخادم", "A server error occurred")
                 }
             } catch (e: Exception) {
                 println("❌ RequestsViewModel: Exception: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء تحميل الطلبات")
+                _appError.value = AppError.Unknown("حدث خطأ أثناء تحميل الطلبات", "An error occurred while loading requests")
             } finally {
                 setLoading(false)
             }
@@ -165,7 +168,7 @@ class RequestsViewModel @Inject constructor(
                 if (civilId == null) {
                     println("⚠️ RequestsViewModel: No token found when loading more")
                     _isLoadingMore.value = false
-                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول. الرجاء تسجيل الدخول للمتابعة")
+                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول. الرجاء تسجيل الدخول للمتابعة", "Access token not found. Please log in to continue")
                     return@launch
                 }
 
@@ -227,13 +230,16 @@ class RequestsViewModel @Inject constructor(
                 println("❌ API Error in loadMoreRequests: ${e.code} - ${e.message}")
 
                 if (e.code == 401) {
-                    _appError.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة")
+                    _appError.value = AppError.Unauthorized(
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                        "Session has expired. Please refresh the token to continue"
+                    )
                 } else {
-                    _appError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                    _appError.value = AppError.ApiError(e.code, "حدث خطأ في الخادم", "A server error occurred")
                 }
             } catch (e: Exception) {
                 println("❌ Exception in loadMoreRequests: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء تحميل المزيد")
+                _appError.value = AppError.Unknown("حدث خطأ أثناء تحميل المزيد", "An error occurred while loading more")
             } finally {
                 _isLoadingMore.value = false
             }
@@ -251,7 +257,7 @@ class RequestsViewModel @Inject constructor(
                 loadRequests()
             } catch (e: Exception) {
                 println("❌ Exception in refreshRequests: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "فشل التحديث")
+                _appError.value = AppError.Unknown("فشل التحديث", "Refresh failed")
             }
         }
     }
@@ -282,7 +288,7 @@ class RequestsViewModel @Inject constructor(
                 loadRequests()
             } catch (e: Exception) {
                 println("❌ Exception in changeSortOrder: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "فشل تغيير الترتيب")
+                _appError.value = AppError.Unknown("فشل تغيير الترتيب", "Failed to change sort order")
             } finally {
                 _isSortChanging.value = false
             }
@@ -314,7 +320,7 @@ class RequestsViewModel @Inject constructor(
                 if (civilId == null) {
                     println("⚠️ RequestsViewModel: No token found")
                     setLoading(false)
-                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول")
+                    _appError.value = AppError.Unauthorized("لم يتم العثور على رمز الدخول", "Access token not found")
                     return@launch
                 }
 
@@ -397,13 +403,16 @@ class RequestsViewModel @Inject constructor(
             } catch (e: ApiException) {
                 println("❌ API Error in applyFilter: ${e.code} - ${e.message}")
                 if (e.code == 401) {
-                    _appError.value = AppError.Unauthorized(e.message ?: "انتهت صلاحية الجلسة")
+                    _appError.value = AppError.Unauthorized(
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                        "Session has expired. Please refresh the token to continue"
+                    )
                 } else {
-                    _appError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                    _appError.value = AppError.ApiError(e.code, "حدث خطأ في الخادم", "A server error occurred")
                 }
             } catch (e: Exception) {
                 println("❌ Exception in applyFilter: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ أثناء تطبيق الفلتر")
+                _appError.value = AppError.Unknown("حدث خطأ أثناء تطبيق الفلتر", "An error occurred while applying the filter")
             } finally {
                 setLoading(false)
             }
@@ -462,12 +471,12 @@ class RequestsViewModel @Inject constructor(
         _appError.value = when (error) {
             is ApiException -> {
                 if (error.code == 401) {
-                    AppError.Unauthorized(error.message ?: "انتهت صلاحية الجلسة")
+                    AppError.Unauthorized("انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة", "Session has expired. Please refresh the token to continue")
                 } else {
-                    AppError.ApiError(error.code, error.message ?: "حدث خطأ في الخادم")
+                    AppError.ApiError(error.code, "حدث خطأ في الخادم", "A server error occurred")
                 }
             }
-            else -> AppError.Unknown(error.message ?: "حدث خطأ غير متوقع")
+            else -> AppError.Unknown("حدث خطأ غير متوقع", "An unexpected error occurred")
         }
     }
 

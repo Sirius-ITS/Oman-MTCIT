@@ -520,9 +520,7 @@
     <string name="requirements_duration_title">Request Duration</string>
     <plurals name="requirements_duration_value">
         <item quantity="one">One day</item>
-        <item quantity="many">%d days</item>
-        <item quantity="few">%d days</item>
-        <item quantity="zero">No time specified</item>
+        <item quantity="other">%d days</item>
     </plurals>
     <string name="requirements_steps_title">Steps</string>
     <string name="requirements_steps_heading">Steps to request the service</string>
@@ -896,17 +894,18 @@
 
 
     <!-- Sailing Regions Step -->
-    <string name="sailing_regions_title">بيانات البخارة</string>
-    <string name="sailing_regions_description">يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة.</string>
-    <string name="sailing_regions_selection">مناطق الإبحار</string>
-    <string name="select_sailing_regions_placeholder">اختر مناطق الإبحار</string>
+    <string name="sailing_regions_title">Sailor Info</string>
+    <string name="sailing_regions_description">Please provide complete information about the sailors to facilitate the review of the request and the necessary actions.</string>
+    <string name="sailing_regions_selection">Sailing Areas</string>
+    <string name="select_sailing_regions_placeholder">Choose sailing areas</string>
+    <string name="passengers_no_label">Number of authorized personnel, including crew</string>
 
     <!-- Multi-Select Dropdown -->
-    <string name="clear_all">مسح الكل</string>
-    <string name="no_results">لا توجد نتائج</string>
-    <string name="search_placeholder">بحث...</string>
+    <string name="clear_all">Clear all</string>
+    <string name="no_results">No results</string>
+    <string name="search_placeholder">Search … </string>
 
-    <string name="sailor_documents">مستندات البحارة</string>
+    <string name="sailor_documents">Sailor\'s documents</string>
 
 
 
@@ -1074,9 +1073,7 @@
     <string name="result_status">Result Status</string>
     <string name="inspection_decision">Inspection Decision</string>
     <string name="inspection_checklist_answers">Inspection Checklist Answers</string>
-    <string name="true">True</string>
-    <string name="false">False</string>
-    <string name="write_here">Write here...</string>
+    <string name="write_here">Write here…</string>
     <string name="enter_answer">Enter answer</string>
     <string name="enter_number">Enter number</string>
     <string name="enter_decimal_number">Enter decimal number</string>
@@ -1087,7 +1084,6 @@
     <string name="certificate_no_cert_number">Certificate No: ${cert.number}</string>
     <string name="view_certificate">View Certificate</string>
     <string name="payment_in_progress">Payment In Progress</string>
-    <string name="continue">Continue</string>
     <string name="date_time">Date &amp; Time</string>
     <string name="qr_code">QR Code</string>
     <string name="error_loading_qr_code">Error loading QR code</string>

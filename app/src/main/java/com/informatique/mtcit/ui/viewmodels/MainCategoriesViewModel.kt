@@ -150,10 +150,11 @@ class MainCategoriesViewModel @Inject constructor(
                 // ✅ Handle 401 specifically for token refresh
                 if (e.code == 401) {
                     _apiError.value = AppError.Unauthorized(
-                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                        "Session has expired. Please refresh the token to continue"
                     )
                 } else {
-                    _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                    _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم", e.message ?: "A server error occurred")
                 }
                 _subCategories.value = SubCategoriesUiState.Error(e.message ?: "API Error")
             }
@@ -182,10 +183,11 @@ class MainCategoriesViewModel @Inject constructor(
                 // ✅ Handle 401 specifically for token refresh
                 if (e.code == 401) {
                     _apiError.value = AppError.Unauthorized(
-                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                        "Session has expired. Please refresh the token to continue"
                     )
                 } else {
-                    _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم")
+                    _apiError.value = AppError.ApiError(e.code, e.message ?: "حدث خطأ في الخادم", e.message ?: "A server error occurred")
                 }
                 _transactionDetail.value = TransactionDetailUiState.Error(e.message ?: "API Error")
             }

@@ -1,971 +1,3 @@
-//package com.informatique.mtcit.ui.screens
-//
-//import androidx.compose.foundation.background
-//import androidx.compose.foundation.layout.*
-//import androidx.compose.foundation.lazy.LazyColumn
-//import androidx.compose.foundation.lazy.items
-//import androidx.compose.foundation.shape.RoundedCornerShape
-//import androidx.compose.foundation.text.KeyboardActions
-//import androidx.compose.foundation.text.KeyboardOptions
-//import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.automirrored.filled.ArrowBack
-//import androidx.compose.material.icons.filled.Search
-//import androidx.compose.material3.*
-//import androidx.compose.runtime.*
-//import androidx.compose.ui.Alignment
-//import androidx.compose.ui.Modifier
-//import androidx.compose.ui.graphics.Color
-//import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-//import androidx.compose.ui.res.painterResource
-//import androidx.compose.ui.text.font.FontWeight
-//import androidx.compose.ui.text.input.ImeAction
-//import androidx.compose.ui.text.style.TextAlign
-//import androidx.compose.ui.unit.dp
-//import androidx.compose.ui.unit.sp
-//import androidx.navigation.NavController
-//import com.informatique.mtcit.R
-//import com.informatique.mtcit.ui.theme.LocalExtraColors
-//
-//data class Ship(
-//    val id: String,
-//    val name: String,
-//    val type: String,
-//    val imoNumber: String,
-//    val callSign: String,
-//    val maritimeId: String,
-//    val registrationPort: String,
-//    val maritimeActivity: String
-//)
-//
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun ShipDimensionsChangeScreen(navController: NavController) {
-//    val extraColors = LocalExtraColors.current
-//    var searchQuery by remember { mutableStateOf("") }
-//    val keyboardController = LocalSoftwareKeyboardController.current
-//
-//    // بيانات السفن التجريبية
-//    val ships = remember {
-//        listOf(
-//            Ship(
-//                id = "1",
-//                name = "الزايدة البحرية",
-//                type = "نوع الوحدة البحرية",
-//                imoNumber = "9900001",
-//                callSign = "A9BC2",
-//                maritimeId = "470123456",
-//                registrationPort = "صحار",
-//                maritimeActivity = "صيد"
-//            ),
-//            Ship(
-//                id = "2",
-//                name = "الزايدة البحرية",
-//                type = "نوع الوحدة البحرية",
-//                imoNumber = "9900001",
-//                callSign = "A9BC2",
-//                maritimeId = "470123456",
-//                registrationPort = "صحار",
-//                maritimeActivity = "صيد"
-//            ),
-//            Ship(
-//                id = "3",
-//                name = "الزايدة البحرية",
-//                type = "نوع الوحدة البحرية",
-//                imoNumber = "9900001",
-//                callSign = "A9BC2",
-//                maritimeId = "470123456",
-//                registrationPort = "صحار",
-//                maritimeActivity = "صيد"
-//        )
-//        )
-//    }
-//
-//    // تصفية السفن حسب البحث
-//    val filteredShips = remember(searchQuery, ships) {
-//        if (searchQuery.isBlank()) {
-//            ships
-//        } else {
-//            ships.filter {
-//                it.name.contains(searchQuery, ignoreCase = true) ||
-//                        it.imoNumber.contains(searchQuery, ignoreCase = true) ||
-//                        it.callSign.contains(searchQuery, ignoreCase = true)
-//            }
-//        }
-//    }
-//
-//    Scaffold(
-//        topBar = {
-//            TopAppBar(
-//                title = {
-//                    Column {
-//                        Text(
-//                            text = "طلب تغيير أبعاد السفينة أو الوحدة البحرية",
-//                            fontSize = 16.sp,
-//                            fontWeight = FontWeight.Bold
-//                        )
-//                        Text(
-//                            text = "الخطوة 1 من 5",
-//                            fontSize = 12.sp,
-//                            color = Color.Gray
-//                        )
-//                    }
-//                },
-//                navigationIcon = {
-//                    IconButton(onClick = { navController.navigateUp() }) {
-//                        Icon(
-//                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-//                            contentDescription = "رجوع",
-//                            tint = extraColors.blue2
-//                        )
-//                    }
-//                },
-//                colors = TopAppBarDefaults.topAppBarColors(
-//                    containerColor = extraColors.background
-//                )
-//            )
-//        },
-//        containerColor = extraColors.background
-//    ) { paddingValues ->
-//        Column(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .padding(paddingValues)
-//        ) {
-//            // قسم العنوان والبحث
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(16.dp)
-//            ) {
-//                Text(
-//                    text = "السفن المملوكة",
-//                    fontSize = 20.sp,
-//                    fontWeight = FontWeight.Bold,
-//                    color = Color.Black,
-//                    textAlign = TextAlign.End,
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(8.dp))
-//
-//                Text(
-//                    text = "اختر السفينة من بين المملوكة و المسجلة، أو ابحث باستخدام الرقم التعريفي",
-//                    fontSize = 14.sp,
-//                    color = Color.Gray,
-//                    textAlign = TextAlign.End,
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(16.dp))
-//
-//                // Search TextField
-//                OutlinedTextField(
-//                    mortgageValue = searchQuery,
-//                    onValueChange = { searchQuery = it },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    placeholder = {
-//                        Text(
-//                            text = "ادخل الرقم التعريفي",
-//                            textAlign = TextAlign.End,
-//                            modifier = Modifier.fillMaxWidth()
-//                        )
-//                    },
-//                    leadingIcon = {
-//                        Icon(
-//                            imageVector = Icons.Default.Search,
-//                            contentDescription = "بحث",
-//                            tint = Color.Gray
-//                        )
-//                    },
-//                    shape = RoundedCornerShape(12.dp),
-//                    colors = OutlinedTextFieldDefaults.colors(
-//                        focusedContainerColor = Color.White,
-//                        unfocusedContainerColor = Color.White,
-//                        focusedBorderColor = extraColors.blue1,
-//                        unfocusedBorderColor = Color.LightGray
-//                    ),
-//                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-//                    keyboardActions = KeyboardActions(
-//                        onSearch = {
-//                            keyboardController?.hide()
-//                        }
-//                    ),
-//                    singleLine = true
-//                )
-//            }
-//
-//            // قائمة السفن
-//            LazyColumn(
-//                modifier = Modifier.fillMaxSize(),
-//                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-//                verticalArrangement = Arrangement.spacedBy(12.dp)
-//            ) {
-//                items(filteredShips) { ship ->
-//                    ShipCard(ship = ship)
-//                }
-//
-//                if (filteredShips.isEmpty()) {
-//                    item {
-//                        Box(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(32.dp),
-//                            contentAlignment = Alignment.Center
-//                        ) {
-//                            Text(
-//                                text = "لا توجد نتائج",
-//                                fontSize = 16.sp,
-//                                color = Color.Gray
-//                            )
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun ShipCard(ship: Ship) {
-//    val extraColors = LocalExtraColors.current
-//
-//    Card(
-//        modifier = Modifier.fillMaxWidth(),
-//        shape = RoundedCornerShape(16.dp),
-//        colors = CardDefaults.cardColors(containerColor = Color.White),
-//        elevation = CardDefaults.cardElevation(2.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(16.dp)
-//        ) {
-//            // Header with icon and title
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                // Radio button placeholder
-//                RadioButton(
-//                    selected = false,
-//                    onClick = { /* Handle selection */ },
-//                    colors = RadioButtonDefaults.colors(
-//                        selectedColor = extraColors.blue1,
-//                        unselectedColor = Color.LightGray
-//                    )
-//                )
-//
-//                Column(
-//                    horizontalAlignment = Alignment.End,
-//                    modifier = Modifier.weight(1f)
-//                ) {
-//                    Text(
-//                        text = ship.name,
-//                        fontSize = 18.sp,
-//                        fontWeight = FontWeight.Bold,
-//                        color = Color.Black
-//                    )
-//                    Text(
-//                        text = ship.type,
-//                        fontSize = 14.sp,
-//                        color = Color.Gray
-//                    )
-//                }
-//
-//                Spacer(modifier = Modifier.width(12.dp))
-//
-//                // Ship Icon
-//                Box(
-//                    modifier = Modifier
-//                        .size(48.dp)
-//                        .background(
-//                            color = Color(0xFFF5F5F5),
-//                            shape = RoundedCornerShape(12.dp)
-//                        ),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    Icon(
-//                        painter = painterResource(R.drawable.ic_launcher_foreground),
-//                        contentDescription = null,
-//                        tint = extraColors.blue1,
-//                        modifier = Modifier.size(32.dp)
-//                    )
-//                }
-//            }
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            // Ship Details
-//            ShipDetailRow(label = "رقم IMO", mortgageValue = ship.imoNumber)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رمز النداء", mortgageValue = ship.callSign)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رقم الهوية البحرية", mortgageValue = ship.maritimeId)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "ميناء التسجيل", mortgageValue = ship.registrationPort)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "النشاط البحري", mortgageValue = ship.maritimeActivity)
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            // View All Data Button
-//            OutlinedButton(
-//                onClick = { /* View all details */ },
-//                modifier = Modifier.fillMaxWidth(),
-//                shape = RoundedCornerShape(8.dp),
-//                colors = ButtonDefaults.outlinedButtonColors(
-//                    contentColor = extraColors.blue1
-//                ),
-//                border = ButtonDefaults.outlinedButtonBorder.copy(
-//                    width = 1.dp
-//                )
-//            ) {
-//                Text(
-//                    text = "عرض جميع البيانات",
-//                    fontSize = 14.sp,
-//                    modifier = Modifier.padding(vertical = 4.dp)
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun ShipDetailRow(label: String, mortgageValue: String) {
-//    Row(
-//        modifier = Modifier.fillMaxWidth(),
-//        horizontalArrangement = Arrangement.SpaceBetween,
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//        Text(
-//            text = mortgageValue,
-//            fontSize = 14.sp,
-//            color = Color.Black,
-//            fontWeight = FontWeight.Medium
-//        )
-//
-//        Text(
-//            text = label,
-//            fontSize = 14.sp,
-//            color = Color.Gray
-//        )
-//    }
-//}
-
-//package com.informatique.mtcit.ui.screens
-//
-//import androidx.compose.foundation.background
-//import androidx.compose.foundation.border
-//import androidx.compose.foundation.layout.*
-//import androidx.compose.foundation.lazy.LazyColumn
-//import androidx.compose.foundation.lazy.items
-//import androidx.compose.foundation.shape.RoundedCornerShape
-//import androidx.compose.foundation.text.KeyboardActions
-//import androidx.compose.foundation.text.KeyboardOptions
-//import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.automirrored.filled.ArrowBack
-//import androidx.compose.material.icons.filled.Check
-//import androidx.compose.material.icons.filled.Close
-//import androidx.compose.material.icons.filled.Search
-//import androidx.compose.material3.*
-//import androidx.compose.runtime.*
-//import androidx.compose.ui.Alignment
-//import androidx.compose.ui.Modifier
-//import androidx.compose.ui.graphics.Color
-//import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-//import androidx.compose.ui.res.painterResource
-//import androidx.compose.ui.text.font.FontWeight
-//import androidx.compose.ui.text.input.ImeAction
-//import androidx.compose.ui.text.style.TextAlign
-//import androidx.compose.ui.unit.dp
-//import androidx.compose.ui.unit.sp
-//import androidx.navigation.NavController
-//import com.informatique.mtcit.R
-//import com.informatique.mtcit.ui.theme.LocalExtraColors
-//import kotlinx.coroutines.launch
-//
-//data class Ship(
-//    val id: String,
-//    val name: String,
-//    val type: String,
-//    val imoNumber: String,
-//    val callSign: String,
-//    val maritimeId: String,
-//    val registrationPort: String,
-//    val maritimeActivity: String
-//)
-//
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun ShipDimensionsChangeScreen(navController: NavController) {
-//    val extraColors = LocalExtraColors.current
-//    var searchQuery by remember { mutableStateOf("") }
-//    val keyboardController = LocalSoftwareKeyboardController.current
-//    val sheetState = rememberModalBottomSheetState()
-//    val scope = rememberCoroutineScope()
-//    var showBottomSheet by remember { mutableStateOf(false) }
-//    var selectedShipForDetails by remember { mutableStateOf<Ship?>(null) }
-//    val selectedShips = remember { mutableStateListOf<String>() }
-//
-//    // بيانات السفن التجريبية
-//    val ships = remember {
-//        listOf(
-//            Ship(
-//                id = "1",
-//                name = "الزايدة البحرية",
-//                type = "نوع الوحدة البحرية",
-//                imoNumber = "9900001",
-//                callSign = "A9BC2",
-//                maritimeId = "470123456",
-//                registrationPort = "صحار",
-//                maritimeActivity = "صيد"
-//            ),
-//            Ship(
-//                id = "2",
-//                name = "الزايدة البحرية",
-//                type = "نوع الوحدة البحرية",
-//                imoNumber = "9900001",
-//                callSign = "A9BC2",
-//                maritimeId = "470123456",
-//                registrationPort = "صحار",
-//                maritimeActivity = "صيد"
-//            ),
-//            Ship(
-//                id = "3",
-//                name = "الزايدة البحرية",
-//                type = "نوع الوحدة البحرية",
-//                imoNumber = "9900001",
-//                callSign = "A9BC2",
-//                maritimeId = "470123456",
-//                registrationPort= "صحار",
-//            maritimeActivity = "صيد"
-//        )
-//        )
-//    }
-//
-//    // تصفية السفن حسب البحث
-//    val filteredShips = remember(searchQuery, ships) {
-//        if (searchQuery.isBlank()) {
-//            ships
-//        } else {
-//            ships.filter {
-//                it.name.contains(searchQuery, ignoreCase = true) ||
-//                        it.imoNumber.contains(searchQuery, ignoreCase = true) ||
-//                        it.callSign.contains(searchQuery, ignoreCase = true)
-//            }
-//        }
-//    }
-//
-//    Scaffold(
-//        topBar = {
-//            TopAppBar(
-//                title = {
-//                    Column {
-//                        Text(
-//                            text = "طلب تغيير أبعاد السفينة أو الوحدة البحرية",
-//                            fontSize = 16.sp,
-//                            fontWeight = FontWeight.Bold
-//                        )
-//                        Text(
-//                            text = "الخطوة 1 من 5",
-//                            fontSize = 12.sp,
-//                            color = Color.Gray
-//                        )
-//                    }
-//                },
-//                navigationIcon = {
-//                    IconButton(onClick = { navController.navigateUp() }) {
-//                        Icon(
-//                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-//                            contentDescription = "رجوع",
-//                            tint = extraColors.blue2
-//                        )
-//                    }
-//                },
-//                colors = TopAppBarDefaults.topAppBarColors(
-//                    containerColor = extraColors.background
-//                )
-//            )
-//        },
-//        containerColor = extraColors.background
-//    ) { paddingValues ->
-//        Column(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .padding(paddingValues)
-//        ) {
-//            // قسم العنوان والبحث
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(16.dp)
-//            ) {
-//                Text(
-//                    text = "السفن المملوكة",
-//                    fontSize = 20.sp,
-//                    fontWeight = FontWeight.Bold,
-//                    color = Color.Black,
-//                    textAlign = TextAlign.End,
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(8.dp))
-//
-//                Text(
-//                    text = "اختر السفينة من بين المملوكة و المسجلة، أو ابحث باستخدام الرقم التعريفي",
-//                    fontSize = 14.sp,
-//                    color = Color.Gray,
-//                    textAlign = TextAlign.End,
-//                    modifier = Modifier.fillMaxWidth()
-//                )
-//
-//                Spacer(modifier = Modifier.height(16.dp))
-//
-//                // Search TextField
-//                OutlinedTextField(
-//                    mortgageValue = searchQuery,
-//                    onValueChange = { searchQuery = it },
-//                    modifier = Modifier.fillMaxWidth(),
-//                    placeholder = {
-//                        Text(
-//                            text = "ادخل الرقم التعريفي",
-//                            textAlign = TextAlign.End,
-//                            modifier = Modifier.fillMaxWidth()
-//                        )
-//                    },
-//                    leadingIcon = {
-//                        Icon(
-//                            imageVector = Icons.Default.Search,
-//                            contentDescription = "بحث",
-//                            tint = Color.Gray
-//                        )
-//                    },
-//                    shape = RoundedCornerShape(12.dp),
-//                    colors = OutlinedTextFieldDefaults.colors(
-//                        focusedContainerColor = Color.White,
-//                        unfocusedContainerColor = Color.White,
-//                        focusedBorderColor = extraColors.blue1,
-//                        unfocusedBorderColor = Color.LightGray
-//                    ),
-//                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-//                    keyboardActions = KeyboardActions(
-//                        onSearch = {
-//                            keyboardController?.hide()
-//                        }
-//                    ),
-//                    singleLine = true
-//                )
-//            }
-//
-//            // قائمة السفن
-//            LazyColumn(
-//                modifier = Modifier.fillMaxSize(),
-//                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-//                verticalArrangement = Arrangement.spacedBy(12.dp)
-//            ) {
-//                items(filteredShips) { ship ->
-//                    ShipCard(
-//                        ship = ship,
-//                        isSelected = selectedShips.contains(ship.id),
-//                        onCardClick = {
-//                            if (selectedShips.contains(ship.id)) {
-//                                selectedShips.remove(ship.id)
-//                            } else {
-//                                selectedShips.add(ship.id)
-//                            }
-//                        },
-//                        onShowDetails = {
-//                            selectedShipForDetails = ship
-//                            showBottomSheet = true
-//                        }
-//                    )
-//                }
-//
-//                if (filteredShips.isEmpty()) {
-//                    item {
-//                        Box(
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(32.dp),
-//                            contentAlignment = Alignment.Center
-//                        ) {
-//                            Text(
-//                                text = "لا توجد نتائج",
-//                                fontSize = 16.sp,
-//                                color = Color.Gray
-//                            )
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    // Bottom Sheet للتفاصيل
-//    if (showBottomSheet && selectedShipForDetails != null) {
-//        ModalBottomSheet(
-//            onDismissRequest = {
-//                showBottomSheet = false
-//                selectedShipForDetails = null
-//            },
-//            sheetState = sheetState,
-//            containerColor = Color.White,
-//            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-//        ) {
-//            ShipDetailsBottomSheet(
-//                ship = selectedShipForDetails!!,
-//                onClose = {
-//                    scope.launch {
-//                        sheetState.hide()
-//                        showBottomSheet = false
-//                        selectedShipForDetails = null
-//                    }
-//                }
-//            )
-//        }
-//    }
-//}
-//
-//@Composable
-//fun ShipCard(
-//    ship: Ship,
-//    isSelected: Boolean,
-//    onCardClick: () -> Unit,
-//    onShowDetails: () -> Unit
-//) {
-//    val extraColors = LocalExtraColors.current
-//
-//    Card(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .then(
-//                if (isSelected) {
-//                    Modifier.border(
-//                        width = 2.dp,
-//                        color = extraColors.blue1,
-//                        shape = RoundedCornerShape(16.dp)
-//                    )
-//                } else {
-//                    Modifier
-//                }
-//            ),
-//        shape = RoundedCornerShape(16.dp),
-//        colors = CardDefaults.cardColors(
-//            containerColor = if (isSelected) extraColors.blue1.copy(alpha = 0.05f) else Color.White
-//        ),
-//        elevation = CardDefaults.cardElevation(2.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(16.dp)
-//        ) {
-//            // Header with icon and title
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                // Checkbox للاختيار
-//                Checkbox(
-//                    checked = isSelected,
-//                    onCheckedChange = { onCardClick() },
-//                    colors = CheckboxDefaults.colors(
-//                        checkedColor = extraColors.blue1,
-//                        uncheckedColor = Color.LightGray
-//                    )
-//                )
-//
-//                Column(
-//                    horizontalAlignment = Alignment.End,
-//                    modifier = Modifier.weight(1f)
-//                ) {
-//                    Text(
-//                        text = ship.name,
-//                        fontSize = 18.sp,
-//                        fontWeight = FontWeight.Bold,
-//                        color = Color.Black
-//                    )
-//                    Text(
-//                        text = ship.type,
-//                        fontSize = 14.sp,
-//                        color = Color.Gray
-//                    )
-//                }
-//
-//                Spacer(modifier = Modifier.width(12.dp))
-//
-//                // Ship Icon
-//                Box(
-//                    modifier = Modifier
-//                        .size(48.dp)
-//                        .background(
-//                            color = Color(0xFFF5F5F5),
-//                            shape = RoundedCornerShape(12.dp)
-//                        ),
-//                    contentAlignment = Alignment.Center
-//                ) {
-//                    Icon(
-//                        painter = painterResource(R.drawable.ic_launcher_foreground),
-//                        contentDescription = null,
-//                        tint = extraColors.blue1,
-//                        modifier = Modifier.size(32.dp)
-//                    )
-//                }
-//            }
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            // Ship Details
-//            ShipDetailRow(label = "رقم IMO", mortgageValue = ship.imoNumber)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رمز النداء", mortgageValue = ship.callSign)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "رقم الهوية البحرية", mortgageValue = ship.maritimeId)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "ميناء التسجيل", mortgageValue = ship.registrationPort)
-//            Spacer(modifier = Modifier.height(8.dp))
-//            ShipDetailRow(label = "النشاط البحري", mortgageValue = ship.maritimeActivity)
-//
-//            Spacer(modifier = Modifier.height(16.dp))
-//
-//            // View All Data Button
-//            OutlinedButton(
-//                onClick = onShowDetails,
-//                modifier = Modifier.fillMaxWidth(),
-//                shape = RoundedCornerShape(8.dp),
-//                colors = ButtonDefaults.outlinedButtonColors(
-//                    contentColor = extraColors.blue1
-//                ),
-//                border = ButtonDefaults.outlinedButtonBorder.copy(
-//                    width = 1.dp
-//                )
-//            ) {
-//                Text(
-//                    text = "عرض جميع البيانات",
-//                    fontSize = 14.sp,
-//                    modifier = Modifier.padding(vertical = 4.dp)
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun ShipDetailsBottomSheet(
-//    ship: Ship,
-//    onClose: () -> Unit
-//) {
-//    val extraColors = LocalExtraColors.current
-//
-//    Column(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(bottom = 24.dp)
-//    ) {
-//        // Header
-//        Row(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(horizontal = 24.dp, vertical = 16.dp),
-//            horizontalArrangement = Arrangement.SpaceBetween,
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            IconButton(onClick = onClose) {
-//                Icon(
-//                    imageVector = Icons.Default.Close,
-//                    contentDescription = "إغلاق",
-//                    tint = Color.Gray
-//                )
-//            }
-//
-//            Text(
-//                text = "تفاصيل السفينة الكاملة",
-//                fontSize = 20.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = Color.Black
-//            )
-//        }
-//
-//        Divider(color = Color.LightGray.copy(alpha = 0.5f))
-//
-//        LazyColumn(
-//            modifier = Modifier.fillMaxWidth(),
-//            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
-//            verticalArrangement = Arrangement.spacedBy(16.dp)
-//        ) {
-//            item {
-//                // Ship Icon and Name
-//                Row(
-//                    modifier = Modifier.fillMaxWidth(),
-//                    horizontalArrangement = Arrangement.SpaceBetween,
-//                    verticalAlignment = Alignment.CenterVertically
-//                ) {
-//                    Column(horizontalAlignment = Alignment.End) {
-//                        Text(
-//                            text = ship.name,
-//                            fontSize = 22.sp,
-//                            fontWeight = FontWeight.Bold,
-//                            color = extraColors.blue1
-//                        )
-//                        Text(
-//                            text = ship.type,
-//                            fontSize = 16.sp,
-//                            color = Color.Gray
-//                        )
-//                    }
-//
-//                    Box(
-//                        modifier = Modifier
-//                            .size(64.dp)
-//                            .background(
-//                                color = extraColors.blue1.copy(alpha = 0.1f),
-//                                shape = RoundedCornerShape(16.dp)
-//                            ),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Icon(
-//                            painter = painterResource(R.drawable.ic_launcher_foreground),
-//                            contentDescription = null,
-//                            tint = extraColors.blue1,
-//                            modifier = Modifier.size(40.dp)
-//                        )
-//                    }
-//                }
-//            }
-//
-//            item {
-//                DetailSection(
-//                    title = "المعلومات الأساسية",
-//                    details = listOf(
-//                        "رقم IMO" to ship.imoNumber,
-//                        "رمز النداء" to ship.callSign,
-//                        "رقم الهوية البحرية" to ship.maritimeId
-//                    )
-//                )
-//            }
-//
-//            item {
-//                DetailSection(
-//                    title = "معلومات التسجيل",
-//                    details = listOf(
-//                        "ميناء التسجيل" to ship.registrationPort,
-//                        "النشاط البحري" to ship.maritimeActivity
-//                    )
-//                )
-//            }
-//
-//            item {
-//                DetailSection(
-//                    title = "معلومات إضافية",
-//                    details = listOf(
-//                        "بلد التسجيل" to "سلطنة عمان",
-//                        "سنة الصنع" to "2020",
-//                        "نوع المحرك" to "ديزل",
-//                        "القوة الحصانية" to "500 HP"
-//                    )
-//                )
-//            }
-//
-//            item {
-//                DetailSection(
-//                    title = "الأبعاد",
-//                    details = listOf(
-//                        "الطول" to "25 متر",
-//                        "العرض" to "8 متر",
-//                        "العمق" to "4 متر",
-//                        "الحمولة الإجمالية" to "150 طن"
-//                    )
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun DetailSection(
-//    title: String,
-//    details: List<Pair<String, String>>
-//) {
-//    val extraColors = LocalExtraColors.current
-//
-//    Column(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .background(
-//                color = Color(0xFFF8F9FA),
-//                shape = RoundedCornerShape(12.dp)
-//            )
-//            .padding(16.dp)
-//    ) {
-//        Text(
-//            text = title,
-//            fontSize = 16.sp,
-//            fontWeight = FontWeight.Bold,
-//            color = extraColors.blue1,
-//            textAlign = TextAlign.End,
-//            modifier = Modifier.fillMaxWidth()
-//        )
-//
-//        Spacer(modifier = Modifier.height(12.dp))
-//
-//        details.forEach { (label, mortgageValue) ->
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(vertical = 6.dp),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                Text(
-//                    text = mortgageValue,
-//                    fontSize = 15.sp,
-//                    color = Color.Black,
-//                    fontWeight = FontWeight.Medium
-//                )
-//
-//                Text(
-//                    text = label,
-//                    fontSize = 15.sp,
-//                    color = Color.Gray
-//                )
-//            }
-//
-//            if (details.last() != (label to mortgageValue)) {
-//                Divider(
-//                    color = Color.LightGray.copy(alpha = 0.3f),
-//                    modifier = Modifier.padding(vertical = 4.dp)
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//fun ShipDetailRow(label: String, mortgageValue: String) {
-//    Row(
-//        modifier = Modifier.fillMaxWidth(),
-//        horizontalArrangement = Arrangement.SpaceBetween,
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//        Text(
-//            text = mortgageValue,
-//            fontSize = 14.sp,
-//            color = Color.Black,
-//            fontWeight = FontWeight.Medium
-//        )
-//
-//        Text(
-//            text = label,
-//            fontSize = 14.sp,
-//            color = Color.Gray
-//        )
-//    }
-//}
-
-
 package com.informatique.mtcit.ui.screens
 
 import androidx.compose.animation.*
@@ -1003,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.coroutines.launch
 
@@ -1028,13 +62,14 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedShipForDetails by remember { mutableStateOf<Ship?>(null) }
     val selectedShips = remember { mutableStateListOf<String>() }
+    val isArabic = LocalAppLocale.current.language == "ar"
 
     val ships = remember {
         listOf(
-            Ship("1", "الزايدة البحرية", "سفينة شحن", "9900001", "A9BC2", "470123456", "صحار", "نقل بضائع"),
-            Ship("2", "نسيم العرب", "قارب صيد", "9900002", "B8CD3", "470123457", "مسقط", "صيد"),
-            Ship("3", "البحر الأزرق", "ناقلة نفط", "9900003", "C7DE4", "470123458", "الدقم", "نقل نفط"),
-            Ship("4", "موج السلطان", "سفينة ركاب", "9900004", "D6EF5", "470123459", "صلالة", "نقل ركاب")
+            Ship("1", if (isArabic) "الزايدة البحرية" else "Al-Zaydah Maritime", if (isArabic) "سفينة شحن" else "Cargo Ship", "9900001", "A9BC2", "470123456", if (isArabic) "صحار" else "Sohar", if (isArabic) "نقل بضائع" else "Goods Transport"),
+            Ship("2", if (isArabic) "نسيم العرب" else "Naseem Al-Arab", "قارب صيد", "9900002", "B8CD3", "470123457", if (isArabic) "مسقط" else "Muscat", "صيد"),
+            Ship("3", if (isArabic) "البحر الأزرق" else "Al-Bahr Al-Azraq", if (isArabic) "ناقلة نفط" else "Oil Tanker", "9900003", "C7DE4", "470123458", if (isArabic) "الدقم" else "Duqm", if (isArabic) "نقل نفط" else "Oil Transport"),
+            Ship("4", if (isArabic) "موج السلطان" else "Mawj Al-Sultan", if (isArabic) "سفينة ركاب" else "Passenger Ship", "9900004", "D6EF5", "470123459", if (isArabic) "صلالة" else "Salalah", if (isArabic) "نقل ركاب" else "Passenger Transport")
         )
     }
 
@@ -1054,14 +89,14 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                 title = {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "اختر السفن",
+                            text = if (isArabic) "اختر السفن" else "Select Ships",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.blue1
                         )
                         AnimatedVisibility(visible = selectedShips.isNotEmpty()) {
                             Text(
-                                text = "${selectedShips.size} تم اختيارها",
+                                text = if (isArabic) "${selectedShips.size} تم اختيارها" else "${selectedShips.size} selected",
                                 fontSize = 12.sp,
                                 color = extraColors.blue1
                             )
@@ -1072,7 +107,7 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "رجوع",
+                            contentDescription = if (isArabic) "رجوع" else "Back",
                             tint = extraColors.blue1
                         )
                     }
@@ -1080,7 +115,7 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                 actions = {
                     if (selectedShips.isNotEmpty()) {
                         TextButton(onClick = { selectedShips.clear() }) {
-                            Text("إلغاء الكل", color = extraColors.blue1)
+                            Text(if (isArabic) "إلغاء الكل" else "Deselect All", color = extraColors.blue1)
                         }
                     }
                 },
@@ -1106,7 +141,7 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                     .fillMaxWidth(),
                 placeholder = {
                     Text(
-                        text = "ابحث عن سفينة...",
+                        text = if (isArabic) "ابحث عن سفينة..." else "Search for a ship...",
                         textAlign = TextAlign.End,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1114,7 +149,7 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "بحث",
+                        contentDescription = if (isArabic) "بحث" else "Search",
                         tint = extraColors.blue1
                     )
                 },
@@ -1123,7 +158,7 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                         IconButton(onClick = { searchQuery = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "مسح",
+                                contentDescription = if (isArabic) "مسح" else "Clear",
                                 tint = Color.Gray,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -1189,7 +224,7 @@ fun ShipDimensionsChangeScreen(navController: NavController) {
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    text = "لا توجد نتائج",
+                                    text = if (isArabic) "لا توجد نتائج" else "No results",
                                     fontSize = 16.sp,
                                     color = Color.Gray
                                 )
@@ -1390,17 +425,17 @@ fun ModernShipCard(
                         color = extraColors.blue1
                     )
                     InfoChip(
-                        label = "رمز النداء",
+                        label = if (isArabic) "رمز النداء" else "Call Sign",
                         value = ship.callSign,
                         color = extraColors.blue1
                     )
                     InfoChip(
-                        label = "الهوية البحرية",
+                        label = if (isArabic) "الهوية البحرية" else "Maritime ID",
                         value = ship.maritimeId.takeLast(4),
                         color = extraColors.blue1
                     )
                     InfoChip(
-                        label = "التسجيل",
+                        label = if (isArabic) "التسجيل" else "Registration",
                         value = ship.registrationPort,
                         color = extraColors.blue1
                     )
@@ -1416,7 +451,7 @@ fun ModernShipCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "عرض التفاصيل الكاملة",
+                        text = if (isArabic) "عرض التفاصيل الكاملة" else "View Full Details",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = extraColors.blue1,
@@ -1480,13 +515,13 @@ fun ModernShipDetailsBottomSheet(ship: Ship, onClose: () -> Unit) {
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "إغلاق",
+                    contentDescription = if (isArabic) "إغلاق" else "Close",
                     tint = Color.Gray
                 )
             }
 
             Text(
-                text = "التفاصيل الكاملة",
+                text = if (isArabic) "التفاصيل الكاملة" else "Full Details",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = extraColors.blue1
@@ -1560,46 +595,46 @@ fun ModernShipDetailsBottomSheet(ship: Ship, onClose: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 DetailGroup(
-                    title = "المعلومات الأساسية",
+                    title = if (isArabic) "المعلومات الأساسية" else "Basic Information",
                     icon = painterResource(id = R.drawable.ic_ship_registration),
                     items = listOf(
-                        "رقم IMO" to ship.imoNumber,
-                        "رمز النداء" to ship.callSign,
-                        "رقم الهوية البحرية" to ship.maritimeId
+                        (if (isArabic) "رقم IMO" else "IMO Number") to ship.imoNumber,
+                        (if (isArabic) "رمز النداء" else "Call Sign") to ship.callSign,
+                        (if (isArabic) "رقم الهوية البحرية" else "Maritime ID Number") to ship.maritimeId
                     ),
                     color = extraColors.blue1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 DetailGroup(
-                    title = "معلومات التسجيل",
+                    title = if (isArabic) "معلومات التسجيل" else "Registration Information",
                     icon = painterResource(id = R.drawable.ic_navigation),
                     items = listOf(
-                        "ميناء التسجيل" to ship.registrationPort,
-                        "النشاط البحري" to ship.maritimeActivity,
-                        "بلد التسجيل" to "سلطنة عمان"
+                        (if (isArabic) "ميناء التسجيل" else "Registration Port") to ship.registrationPort,
+                        (if (isArabic) "النشاط البحري" else "Maritime Activity") to ship.maritimeActivity,
+                        (if (isArabic) "بلد التسجيل" else "Registration Country") to if (isArabic) "سلطنة عمان" else "Sultanate of Oman"
                     ),
                     color = extraColors.blue1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 DetailGroup(
-                    title = "المواصفات التقنية",
+                    title = if (isArabic) "المواصفات التقنية" else "Technical Specifications",
                     icon = painterResource(id = R.drawable.ic_ship_modification),
                     items = listOf(
-                        "سنة الصنع" to "2020",
-                        "نوع المحرك" to "ديزل",
-                        "القوة الحصانية" to "500 HP"
+                        (if (isArabic) "سنة الصنع" else "Year of Manufacture") to "2020",
+                        (if (isArabic) "نوع المحرك" else "Engine Type") to if (isArabic) "ديزل" else "Diesel",
+                        (if (isArabic) "القوة الحصانية" else "Horsepower") to "500 HP"
                     ),
                     color = extraColors.blue1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 DetailGroup(
-                    title = "الأبعاد",
+                    title = if (isArabic) "الأبعاد" else "Dimensions",
                     icon = painterResource(id = R.drawable.ic_ship_modification),
-                    items = listOf(
-                        "الطول" to "25 متر",
-                        "العرض" to "8 متر",
-                        "العمق" to "4 متر",
-                        "الحمولة الإجمالية" to "150 طن"
+                    items = listOf<Pair<String, String>>(
+                        (if (isArabic) "الطول" else "Length") to if (isArabic) "25 متر" else "25 meters",
+                        (if (isArabic) "العرض" else "Width") to if (isArabic) "8 متر" else "8 meters",
+                        (if (isArabic) "العمق" else "Depth") to if (isArabic) "4 متر" else "4 meters",
+                        (if (isArabic) "الحمولة الإجمالية" else "Gross Tonnage") to if (isArabic) "150 طن" else "150 tons"
                     ),
                     color = extraColors.blue1
                 )

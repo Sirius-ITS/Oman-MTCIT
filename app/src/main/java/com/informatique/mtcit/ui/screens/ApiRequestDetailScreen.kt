@@ -56,7 +56,10 @@ import com.informatique.mtcit.ui.viewmodels.CertificateData
 import kotlinx.coroutines.launch
 import java.util.Locale
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.ui.components.localizedApp
+import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 // =====================================================================
 // 🔧 CERTIFICATE VIEWER CONFIGURATION
@@ -193,7 +196,7 @@ fun ApiRequestDetailScreen(
             )
         }
         IssuedCertificatesBottomSheet(
-            title = if (isArabicLang) "الشهادات المُصدرة" else "Issued Certificates",
+            title = if (isArabicLang)  "الشهادات المُصدرة" else "Issued Certificates",
             items = issuedItems,
             onDismiss = { viewModel.clearAffectedCertificatesList() }
         )
@@ -207,18 +210,18 @@ fun ApiRequestDetailScreen(
         val certData = certificateData!!
         println("🎉 Showing certificate issuance dialog: ${certData.certificationNumber}")
 
-        val isArabic = LocalAppLocale.current.language == "ar"
+        val failedToViewCertMsg = localizedApp(R.string.failed_to_view_certificate)
         val items = buildList {
             add(
                 SuccessDialogItem(
-                    label = stringResource(R.string.certificate_number),
+                    label = localizedApp(R.string.certificate_number),
                     value = certData.certificationNumber,
                     icon = "📄"
                 )
             )
             add(
                 SuccessDialogItem(
-                    label = stringResource(R.string.issued_date),
+                    label = localizedApp(R.string.issued_date),
                     value = certData.issuedDate,
                     icon = "📅"
                 )
@@ -226,7 +229,7 @@ fun ApiRequestDetailScreen(
             if (!certData.expiryDate.isNullOrEmpty()) {
                 add(
                     SuccessDialogItem(
-                        label = stringResource(R.string.expiry_date),
+                        label = localizedApp(R.string.expiry_date),
                         value = certData.expiryDate,
                         icon = "⏰"
                     )
@@ -235,7 +238,7 @@ fun ApiRequestDetailScreen(
         }
 
         SuccessDialog(
-            title = stringResource(R.string.certificate_issued_successfully),
+            title = localizedApp(R.string.certificate_issued_successfully),
             items = items,
             qrCode = certData.certificationQrCode,
             onDismiss = {
@@ -258,7 +261,7 @@ fun ApiRequestDetailScreen(
                     println("❌ Request type ID not available")
                     android.widget.Toast.makeText(
                         context,
-                        stringResource(R.string.failed_to_view_certificate),
+                        failedToViewCertMsg,
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -344,11 +347,12 @@ fun ApiRequestDetailScreen(
             ) {
                 // ✅ NEW: Show ErrorBanner for different error types
                 appError?.let { error ->
+                    val isAr = LocalAppLocale.current.language == "ar"
                     when (error) {
                         is com.informatique.mtcit.common.AppError.Unauthorized -> {
                             // ✅ Show refresh token button for 401 errors
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 showRefreshButton = true,
                                 onRefreshToken = {
                                     coroutineScope.launch {
@@ -362,21 +366,21 @@ fun ApiRequestDetailScreen(
                         is com.informatique.mtcit.common.AppError.ApiError -> {
                             // Other API errors - no refresh button
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 onDismiss = { viewModel.clearAppError() }
                             )
                         }
                         is com.informatique.mtcit.common.AppError.Unknown -> {
                             // Unknown errors
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 onDismiss = { viewModel.clearAppError() }
                             )
                         }
                         else -> {
                             // Fallback
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = if (LocalAppLocale.current.language == "ar") "حدث خطأ" else "An error occurred",
+                                message = if (isAr) "حدث خطأ" else "An error occurred",
                                 onDismiss = { viewModel.clearAppError() }
                             )
                         }
@@ -443,9 +447,7 @@ private fun LoadingState(extraColors: com.informatique.mtcit.ui.theme.ExtraColor
         ) {
             CircularProgressIndicator(color = extraColors.blue1)
             Text(
-                text = if (LocalAppLocale.current.language == "ar")
-                    "جاري تحميل البيانات..."
-                else "Loading data...",
+                text = if (LocalAppLocale.current.language == "ar") "جاري تحميل البيانات..." else "Loading data...",
                 color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
@@ -459,11 +461,12 @@ private fun ErrorState(
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors,
     onRetry: () -> Unit
 ) {
+    val isAr = LocalAppLocale.current.language == "ar"
     val errorMessage = when (error) {
-        is com.informatique.mtcit.common.AppError.ApiError -> error.message
-        is com.informatique.mtcit.common.AppError.Unauthorized -> error.message
-        is com.informatique.mtcit.common.AppError.Unknown -> error.message
-        else -> if (LocalAppLocale.current.language == "ar") "حدث خطأ غير متوق��" else "An error occurred"
+        is com.informatique.mtcit.common.AppError.ApiError -> error.getMessage(isAr)
+        is com.informatique.mtcit.common.AppError.Unauthorized -> error.getMessage(isAr)
+        is com.informatique.mtcit.common.AppError.Unknown -> error.getMessage(isAr)
+        else -> if (isAr) "حدث خطأ غير متوقع" else "An error occurred"
     }
 
     Box(
@@ -805,8 +808,7 @@ private fun BottomActionButtons(
                         ) {
                             Text(
                                 text = if (LocalAppLocale.current.language == "ar")
-                                    "متابعة التعديل"
-                                else "Continue Editing",
+                                    "متابعة التعديل" else "Continue Editing",
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -829,8 +831,7 @@ private fun BottomActionButtons(
                         ) {
                             Text(
                                 text = if (LocalAppLocale.current.language == "ar")
-                                    "تقديم طلب جديد"
-                                else "Submit New Request",
+                                     "تقديم طلب جديد" else "Submit New Request",
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -893,14 +894,12 @@ private fun IssueCertificateButton(
         isAlreadyIssued -> {
             // Certificate already issued - show "View Certificate" text
             if (LocalAppLocale.current.language == "ar")
-                "عرض الشهادة"
-            else "View Certificate"
+                "عرض الشهادة" else "View Certificate"
         }
         else -> {
             // Not yet issued - show "Issue and Display Certificate" text
             if (LocalAppLocale.current.language == "ar")
-                "اصدار و عرض الشهادة"
-            else "Issue and Display Certificate"
+                "اصدار و عرض الشهادة" else "Issue and View Certificate"
         }
     }
 
@@ -1031,8 +1030,7 @@ private fun ProceedToPaymentButton(
     ) {
         Text(
             text = if (LocalAppLocale.current.language == "ar")
-                "متابعة الدفع"
-            else "Continue to Payment",
+                "متابعة الدفع" else "Continue Payment",
             color = Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
@@ -1082,8 +1080,7 @@ private fun StatusInfoMessages(
                         )
                         Text(
                             text = if (LocalAppLocale.current.language == "ar")
-                                "طلبك قيد المراجعة من قبل الجهات المختصة"
-                            else "Your request is under review by the authorities",
+                                "طلبك قيد المراجعة من قبل الجهات المختصة" else "Your request is under review by the competent authorities",
                             fontSize = 14.sp,
                             color = extraColors.whiteInDarkMode,
                             lineHeight = 20.sp
@@ -1120,8 +1117,7 @@ private fun StatusInfoMessages(
                             )
                             Text(
                                 text = if (LocalAppLocale.current.language == "ar")
-                                    "تم رفض الطلب"
-                                else "Request Rejected",
+                                    "تم رفض الطلب" else "Request Rejected",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFF44336)
@@ -1165,8 +1161,7 @@ private fun StatusInfoMessages(
                         )
                         Text(
                             text = if (LocalAppLocale.current.language == "ar")
-                                "تم قبول الطلب بنجاح"
-                            else "Request Approved Successfully",
+                                "تم قبول الطلب بنجاح" else "Request accepted successfully",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF4CAF50)
@@ -1211,7 +1206,7 @@ private fun StatusHeaderCard(
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = stringResource(R.string.request_number),
+                        text = localizedApp(R.string.request_number),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
@@ -1246,7 +1241,7 @@ private fun StatusHeaderCard(
             // ─── Request Type ───
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = stringResource(R.string.request_type),
+                    text = localizedApp(R.string.request_type),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
@@ -1263,7 +1258,7 @@ private fun StatusHeaderCard(
 //            requestDetail.shipName?.let { shipName ->
 //                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
 //                    Text(
-//                        text = stringResource(R.string.ship_name),
+//                        text = localizedApp(R.string.ship_name),
 //                        fontSize = 12.sp,
 //                        fontWeight = FontWeight.Normal,
 //                        color = extraColors.whiteInDarkMode.copy(alpha = 0.55f)
@@ -1280,9 +1275,9 @@ private fun StatusHeaderCard(
             // ─── Message ───
             val displayMessage = requestDetail.message?.takeIf { it.isNotEmpty() }
                 ?: when (requestDetail.status.id) {
-                    2, 10 -> stringResource(R.string.request_could_not_be_approved)
-                    3, 7, 11, 12, 13, 14 -> stringResource(R.string.request_approved_successfully)
-                    6 -> stringResource(R.string.inspection_appointment_scheduled)
+                    2, 10 -> localizedApp(R.string.request_could_not_be_approved)
+                    3, 7, 11, 12, 13, 14 -> localizedApp(R.string.request_approved_successfully)
+                    6 -> localizedApp(R.string.inspection_appointment_scheduled)
                     else -> null
                 }
 
@@ -1308,9 +1303,9 @@ private fun StatusHeaderCard(
             // ─── Message Details (if available) ───
             val displayMessageDetails = requestDetail.messageDetails?.takeIf { it.isNotEmpty() }
                 ?: when (requestDetail.status.id) {
-                    2, 10 -> stringResource(R.string.we_regret_to_inform_you_that_your_request_has_been_rejected_after_review_due_to)
-                    3, 7, 11, 12, 13, 14 -> stringResource(R.string.your_request_has_been_successfully_confirmed_after_meeting_all_requirements)
-                    6 -> stringResource(R.string.we_are_pleased_to_inform_you_that_an_inspection_appointment_has_been_scheduled)
+                    2, 10 -> localizedApp(R.string.we_regret_to_inform_you_that_your_request_has_been_rejected_after_review_due_to)
+                    3, 7, 11, 12, 13, 14 -> localizedApp(R.string.your_request_has_been_successfully_confirmed_after_meeting_all_requirements)
+                    6 -> localizedApp(R.string.we_are_pleased_to_inform_you_that_an_inspection_appointment_has_been_scheduled)
                     else -> null
                 }
 
@@ -1524,7 +1519,8 @@ private fun RenderField(
                 field.items.forEachIndexed { index, itemFields ->
                     // Item group header
                     Text(
-                        text = "${if (LocalAppLocale.current.language == "ar") "العنصر" else "Item"} ${index + 1}",
+                        text = "${if (LocalAppLocale.current.language == "ar") 
+                            "العنصر" else "Item"} ${index + 1}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = extraColors.blue1,
@@ -1591,13 +1587,13 @@ private fun DetailFieldCard(
 private fun getSectionIcon(title: String): androidx.compose.ui.graphics.vector.ImageVector {
     val lower = title.lowercase()
     return when {
-        lower.contains("ship") || lower.contains("سفينة") || lower.contains("وحدة") || lower.contains("unit") -> Icons.Default.Info
-        lower.contains("document") || lower.contains("مستند") || lower.contains("وثيقة") -> Icons.Default.Info
-        lower.contains("insurance") || lower.contains("تأمين") -> Icons.Default.CheckCircle
-        lower.contains("engine") || lower.contains("محرك") -> Icons.Default.Info
-        lower.contains("owner") || lower.contains("مالك") -> Icons.Default.Info
-        lower.contains("engineer") || lower.contains("مهندس") -> Icons.Default.Info
-        lower.contains("inspection") || lower.contains("معاينة") || lower.contains("فحص") -> Icons.Default.DateRange
+        lower.contains("ship") || lower.contains(if (isArabic) "سفينة" else "Ship") || lower.contains(if (isArabic) "وحدة" else "Unit") || lower.contains("unit") -> Icons.Default.Info
+        lower.contains("document") || lower.contains(if (isArabic) "مستند" else "Document") || lower.contains(if (isArabic) "وثيقة" else "Document") -> Icons.Default.Info
+        lower.contains("insurance") || lower.contains(if (isArabic) "تأمين" else "Insurance") -> Icons.Default.CheckCircle
+        lower.contains("engine") || lower.contains(if (isArabic) "محرك" else "Engine") -> Icons.Default.Info
+        lower.contains("owner") || lower.contains(if (isArabic) "مالك" else "Owner") -> Icons.Default.Info
+        lower.contains("engineer") || lower.contains(if (isArabic) "مهندس" else "Engineer") -> Icons.Default.Info
+        lower.contains("inspection") || lower.contains(if (isArabic) "معاينة" else "Inspection") || lower.contains(if (isArabic) "فحص" else "Examination") -> Icons.Default.DateRange
         else -> Icons.Default.Info
     }
 }
@@ -1709,7 +1705,7 @@ private fun AssignedEngineersCard(
                 )
                 // Title — fills space
                 Text(
-                    text = stringResource(R.string.assigned_engineers_2),
+                    text = localizedApp(R.string.assigned_engineers_2),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = extraColors.whiteInDarkMode,
@@ -1872,7 +1868,7 @@ private fun EngineerChecklistSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = stringResource(R.string.inspection_checklist),
+                    text = localizedApp(R.string.inspection_checklist),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = extraColors.whiteInDarkMode
@@ -1895,7 +1891,7 @@ private fun EngineerChecklistSection(
 
                 checklistItems.isEmpty() -> {
                     Text(
-                        text = stringResource(R.string.no_checklist_available),
+                        text = localizedApp(R.string.no_checklist_available),
                         fontSize = 14.sp,
                         color = extraColors.whiteInDarkMode.copy(alpha = 0.7f),
                         modifier = Modifier.padding(vertical = 16.dp)
@@ -1923,7 +1919,7 @@ private fun EngineerChecklistSection(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.inspection_completed_view_only),
+                                text = localizedApp(R.string.inspection_completed_view_only),
                                 fontSize = 13.sp,
                                 color = Color(0xFF1976D2)
                             )
@@ -1947,7 +1943,7 @@ private fun EngineerChecklistSection(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = stringResource(R.string.checklist_can_be_filled_and_edited),
+                                text = localizedApp(R.string.checklist_can_be_filled_and_edited),
                                 fontSize = 13.sp,
                                 color = Color(0xFFF57C00)
                             )
@@ -2161,7 +2157,7 @@ private fun ApproveInspectionButton(
                 enabled = isDraftButtonEnabled
             ) {
                 Text(
-                    text = stringResource(R.string.save_as_draft),
+                    text = localizedApp(R.string.save_as_draft),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -2188,7 +2184,7 @@ private fun ApproveInspectionButton(
                 enabled = isSubmitButtonEnabled
             ) {
                 Text(
-                    text = stringResource(R.string.approve_inspection_result),
+                    text = localizedApp(R.string.approve_inspection_result),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
@@ -2219,7 +2215,7 @@ private fun ApproveInspectionButton(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = stringResource(R.string.select_decision),
+                    text = localizedApp(R.string.select_decision),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = extraColors.whiteInDarkMode,
@@ -2240,7 +2236,7 @@ private fun ApproveInspectionButton(
 
                     inspectionDecisions.isEmpty() -> {
                         Text(
-                            text = stringResource(R.string.no_decisions_available),
+                            text = localizedApp(R.string.no_decisions_available),
                             modifier = Modifier.padding(16.dp),
                             color = extraColors.whiteInDarkMode
                         )
@@ -2287,7 +2283,7 @@ private fun ApproveInspectionButton(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = stringResource(R.string.expiry_date_2),
+                                text = localizedApp(R.string.expiry_date_2),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.whiteInDarkMode,
@@ -2320,7 +2316,7 @@ private fun ApproveInspectionButton(
                                     enabled = false,
                                     placeholder = {
                                         Text(
-                                            stringResource(R.string.select_expiry_date),
+                                            localizedApp(R.string.select_expiry_date),
                                             color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                                         )
                                     },
@@ -2351,12 +2347,12 @@ private fun ApproveInspectionButton(
                                         TextButton(
                                             onClick = { showDateDialog = false }
                                         ) {
-                                            Text(stringResource(R.string.ok_2))
+                                            Text(localizedApp(R.string.ok_2))
                                         }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showDateDialog = false }) {
-                                            Text(stringResource(R.string.cancel))
+                                            Text(localizedApp(R.string.cancel))
                                         }
                                     }
                                 ) {
@@ -2377,7 +2373,7 @@ private fun ApproveInspectionButton(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = stringResource(R.string.refuse_notes),
+                                text = localizedApp(R.string.refuse_notes),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.whiteInDarkMode,
@@ -2392,7 +2388,7 @@ private fun ApproveInspectionButton(
                                 },
                                 placeholder = {
                                     Text(
-                                        stringResource(R.string.enter_refusal_reason),
+                                        localizedApp(R.string.enter_refusal_reason),
                                         color = extraColors.whiteInDarkMode.copy(alpha = 0.6f)
                                     )
                                 },
@@ -2472,7 +2468,7 @@ private fun ApproveInspectionButton(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.confirm),
+                                text = localizedApp(R.string.confirm),
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.text.DecimalFormat
 
@@ -35,6 +36,7 @@ fun PaymentDetailsComponent(
     finalTotal: Double
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     val formatter = DecimalFormat("#,##0.000")
 
     Column(
@@ -161,7 +163,7 @@ fun PaymentDetailsComponent(
                 lineItems.forEach { item ->
                     PaymentLineItemRow(
                         label = item.name,
-                        value = "${formatter.format(item.amount)} ر.ع"
+                        value = if (isAr) "${formatter.format(item.amount)} ر.ع" else "${formatter.format(item.amount)} OMR"
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -194,7 +196,7 @@ fun PaymentDetailsComponent(
                 )
 
                 Text(
-                    text = "${formatter.format(finalTotal)} ر.ع",
+                    text = if (isAr) "${formatter.format(finalTotal)} ر.ع" else "${formatter.format(finalTotal)} OMR",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = extraColors.whiteInDarkMode

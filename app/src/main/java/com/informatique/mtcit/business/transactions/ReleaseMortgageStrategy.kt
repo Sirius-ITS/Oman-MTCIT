@@ -25,6 +25,7 @@ import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.util.UserHelper
 import com.informatique.mtcit.common.ErrorMessageExtractor
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Release Mortgage
@@ -108,7 +109,7 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         println("✅ Fetched ${requiredDocumentsList.size} required documents:")
         requiredDocumentsList.forEach { docItem ->
-            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            val mandatoryText = if (docItem.document.isMandatory == 1) if (AppLanguage.isArabic) "إلزامي" else "Mandatory" else if (AppLanguage.isArabic) "اختياري" else "Optional"
             println("   - ${docItem.document.nameAr} ($mandatoryText)")
         }
 
@@ -145,11 +146,11 @@ class ReleaseMortgageStrategy @Inject constructor(
         // ✅ For individuals: send ownerCivilId + requestTypeId ONLY (no commercialNumber)
         // ✅ For companies: send ownerCivilId + requestTypeId + commercialNumber (CR Number)
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد", "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة", "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -222,7 +223,7 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (only for companies)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(
                 SharedSteps.commercialRegistrationStep(
                     options = commercialOptions
@@ -299,7 +300,7 @@ class ReleaseMortgageStrategy @Inject constructor(
     // NEW: Validate marine unit selection with business rules
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         val unit = marineUnits.find { it.id.toString() == unitId }
-            ?: return ValidationResult.Error("الوحدة البحرية غير موجودة")
+            ?: return ValidationResult.Error(if (AppLanguage.isArabic) "الوحدة البحرية غير موجودة" else "Marine unit not found")
 
         val (validationResult, navigationAction) = validateMarineUnitUseCase.executeAndGetAction(
             unit = unit,
@@ -415,7 +416,7 @@ class ReleaseMortgageStrategy @Inject constructor(
                     result.onFailure { error ->
                         println("❌ Failed to create redemption request: ${error.message}")
                         val msg = when (error) {
-                            is ApiException -> error.message ?: "فشل في إنشاء طلب فك الرهن"
+                            is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب فك الرهن" else "Failed to create mortgage release request"
                             else -> ErrorMessageExtractor.extract(error.message)
                         }
                         accumulatedFormData["apiError"] = msg
@@ -429,22 +430,22 @@ class ReleaseMortgageStrategy @Inject constructor(
                     // ✅ Provide helpful error message in Arabic
                     val userMessage = when {
                         e.message?.contains("400") == true ->
-                            "خطأ في البيانات المرسلة إلى الخادم (400). يرجى التأكد من:\n" +
-                            "• اختيار سفينة صحيحة\n" +
-                            "• رفع جميع المستندات الإلزامية\n" +
-                            "• الاتصال بالإنترنت"
+                            (if (AppLanguage.isArabic) "خطأ في البيانات المرسلة إلى الخادم (400). يرجى التأكد من:\n" else "Error in data sent to server (400). Please ensure:\n") +
+                            (if (AppLanguage.isArabic) "• اختيار سفينة صحيحة\n" else "• Correct ship selected\n") +
+                            (if (AppLanguage.isArabic) "• رفع جميع المستندات الإلزامية\n" else "• All mandatory documents uploaded\n") +
+                            (if (AppLanguage.isArabic) "• الاتصال بالإنترنت" else "• Internet connection")
 
                         e.message?.contains("404") == true ->
-                            "لم يتم العثور على خدمة فك الرهن على الخادم (404)"
+                            if (AppLanguage.isArabic) "لم يتم العثور على خدمة فك الرهن على الخادم (404)" else "Mortgage release service not found on server (404)"
 
                         e.message?.contains("500") == true ->
-                            "خطأ في الخادم (500). يرجى المحاولة لاحقاً"
+                            if (AppLanguage.isArabic) "خطأ في الخادم (500). يرجى المحاولة لاحقاً" else "Server error (500). Please try again later"
 
                         e.message?.contains("timeout") == true || e.message?.contains("Timeout") == true ->
-                            "انتهت مهلة الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً"
+                            if (AppLanguage.isArabic) "انتهت مهلة الاتصال. يرجى التحقق من الإنترنت والمحاولة مجدداً" else "Connection timed out. Please check your internet and try again"
 
                         else ->
-                            "فشل إنشاء طلب فك الرهن: ${e.message}"
+                            if (AppLanguage.isArabic) "فشل إنشاء طلب فك الرهن: ${e.message}" else "Failed to create mortgage release request: ${e.message}"
                     }
 
                     // Re-throw with user-friendly message
@@ -460,7 +461,7 @@ class ReleaseMortgageStrategy @Inject constructor(
             val requestIdInt = createdRedemptionRequestId ?: accumulatedFormData["redemptionRequestId"]?.toIntOrNull()
             if (requestIdInt == null) {
                 println("❌ No redemptionRequestId available for review step")
-                accumulatedFormData["apiError"] = "لم يتم العثور على رقم طلب فك الرهن"
+                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على رقم طلب فك الرهن" else "Mortgage release request number not found"
                 return -1
             }
 
@@ -573,7 +574,7 @@ class ReleaseMortgageStrategy @Inject constructor(
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()
-                accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب: ${e.message}" else "An error occurred while submitting the request: ${e.message}"
                 return -1
             }
         }
@@ -632,7 +633,7 @@ class ReleaseMortgageStrategy @Inject constructor(
         // Validate required fields
         if (selectedUnitsJson.isNullOrBlank() || selectedUnitsJson == "[]") {
             println("❌ Marine unit not selected")
-            return Result.failure(Exception("يرجى اختيار السفينة"))
+            return Result.failure(Exception(if (AppLanguage.isArabic) "يرجى اختيار السفينة" else "Please select the ship"))
         }
 
         // Parse the selected ship ID
@@ -643,7 +644,7 @@ class ReleaseMortgageStrategy @Inject constructor(
 
             if (firstShipId.isNullOrBlank()) {
                 println("❌ Failed to parse ship ID from: $selectedUnitsJson")
-                return Result.failure(Exception("تنسيق اختيار السفينة غير صالح"))
+                return Result.failure(Exception(if (AppLanguage.isArabic) "تنسيق اختيار السفينة غير صالح" else "Invalid ship selection format"))
             }
 
             println("📍 Extracted ship ID: $firstShipId")
@@ -653,7 +654,7 @@ class ReleaseMortgageStrategy @Inject constructor(
             val actualShipId = firstShipId.toIntOrNull()
             if (actualShipId == null) {
                 println("❌ Ship ID is not a valid integer: $firstShipId")
-                return Result.failure(Exception("معرف السفينة غير صالح"))
+                return Result.failure(Exception(if (AppLanguage.isArabic) "معرف السفينة غير صالح" else "Invalid ship ID"))
             }
 
             // ✅ Optional: Find the MarineUnit for logging (not required for API call)
@@ -671,7 +672,7 @@ class ReleaseMortgageStrategy @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception parsing selected units: ${e.message}")
             e.printStackTrace()
-            return Result.failure(Exception("فشل تحليل السفينة المحددة: ${e.message}"))
+            return Result.failure(Exception(if (AppLanguage.isArabic) "فشل تحليل السفينة المحددة: ${e.message}" else "Failed to parse selected ship: ${e.message}"))
         }
 
         // ✅ NEW: Collect all uploaded documents from dynamic fields
@@ -722,7 +723,7 @@ class ReleaseMortgageStrategy @Inject constructor(
                     // Check if document is mandatory
                     if (docItem.document.isMandatory == 1) {
                         println("❌ Mandatory document missing: ${docItem.document.nameAr}")
-                        return Result.failure(Exception("المستند '${docItem.document.nameAr}' إلزامي ولم يتم رفعه"))
+                        return Result.failure(Exception(if (AppLanguage.isArabic) "المستند '${docItem.document.nameAr}' إلزامي ولم يتم رفعه" else "Document '${docItem.document.nameEn ?: docItem.document.nameAr}' is mandatory and was not uploaded"))
                     }
                 }
             }
@@ -732,7 +733,7 @@ class ReleaseMortgageStrategy @Inject constructor(
         // Validate that at least one document is uploaded
         if (uploadedDocuments.isEmpty()) {
             println("❌ No documents uploaded")
-            return Result.failure(Exception("يرجى رفع المستندات المطلوبة"))
+            return Result.failure(Exception(if (AppLanguage.isArabic) "يرجى رفع المستندات المطلوبة" else "Please upload the required documents"))
         }
 
         // ✅ Create the redemption request with documents array
@@ -773,7 +774,7 @@ class ReleaseMortgageStrategy @Inject constructor(
         result.onFailure { error ->
             println("❌ Failed to create redemption request: ${error.message}")
             val msg = when (error) {
-                is ApiException -> error.message ?: "فشل في إنشاء طلب فك الرهن"
+                is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب فك الرهن" else "Failed to create mortgage release request"
                 else -> ErrorMessageExtractor.extract(error.message)
             }
             accumulatedFormData["apiError"] = msg
@@ -796,7 +797,7 @@ class ReleaseMortgageStrategy @Inject constructor(
 
         if (requestId == null) {
             println("❌ No redemption request ID found - cannot submit")
-            return Result.failure(Exception("لم يتم العثور على رقم الطلب. يرجى المحاولة مرة أخرى."))
+            return Result.failure(Exception(if (AppLanguage.isArabic) "لم يتم العثور على رقم الطلب. يرجى المحاولة مرة أخرى." else "Request number not found. Please try again."))
         }
 
         println("✅ Redemption Request ID: $requestId")
@@ -823,7 +824,7 @@ class ReleaseMortgageStrategy @Inject constructor(
     }
 
     override fun getTransactionTypeName(): String {
-        return "فك الرهن"
+        return if (AppLanguage.isArabic) "فك الرهن" else "Mortgage Release"
     }
 
     /**

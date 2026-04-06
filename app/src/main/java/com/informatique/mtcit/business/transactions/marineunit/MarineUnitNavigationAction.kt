@@ -2,6 +2,7 @@ package com.informatique.mtcit.business.transactions.marineunit
 
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.business.transactions.TransactionType
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Sealed class representing navigation actions after marine unit validation
@@ -57,7 +58,7 @@ sealed class MarineUnitNavigationAction {
         val marineUnit: MarineUnit,
         val complianceIssues: List<ComplianceIssue>,
         val rejectionReason: String,
-        val rejectionTitle: String = "تم رفض الطلب"
+        val rejectionTitle: String = if (AppLanguage.isArabic) "تم رفض الطلب" else "Request Rejected"
     ) : MarineUnitNavigationAction()
 
     /**
@@ -84,7 +85,7 @@ data class ErrorAction(
  * NEW: Represents a compliance issue found during marine unit validation
  */
 data class ComplianceIssue(
-    val category: String,        // e.g., "المخالفات", "الديون", "الرهونات"
+    val category: String,        // e.g., if (AppLanguage.isArabic) "المخالفات" else "Violations", "الديون", "الرهونات"
     val title: String,           // e.g., "وجود مخالفات نشطة"
     val description: String,     // Detailed description
     val severity: IssueSeverity, // Blocking, Warning, Info

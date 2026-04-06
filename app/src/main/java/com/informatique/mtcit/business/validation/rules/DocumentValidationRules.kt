@@ -1,5 +1,7 @@
 package com.informatique.mtcit.business.validation.rules
 
+import com.informatique.mtcit.common.util.AppLanguage
+
 /**
  * Validation rules for documents based on marine unit characteristics
  */
@@ -17,7 +19,7 @@ object DocumentValidationRules {
         },
         requiredFieldId = "inspectionDocuments",
         errorFieldId = "inspectionDocuments",
-        errorMessage = "مستندات الفحص مطلوبة للوحدات البحرية التي يقل طولها عن أو يساوي 24 متر"
+        errorMessage = if (AppLanguage.isArabic) "مستندات الفحص مطلوبة للوحدات البحرية التي يقل طولها عن أو يساوي 24 متر" else "Inspection documents required for marine units with length less than or equal to 24 meters"
     )
 
     /**

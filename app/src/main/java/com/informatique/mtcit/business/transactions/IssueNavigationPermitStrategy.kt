@@ -23,11 +23,14 @@ import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import android.content.Context
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.business.validation.rules.FormatValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.informatique.mtcit.util.UserHelper
 import io.ktor.utils.io.streams.asInput
 import androidx.core.net.toUri
 import com.informatique.mtcit.common.ErrorMessageExtractor
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Issue Navigation Permit
@@ -124,7 +127,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
             onStepsNeedRebuild?.invoke()
         } catch (e: Exception) {
             println("❌ Failed to load inspection lookups: ${e.message}")
-            accumulatedFormData["apiError"] = "فشل في تحميل بيانات المعاينة: ${e.message}"
+            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل في تحميل بيانات المعاينة: ${e.message}" else "Failed to load inspection data: ${e.message}"
         }
     }
 
@@ -148,11 +151,11 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد", "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة", "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -277,9 +280,9 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 }
                 "crewJobTitles" -> {
                     if (crewJobTitles.isEmpty()) {
-                        // ✅ Load with IDs in "ID|Name" format
+                        // ✅ Load with IDs in "ID|LocalizedName" format
                         val jobs = lookupRepository.getCrewJobTitlesRaw()
-                        crewJobTitles = jobs.map { "${it.id}|${it.nameAr}" }
+                        crewJobTitles = jobs.map { "${it.id}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}" }
                         println("✅ Loaded ${crewJobTitles.size} crew job titles with IDs")
                     }
                 }
@@ -289,7 +292,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                         println("🌍 Raw countries from API (first 3):")
                         countries.take(3).forEach { println("   - id='${it.id}', nameAr='${it.nameAr}', isoCode='${it.isoCode}'") }
                         // ✅ IMPORTANT: Use isoCode (ISO country code like "UA") instead of id (which contains country name)
-                        countryOptions = countries.map { "${it.isoCode}|${it.nameAr}" }
+                        countryOptions = countries.map { "${it.isoCode}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}" }
                         println("✅ Loaded ${countryOptions.size} countries with ISO codes")
                         println("   First 3 formatted: ${countryOptions.take(3)}")
                     }
@@ -309,7 +312,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -320,7 +323,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
             )
         )
         steps.add(SharedSteps.sailingRegionsStep(
-            sailingRegions = sailingRegionsOptions.map { it.nameAr } // ✅ Pass names to UI
+            sailingRegions = sailingRegionsOptions.map { if (AppLanguage.isArabic) it.nameAr else it.nameEn }
         ))
         steps.add( SharedSteps.sailorInfoStep(
             jobs = crewJobTitles,
@@ -386,7 +389,27 @@ class IssueNavigationPermitStrategy @Inject constructor(
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+        val rules = getValidationRulesForStep(step, stepData)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = rules
+        )
+    }
+
+    /**
+     * Get validation rules based on step content
+     */
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        val fieldIds = stepData.fields.map { it.id }
+        val rules = mutableListOf<ValidationRule>()
+
+        if (fieldIds.contains("passengersNo")) {
+            rules.add(FormatValidationRules.numericOnly("passengersNo"))
+        }
+
+        return rules
     }
 
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
@@ -452,7 +475,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                             println("❌ Failed to create navigation license request: ${error.message}")
                                             // Build friendly message
                                             val msg = when (error) {
-                                                is ApiException -> error.message ?: "فشل في إنشاء طلب رخصة الملاحة"
+                                                is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب رخصة الملاحة" else "Failed to create navigation permit request"
                                                 else -> ErrorMessageExtractor.extract(error.message)
                                             }
 
@@ -465,7 +488,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                         }
                                     )
                                 } else {
-                                    accumulatedFormData["apiError"] = "فشل في استخراج معرف السفينة"
+                                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل في استخراج معرف السفينة" else "Failed to extract ship ID"
                                     return -1
                                 }
                             }
@@ -484,10 +507,10 @@ class IssueNavigationPermitStrategy @Inject constructor(
                         }
                     } catch (e: ApiException) {
                         // Preserve API exception so BaseTransactionViewModel can convert it to AppError and show the banner
-                        accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
+                        accumulatedFormData["apiError"] = e.message ?: if (AppLanguage.isArabic) "فشل في متابعة الطلب" else "Failed to follow up on the request"
                         throw e
                     } catch (e: Exception) {
-                        accumulatedFormData["apiError"] = e.message ?: "فشل في متابعة الطلب"
+                        accumulatedFormData["apiError"] = e.message ?: if (AppLanguage.isArabic) "فشل في متابعة الطلب" else "Failed to follow up on the request"
                         return -1
                     }
                 }
@@ -535,7 +558,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 } catch (e: Exception) {
                     println("❌ Exception processing inspection step: ${e.message}")
                     e.printStackTrace()
-                    accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}" else "An error occurred while submitting the inspection request: ${e.message}"
                     return -1
                 }
             }
@@ -590,7 +613,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                     val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
                     if (requestIdInt == null) {
                         println("❌ No requestId available for review step")
-                        accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                        accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على رقم الطلب" else "Request number not found"
                         return -1
                     }
 
@@ -620,7 +643,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                     // ✅ Use prepareInspectionDialog to set dialog flags with parent transaction info
                                     // Request Type: 3 = Issue Navigation Permit
                                     inspectionFlowManager.prepareInspectionDialog(
-                                        message = "تم إرسال طلب تصريح الإبحار بنجاح (رقم الطلب: $requestId).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                        message = if (AppLanguage.isArabic) "تم إرسال طلب تصريح الإبحار بنجاح (رقم الطلب: $requestId).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة." else "Navigation permit request submitted successfully (Request No: $requestId).\n\nThe ship requires an inspection. Please continue to submit an inspection request.",
                                         formData = accumulatedFormData,
                                         allowContinue = true,
                                         parentRequestId = requestId.toInt(),  // Convert Long to Int
@@ -660,7 +683,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                         // Set success flags for ViewModel to show dialog
                                         accumulatedFormData["requestSubmitted"] = "true"
                                         accumulatedFormData["requestNumber"] = requestNumber
-                                        accumulatedFormData["successMessage"] = "تم إرسال الطلب بنجاح"
+                                        accumulatedFormData["successMessage"] = if (AppLanguage.isArabic) "تم إرسال الطلب بنجاح" else "Request submitted successfully"
                                         accumulatedFormData["needInspection"] = "false"
 
                                         // Return -2 to indicate: success but show dialog and stop
@@ -677,11 +700,11 @@ class IssueNavigationPermitStrategy @Inject constructor(
                                 println("❌ Failed to check inspection preview: ${error.message}")
                                 // Build friendly message and store for UI/debugging
                                 val msg = when (error) {
-                                    is ApiException -> error.message ?: "حدث خطأ أثناء التحقق من المعاينة"
+                                    is ApiException -> error.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء التحقق من المعاينة" else "An error occurred while verifying the inspection"
                                     else -> ErrorMessageExtractor.extract(error.message)
                                 }
 
-                                accumulatedFormData["apiError"] = "حدث خطأ أثناء التحقق من المعاينة: $msg"
+                                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء التحقق من المعاينة: $msg" else "An error occurred while verifying the inspection: $msg"
 
                                 // Re-throw so upstream ViewModel (BaseTransactionViewModel) can catch and display ErrorBanner
                                 if (error is ApiException) {
@@ -698,7 +721,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                         println("❌ Exception in review step: ${e.message}")
                         e.printStackTrace()
                         accumulatedFormData["apiError"] =
-                            "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                            if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب: ${e.message}" else "An error occurred while submitting the request: ${e.message}"
                         return -1
                     }
                 }
@@ -763,9 +786,9 @@ class IssueNavigationPermitStrategy @Inject constructor(
         println("🔍 Parsed selected names: $selectedNames")
         println("🔍 Available regions in cache: ${sailingRegionsOptions.map { "${it.id}:${it.nameAr}" }}")
 
-        // ✅ Map names to IDs
+        // ✅ Map names to IDs (match against localized name to be consistent with display)
         val selectedAreaIds = sailingRegionsOptions
-            .filter { area -> selectedNames.contains(area.nameAr) }
+            .filter { area -> selectedNames.contains(if (AppLanguage.isArabic) area.nameAr else area.nameEn) }
             .map { it.id }
 
         if (selectedAreaIds.isEmpty()) {
@@ -779,7 +802,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
         val requestId = navigationRequestId
         if (requestId == null) {
             println("❌ No navigation request ID available")
-            accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على رقم الطلب" else "Request number not found"
             return true // Error occurred
         }
 
@@ -790,7 +813,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
             false // Success
         } catch (e: Exception) {
             println("❌ Failed to add navigation areas: ${e.message}")
-            accumulatedFormData["apiError"] = "فشل في إضافة مناطق الإبحار: ${e.message}"
+            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل في إضافة مناطق الإبحار: ${e.message}" else "Failed to add sailing areas: ${e.message}"
             true // Error occurred
         }
     }
@@ -863,7 +886,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
                 println("✅ Successfully uploaded crew Excel file")
             } catch (e: Exception) {
                 println("❌ Failed to upload Excel file: ${e.message}")
-                throw Exception("فشل رفع ملف Excel: ${e.message}")
+                throw Exception(if (AppLanguage.isArabic) "فشل رفع ملف Excel: ${e.message}" else "Failed to upload Excel file: ${e.message}")
             }
         } else if (sailorsJson != "[]") {
             // Manual crew entry
@@ -904,7 +927,7 @@ class IssueNavigationPermitStrategy @Inject constructor(
         if (fieldId == "owner_type") {
             val mutableFormData = formData.toMutableMap()
             when (value) {
-                "فرد" -> {
+                "فرد", "Individual" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
@@ -923,17 +946,17 @@ class IssueNavigationPermitStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits")
         }
 
         return try {
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
-                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
+                .catch { throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${it.message}" else "An error occurred while searching for the company: ${it.message}") }
                 .first()
 
             when (result) {
@@ -947,14 +970,14 @@ class IssueNavigationPermitStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
                 is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 

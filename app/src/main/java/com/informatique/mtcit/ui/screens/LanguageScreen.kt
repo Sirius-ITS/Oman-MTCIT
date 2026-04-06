@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.LanguageViewModel
@@ -88,7 +89,7 @@ fun LanguageScreen(
 
                 // Arabic Button
                 LanguageOptionCard(
-                    languageName = "العربية",
+                    languageName = if (isArabic) "العربية" else "Arabic",
                     languageCode = "Arabic",
                     isSelected = false,
                     onClick = {

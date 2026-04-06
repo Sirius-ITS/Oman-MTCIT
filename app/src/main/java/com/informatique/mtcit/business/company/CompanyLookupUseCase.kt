@@ -4,6 +4,7 @@ import com.informatique.mtcit.business.BusinessState
 import com.informatique.mtcit.business.base.BaseUseCase
 import com.informatique.mtcit.data.model.companyModels.CompanyLookupResponse
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 data class CompanyLookupParams(
     val registrationNumber: String
@@ -21,11 +22,11 @@ class CompanyLookupUseCase @Inject constructor(
         return try {
             // Validate registration number
             if (parameters.registrationNumber.isBlank()) {
-                return BusinessState.Error("رقم السجل التجاري مطلوب")
+                return BusinessState.Error(if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
             }
 
             if (parameters.registrationNumber.length < 3) {
-                return BusinessState.Error("رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+                return BusinessState.Error(if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits")
             }
 
             // Call API
@@ -36,12 +37,12 @@ class CompanyLookupUseCase @Inject constructor(
                 if (result.result.status) {
                     BusinessState.Success(result)
                 } else {
-                    BusinessState.Error(result.message ?: "خطأ في السجل التجاري")
+                    BusinessState.Error(result.message ?: if (AppLanguage.isArabic) "خطأ في السجل التجاري" else "Commercial registration error")
                 }
             } else
-                BusinessState.Error("خطأ في السجل التجاري")
+                BusinessState.Error(if (AppLanguage.isArabic) "خطأ في السجل التجاري" else "Commercial registration error")
         } catch (e: Exception) {
-            BusinessState.Error("خطأ في السجل التجاري")
+            BusinessState.Error(if (AppLanguage.isArabic) "خطأ في السجل التجاري" else "Commercial registration error")
         }
     }
 }

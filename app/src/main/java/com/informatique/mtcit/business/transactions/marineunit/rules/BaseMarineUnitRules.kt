@@ -3,6 +3,7 @@ package com.informatique.mtcit.business.transactions.marineunit.rules
 import com.informatique.mtcit.business.transactions.marineunit.*
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.data.repository.MarineUnitRepository
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Base class with common validation logic shared across all transaction types
@@ -41,10 +42,10 @@ abstract class BaseMarineUnitRules(
 
         when (status) {
             "SUSPENDED" -> return MarineUnitValidationResult.Ineligible.SuspendedOrCancelled(
-                unit, "متوقف"
+                unit, if (AppLanguage.isArabic) "متوقف" else "Suspended"
             )
             "CANCELLED" -> return MarineUnitValidationResult.Ineligible.SuspendedOrCancelled(
-                unit, "ملغي"
+                unit, if (AppLanguage.isArabic) "ملغي" else "Cancelled"
             )
         }
         return null // Eligible

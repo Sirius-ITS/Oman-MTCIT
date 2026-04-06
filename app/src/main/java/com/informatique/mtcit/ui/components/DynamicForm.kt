@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.screens.RequestDetail.CheckShipCondition
 import com.informatique.mtcit.ui.viewmodels.StepData
@@ -83,8 +84,9 @@ fun DynamicStepForm(
         }
     }
 
+    val isAr = LocalAppLocale.current.language == "ar"
     var selectedId by remember { mutableStateOf<String?>(null) }
-    var selectedPersonId by remember { mutableStateOf("فرد") }
+    var selectedPersonId by remember { mutableStateOf(if (isAr) "فرد" else "Individual") }
 
     // Detect Review Step: If no fields, show ReviewStepContent
     if (stepData.fields.isEmpty() && allSteps.isNotEmpty()) {
@@ -131,23 +133,6 @@ fun DynamicStepForm(
                                     minLength = field.minLength // ✅ Pass minLength
                                 )
                             }
-                            // ✅ Special handling for agriculture request number field (fishing boats)
-                            else if (field.id == "agricultureRequestNumber") {
-                                FocusAwareTextField(
-                                    value = field.value,
-                                    onValueChange = { onFieldChange(field.id, it, null) },
-                                    onFocusLost = { value -> onFieldFocusLost(field.id, value) },
-                                    label = field.label,
-                                    isPassword = field.isPassword,
-                                    isNumeric = field.isNumeric,
-                                    isDecimal = field.isDecimal, // ✅ Pass isDecimal
-                                    error = field.error,
-                                    mandatory = field.mandatory,
-                                    isLoading = isFieldLoading(field.id),
-                                    maxLength = field.maxLength, // ✅ Pass maxLength
-                                    minLength = field.minLength // ✅ Pass minLength
-                                )
-                            }
                             // Make company name and type fields read-only
                             else if (field.id == "companyName" || field.id == "companyType") {
                                 FocusAwareTextField(
@@ -162,11 +147,13 @@ fun DynamicStepForm(
                                     minLength = field.minLength // ✅ Pass minLength
                                 )
                             }
-                            // Regular text fields
+                            // Regular text fields — use FocusAwareTextField so format errors
+                            // are shown when the user leaves the field, not just on Next click.
                             else {
-                                CustomTextField(
+                                FocusAwareTextField(
                                     value = field.value,
                                     onValueChange = { onFieldChange(field.id, it, null) },
+                                    onFocusLost = { value -> onFieldFocusLost(field.id, value) },
                                     label = field.label,
                                     isPassword = field.isPassword,
                                     isNumeric = field.isNumeric,

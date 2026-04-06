@@ -4,6 +4,7 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.Serializable
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Repository for marine unit data operations
@@ -372,7 +373,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
                     certificateNumber = null,
                     expiryDate = null,
                     status = "PENDING",
-                    remarks = "الطلب قيد المراجعة من قبل الفريق الفني"
+                    remarks = if (AppLanguage.isArabic) "الطلب قيد المراجعة من قبل الفريق الفني" else "Request is under review by the technical team"
                 )
             }
             "5" -> {
@@ -385,7 +386,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
                     certificateNumber = null,
                     expiryDate = null,
                     status = "NOT_VERIFIED",
-                    remarks = "لم يتم تقديم طلب الفحص بعد"
+                    remarks = if (AppLanguage.isArabic) "لم يتم تقديم طلب الفحص بعد" else "Inspection request has not been submitted yet"
                 )
             }
             "2" -> {
@@ -394,11 +395,11 @@ class MarineUnitRepositoryImpl @Inject constructor(
                     isInspected = false,
                     inspectionDate = "2023-01-10",
                     inspectionType = "SAFETY",
-                    inspectorName = "مدقق خارجي",
+                    inspectorName = if (AppLanguage.isArabic) "مدقق خارجي" else "External Auditor",
                     certificateNumber = "CERT-OLD-123",
                     expiryDate = "2024-01-10",
                     status = "EXPIRED",
-                    remarks = "انتهت صلاحية شهادة الفحص"
+                    remarks = if (AppLanguage.isArabic) "انتهت صلاحية شهادة الفحص" else "Inspection certificate has expired"
                 )
             }
             else -> {
@@ -407,11 +408,11 @@ class MarineUnitRepositoryImpl @Inject constructor(
                     isInspected = true,
                     inspectionDate = "2024-01-10",
                     inspectionType = "SAFETY",
-                    inspectorName = "مدقق خارجي",
+                    inspectorName = if (AppLanguage.isArabic) "مدقق خارجي" else "External Auditor",
                     certificateNumber = "CERT-123456",
                     expiryDate = "2025-01-10",
                     status = "VALID",
-                    remarks = "لا توجد ملاحظات"
+                    remarks = if (AppLanguage.isArabic) "لا توجد ملاحظات" else "No notes"
                 )
             }
         }
@@ -434,22 +435,22 @@ class MarineUnitRepositoryImpl @Inject constructor(
                     // Success case - return mock fishing boat data with engines and owners
                     val mockData = FishingBoatData(
                         // Unit Selection Data
-                        unitType = "قارب صيد",
-                        unitClassification = "قارب صغير",
+                        unitType = if (AppLanguage.isArabic) "قارب صيد" else "Fishing Boat",
+                        unitClassification = if (AppLanguage.isArabic) "قارب صغير" else "Small Boat",
                         callSign = "FB12345",
                         imoNumber = null,
-                        registrationPort = "ميناء صحار",
+                        registrationPort = if (AppLanguage.isArabic) "ميناء صحار" else "Sohar Port",
                         mmsi = "461234567",
                         manufacturerYear = "2020",
-                        maritimeActivity = "صيد تجاري",
-                        buildingDock = "ترسانة صحار",
-                        constructionPool = "حوض البناء رقم 3",
-                        buildingMaterial = "فايبر جلاس",
+                        maritimeActivity = if (AppLanguage.isArabic) "صيد تجاري" else "Commercial Fishing",
+                        buildingDock = if (AppLanguage.isArabic) "ترسانة صحار" else "Sohar Arsenal",
+                        constructionPool = if (AppLanguage.isArabic) "حوض البناء رقم 3" else "Shipyard No. 3",
+                        buildingMaterial = if (AppLanguage.isArabic) "فايبر جلاس" else "Fiberglass",
                         constructionStartDate = "2020-01-15",
                         constructionEndDate = "2020-06-20",
-                        buildingCountry = "عمان",
+                        buildingCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
                         firstRegistrationDate = "2020-07-01",
-                        registrationCountry = "عمان",
+                        registrationCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
 
                         // Dimensions
                         overallLength = "18.5",
@@ -465,48 +466,48 @@ class MarineUnitRepositoryImpl @Inject constructor(
                         maxPermittedLoad = "50.0",
 
                         // Primary Owner Info
-                        ownerFullNameAr = "أحمد بن محمد الحارثي",
+                        ownerFullNameAr = if (AppLanguage.isArabic) "أحمد بن محمد الحارثي" else "Ahmed Bin Mohammed Al-Harthi",
                         ownerFullNameEn = "Ahmed Mohammed Al Harthi",
-                        ownerNationality = "عمان",
+                        ownerNationality = if (AppLanguage.isArabic) "عمان" else "Oman",
                         ownerIdNumber = "12345678",
                         ownerPassportNumber = null,
                         ownerMobile = "+96891234567",
                         ownerEmail = "ahmed.alharthi@example.om",
-                        ownerAddress = "ولاية صحار، شارع الوادي الكبير",
-                        ownerCity = "صحار",
-                        ownerCountry = "عمان",
+                        ownerAddress = if (AppLanguage.isArabic) "ولاية صحار، شارع الوادي الكبير" else "Sohar Wilayat, Al-Wadi Al-Kabir Street",
+                        ownerCity = if (AppLanguage.isArabic) "صحار" else "Sohar",
+                        ownerCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
                         ownerPostalCode = "321",
 
                         // ✅ Multiple Owners (2 owners)
                         totalOwnersCount = "2",
                         owners = listOf(
                             OwnerData(
-                                ownerFullNameAr = "أحمد بن محمد الحارثي",
+                                ownerFullNameAr = if (AppLanguage.isArabic) "أحمد بن محمد الحارثي" else "Ahmed Bin Mohammed Al-Harthi",
                                 ownerFullNameEn = "Ahmed Mohammed Al Harthi",
-                                ownerNationality = "عمان",
+                                ownerNationality = if (AppLanguage.isArabic) "عمان" else "Oman",
                                 ownerIdNumber = "12345678",
                                 ownerPassportNumber = "",
                                 ownerMobile = "+96891234567",
                                 ownerEmail = "ahmed.alharthi@example.om",
-                                ownerAddress = "ولاية صحار، شارع الوادي الكبير",
-                                ownerCity = "صحار",
-                                ownerCountry = "عمان",
+                                ownerAddress = if (AppLanguage.isArabic) "ولاية صحار، شارع الوادي الكبير" else "Sohar Wilayat, Al-Wadi Al-Kabir Street",
+                                ownerCity = if (AppLanguage.isArabic) "صحار" else "Sohar",
+                                ownerCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
                                 ownerPostalCode = "321",
                                 ownershipPercentage = "60",
                                 companyName = "",
                                 companyRegistrationNumber = ""
                             ),
                             OwnerData(
-                                ownerFullNameAr = "سالم بن خميس البلوشي",
+                                ownerFullNameAr = if (AppLanguage.isArabic) "سالم بن خميس البلوشي" else "Salem Bin Khamis Al-Balushi",
                                 ownerFullNameEn = "Salem Khamis Al Balushi",
-                                ownerNationality = "عمان",
+                                ownerNationality = if (AppLanguage.isArabic) "عمان" else "Oman",
                                 ownerIdNumber = "87654321",
                                 ownerPassportNumber = "",
                                 ownerMobile = "+96892345678",
                                 ownerEmail = "salem.balushi@example.om",
-                                ownerAddress = "ولاية صحار، حي النهضة",
-                                ownerCity = "صحار",
-                                ownerCountry = "عمان",
+                                ownerAddress = if (AppLanguage.isArabic) "ولاية صحار، حي النهضة" else "Sohar Wilayat, Al-Nahda District",
+                                ownerCity = if (AppLanguage.isArabic) "صحار" else "Sohar",
+                                ownerCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
                                 ownerPostalCode = "321",
                                 ownershipPercentage = "40",
                                 companyName = "",
@@ -524,7 +525,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
                                 manufacturer = "Caterpillar",
                                 model = "C7.1",
                                 manufactureYear = "2019",
-                                producingCountry = "الولايات المتحدة",
+                                producingCountry = if (AppLanguage.isArabic) "الولايات المتحدة" else "United States",
                                 fuelType = "Diesel",
                                 engineCondition = "Used - Good"
                             ),
@@ -536,7 +537,7 @@ class MarineUnitRepositoryImpl @Inject constructor(
                                 manufacturer = "Caterpillar",
                                 model = "C7.1",
                                 manufactureYear = "2019",
-                                producingCountry = "الولايات المتحدة",
+                                producingCountry = if (AppLanguage.isArabic) "الولايات المتحدة" else "United States",
                                 fuelType = "Diesel",
                                 engineCondition = "Used - Good"
                             )
@@ -549,32 +550,32 @@ class MarineUnitRepositoryImpl @Inject constructor(
                 requestNumber == "99999" -> {
                     // Error case - not found
                     println("❌ Request number not found")
-                    Result.failure(Exception("رقم الطلب غير موجود في نظام وزارة الزراعة"))
+                    Result.failure(Exception(if (AppLanguage.isArabic) "رقم الطلب غير موجود في نظام وزارة الزراعة" else "Request number not found in the Ministry of Agriculture system"))
                 }
                 requestNumber.length < 5 -> {
                     // Validation error
                     println("❌ Invalid request number")
-                    Result.failure(Exception("رقم الطلب غير صحيح"))
+                    Result.failure(Exception(if (AppLanguage.isArabic) "رقم الطلب غير صحيح" else "Invalid request number"))
                 }
                 else -> {
                     // Generic mock data for any other valid request number
                     val genericData = FishingBoatData(
-                        unitType = "قارب صيد",
-                        unitClassification = "قارب متوسط",
+                        unitType = if (AppLanguage.isArabic) "قارب صيد" else "Fishing Boat",
+                        unitClassification = if (AppLanguage.isArabic) "قارب متوسط" else "Medium Boat",
                         callSign = "FB${requestNumber.take(5)}",
                         imoNumber = null,
-                        registrationPort = "ميناء مسقط",
+                        registrationPort = if (AppLanguage.isArabic) "ميناء مسقط" else "Muscat Port",
                         mmsi = "461${requestNumber.take(6)}",
                         manufacturerYear = "2021",
-                        maritimeActivity = "صيد ساحلي",
-                        buildingDock = "ترسانة محلية",
-                        constructionPool = "حوض البناء رقم 1",
-                        buildingMaterial = "خشب",
+                        maritimeActivity = if (AppLanguage.isArabic) "صيد ساحلي" else "Coastal Fishing",
+                        buildingDock = if (AppLanguage.isArabic) "ترسانة محلية" else "Local Arsenal",
+                        constructionPool = if (AppLanguage.isArabic) "حوض البناء رقم 1" else "Shipyard No. 1",
+                        buildingMaterial = if (AppLanguage.isArabic) "خشب" else "Wood",
                         constructionStartDate = "2021-03-01",
                         constructionEndDate = "2021-08-15",
-                        buildingCountry = "عمان",
+                        buildingCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
                         firstRegistrationDate = "2021-09-01",
-                        registrationCountry = "عمان",
+                        registrationCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
 
                         // Dimensions
                         overallLength = "15.0",
@@ -590,16 +591,16 @@ class MarineUnitRepositoryImpl @Inject constructor(
                         maxPermittedLoad = "35.0",
 
                         // Owner Info
-                        ownerFullNameAr = "محمد بن سعيد البلوشي",
+                        ownerFullNameAr = if (AppLanguage.isArabic) "محمد بن سعيد البلوشي" else "Mohammed Bin Said Al-Balushi",
                         ownerFullNameEn = "Mohammed Said Al Balushi",
-                        ownerNationality = "عمان",
+                        ownerNationality = if (AppLanguage.isArabic) "عمان" else "Oman",
                         ownerIdNumber = "87654321",
                         ownerPassportNumber = null,
                         ownerMobile = "+96899887766",
                         ownerEmail = "mohammed.balushi@example.om",
-                        ownerAddress = "ولاية مسقط، روي",
-                        ownerCity = "مسقط",
-                        ownerCountry = "عمان",
+                        ownerAddress = if (AppLanguage.isArabic) "ولاية مسقط، روي" else "Muscat Wilayat, Ruwi",
+                        ownerCity = if (AppLanguage.isArabic) "مسقط" else "Muscat",
+                        ownerCountry = if (AppLanguage.isArabic) "عمان" else "Oman",
                         ownerPostalCode = "100"
                     )
 

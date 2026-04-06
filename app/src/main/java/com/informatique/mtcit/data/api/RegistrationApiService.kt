@@ -43,6 +43,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Response from change port of registry API
@@ -1246,7 +1247,7 @@ class RegistrationApiService @Inject constructor(
                 is RepoServiceState.Error -> {
                     println("❌ API Error Response:")
                     val errorMsg = if (response.code == 400) {
-                        "خطأ في البيانات المرسلة (400)"
+                        if (AppLanguage.isArabic) "خطأ في البيانات المرسلة (400)" else "Error in sent data (400)"
                     } else {
                         "API Error: ${response.code}"
                     }
@@ -1951,7 +1952,7 @@ class RegistrationApiService @Inject constructor(
                                         issueDate = issDate,
                                         expiryDate = expDate,
                                         certificateType = certType?.get("nameAr")?.jsonPrimitive?.content ?: "",
-                                        issuingAuthority = "وزارة النقل والاتصالات وتقنية المعلومات",
+                                        issuingAuthority = if (AppLanguage.isArabic) "وزارة النقل والاتصالات وتقنية المعلومات" else "Ministry of Transport, Communications and IT",
                                         status = com.informatique.mtcit.business.transactions.shared.CertificateStatus.ACTIVE
                                     )
                                 }

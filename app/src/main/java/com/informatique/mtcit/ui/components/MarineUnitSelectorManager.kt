@@ -30,6 +30,7 @@ import com.informatique.mtcit.business.transactions.shared.MarineUnit
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.ValidationState
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.informatique.mtcit.common.util.LocalAppLocale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +53,7 @@ fun MarineUnitSelectorManager(
     fetchShipDetails: (suspend (String) -> Result<CoreShipInfo>)? = null
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
 
     // ✅ SEARCH: local search query state
     var searchQuery by remember { mutableStateOf("") }
@@ -131,7 +133,7 @@ fun MarineUnitSelectorManager(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "جاري التحقق من الوحدة البحرية...",
+                        text = if (isAr) "جاري التحقق من الوحدة البحرية..." else "Checking marine unit...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF6B7280)
                     )
@@ -178,7 +180,7 @@ fun MarineUnitSelectorManager(
                             decorationBox = { innerTextField ->
                                 if (searchQuery.isEmpty()) {
                                     Text(
-                                        text = "ابحث باسم السفينة أو الرقم البحري",
+                                        text = if (isAr) "ابحث باسم السفينة أو الرقم البحري" else "Search by ship name or maritime number",
                                         fontSize = 14.sp,
                                         color = Color(0xFFBDBDBD)
                                     )
@@ -224,7 +226,7 @@ fun MarineUnitSelectorManager(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "لا توجد نتائج لـ \"$searchQuery\"",
+                            text = if (isAr) "لا توجد نتائج لـ \"$searchQuery\"" else "No results for \"$searchQuery\"",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF9E9E9E)
                         )
@@ -292,7 +294,7 @@ fun MarineUnitSelectorManager(
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "جاري تحميل المزيد...",
+                                text = if (isAr) "جاري تحميل المزيد..." else "Loading more...",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF6B7280)
                             )
@@ -322,6 +324,7 @@ private fun MarineUnitSelectionCard(
     var expanded by remember { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "rotation")
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
 
     // ✅ Per-card details state
     var coreShipInfo by remember { mutableStateOf<CoreShipInfo?>(null) }
@@ -459,7 +462,7 @@ private fun MarineUnitSelectionCard(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "جاري تحميل البيانات...",
+                                text = if (isAr) "جاري تحميل البيانات..." else "Loading data...",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF9E9E9E)
                             )
@@ -468,22 +471,22 @@ private fun MarineUnitSelectionCard(
 
                     // ✅ Quick data rows using Arabic values from coreShipInfo where available
                     if (displayType.isNotEmpty()) {
-                        MarineInfoRow(label = "نوع الوحدة البحرية", value = displayType)
+                        MarineInfoRow(label = if (isAr) "نوع الوحدة البحرية" else "Marine Unit Type", value = displayType)
                     }
                     if (displayImo.isNotEmpty()) {
-                        MarineInfoRow(label = "رقم IMO", value = displayImo)
+                        MarineInfoRow(label = if (isAr) "رقم IMO" else "IMO Number", value = displayImo)
                     }
                     if (displayCallSign.isNotEmpty()) {
-                        MarineInfoRow(label = "رمز النداء", value = displayCallSign)
+                        MarineInfoRow(label = if (isAr) "رمز النداء" else "Call Sign", value = displayCallSign)
                     }
                     if (displayMaritimeId.isNotEmpty()) {
-                        MarineInfoRow(label = "رقم الهوية البحرية", value = displayMaritimeId)
+                        MarineInfoRow(label = if (isAr) "رقم الهوية البحرية" else "Maritime ID Number", value = displayMaritimeId)
                     }
                     if (displayPort.isNotEmpty()) {
-                        MarineInfoRow(label = "ميناء التسجيل", value = displayPort)
+                        MarineInfoRow(label = if (isAr) "ميناء التسجيل" else "Registration Port", value = displayPort)
                     }
                     if (displayActivity.isNotEmpty()) {
-                        MarineInfoRow(label = "النشاط البحري", value = displayActivity)
+                        MarineInfoRow(label = if (isAr) "النشاط البحري" else "Maritime Activity", value = displayActivity)
                     }
 
                     Button(
@@ -496,7 +499,7 @@ private fun MarineUnitSelectionCard(
                         border = ButtonDefaults.outlinedButtonBorder(enabled = true)
                     ) {
                         Text(
-                            text = "عرض جميع البيانات",
+                            text = if (isAr) "عرض جميع البيانات" else "View All Data",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color.White
@@ -528,7 +531,7 @@ private fun MarineUnitSelectionCard(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(40.dp))
                             Text(
-                                text = "جاري تحميل بيانات السفينة...",
+                                text = if (isAr) "جاري تحميل بيانات السفينة..." else "Loading ship data...",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = LocalExtraColors.current.textSubTitle
                             )
@@ -564,6 +567,7 @@ private fun MarineInfoRow(label: String, value: String) {
 
 @Composable
 private fun WarningCard() {
+    val isAr = LocalAppLocale.current.language == "ar"
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -575,10 +579,10 @@ private fun WarningCard() {
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "تنبيه", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6B5D00), fontSize = 14.sp)
+                Text(text = if (isAr) "تنبيه" else "Warning", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF6B5D00), fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء.",
+                    text = if (isAr) "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء." else "These ships are suspended and cannot be operated, as they are registered with active mortgages, violations, and detentions. Please review each ship before taking action.",
                     style = MaterialTheme.typography.bodyMedium, color = Color(0xFF6B5D00), fontSize = 13.sp, lineHeight = 20.sp
                 )
             }
@@ -591,6 +595,7 @@ private fun WarningCard() {
 
 @Composable
 private fun NonActiveWarningCard() {
+    val isAr = LocalAppLocale.current.language == "ar"
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -605,10 +610,10 @@ private fun NonActiveWarningCard() {
                 Text("!", color = Color.White, fontWeight = FontWeight.Bold)
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "هناك سفن غير نشطة لا يمكن اختيارها", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B5D00))
+                Text(text = if (isAr) "هناك سفن غير نشطة لا يمكن اختيارها" else "There are inactive ships that cannot be selected", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B5D00))
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء.",
+                    text = if (isAr) "هذه السفن معلقة أو موقوفة ولن يتم السماح باستغلالها، نظرًا لأنها مسجلة مع رهونات نشطة، مخالفات، واحتجازات. يُرجى مراجعة تفاصيل كل سفينة قبل اتخاذ أي إجراء." else "These ships are suspended and cannot be operated, as they are registered with active mortgages, violations, and detentions. Please review each ship before taking action.",
                     style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B5D00)
                 )
             }
@@ -623,6 +628,7 @@ private fun NonActiveWarningCard() {
 @Composable
 private fun CoreShipInfoBottomSheet(info: CoreShipInfo) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -631,94 +637,94 @@ private fun CoreShipInfoBottomSheet(info: CoreShipInfo) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "بيانات الوحدة البحرية",
+            text = if (isAr) "بيانات الوحدة البحرية" else "Marine Unit Data",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = extraColors.whiteInDarkMode
         )
 
         // ── Basic Info ──────────────────────────────────────────
-        ExpandableBottomSheetSection(title = "البيانات الأساسية", initiallyExpanded = true) {
-            if (info.shipName.isNotEmpty())           BottomSheetInfoCard("اسم السفينة", info.shipName)
-            if (info.imoNumber.isNotEmpty())           BottomSheetInfoCard("رقم IMO", info.imoNumber)
-            if (info.callSign.isNotEmpty())            BottomSheetInfoCard("رمز النداء", info.callSign)
-            if (info.officialNumber.isNotEmpty())      BottomSheetInfoCard("الرقم الرسمي", info.officialNumber)
-            if (info.registrationNumber.isNotEmpty())  BottomSheetInfoCard("رقم التسجيل", info.registrationNumber)
-            if (info.portOfRegistry.isNotEmpty())      BottomSheetInfoCard("ميناء التسجيل", info.portOfRegistry)
-            if (info.marineActivity.isNotEmpty())      BottomSheetInfoCard("النشاط البحري", info.marineActivity)
-            if (info.shipCategory.isNotEmpty())        BottomSheetInfoCard("فئة السفينة", info.shipCategory)
-            if (info.shipType.isNotEmpty())            BottomSheetInfoCard("نوع السفينة", info.shipType)
-            if (info.buildMaterial.isNotEmpty())       BottomSheetInfoCard("مادة البناء", info.buildMaterial)
-            if (info.shipBuildYear.isNotEmpty())       BottomSheetInfoCard("سنة البناء", info.shipBuildYear)
-            if (info.buildEndDate.isNotEmpty())        BottomSheetInfoCard("تاريخ انتهاء البناء", info.buildEndDate)
-            BottomSheetInfoCard("نوع التسجيل", if (info.isTemp) "مؤقت" else "دائم")
+        ExpandableBottomSheetSection(title = if (isAr) "البيانات الأساسية" else "Basic Data", initiallyExpanded = true) {
+            if (info.shipName.isNotEmpty())           BottomSheetInfoCard(if (isAr) "اسم السفينة" else "Ship Name", info.shipName)
+            if (info.imoNumber.isNotEmpty())           BottomSheetInfoCard(if (isAr) "رقم IMO" else "IMO Number", info.imoNumber)
+            if (info.callSign.isNotEmpty())            BottomSheetInfoCard(if (isAr) "رمز النداء" else "Call Sign", info.callSign)
+            if (info.officialNumber.isNotEmpty())      BottomSheetInfoCard(if (isAr) "الرقم الرسمي" else "Official Number", info.officialNumber)
+            if (info.registrationNumber.isNotEmpty())  BottomSheetInfoCard(if (isAr) "رقم التسجيل" else "Registration Number", info.registrationNumber)
+            if (info.portOfRegistry.isNotEmpty())      BottomSheetInfoCard(if (isAr) "ميناء التسجيل" else "Registration Port", info.portOfRegistry)
+            if (info.marineActivity.isNotEmpty())      BottomSheetInfoCard(if (isAr) "النشاط البحري" else "Maritime Activity", info.marineActivity)
+            if (info.shipCategory.isNotEmpty())        BottomSheetInfoCard(if (isAr) "فئة السفينة" else "Ship Category", info.shipCategory)
+            if (info.shipType.isNotEmpty())            BottomSheetInfoCard(if (isAr) "نوع السفينة" else "Ship Type", info.shipType)
+            if (info.buildMaterial.isNotEmpty())       BottomSheetInfoCard(if (isAr) "مادة البناء" else "Building Material", info.buildMaterial)
+            if (info.shipBuildYear.isNotEmpty())       BottomSheetInfoCard(if (isAr) "سنة البناء" else "Year of Construction", info.shipBuildYear)
+            if (info.buildEndDate.isNotEmpty())        BottomSheetInfoCard(if (isAr) "تاريخ انتهاء البناء" else "Construction End Date", info.buildEndDate)
+            BottomSheetInfoCard("نوع التسجيل", if (info.isTemp) "مؤقت" else if (isAr) "دائم" else "Permanent")
         }
 
         // ── Dimensions & Tonnage ───────────────────────────────
         if (info.vesselLengthOverall.isNotEmpty() || info.vesselBeam.isNotEmpty() ||
             info.vesselDraft.isNotEmpty() || info.grossTonnage.isNotEmpty() || info.netTonnage.isNotEmpty()) {
-            ExpandableBottomSheetSection(title = "الأبعاد والحمولة") {
-                if (info.vesselLengthOverall.isNotEmpty()) BottomSheetInfoCard("الطول الكلي", "${info.vesselLengthOverall} م")
-                if (info.vesselBeam.isNotEmpty())          BottomSheetInfoCard("العرض", "${info.vesselBeam} م")
-                if (info.vesselDraft.isNotEmpty())         BottomSheetInfoCard("الغاطس", "${info.vesselDraft} م")
-                if (info.grossTonnage.isNotEmpty())        BottomSheetInfoCard("الحمولة الإجمالية", "${info.grossTonnage} طن")
-                if (info.netTonnage.isNotEmpty())          BottomSheetInfoCard("الحمولة الصافية", "${info.netTonnage} طن")
+            ExpandableBottomSheetSection(title = if (isAr) "الأبعاد والحمولة" else "Dimensions and Tonnage") {
+                if (info.vesselLengthOverall.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الطول الكلي" else "Overall Length", "${info.vesselLengthOverall} م")
+                if (info.vesselBeam.isNotEmpty())          BottomSheetInfoCard(if (isAr) "العرض" else "Width", "${info.vesselBeam} م")
+                if (info.vesselDraft.isNotEmpty())         BottomSheetInfoCard(if (isAr) "الغاطس" else "Draft", "${info.vesselDraft} م")
+                if (info.grossTonnage.isNotEmpty())        BottomSheetInfoCard(if (isAr) "الحمولة الإجمالية" else "Gross Tonnage", "${info.grossTonnage} طن")
+                if (info.netTonnage.isNotEmpty())          BottomSheetInfoCard(if (isAr) "الحمولة الصافية" else "Net Tonnage", "${info.netTonnage} طن")
             }
         }
 
         // ── Engines ───────────────────────────────────────────
         if (info.engines.isNotEmpty()) {
-            ExpandableBottomSheetSection(title = "المحركات (${info.engines.size})") {
+            ExpandableBottomSheetSection(title = if (isAr) "المحركات (${info.engines.size})" else "Engines (${info.engines.size})") {
                 info.engines.forEachIndexed { index, engine ->
                     Text(
-                        text = "محرك ${index + 1}",
+                        text = if (isAr) "محرك ${index + 1}" else "Engine ${index + 1}",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = extraColors.textBlueSubTitle,
                         modifier = Modifier.padding(top = if (index > 0) 8.dp else 0.dp)
                     )
-                    if (engine.serialNumber.isNotEmpty()) BottomSheetInfoCard("الرقم التسلسلي", engine.serialNumber)
-                    if (engine.engineType.isNotEmpty())   BottomSheetInfoCard("نوع الوقود", engine.engineType)
-                    if (engine.enginePower.isNotEmpty())  BottomSheetInfoCard("القدرة (حصان)", engine.enginePower)
-                    if (engine.engineStatus.isNotEmpty()) BottomSheetInfoCard("الحالة", engine.engineStatus)
+                    if (engine.serialNumber.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الرقم التسلسلي" else "Serial Number", engine.serialNumber)
+                    if (engine.engineType.isNotEmpty())   BottomSheetInfoCard(if (isAr) "نوع الوقود" else "Fuel Type", engine.engineType)
+                    if (engine.enginePower.isNotEmpty())  BottomSheetInfoCard(if (isAr) "القدرة (حصان)" else "Power (HP)", engine.enginePower)
+                    if (engine.engineStatus.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الحالة" else "Status", engine.engineStatus)
                 }
             }
         }
 
         // ── Owners ────────────────────────────────────────────
         if (info.owners.isNotEmpty()) {
-            ExpandableBottomSheetSection(title = "الملاك (${info.owners.size})") {
+            ExpandableBottomSheetSection(title = if (isAr) "الملاك (${info.owners.size})" else "Owners (${info.owners.size})") {
                 info.owners.forEachIndexed { index, owner ->
                     Text(
-                        text = "مالك ${index + 1}",
+                        text = if (isAr) "مالك ${index + 1}" else "Owner ${index + 1}",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = extraColors.textBlueSubTitle,
                         modifier = Modifier.padding(top = if (index > 0) 8.dp else 0.dp)
                     )
-                    if (owner.ownerName.isNotEmpty())   BottomSheetInfoCard("الاسم", owner.ownerName)
-                    if (owner.ownerCivilId.isNotEmpty()) BottomSheetInfoCard("الرقم المدني", owner.ownerCivilId)
-                    BottomSheetInfoCard("نسبة الملكية", "${owner.ownershipPercentage.toInt()}%")
-                    if (owner.isRepresentative) BottomSheetInfoCard("الصفة", "ممثل قانوني")
+                    if (owner.ownerName.isNotEmpty())   BottomSheetInfoCard(if (isAr) "الاسم" else "Name", owner.ownerName)
+                    if (owner.ownerCivilId.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الرقم المدني" else "Civil Number", owner.ownerCivilId)
+                    BottomSheetInfoCard(if (isAr) "نسبة الملكية" else "Ownership Percentage", "${owner.ownershipPercentage.toInt()}%")
+                    if (owner.isRepresentative) BottomSheetInfoCard(if (isAr) "الصفة" else "Title", if (isAr) "ممثل قانوني" else "Legal Representative")
                 }
             }
         }
 
         // ── Certifications ───────────────────────────────────
         if (info.certifications.isNotEmpty()) {
-            ExpandableBottomSheetSection(title = "الشهادات (${info.certifications.size})") {
+            ExpandableBottomSheetSection(title = if (isAr) "الشهادات (${info.certifications.size})" else "Certificates (${info.certifications.size})") {
                 info.certifications.forEachIndexed { index, cert ->
                     Text(
-                        text = "شهادة ${index + 1}",
+                        text = if (isAr) "شهادة ${index + 1}" else "Certificate ${index + 1}",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = extraColors.textBlueSubTitle,
                         modifier = Modifier.padding(top = if (index > 0) 8.dp else 0.dp)
                     )
-                    if (cert.certificationType.isNotEmpty())  BottomSheetInfoCard("النوع", cert.certificationType)
-                    if (cert.certificationNumber.isNotEmpty()) BottomSheetInfoCard("رقم الشهادة", cert.certificationNumber)
-                    if (cert.issuedDate.isNotEmpty())          BottomSheetInfoCard("تاريخ الإصدار", cert.issuedDate)
-                    if (cert.expiryDate.isNotEmpty())          BottomSheetInfoCard("تاريخ الانتهاء", cert.expiryDate)
+                    if (cert.certificationType.isNotEmpty())  BottomSheetInfoCard(if (isAr) "النوع" else "Type", cert.certificationType)
+                    if (cert.certificationNumber.isNotEmpty()) BottomSheetInfoCard(if (isAr) "رقم الشهادة" else "Certificate Number", cert.certificationNumber)
+                    if (cert.issuedDate.isNotEmpty())          BottomSheetInfoCard(if (isAr) "تاريخ الإصدار" else "Issue Date", cert.issuedDate)
+                    if (cert.expiryDate.isNotEmpty())          BottomSheetInfoCard(if (isAr) "تاريخ الانتهاء" else "Expiry Date", cert.expiryDate)
                 }
             }
         }
@@ -731,27 +737,29 @@ private fun CoreShipInfoBottomSheet(info: CoreShipInfo) {
 @Composable
 private fun MarineUnitBottomSheet(unit: MarineUnit) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(24.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(text = "بيانات الوحدة البحرية", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = extraColors.whiteInDarkMode)
+        Text(text = if (isAr) "بيانات الوحدة البحرية" else "Marine Unit Data", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = extraColors.whiteInDarkMode)
 
         if (unit.totalLength.isNotEmpty() || unit.lengthBetweenPerpendiculars.isNotEmpty() ||
             unit.totalWidth.isNotEmpty() || unit.draft.isNotEmpty() || unit.height.isNotEmpty() || unit.numberOfDecks.isNotEmpty()) {
-            ExpandableBottomSheetSection(title = "الأبعاد") {
-                if (unit.totalLength.isNotEmpty()) BottomSheetInfoCard("الطول الكلي", unit.totalLength)
-                if (unit.lengthBetweenPerpendiculars.isNotEmpty()) BottomSheetInfoCard("الطول بين العموديين", unit.lengthBetweenPerpendiculars)
-                if (unit.totalWidth.isNotEmpty()) BottomSheetInfoCard("العرض الكلي", unit.totalWidth)
-                if (unit.draft.isNotEmpty()) BottomSheetInfoCard("الغاطس", unit.draft)
-                if (unit.height.isNotEmpty()) BottomSheetInfoCard("الإرتفاع", unit.height)
-                if (unit.numberOfDecks.isNotEmpty()) BottomSheetInfoCard("عدد الطوابق", unit.numberOfDecks)
+            ExpandableBottomSheetSection(title = if (isAr) "الأبعاد" else "Dimensions") {
+                if (unit.totalLength.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الطول الكلي" else "Overall Length", unit.totalLength)
+                if (unit.lengthBetweenPerpendiculars.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الطول بين العموديين" else "Length Between Perpendiculars", unit.lengthBetweenPerpendiculars)
+                if (unit.totalWidth.isNotEmpty()) BottomSheetInfoCard(if (isAr) "العرض الكلي" else "Overall Width", unit.totalWidth)
+                if (unit.draft.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الغاطس" else "Draft", unit.draft)
+                if (unit.height.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الإرتفاع" else "Height", unit.height)
+                if (unit.numberOfDecks.isNotEmpty()) BottomSheetInfoCard(if (isAr) "عدد الطوابق" else "Number of Decks", unit.numberOfDecks)
             }
         }
         if (unit.totalCapacity.isNotEmpty() || unit.containerCapacity.isNotEmpty()) {
-            ExpandableBottomSheetSection(title = "السعة والحمولة") {
-                if (unit.totalCapacity.isNotEmpty()) BottomSheetInfoCard("الحمولة الإجمالية", unit.totalCapacity)
-                if (unit.containerCapacity.isNotEmpty() && unit.containerCapacity != "-") BottomSheetInfoCard("سعة الحاويات", unit.containerCapacity)
+            ExpandableBottomSheetSection(title = if (isAr) "السعة والحمولة" else "Capacity and Tonnage") {
+                if (unit.totalCapacity.isNotEmpty()) BottomSheetInfoCard(if (isAr) "الحمولة الإجمالية" else "Gross Tonnage", unit.totalCapacity)
+                if (unit.containerCapacity.isNotEmpty() && unit.containerCapacity != "-") BottomSheetInfoCard(if (isAr) "سعة الحاويات" else "Container Capacity", unit.containerCapacity)
             }
         }
     }

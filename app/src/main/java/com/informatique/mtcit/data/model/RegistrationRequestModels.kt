@@ -16,7 +16,8 @@ data class CreateRegistrationRequest(
 data class RegShipRegRequestReqDto(
     val id: Int? = null, // ✅ NEW: Request ID for PUT updates (null for initial POST)
     val shipInfo: ShipInfo,
-    val requestType: RequestType
+    val requestType: RequestType,
+    val mafwReqNum: String? = null  // ✅ Ministry of Agriculture fishing vessel request number
 )
 
 @Serializable

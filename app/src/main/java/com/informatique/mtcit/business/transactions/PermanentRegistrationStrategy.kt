@@ -10,7 +10,9 @@ import com.informatique.mtcit.business.transactions.shared.ReviewManager
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
 import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.business.usecases.FormValidationUseCase
+import com.informatique.mtcit.business.validation.rules.DateValidationRules
 import com.informatique.mtcit.business.validation.rules.DimensionValidationRules
+import com.informatique.mtcit.business.validation.rules.FormatValidationRules
 import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.common.ErrorMessageExtractor
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import com.informatique.mtcit.util.UserHelper
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Permanent Registration Certificate
@@ -138,13 +141,13 @@ class PermanentRegistrationStrategy @Inject constructor(
                 ?: accumulatedFormData["shipInfoId"]
                 ?: run {
                     println("❌ No shipInfoId found in formData")
-                    accumulatedFormData["apiError"] = "لم يتم العثور على معرف السفينة"
+                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على معرف السفينة" else "Ship ID not found"
                     return
                 }
 
             val shipInfoId = shipInfoIdStr.toIntOrNull() ?: run {
                 println("❌ Invalid shipInfoId: $shipInfoIdStr")
-                accumulatedFormData["apiError"] = "معرف السفينة غير صالح"
+                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "معرف السفينة غير صالح" else "Invalid ship ID"
                 return
             }
 
@@ -179,7 +182,7 @@ class PermanentRegistrationStrategy @Inject constructor(
         } catch (e: Exception) {
             println("❌ Failed to load inspection lookups: ${e.message}")
             e.printStackTrace()
-            accumulatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل تحميل بيانات المعاينة: ${e.message}" else "Failed to load inspection data: ${e.message}"
         }
     }
 
@@ -226,7 +229,7 @@ class PermanentRegistrationStrategy @Inject constructor(
         }
         println("✅ Fetched ${requiredDocumentsList.size} required documents:")
         requiredDocumentsList.forEach { docItem ->
-            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            val mandatoryText = if (docItem.document.isMandatory == 1) if (AppLanguage.isArabic) "إلزامي" else "Mandatory" else if (AppLanguage.isArabic) "اختياري" else "Optional"
             println("   - ${docItem.document.nameAr} ($mandatoryText)")
         }
 
@@ -266,11 +269,11 @@ class PermanentRegistrationStrategy @Inject constructor(
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد" , "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة" , "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -400,7 +403,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                 } catch (e: Exception) {
                     println("❌ Failed to load inspection lookups: ${e.message}")
                     e.printStackTrace()
-                    accumulatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل تحميل بيانات المعاينة: ${e.message}" else "Failed to load inspection data: ${e.message}"
                 }
             } else {
                 println("⚠️ shipInfoId not available - cannot load inspection authorities")
@@ -467,7 +470,7 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val personType = accumulatedFormData["selectionPersonType"]
-        if (personType == "شركة") {
+        if (personType == "شركة" || personType == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -499,7 +502,7 @@ class PermanentRegistrationStrategy @Inject constructor(
         // ✅ Check for both Arabic and English country names for Oman
         val isOman = selectedCountry == null ||
                      selectedCountry == "OM" ||
-                     selectedCountry == "عمان" ||
+                     selectedCountry == (if (AppLanguage.isArabic) "عمان" else "Oman") ||
                      selectedCountry.contains("عمان", ignoreCase = true)
 
         val insuranceStep = if (isOman) {
@@ -684,6 +687,16 @@ class PermanentRegistrationStrategy @Inject constructor(
             rules.add(DimensionValidationRules.dimensionMaxValueValidation())
         }
 
+        // ✅ Numeric format for decimal dimension fields
+        listOf("overallLength", "overallWidth", "depth", "height").filter { it in fieldIds }.forEach {
+            rules.add(FormatValidationRules.numericDecimal(it))
+        }
+
+        // ✅ Numeric format for decimal tonnage fields
+        listOf("grossTonnage", "netTonnage", "staticLoad", "maxPermittedLoad").filter { it in fieldIds }.forEach {
+            rules.add(FormatValidationRules.numericDecimal(it))
+        }
+
         if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
             rules.add(DimensionValidationRules.lengthGreaterThanWidth())
         }
@@ -694,6 +707,22 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         if (fieldIds.containsAll(listOf("decksCount", "grossTonnage"))) {
             rules.add(DimensionValidationRules.deckCountValidation())
+        }
+
+        // Format Rules
+        if (fieldIds.contains("callSign")) {
+            rules.add(FormatValidationRules.callSignFormat("callSign"))
+        }
+        if (fieldIds.contains("mmsi")) {
+            rules.add(FormatValidationRules.exactDigits("mmsi", 9))
+        }
+        if (fieldIds.contains("imoNumber")) {
+            rules.add(FormatValidationRules.exactDigits("imoNumber", 7))
+        }
+
+        // Date Rules
+        if (fieldIds.contains("insuranceExpiryDate")) {
+            rules.add(DateValidationRules.notBeforeTomorrow("insuranceExpiryDate"))
         }
 
         return rules
@@ -832,7 +861,7 @@ class PermanentRegistrationStrategy @Inject constructor(
 
                     // ✅ Get CR number from selectionData (for companies) or null (for individuals)
                     val selectedPersonType = accumulatedFormData["selectionPersonType"]
-                    val crNumber = if (selectedPersonType == "شركة") {
+                    val crNumber = if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
                         // For companies: Get CR number from selectionData (commercial registration)
                         accumulatedFormData["selectionData"]
                             ?: throw ApiException(400, "Commercial registration number not found")
@@ -847,7 +876,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                     val insuranceCompanyName: String?
 
                     if (countryId == "OM" || countryId == "عمان" || countryId.contains(
-                            "عمان",
+                            if (AppLanguage.isArabic) "عمان" else "Oman",
                             ignoreCase = true
                         )
                     ) {
@@ -952,11 +981,11 @@ class PermanentRegistrationStrategy @Inject constructor(
 
                             // Build friendly message and store for UI/debugging
                             val msg = when (error) {
-                                is ApiException -> error.message ?: "فشل في التحقق من المعاينة"
+                                is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في التحقق من المعاينة" else "Failed to verify inspection"
                                 else -> ErrorMessageExtractor.extract(error.message)
                             }
 
-                            accumulatedFormData["apiError"] = "حدث خطأ أثناء التحقق من المعاينة: $msg"
+                            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء التحقق من المعاينة: $msg" else "An error occurred while verifying the inspection: $msg"
                             // store lastApiError if available (strategy holds it)
                             try {
                                 val field = this::class.java.getDeclaredField("lastApiError")
@@ -1013,7 +1042,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                             val requestIdInt = accumulatedFormData["requestId"]?.toIntOrNull()
                             if (requestIdInt == null) {
                                 println("❌ No requestId available for review step")
-                                accumulatedFormData["apiError"] = "لم يتم العثور على رقم الطلب"
+                                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على رقم الطلب" else "Request number not found"
                                 return -1
                             }
 
@@ -1149,7 +1178,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                                                             // ✅ Use manager to prepare dialog (sets all flags) with parent transaction info
                                                             // Request Type: 2 = Permanent Registration
                                                             inspectionFlowManager.prepareInspectionDialog(
-                                                                message = "تم إرسال طلب التسجيل الدائم بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                                                message = if (AppLanguage.isArabic) "تم إرسال طلب التسجيل الدائم بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة." else "Permanent registration request submitted successfully (Request No: $requestNumber).\n\nThe ship requires an inspection. Please continue to submit an inspection request.",
                                                                 formData = accumulatedFormData,
                                                                 parentRequestId = requestId?.toInt(),  // Convert Long to Int
                                                                 parentRequestType = 2  // Permanent Registration
@@ -1168,11 +1197,11 @@ class PermanentRegistrationStrategy @Inject constructor(
 
                                                         // Build friendly message and store for UI/debugging
                                                         val msg = when (error) {
-                                                            is ApiException -> error.message ?: "فشل في التحقق من المعاينة"
+                                                            is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في التحقق من المعاينة" else "Failed to verify inspection"
                                                             else -> ErrorMessageExtractor.extract(error.message)
                                                         }
 
-                                                        accumulatedFormData["apiError"] = "حدث خطأ أثناء التحقق من المعاينة: $msg"
+                                                        accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء التحقق من المعاينة: $msg" else "An error occurred while verifying the inspection: $msg"
                                                         // store lastApiError if available (strategy holds it)
                                                         try {
                                                             val field = this::class.java.getDeclaredField("lastApiError")
@@ -1245,7 +1274,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                                 println("❌ Exception in review step: ${e.message}")
                                 e.printStackTrace()
                                 accumulatedFormData["apiError"] =
-                                    "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                                    if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب: ${e.message}" else "An error occurred while submitting the request: ${e.message}"
                                 return -1
                             }
                         }
@@ -1292,7 +1321,7 @@ class PermanentRegistrationStrategy @Inject constructor(
                             } catch (e: Exception) {
                                 println("❌ Exception processing inspection step: ${e.message}")
                                 e.printStackTrace()
-                                accumulatedFormData["apiError"] = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}" else "An error occurred while submitting the inspection request: ${e.message}"
                                 return -1
                             }
                         }
@@ -1403,7 +1432,7 @@ class PermanentRegistrationStrategy @Inject constructor(
 
         if (fieldId == "owner_type") {
             when (value) {
-                "فرد" -> {
+                "فرد" , "Individual" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
@@ -1422,18 +1451,18 @@ class PermanentRegistrationStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits")
         }
 
         return try {
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
-                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
+                .catch { throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${it.message}" else "An error occurred while searching for the company: ${it.message}") }
                 .first()
 
             when (result) {
@@ -1447,14 +1476,14 @@ class PermanentRegistrationStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
                 is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 

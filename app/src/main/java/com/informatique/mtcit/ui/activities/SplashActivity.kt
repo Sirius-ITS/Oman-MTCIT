@@ -33,6 +33,8 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.LandingActivity
 import com.informatique.mtcit.ui.theme.AppTheme
 import kotlinx.coroutines.delay
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : ComponentActivity() {
@@ -298,7 +300,7 @@ class SplashActivity : ComponentActivity() {
                             .alpha(textAnimOpacity)
                     ) {
                         Text(
-                            text = "وزارة النقل والاتصالات وتقنية المعلومات",
+                            text = if (isArabic) "وزارة النقل والاتصالات وتقنية المعلومات" else "Ministry of Transport, Communications and IT",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF333333),
@@ -353,7 +355,7 @@ class SplashActivity : ComponentActivity() {
                     AnimatedLoaderBars(omanBlue, omanRed)
 
                     Text(
-                        text = "سلطنة عُمان",
+                        text = if (AppLanguage.isArabic) "سلطنة عُمان" else "Sultanate of Oman",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
                         color = Color(0xFF4D4D4D),

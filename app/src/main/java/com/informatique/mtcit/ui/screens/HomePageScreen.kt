@@ -69,6 +69,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.NavController
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.components.CustomToolbar
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.MainCategory
@@ -244,7 +245,8 @@ fun TopProfileBar(
 ) {
     val context = LocalContext.current
     // Observe the app locale from the composition provider - updates reactively when language changes
-    val appLocale = com.informatique.mtcit.common.util.LocalAppLocale.current
+    val appLocale = LocalAppLocale.current
+    val isAr = appLocale.language == "ar"
     var userName by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
 
     // Re-load user name whenever the app locale changes (no deprecated API, no restart needed)
@@ -300,7 +302,7 @@ fun TopProfileBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "الملف الشخصي",
+                    contentDescription = if (isAr) "الملف الشخصي" else "Profile",
                     tint = Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.size(30.dp)
                 )
@@ -350,7 +352,7 @@ fun TopProfileBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Settings,
-                    contentDescription = "الإعدادات",
+                    contentDescription = if (isAr) "الإعدادات" else "Settings",
                     tint = Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.size(24.dp)
                 )

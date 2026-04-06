@@ -32,6 +32,7 @@ fun FocusAwareTextField(
     mandatory: Boolean = false,
     isLoading: Boolean = false,
     readOnly: Boolean = false,
+    enabled: Boolean = true, // ✅ NEW: Allow disabling the field (grayed out)
     placeholder: String? = null,
     maxLength: Int? = null, // ✅ NEW: Maximum character length
     minLength: Int? = null // ✅ NEW: Minimum character length (for validation only)
@@ -110,7 +111,7 @@ fun FocusAwareTextField(
             isError = error != null && !isSuccess,
             singleLine = true,
             readOnly = readOnly || isLoading,
-            enabled = !readOnly && !isLoading,
+            enabled = enabled && !readOnly && !isLoading,
             trailingIcon = {
                 if (isLoading) {
                     CircularProgressIndicator(

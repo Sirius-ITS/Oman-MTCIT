@@ -81,7 +81,12 @@ interface NavigationLicenseRepository {
     /**
      * Update navigation areas (Renew)
      */
-    suspend fun updateNavigationAreasRenew(requestId: Long, areaIds: List<Int>): Result<NavigationRequestResDto>
+    suspend fun updateNavigationAreasRenew(
+        requestId: Long,
+        areaIds: List<Int>,
+        lastNavLicId: Long? = null,
+        passengersNo: Int? = null
+    ): Result<NavigationRequestResDto>
 
     /**
      * Get existing crew members (Renew)
@@ -217,10 +222,12 @@ class NavigationLicenseRepositoryImpl @Inject constructor(
 
     override suspend fun updateNavigationAreasRenew(
         requestId: Long,
-        areaIds: List<Int>
+        areaIds: List<Int>,
+        lastNavLicId: Long?,
+        passengersNo: Int?
     ): Result<NavigationRequestResDto> {
-        println("✏️ Updating navigation areas (Renew): requestId=$requestId, areaIds=$areaIds")
-        return apiService.updateNavigationAreasRenew(requestId, areaIds)
+        println("✏️ Updating navigation areas (Renew): requestId=$requestId, areaIds=$areaIds, lastNavLicId=$lastNavLicId, passengersNo=$passengersNo")
+        return apiService.updateNavigationAreasRenew(requestId, areaIds, lastNavLicId, passengersNo)
     }
 
     override suspend fun getCrewRenew(lastNavLicId: Long): Result<List<CrewResDto>> {

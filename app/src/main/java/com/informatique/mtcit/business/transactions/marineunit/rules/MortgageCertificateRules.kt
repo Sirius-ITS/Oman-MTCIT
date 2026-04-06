@@ -7,6 +7,8 @@ import com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigat
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.MortgageRepository
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 /**
  * Business rules for Mortgage Certificate transaction
@@ -43,8 +45,8 @@ class MortgageCertificateRules @Inject constructor(
         if (mortgageStatus.isMortgaged) {
             return MarineUnitValidationResult.Ineligible.AlreadyMortgaged(
                 unit = unit,
-                bankName = mortgageStatus.bankName ?: "غير معروف",
-                mortgageEndDate = mortgageStatus.endDate ?: "غير محدد"
+                bankName = mortgageStatus.bankName ?: if (isArabic) "غير معروف" else "Unknown",
+                mortgageEndDate = mortgageStatus.endDate ?: if (isArabic) "غير محدد" else "Not Specified"
             )
         }
 
@@ -95,19 +97,19 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "حالة الرهن",
-                            title = "الوحدة مرهونة بالفعل",
-                            description = "هذه الوحدة البحرية مرهونة حالياً لدى ${result.bankName}",
+                            category = if (isArabic) "حالة الرهن" else "Mortgage Status",
+                            title = if (isArabic) "الوحدة مرهونة بالفعل" else "Unit Already Mortgaged",
+                            description = if (AppLanguage.isArabic) "هذه الوحدة البحرية مرهونة حالياً لدى ${result.bankName}" else "This marine unit is currently mortgaged to ${result.bankName}",
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = mapOf(
-                                "البنك المرتهن" to result.bankName,
-                                "تاريخ انتهاء الرهن" to result.mortgageEndDate,
-                                "الحل المقترح" to "يمكنك تقديم طلب فك الرهن أولاً"
+                                (if (isArabic) "البنك المرتهن" else "Mortgagee Bank") to result.bankName,
+                                (if (isArabic) "تاريخ انتهاء الرهن" else "Mortgage Expiry Date") to result.mortgageEndDate,
+                                (if (isArabic) "الحل المقترح" else "Suggested Solution") to if (isArabic) "يمكنك تقديم طلب فك الرهن أولاً" else "You can submit a mortgage release request first"
                             )
                         )
                     ),
-                    rejectionReason = "لا يمكن رهن وحدة بحرية مرهونة بالفعل. يجب فك الرهن الحالي أولاً.",
-                    rejectionTitle = "تم رفض الطلب - الوحدة مرهونة"
+                    rejectionReason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية مرهونة بالفعل. يجب فك الرهن الحالي أولاً." else "Cannot mortgage an already mortgaged unit. Current mortgage must be released first.",
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب - الوحدة مرهونة" else "Request Rejected - Unit Mortgaged"
                 )
             }
 
@@ -117,19 +119,19 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "الملكية",
-                            title = "الوحدة غير مملوكة لك",
-                            description = "هذه الوحدة البحرية غير مسجلة باسمك في السجلات الرسمية",
+                            category = if (isArabic) "الملكية" else "Ownership",
+                            title = if (isArabic) "الوحدة غير مملوكة لك" else "Unit Not Owned by You",
+                            description = if (AppLanguage.isArabic) "هذه الوحدة البحرية غير مسجلة باسمك في السجلات الرسمية" else "This marine unit is not registered in your name in official records",
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = mapOf(
-                                "السبب" to "الوحدة البحرية غير مسجلة باسمك",
-                                "المالك الحالي" to (result.actualOwner ?: "غير معروف"),
-                                "الحل المقترح" to "يرجى اختيار وحدة بحرية مملوكة لك"
+                                (if (isArabic) "السبب" else "Reason") to if (isArabic) "الوحدة البحرية غير مسجلة باسمك" else "Marine unit is not registered in your name",
+                                "المالك الحالي" to (result.actualOwner ?: if (isArabic) "غير معروف" else "Unknown"),
+                                (if (isArabic) "الحل المقترح" else "Suggested Solution") to if (isArabic) "يرجى اختيار وحدة بحرية مملوكة لك" else "Please select a marine unit owned by you"
                             )
                         )
                     ),
-                    rejectionReason = "يمكنك رهن الوحدات البحرية المملوكة لك فقط. يرجى اختيار وحدة أخرى.",
-                    rejectionTitle = "تم رفض الطلب - ملكية غير مثبتة"
+                    rejectionReason = if (AppLanguage.isArabic) "يمكنك رهن الوحدات البحرية المملوكة لك فقط. يرجى اختيار وحدة أخرى." else "You can only mortgage marine units owned by you. Please select another unit.",
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب - ملكية غير مثبتة" else "Request Rejected - Ownership Not Verified"
                 )
             }
 
@@ -139,19 +141,19 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "نوع التسجيل",
-                            title = "تسجيل مؤقت فقط",
-                            description = "هذه الوحدة البحرية لديها شهادة تسجيل مؤقتة",
+                            category = if (isArabic) "نوع التسجيل" else "Registration Type",
+                            title = if (isArabic) "تسجيل مؤقت فقط" else "Temporary Registration Only",
+                            description = if (AppLanguage.isArabic) "هذه الوحدة البحرية لديها شهادة تسجيل مؤقتة" else "This marine unit has a temporary registration certificate",
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = mapOf(
-                                "نوع التسجيل الحالي" to "مؤقت",
-                                "المطلوب" to "تسجيل دائم",
-                                "الحل المقترح" to "يجب الحصول على شهادة تسجيل دائمة أولاً"
+                                (if (isArabic) "نوع التسجيل الحالي" else "Current Registration Type") to if (isArabic) "مؤقت" else "Temporary",
+                                (if (isArabic) "المطلوب" else "Required") to if (isArabic) "تسجيل دائم" else "Permanent Registration",
+                                (if (isArabic) "الحل المقترح" else "Suggested Solution") to if (isArabic) "يجب الحصول على شهادة تسجيل دائمة أولاً" else "Must obtain a permanent registration certificate first"
                             )
                         )
                     ),
-                    rejectionReason = "لا يمكن رهن وحدة بحرية ذات تسجيل مؤقت. يجب أن يكون التسجيل دائماً.",
-                    rejectionTitle = "تم رفض الطلب - تسجيل مؤقت"
+                    rejectionReason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية ذات تسجيل مؤقت. يجب أن يكون التسجيل دائماً." else "Cannot mortgage a unit with temporary registration. Registration must be permanent.",
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب - تسجيل مؤقت" else "Request Rejected - Temporary Registration"
                 )
             }
 
@@ -161,18 +163,18 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "حالة التسجيل",
-                            title = "التسجيل ${result.status}",
-                            description = "هذه الوحدة البحرية في حالة ${result.status}",
+                            category = if (isArabic) "حالة التسجيل" else "Registration Status",
+                            title = if (AppLanguage.isArabic) "التسجيل ${result.status}" else "Registration ${result.status}",
+                            description = if (AppLanguage.isArabic) "هذه الوحدة البحرية في حالة ${result.status}" else "This marine unit is in ${result.status} status",
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = mapOf(
-                                "الحالة" to result.status,
-                                "الحل المقترح" to "لا يمكن إجراء هذه المعاملة على وحدة ${result.status}"
+                                (if (isArabic) "الحالة" else "Status") to result.status,
+                                (if (isArabic) "الحل المقترح" else "Suggested Solution") to if (AppLanguage.isArabic) "لا يمكن إجراء هذه المعاملة على وحدة ${result.status}" else "Cannot perform this transaction on a ${result.status} unit"
                             )
                         )
                     ),
-                    rejectionReason = "لا يمكن رهن وحدة بحرية ${result.status}. يجب أن تكون الوحدة نشطة.",
-                    rejectionTitle = "تم رفض الطلب - وحدة ${result.status}"
+                    rejectionReason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية ${result.status}. يجب أن تكون الوحدة نشطة." else "Cannot mortgage a ${result.status} marine unit. Unit must be active.",
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب - وحدة ${result.status}" else "Request Rejected - Unit ${result.status}"
                 )
             }
 
@@ -182,18 +184,18 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "المخالفات",
-                            title = "وجود مخالفات نشطة",
-                            description = "هذه الوحدة البحرية لديها ${result.violationsCount} مخالفة نشطة",
+                            category = if (isArabic) "المخالفات" else "Violations",
+                            title = if (isArabic) "وجود مخالفات نشطة" else "Active Violations Exist",
+                            description = if (AppLanguage.isArabic) "هذه الوحدة البحرية لديها ${result.violationsCount} مخالفة نشطة" else "This marine unit has ${result.violationsCount} active violations",
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = mapOf(
-                                "عدد المخالفات" to result.violationsCount.toString(),
-                                "الحل المقترح" to "يجب تسوية جميع المخالفات قبل تقديم طلب الرهن"
+                                (if (isArabic) "عدد المخالفات" else "Number of Violations") to result.violationsCount.toString(),
+                                (if (isArabic) "الحل المقترح" else "Suggested Solution") to if (AppLanguage.isArabic) "يجب تسوية جميع المخالفات قبل تقديم طلب الرهن" else "All violations must be settled before submitting a mortgage request"
                             )
                         )
                     ),
-                    rejectionReason = "لا يمكن رهن وحدة بحرية لديها مخالفات نشطة. يجب تسوية المخالفات أولاً.",
-                    rejectionTitle = "تم رفض الطلب - مخالفات نشطة"
+                    rejectionReason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية لديها مخالفات نشطة. يجب تسوية المخالفات أولاً." else "Cannot mortgage a unit with active violations. Violations must be settled first.",
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب - مخالفات نشطة" else "Request Rejected - Active Violations"
                 )
             }
 
@@ -203,18 +205,18 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "الاحتجازات",
-                            title = "وجود احتجازات نشطة",
-                            description = "هذه الوحدة البحرية محتجزة (${result.detentionsCount} احتجاز)",
+                            category = if (isArabic) "الاحتجازات" else "Detentions",
+                            title = if (isArabic) "وجود احتجازات نشطة" else "Active Detentions Exist",
+                            description = if (AppLanguage.isArabic) "هذه الوحدة البحرية محتجزة (${result.detentionsCount} احتجاز)" else "This marine unit is detained (${result.detentionsCount} detentions)",
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = mapOf(
-                                "عدد الاحتجازات" to result.detentionsCount.toString(),
-                                "الحل المقترح" to "يجب فك جميع الاحتجازات قبل تقديم طلب الرهن"
+                                (if (AppLanguage.isArabic) "عدد الاحتجازات" else "Number of Detentions") to result.detentionsCount.toString(),
+                                (if (isArabic) "الحل المقترح" else "Suggested Solution") to if (AppLanguage.isArabic) "يجب فك جميع الاحتجازات قبل تقديم طلب الرهن" else "All detentions must be released before submitting a mortgage request"
                             )
                         )
                     ),
-                    rejectionReason = "لا يمكن رهن وحدة بحرية محتجزة. يجب فك الاحتجاز أولاً.",
-                    rejectionTitle = "تم رفض الطلب - وحدة محتجزة"
+                    rejectionReason = if (AppLanguage.isArabic) "لا يمكن رهن وحدة بحرية محتجزة. يجب فك الاحتجاز أولاً." else "Cannot mortgage a detained unit. Detention must be released first.",
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب - وحدة محتجزة" else "Request Rejected - Detained Unit"
                 )
             }
 
@@ -224,17 +226,17 @@ class MortgageCertificateRules @Inject constructor(
                     marineUnit = result.unit,
                     complianceIssues = listOf(
                         com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                            category = "سبب الرفض",
-                            title = "الوحدة غير مؤهلة",
+                            category = if (isArabic) "سبب الرفض" else "Rejection Reason",
+                            title = if (isArabic) "الوحدة غير مؤهلة" else "Unit Not Eligible",
                             description = result.reason,
                             severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
                             details = result.suggestion?.let {
-                                mapOf("الحل المقترح" to it)
+                                mapOf((if (isArabic) "الحل المقترح" else "Suggested Solution") to it)
                             } ?: emptyMap()
                         )
                     ),
                     rejectionReason = result.reason + (result.suggestion?.let { "\n\n$it" } ?: ""),
-                    rejectionTitle = "تم رفض الطلب"
+                    rejectionTitle = if (AppLanguage.isArabic) "تم رفض الطلب" else "Request Rejected"
                 )
             }
         }
@@ -242,7 +244,7 @@ class MortgageCertificateRules @Inject constructor(
 
     override fun allowMultipleSelection(): Boolean = false
 
-    override fun getStepTitle(): String = "اختيار الوحدة البحرية للرهن"
+    override fun getStepTitle(): String = if (isArabic) "اختيار الوحدة البحرية للرهن" else "Select Marine Unit for Mortgage"
 
-    override fun getStepDescription(): String = "اختر الوحدة البحرية التي ترغب في رهنها"
+    override fun getStepDescription(): String = if (isArabic) "اختر الوحدة البحرية التي ترغب في رهنها" else "Select the marine unit you want to mortgage"
 }

@@ -24,9 +24,7 @@ import com.informatique.mtcit.ui.screens.RequestDetail
 import com.informatique.mtcit.util.UriPermissionManager
 import com.informatique.mtcit.ui.components.SuccessDialog
 import com.informatique.mtcit.ui.components.SuccessDialogItem
-import kotlinx.coroutines.launch
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
 
 
 /**
@@ -56,6 +54,7 @@ fun MarineRegistrationScreen(
     val navigationToComplianceDetail by viewModel.navigationToComplianceDetail.collectAsStateWithLifecycle()
     val isResuming by viewModel.isResuming.collectAsStateWithLifecycle()
     val showToast by viewModel.showToastEvent.collectAsStateWithLifecycle()
+    val isAr = LocalAppLocale.current.language == "ar"
 
     // ✅ NEW: Observe request submission success for showing success dialog
     val requestSubmissionSuccess by viewModel.requestSubmissionSuccess.collectAsStateWithLifecycle()
@@ -329,24 +328,24 @@ fun MarineRegistrationScreen(
                 // This forwards to RequestDetailScreen (AcceptedAndPayment) after successful submission
                 /*
                 val shipData = mapOf(
-                    "نوع الوحدة البحرية" to "سفينة صيد",
-                    "رقم IMO" to "9990001",
-                    "رمز النداء" to "A9BC2",
-                    "رقم الهوية البحرية" to "470123456",
-                    "ميناء التسجيل" to "صحار",
-                    "النشاط البحري" to "صيد",
-                    "سنة صنع السفينة" to "2018",
-                    "نوع الإثبات" to "شهادة بناء",
-                    "حوض البناء" to "Hyundai Shipyard",
-                    "تاريخ بدء البناء" to "2014-03-01",
-                    "تاريخ انتهاء البناء" to "2015-01-15",
-                    "تاريخ أول تسجيل" to "2015-02-01",
-                    "بلد البناء" to "سلطنة عمان"
+                    (if (isArabic) "نوع الوحدة البحرية" else "Marine Unit Type") to if (isArabic) "سفينة صيد" else "Fishing Vessel",
+                    (if (AppLanguage.isArabic) "رقم IMO" else "IMO Number") to "9990001",
+                    (if (AppLanguage.isArabic) "رمز النداء" else "Call Sign") to "A9BC2",
+                    (if (isArabic) "رقم الهوية البحرية" else "Maritime ID Number") to "470123456",
+                    (if (isArabic) "ميناء التسجيل" else "Registration Port") to if (isArabic) "صحار" else "Sohar",
+                    (if (isArabic) "النشاط البحري" else "Maritime Activity") to "صيد",
+                    (if (isArabic) "سنة صنع السفينة" else "Year of Manufacture") to "2018",
+                    (if (isArabic) "نوع الإثبات" else "Proof Type") to if (isArabic) "شهادة بناء" else "Construction Certificate",
+                    (if (isArabic) "حوض البناء" else "Shipyard") to "Hyundai Shipyard",
+                    (if (isArabic) "تاريخ بدء البناء" else "Construction Start Date") to "2014-03-01",
+                    (if (isArabic) "تاريخ انتهاء البناء" else "Construction End Date") to "2015-01-15",
+                    (if (isArabic) "تاريخ أول تسجيل" else "First Registration Date") to "2015-02-01",
+                    (if (isArabic) "بلد البناء" else "Country of Build") to if (isArabic) "سلطنة عمان" else "Sultanate of Oman"
                 )
                 navController.navigate(NavRoutes.RequestDetailRoute.createRoute(
                     RequestDetail.AcceptedAndPayment(
-                        transactionTitle = "إصدار تصريح ملاحة للسفن و الوحدات البحرية",
-                        title = "قبول الطلب و إتمام الدفع",
+                        transactionTitle = if (isArabic) "إصدار تصريح ملاحة للسفن و الوحدات البحرية" else "Issue Navigation Permit for Ships and Marine Units",
+                        title = if (isArabic) "قبول الطلب و إتمام الدفع" else "Accept Request and Complete Payment",
                         referenceNumber = "007 24 7865498",
                         dataSubmitted = shipData
                     )
@@ -422,18 +421,18 @@ fun MarineRegistrationScreen(
             title = result.message,
             items = listOf(
                 SuccessDialogItem(
-                    label = stringResource(R.string.request_number),
+                    label = localizedApp(R.string.request_number),
                     value = result.requestNumber,
                     icon = "📄"
                 ),
                 SuccessDialogItem(
-                    label = stringResource(R.string.status),
-                    value = stringResource(R.string.submitted_successfully),
+                    label = localizedApp(R.string.status),
+                    value = localizedApp(R.string.submitted_successfully),
                     icon = "✅"
                 ),
                 SuccessDialogItem(
-                    label = stringResource(R.string.next_step),
-                    value = stringResource(R.string.check_my_requests_in_your_profile_to_continue),
+                    label = localizedApp(R.string.next_step),
+                    value = localizedApp(R.string.check_my_requests_in_your_profile_to_continue),
                     icon = "👉"
                 )
             ),
@@ -482,72 +481,5 @@ private fun getFileNameFromUri(context: android.content.Context, uri: android.ne
         }
     } catch (e: Exception) {
         uri.lastPathSegment
-    }
-}
-
-/**
- * NEW: Build compliance detail data string from ShowComplianceDetailScreen action
- * This creates a formatted string with marine unit data and compliance issues
- */
-private fun buildComplianceDetailData(action: com.informatique.mtcit.business.transactions.marineunit.MarineUnitNavigationAction.ShowComplianceDetailScreen): String {
-    val unit = action.marineUnit
-    val issues = action.complianceIssues
-
-    return buildString {
-        appendLine("📋 بيانات الوحدة البحرية")
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        appendLine()
-
-        // Basic Info
-        appendLine("🚢 الاسم: ${unit.name}")
-        appendLine("🔢 رقم الهوية البحرية: ${unit.maritimeId}")
-        appendLine("📍 نوع الوحدة: ${unit.type}")
-        appendLine("⚓ ميناء التسجيل: ${unit.registrationPort}")
-        appendLine("🎯 النشاط البحري: ${unit.activity}")
-        appendLine()
-
-        // Dimensions
-        if (unit.totalLength.isNotEmpty()) {
-            appendLine("📏 الأبعاد:")
-            appendLine("   • الطول الكلي: ${unit.totalLength}")
-            if (unit.totalWidth.isNotEmpty()) appendLine("   • العرض الكلي: ${unit.totalWidth}")
-            if (unit.draft.isNotEmpty()) appendLine("   • الغاطس: ${unit.draft}")
-            appendLine()
-        }
-
-        // Compliance Issues Section
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        appendLine("⚠️ سجل الالتزام - المشاكل المكتشفة")
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        appendLine()
-
-        if (issues.isEmpty()) {
-            appendLine("✅ لا توجد مشاكل")
-        } else {
-            issues.forEachIndexed { index, issue ->
-                val icon = when (issue.severity) {
-                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING -> "🚫"
-                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.WARNING -> "⚠️"
-                    com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.INFO -> "ℹ️"
-                }
-
-                appendLine("$icon ${issue.category}")
-                appendLine("   العنوان: ${issue.title}")
-                appendLine("   التفاصيل: ${issue.description}")
-
-                if (issue.details.isNotEmpty()) {
-                    issue.details.forEach { (key, value) ->
-                        appendLine("   • $key: $value")
-                    }
-                }
-
-                if (index < issues.size - 1) appendLine()
-            }
-        }
-
-        appendLine()
-        appendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        appendLine("📌 سبب الرفض:")
-        appendLine(action.rejectionReason)
     }
 }

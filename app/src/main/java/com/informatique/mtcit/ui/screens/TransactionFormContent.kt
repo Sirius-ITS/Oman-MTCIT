@@ -50,7 +50,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import androidx.compose.ui.res.stringResource
 
 
 /**
@@ -78,6 +77,10 @@ fun TransactionFormContent(
     hideStepperForFirstStep: Boolean = false // New parameter for Login flow
 ) {
     val extraColors = LocalExtraColors.current
+
+    // ✅ FIX: Use LocalAppLocale.current (reactive to runtime language changes) instead of
+    //  AppLanguage.isArabic / Locale.getDefault() which only updates on app restart.
+    val isAr = LocalAppLocale.current.language == "ar"
 
     // ✅ NEW: ScrollState for auto-scrolling to error banner
     val scrollState = rememberScrollState()
@@ -115,7 +118,7 @@ fun TransactionFormContent(
 
     // ✅ NEW: Check if payment success dialog should be shown
     val showPaymentSuccessDialog = uiState.formData["showPaymentSuccessDialog"]?.toBoolean() ?: false
-    val paymentSuccessMessage = uiState.formData["paymentSuccessMessage"] ?: "تم الدفع بنجاح"
+    val paymentSuccessMessage = uiState.formData["paymentSuccessMessage"] ?: if (isAr) "تم الدفع بنجاح" else "Payment completed successfully"
     val paymentReceiptId = uiState.formData["paymentReceiptId"] ?: ""
     val paymentTimestamp = uiState.formData["paymentTimestamp"] ?: ""
     val paymentFinalTotal = uiState.formData["paymentFinalTotal"] ?: "0.0"
@@ -170,7 +173,7 @@ fun TransactionFormContent(
 
     if (showInspectionSuccessDialog) {
         InspectionRequiredDialog(
-            message = "$inspectionSuccessMessage\n\nرقم طلب المعاينة: $inspectionRequestId",
+            message = if (isAr) "$inspectionSuccessMessage\n\nرقم طلب المعاينة: $inspectionRequestId" else "$inspectionSuccessMessage\n\nInspection Request No: $inspectionRequestId",
             text = localizedApp(R.string.done),
             icon = Icons.Default.Done, // Use Done icon for success
             onContinue = null, // No continue button - just dismiss
@@ -191,7 +194,7 @@ fun TransactionFormContent(
         PaymentSuccessDialog(
             message = paymentSuccessMessage,
             receiptNumber = paymentReceiptId,
-            paidAmount = "$paymentFinalTotal ريال عماني ",
+            paidAmount = if (isAr) "$paymentFinalTotal ريال عماني " else "$paymentFinalTotal OMR ",
             timestamp = paymentTimestamp,
             onDismiss = {
                 // Clear the dialog flag
@@ -218,7 +221,7 @@ fun TransactionFormContent(
     val isFreeService = uiState.formData["isFreeService"]?.toBoolean() ?: false
     // Parse multiple affected certificates stored as JSON array by PaymentManager
     val affectedCertificatesJson = uiState.formData["affectedCertificatesList"] ?: ""
-    val isArabicLocale = LocalAppLocale.current.language == "ar"
+    val isArabicLocale = isAr  // ✅ Use the reactive isAr declared above
 
     val affectedCertsList: List<AffectedCert> = remember(affectedCertificatesJson) {
         parseAffectedCertificates(affectedCertificatesJson)
@@ -230,16 +233,16 @@ fun TransactionFormContent(
             if (isFreeService) {
                 add(
                     SuccessDialogItem(
-                        label = stringResource(R.string.service_type),
-                        value = stringResource(R.string.free),
+                        label = localizedApp(R.string.service_type),
+                        value = localizedApp(R.string.free),
                         icon = "🎁"
                     )
                 )
             }
             add(
                 SuccessDialogItem(
-                    label = stringResource(R.string.certificate_status),
-                    value = stringResource(R.string.issued),
+                    label = localizedApp(R.string.certificate_status),
+                    value = localizedApp(R.string.issued),
                     icon = "✅"
                 )
             )
@@ -274,7 +277,7 @@ fun TransactionFormContent(
                 )
             }
             IssuedCertificatesBottomSheet(
-                title = stringResource(R.string.certificates_issued_successfully),
+                title = localizedApp(R.string.certificates_issued_successfully),
                 items = issuedCertItems,
                 onDismiss = {
                     onFieldValueChange("shouldShowCertificate", "false")
@@ -285,7 +288,7 @@ fun TransactionFormContent(
         } else {
             // ── SuccessDialog for standard single-certificate transactions ─
             SuccessDialog(
-                title = stringResource(R.string.certificate_issued_successfully),
+                title = localizedApp(R.string.certificate_issued_successfully),
                 items = items,
                 onDismiss = {
                     onFieldValueChange("shouldShowCertificate", "false")
@@ -522,10 +525,11 @@ fun TransactionFormContent(
 
                 // ✅ Show ErrorBanner for ALL API errors (not just 406)
                 errorState?.let { error ->
+                    val isAr = com.informatique.mtcit.common.util.LocalAppLocale.current.language == "ar"
                     when (error) {
                         is com.informatique.mtcit.common.AppError.ApiError -> {
                             ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 onDismiss = {
                                     (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.dismissError()
                                         ?: viewModel.clearError()
@@ -535,7 +539,7 @@ fun TransactionFormContent(
                         is com.informatique.mtcit.common.AppError.Unauthorized -> {
                             // ✅ Special handling for 401 errors - show refresh token button
                             ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 showRefreshButton = true,
                                 onRefreshToken = {
                                     // Call refreshTokenAndRetry() which refreshes token and clears error on success
@@ -550,7 +554,7 @@ fun TransactionFormContent(
                         }
                         is com.informatique.mtcit.common.AppError.Unknown -> {
                             ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 onDismiss = {
                                     (viewModel as? com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel)?.dismissError()
                                         ?: viewModel.clearError()
@@ -695,6 +699,8 @@ fun GenericNavigationBottomBar(
     formData: Map<String, String> = emptyMap() // ✅ NEW: Form data for checking payment status
 ) {
     val extraColors = LocalExtraColors.current
+    // ✅ FIX: Reactive language check — replaces stale AppLanguage.isArabic
+    val isAr = LocalAppLocale.current.language == "ar"
     Card(
         modifier = Modifier.fillMaxWidth()
             .padding(  bottom = WindowInsets.navigationBars
@@ -776,13 +782,11 @@ fun GenericNavigationBottomBar(
                             val paymentAlreadyCompleted = formData["paymentAlreadyCompleted"]?.toBoolean() ?: false
                             val paymentCompleted = formData["paymentCompleted"]?.toBoolean() ?: false // ✅ NEW: Check if payment just completed
 
-                            val buttonText = when {
-                                shouldIssueCertificate || isFreeService || paymentAlreadyCompleted || paymentCompleted -> {
-                                    // Show "Issue Certificate" for free services, already paid, or just paid
-                                    if (LocalAppLocale.current.language == "ar")
-                                        "اصدار الشهادة"
-                                    else "Issue Certificate"
-                                }
+                                    val buttonText = when {
+                                                shouldIssueCertificate || isFreeService || paymentAlreadyCompleted || paymentCompleted -> {
+                                                    // Show "Issue Certificate" for free services, already paid, or just paid
+                                                    if (isAr) "اصدار الشهادة" else "Issue Certificate"
+                                                }
                                 else -> {
                                     // Show "Pay" for normal payment flow
                                     localizedApp(R.string.pay_button)

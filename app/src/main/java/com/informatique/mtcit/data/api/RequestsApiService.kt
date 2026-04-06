@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * API Service for User Requests
@@ -78,24 +79,24 @@ class RequestsApiService @Inject constructor(
                         } else {
                             // ✅ Handle specific error codes
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "حدث خطأ في الخادم"
+                                ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
 
                             println("❌ API Error: Status code $statusCode - $message")
 
                             // ✅ Throw ApiException with status code
                             when (statusCode) {
                                 401 -> throw ApiException(401, message)
-                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                404 -> throw ApiException(404, "الطلبات غير موجودة")
+                                403 -> throw ApiException(403, if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission")
+                                404 -> throw ApiException(404, if (AppLanguage.isArabic) "الطلبات غير موجودة" else "Requests not found")
                                 406 -> throw ApiException(406, message)
-                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                500 -> throw ApiException(500, if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error")
                                 else -> throw ApiException(statusCode, message)
                             }
                         }
                     } else {
                         // ✅ Empty JSON response - this is likely a 401 error with empty body
                         println("❌ Empty JSON response - checking for HTTP error")
-                        throw ApiException(500, "استجابة فارغة من الخادم")
+                        throw ApiException(500, if (AppLanguage.isArabic) "استجابة فارغة من الخادم" else "Empty response from server")
                     }
                 }
 
@@ -103,7 +104,7 @@ class RequestsApiService @Inject constructor(
                     println("❌ API Error: ${response.error}")
 
                     // ✅ Parse error string to extract status code
-                    val errorMessage = response.error?.toString() ?: "حدث خطأ في الخادم"
+                    val errorMessage = response.error?.toString() ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
 
                     // ✅ Check if error contains "401 Unauthorized"
                     val errorCode = when {
@@ -116,9 +117,9 @@ class RequestsApiService @Inject constructor(
                     }
 
                     val friendlyMessage = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
-                        403 -> "ليس لديك صلاحية للوصول"
-                        404 -> "الطلبات غير موجودة"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
+                        403 -> if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission"
+                        404 -> if (AppLanguage.isArabic) "الطلبات غير موجودة" else "Requests not found"
                         else -> errorMessage
                     }
 
@@ -135,7 +136,7 @@ class RequestsApiService @Inject constructor(
             e.printStackTrace()
 
             // ✅ Wrap other exceptions as ApiException 500
-            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+            throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 
@@ -180,27 +181,27 @@ class RequestsApiService @Inject constructor(
                             Result.success(apiResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "حدث خطأ في الخادم"
+                                ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
 
                             println("❌ API Error: Status code $statusCode - $message")
 
                             when (statusCode) {
                                 401 -> throw ApiException(401, message)
-                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                404 -> throw ApiException(404, "الطلبات غير موجودة")
-                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                403 -> throw ApiException(403, if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission")
+                                404 -> throw ApiException(404, if (AppLanguage.isArabic) "الطلبات غير موجودة" else "Requests not found")
+                                500 -> throw ApiException(500, if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error")
                                 else -> throw ApiException(statusCode, message)
                             }
                         }
                     } else {
                         println("❌ Empty JSON response")
-                        throw ApiException(500, "استجابة فارغة من الخادم")
+                        throw ApiException(500, if (AppLanguage.isArabic) "استجابة فارغة من الخادم" else "Empty response from server")
                     }
                 }
 
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    val errorMessage = response.error?.toString() ?: "حدث خطأ في الخادم"
+                    val errorMessage = response.error?.toString() ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
 
                     val errorCode = when {
                         errorMessage.contains("401", ignoreCase = true) -> 401
@@ -211,10 +212,10 @@ class RequestsApiService @Inject constructor(
                     }
 
                     val friendlyMessage = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
-                        403 -> "ليس لديك صلاحية للوصول"
-                        404 -> "الطلبات غير موجودة"
-                        500 -> "خطأ في الخادم"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
+                        403 -> if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission"
+                        404 -> if (AppLanguage.isArabic) "الطلبات غير موجودة" else "Requests not found"
+                        500 -> if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error"
                         else -> errorMessage
                     }
 
@@ -228,7 +229,7 @@ class RequestsApiService @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception in getFilteredUserRequests: ${e.message}")
             e.printStackTrace()
-            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+            throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 
@@ -274,14 +275,14 @@ class RequestsApiService @Inject constructor(
                                 Result.success(detailResponse)
                             } else {
                                 val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                    ?: "حدث خطأ في الخادم"
+                                    ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
                                 println("❌ API Error: Status code $statusCode - $message")
 
                                 when (statusCode) {
                                     401 -> throw ApiException(401, message)
-                                    403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                    404 -> throw ApiException(404, "الطلب غير موجود")
-                                    500 -> throw ApiException(500, "خطأ في الخادم")
+                                    403 -> throw ApiException(403, if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission")
+                                    404 -> throw ApiException(404, if (AppLanguage.isArabic) "الطلب غير موجود" else "Request not found")
+                                    500 -> throw ApiException(500, if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error")
                                     else -> throw ApiException(statusCode, message)
                                 }
                             }
@@ -303,13 +304,13 @@ class RequestsApiService @Inject constructor(
                         }
                     } else {
                         println("❌ Empty JSON response")
-                        throw ApiException(500, "استجابة فارغة من الخادم")
+                        throw ApiException(500, if (AppLanguage.isArabic) "استجابة فارغة من الخادم" else "Empty response from server")
                     }
                 }
 
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    val errorMessage = response.error?.toString() ?: "حدث خطأ في الخادم"
+                    val errorMessage = response.error?.toString() ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
 
                     val errorCode = when {
                         errorMessage.contains("401", ignoreCase = true) -> 401
@@ -320,9 +321,9 @@ class RequestsApiService @Inject constructor(
                     }
 
                     val friendlyMessage = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
-                        403 -> "ليس لديك صلاحية للوصول"
-                        404 -> "الطلب غير موجود"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
+                        403 -> if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission"
+                        404 -> if (AppLanguage.isArabic) "الطلب غير موجود" else "Request not found"
                         else -> errorMessage
                     }
 
@@ -335,7 +336,7 @@ class RequestsApiService @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception in getRequestDetail: ${e.message}")
             e.printStackTrace()
-            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+            throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 
@@ -385,26 +386,26 @@ class RequestsApiService @Inject constructor(
                             Result.success(issuanceResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "حدث خطأ في إصدار الشهادة"
+                                ?: if (AppLanguage.isArabic) "حدث خطأ في إصدار الشهادة" else "An error occurred while issuing the certificate"
                             println("❌ API Error: Status code $statusCode - $message")
 
                             when (statusCode) {
                                 401 -> throw ApiException(401, message)
-                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                404 -> throw ApiException(404, "الطلب غير موجود")
-                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                403 -> throw ApiException(403, if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission")
+                                404 -> throw ApiException(404, if (AppLanguage.isArabic) "الطلب غير موجود" else "Request not found")
+                                500 -> throw ApiException(500, if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error")
                                 else -> throw ApiException(statusCode, message)
                             }
                         }
                     } else {
                         println("❌ Empty JSON response")
-                        throw ApiException(500, "استجابة فارغة من الخادم")
+                        throw ApiException(500, if (AppLanguage.isArabic) "استجابة فارغة من الخادم" else "Empty response from server")
                     }
                 }
 
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    val errorMessage = response.error?.toString() ?: "حدث خطأ في إصدار الشهادة"
+                    val errorMessage = response.error?.toString() ?: if (AppLanguage.isArabic) "حدث خطأ في إصدار الشهادة" else "An error occurred while issuing the certificate"
 
                     val errorCode = when {
                         errorMessage.contains("401", ignoreCase = true) -> 401
@@ -415,9 +416,9 @@ class RequestsApiService @Inject constructor(
                     }
 
                     val friendlyMessage = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
-                        403 -> "ليس لديك صلاحية لإصدار هذه الشهادة"
-                        404 -> "الطلب غير موجود"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
+                        403 -> if (AppLanguage.isArabic) "ليس لديك صلاحية لإصدار هذه الشهادة" else "You do not have permission to issue this certificate"
+                        404 -> if (AppLanguage.isArabic) "الطلب غير موجود" else "Request not found"
                         else -> errorMessage
                     }
 
@@ -430,7 +431,7 @@ class RequestsApiService @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception in issueCertificate: ${e.message}")
             e.printStackTrace()
-            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+            throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 
@@ -466,26 +467,26 @@ class RequestsApiService @Inject constructor(
                             Result.success(certificateResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "حدث خطأ في جلب الشهادة"
+                                ?: if (AppLanguage.isArabic) "حدث خطأ في جلب الشهادة" else "An error occurred while fetching the certificate"
                             println("❌ API Error: Status code $statusCode - $message")
 
                             when (statusCode) {
                                 401 -> throw ApiException(401, message)
-                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                404 -> throw ApiException(404, "الشهادة غير موجودة")
-                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                403 -> throw ApiException(403, if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission")
+                                404 -> throw ApiException(404, if (AppLanguage.isArabic) "الشهادة غير موجودة" else "Certificate not found")
+                                500 -> throw ApiException(500, if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error")
                                 else -> throw ApiException(statusCode, message)
                             }
                         }
                     } else {
                         println("❌ Empty JSON response")
-                        throw ApiException(500, "استجابة فارغة من الخادم")
+                        throw ApiException(500, if (AppLanguage.isArabic) "استجابة فارغة من الخادم" else "Empty response from server")
                     }
                 }
 
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    val errorMessage = response.error?.toString() ?: "حدث خطأ في جلب الشهادة"
+                    val errorMessage = response.error?.toString() ?: if (AppLanguage.isArabic) "حدث خطأ في جلب الشهادة" else "An error occurred while fetching the certificate"
 
                     val errorCode = when {
                         errorMessage.contains("401", ignoreCase = true) -> 401
@@ -496,9 +497,9 @@ class RequestsApiService @Inject constructor(
                     }
 
                     val friendlyMessage = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
-                        403 -> "ليس لديك صلاحية لعرض هذه الشهادة"
-                        404 -> "الشهادة غير موجودة"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
+                        403 -> if (AppLanguage.isArabic) "ليس لديك صلاحية لعرض هذه الشهادة" else "You do not have permission to view this certificate"
+                        404 -> if (AppLanguage.isArabic) "الشهادة غير موجودة" else "Certificate not found"
                         else -> errorMessage
                     }
 
@@ -511,7 +512,7 @@ class RequestsApiService @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception in issueCertificate: ${e.message}")
             e.printStackTrace()
-            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+            throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 
@@ -550,26 +551,26 @@ class RequestsApiService @Inject constructor(
                             Result.success(statusCountResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "حدث خطأ في الخادم"
+                                ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
                             println("❌ API Error: Status code $statusCode - $message")
 
                             when (statusCode) {
                                 401 -> throw ApiException(401, message)
-                                403 -> throw ApiException(403, "ليس لديك صلاحية للوصول")
-                                404 -> throw ApiException(404, "البيانات غير موجودة")
-                                500 -> throw ApiException(500, "خطأ في الخادم")
+                                403 -> throw ApiException(403, if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission")
+                                404 -> throw ApiException(404, if (AppLanguage.isArabic) "البيانات غير موجودة" else "Data not found")
+                                500 -> throw ApiException(500, if (AppLanguage.isArabic) "خطأ في الخادم" else "Server error")
                                 else -> throw ApiException(statusCode, message)
                             }
                         }
                     } else {
                         println("❌ Empty JSON response")
-                        throw ApiException(500, "استجابة فارغة من الخادم")
+                        throw ApiException(500, if (AppLanguage.isArabic) "استجابة فارغة من الخادم" else "Empty response from server")
                     }
                 }
 
                 is RepoServiceState.Error -> {
                     println("❌ API Error: ${response.error}")
-                    val errorMessage = response.error?.toString() ?: "حدث خطأ في الخادم"
+                    val errorMessage = response.error?.toString() ?: if (AppLanguage.isArabic) "حدث خطأ في الخادم" else "A server error occurred"
 
                     val errorCode = when {
                         errorMessage.contains("401", ignoreCase = true) -> 401
@@ -580,9 +581,9 @@ class RequestsApiService @Inject constructor(
                     }
 
                     val friendlyMessage = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة"
-                        403 -> "ليس لديك صلاحية للوصول"
-                        404 -> "البيانات غير موجودة"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
+                        403 -> if (AppLanguage.isArabic) "ليس لديك صلاحية للوصول" else "You do not have access permission"
+                        404 -> if (AppLanguage.isArabic) "البيانات غير موجودة" else "Data not found"
                         else -> errorMessage
                     }
 
@@ -595,7 +596,7 @@ class RequestsApiService @Inject constructor(
         } catch (e: Exception) {
             println("❌ Exception in getStatusCounts: ${e.message}")
             e.printStackTrace()
-            throw ApiException(500, e.message ?: "حدث خطأ غير متوقع")
+            throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 

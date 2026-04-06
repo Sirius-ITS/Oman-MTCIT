@@ -1,6 +1,7 @@
 package com.informatique.mtcit.business.transactions.marineunit
 
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Interface for defining business rules for marine unit selection
@@ -31,11 +32,11 @@ interface MarineUnitBusinessRules {
     /**
      * Get transaction-specific title for marine unit selection step
      */
-    fun getStepTitle(): String = "اختيار الوحدة البحرية"
+    fun getStepTitle(): String = if (AppLanguage.isArabic) "اختيار الوحدة البحرية" else "Select Marine Unit"
 
     /**
      * Get transaction-specific description
      */
-    fun getStepDescription(): String = "اختر الوحدة البحرية لإتمام المعاملة"
+    fun getStepDescription(): String = if (AppLanguage.isArabic) "اختر الوحدة البحرية لإتمام المعاملة" else "Select the marine unit to complete the transaction"
 }
 

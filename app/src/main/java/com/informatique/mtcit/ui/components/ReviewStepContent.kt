@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.R
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.StepData
 import kotlinx.serialization.json.Json
@@ -70,6 +71,7 @@ fun ReviewStepContent(
     declarationAccepted: Boolean = false // ✅ Controlled by ViewModel; no local duplicate state
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     // ✅ declarationAccepted is now driven by the parent ViewModel (via DynamicStepForm →
     // TransactionFormContent), so there is no local mutableStateOf here. This eliminates
     // the duplicate-state / out-of-sync bug and ensures the value survives the
@@ -78,7 +80,7 @@ fun ReviewStepContent(
     // ✅ Get payment amount from formData
     val paymentAmount = formData["paymentFinalTotal"]?.toDoubleOrNull() ?: 0.0
     val formattedAmount = if (paymentAmount > 0) {
-        "%.3f ريال عماني".format(paymentAmount)
+        if (isAr) "%.3f ريال عماني" else "%.3f OMR".format(paymentAmount)
     } else {
         localizedApp(R.string.amount_value) // Fallback to default
     }
@@ -403,6 +405,7 @@ private fun ExpandableMarineUnitReviewCard(
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors
 ) {
     var isExpanded by remember { mutableStateOf(index == 0) } // أول سفينة مفتوحة
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -466,7 +469,7 @@ private fun ExpandableMarineUnitReviewCard(
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Text(
-                                        text = "مملوكة",
+                                        text = if (isAr) "مملوكة" else "Owned",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFFFFA726),
                                         fontSize = 10.sp,
@@ -512,19 +515,19 @@ private fun ExpandableMarineUnitReviewCard(
                     ) {
                         // Basic Information
                         Text(
-                            text = "البيانات الأساسية",
+                            text = if (isAr) "البيانات الأساسية" else "Basic Data",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.startServiceButton,
                             fontSize = 14.sp
                         )
 
-                        MarineUnitDetailRow(label = "نوع الوحدة البحرية", value = unit.type)
-                        MarineUnitDetailRow(label = "رقم IMO", value = unit.imoNumber.toString())
-                        MarineUnitDetailRow(label = "رمز النداء", value = unit.callSign)
-                        MarineUnitDetailRow(label = "رقم الهوية البحرية", value = unit.maritimeId)
-                        MarineUnitDetailRow(label = "ميناء التسجيل", value = unit.registrationPort)
-                        MarineUnitDetailRow(label = "النشاط البحري", value = unit.activity)
+                        MarineUnitDetailRow(label = if (isAr) "نوع الوحدة البحرية" else "Marine Unit Type", value = unit.type)
+                        MarineUnitDetailRow(label = if (isAr) "رقم IMO" else "IMO Number", value = unit.imoNumber.toString())
+                        MarineUnitDetailRow(label = if (isAr) "رمز النداء" else "Call Sign", value = unit.callSign)
+                        MarineUnitDetailRow(label = if (isAr) "رقم الهوية البحرية" else "Maritime ID Number", value = unit.maritimeId)
+                        MarineUnitDetailRow(label = if (isAr) "ميناء التسجيل" else "Registration Port", value = unit.registrationPort)
+                        MarineUnitDetailRow(label = if (isAr) "النشاط البحري" else "Maritime Activity", value = unit.activity)
 
                         // Dimensions Section (only if has data)
                         if (unit.totalLength.isNotEmpty() || unit.lengthBetweenPerpendiculars.isNotEmpty() ||
@@ -533,7 +536,7 @@ private fun ExpandableMarineUnitReviewCard(
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "الأبعاد",
+                                text = if (isAr) "الأبعاد" else "Dimensions",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -541,22 +544,22 @@ private fun ExpandableMarineUnitReviewCard(
                             )
 
                             if (unit.totalLength.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "الطول الكلي", value = unit.totalLength)
+                                MarineUnitDetailRow(label = if (isAr) "الطول الكلي" else "Overall Length", value = unit.totalLength)
                             }
                             if (unit.lengthBetweenPerpendiculars.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "الطول بين العموديين", value = unit.lengthBetweenPerpendiculars)
+                                MarineUnitDetailRow(label = if (isAr) "الطول بين العموديين" else "Length Between Perpendiculars", value = unit.lengthBetweenPerpendiculars)
                             }
                             if (unit.totalWidth.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "العرض الكلي", value = unit.totalWidth)
+                                MarineUnitDetailRow(label = if (isAr) "العرض الكلي" else "Overall Width", value = unit.totalWidth)
                             }
                             if (unit.draft.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "الغاطس", value = unit.draft)
+                                MarineUnitDetailRow(label = if (isAr) "الغاطس" else "Draft", value = unit.draft)
                             }
                             if (unit.height.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "الإرتفاع", value = unit.height)
+                                MarineUnitDetailRow(label = if (isAr) "الإرتفاع" else "Height", value = unit.height)
                             }
                             if (unit.numberOfDecks.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "عدد الطوابق", value = unit.numberOfDecks)
+                                MarineUnitDetailRow(label = if (isAr) "عدد الطوابق" else "Number of Decks", value = unit.numberOfDecks)
                             }
                         }
 
@@ -564,7 +567,7 @@ private fun ExpandableMarineUnitReviewCard(
                         if (unit.totalCapacity.isNotEmpty() || unit.containerCapacity.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "السعة والحمولة",
+                                text = if (isAr) "السعة والحمولة" else "Capacity and Tonnage",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -572,10 +575,10 @@ private fun ExpandableMarineUnitReviewCard(
                             )
 
                             if (unit.totalCapacity.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "الحمولة الإجمالية", value = unit.totalCapacity)
+                                MarineUnitDetailRow(label = if (isAr) "الحمولة الإجمالية" else "Gross Tonnage", value = unit.totalCapacity)
                             }
                             if (unit.containerCapacity.isNotEmpty() && unit.containerCapacity != "-") {
-                                MarineUnitDetailRow(label = "سعة الحاويات", value = unit.containerCapacity)
+                                MarineUnitDetailRow(label = if (isAr) "سعة الحاويات" else "Container Capacity", value = unit.containerCapacity)
                             }
                         }
 
@@ -585,7 +588,7 @@ private fun ExpandableMarineUnitReviewCard(
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "المخالفات والاحتجازات",
+                                text = if (isAr) "المخالفات والاحتجازات" else "Violations and Detentions",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFFFA726),
@@ -593,20 +596,20 @@ private fun ExpandableMarineUnitReviewCard(
                             )
 
                             if (unit.violationsCount.isNotEmpty() && unit.violationsCount != "0") {
-                                MarineUnitDetailRow(label = "عدد المخالفات", value = unit.violationsCount)
+                                MarineUnitDetailRow(label = if (isAr) "عدد المخالفات" else "Number of Violations", value = unit.violationsCount)
                             }
                             if (unit.detentionsCount.isNotEmpty() && unit.detentionsCount != "0") {
-                                MarineUnitDetailRow(label = "عدد الاحتجازات", value = unit.detentionsCount)
+                                MarineUnitDetailRow(label = if (isAr) "عدد الاحتجازات" else "Number of Detentions", value = unit.detentionsCount)
                             }
                         }
 
                         // Debts Section (only if has debts)
-                        if ((unit.amountDue.isNotEmpty() && unit.amountDue != "0 ريال") ||
-                            (unit.paymentStatus.isNotEmpty() && unit.paymentStatus != "مسدد")) {
+                        if ((unit.amountDue.isNotEmpty() && unit.amountDue != if (isAr) "0 ريال" else "0 OMR") ||
+                            (unit.paymentStatus.isNotEmpty() && unit.paymentStatus != if (isAr) "مسدد" else "Paid")) {
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "الديون والمستحقات",
+                                text = if (isAr) "الديون والمستحقات" else "Debts and Dues",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFFFA726),
@@ -614,10 +617,10 @@ private fun ExpandableMarineUnitReviewCard(
                             )
 
                             if (unit.amountDue.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "المبلغ المستحق", value = unit.amountDue)
+                                MarineUnitDetailRow(label = if (isAr) "المبلغ المستحق" else "Amount Due", value = unit.amountDue)
                             }
                             if (unit.paymentStatus.isNotEmpty()) {
-                                MarineUnitDetailRow(label = "حالة السداد", value = unit.paymentStatus)
+                                MarineUnitDetailRow(label = if (isAr) "حالة السداد" else "Payment Status", value = unit.paymentStatus)
                             }
                         }
                     }
@@ -742,6 +745,7 @@ private fun ExpandableEngineReviewCard(
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -781,7 +785,7 @@ private fun ExpandableEngineReviewCard(
 
                     Column {
                         Text(
-                            text = "محرك ${index + 1}",
+                            text = if (isAr) "محرك ${index + 1}" else "Engine ${index + 1}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.whiteInDarkMode,
@@ -806,7 +810,7 @@ private fun ExpandableEngineReviewCard(
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Text(
-                                        text = "${engine.power} حصان",
+                                        text = if (isAr) "${engine.power} حصان" else "${engine.power} HP",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = extraColors.whiteInDarkMode,
                                         fontSize = 10.sp,
@@ -854,7 +858,7 @@ private fun ExpandableEngineReviewCard(
                     ) {
                         // Basic Information Section
                         Text(
-                            text = "البيانات الأساسية",
+                            text = if (isAr) "البيانات الأساسية" else "Basic Data",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.startServiceButton,
@@ -863,28 +867,28 @@ private fun ExpandableEngineReviewCard(
 
                         if (engine.number.isNotEmpty()) {
                             EngineDetailRow(
-                                label = "رقم المحرك",
+                                label = if (isAr) "رقم المحرك" else "Engine Number",
                                 value = engine.number
                             )
                         }
 
                         if (engine.type.isNotEmpty()) {
                             EngineDetailRow(
-                                label = "نوع المحرك",
+                                label = if (isAr) "نوع المحرك" else "Engine Type",
                                 value = engine.type
                             )
                         }
 
                         if (engine.power.isNotEmpty()) {
                             EngineDetailRow(
-                                label = "القوة (حصان)",
+                                label = if (isAr) "القوة (حصان)" else "Power (HP)",
                                 value = engine.power
                             )
                         }
 
                         if (engine.cylinder.isNotEmpty()) {
                             EngineDetailRow(
-                                label = "عدد الأسطوانات",
+                                label = if (isAr) "عدد الأسطوانات" else "Number of Cylinders",
                                 value = engine.cylinder
                             )
                         }
@@ -895,7 +899,7 @@ private fun ExpandableEngineReviewCard(
 
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "معلومات الصنع",
+                                text = if (isAr) "معلومات الصنع" else "Manufacturing Information",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -904,28 +908,28 @@ private fun ExpandableEngineReviewCard(
 
                             if (engine.manufacturer.isNotEmpty()) {
                                 EngineDetailRow(
-                                    label = "الشركة المصنعة",
+                                    label = if (isAr) "الشركة المصنعة" else "Manufacturer",
                                     value = engine.manufacturer
                                 )
                             }
 
                             if (engine.model.isNotEmpty()) {
                                 EngineDetailRow(
-                                    label = "الموديل",
+                                    label = if (isAr) "الموديل" else "Model",
                                     value = engine.model
                                 )
                             }
 
                             if (engine.manufactureYear.isNotEmpty()) {
                                 EngineDetailRow(
-                                    label = "سنة الصنع",
+                                    label = if (isAr) "سنة الصنع" else "Year of Manufacture",
                                     value = engine.manufactureYear
                                 )
                             }
 
                             if (engine.productionCountry.isNotEmpty()) {
                                 EngineDetailRow(
-                                    label = "بلد الصنع",
+                                    label = if (isAr) "بلد الصنع" else "Country of Manufacture",
                                     value = engine.productionCountry
                                 )
                             }
@@ -935,7 +939,7 @@ private fun ExpandableEngineReviewCard(
                         if (engine.fuelType.isNotEmpty() || engine.condition.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "معلومات إضافية",
+                                text = if (isAr) "معلومات إضافية" else "Additional Information",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -944,14 +948,14 @@ private fun ExpandableEngineReviewCard(
 
                             if (engine.fuelType.isNotEmpty()) {
                                 EngineDetailRow(
-                                    label = "نوع الوقود",
+                                    label = if (isAr) "نوع الوقود" else "Fuel Type",
                                     value = engine.fuelType
                                 )
                             }
 
                             if (engine.condition.isNotEmpty()) {
                                 EngineDetailRow(
-                                    label = "الحالة",
+                                    label = if (isAr) "الحالة" else "Status",
                                     value = engine.condition
                                 )
                             }
@@ -961,7 +965,7 @@ private fun ExpandableEngineReviewCard(
                         if (engine.documentName.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "المستندات",
+                                text = if (isAr) "المستندات" else "Documents",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -969,7 +973,7 @@ private fun ExpandableEngineReviewCard(
                             )
 
                             EngineDetailRow(
-                                label = "المستند المرفق",
+                                label = if (isAr) "المستند المرفق" else "Attached Document",
                                 value = engine.documentName
                             )
                         }
@@ -1183,6 +1187,7 @@ private fun ExpandableOwnerReviewCard(
     extraColors: com.informatique.mtcit.ui.theme.ExtraColors
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1243,7 +1248,7 @@ private fun ExpandableOwnerReviewCard(
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = if (owner.isCompany) "شركة" else "فرد",
+                                    text = if (owner.isCompany) if (isAr) "شركة" else "Company" else if (isAr) "فرد" else "Individual",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = extraColors.whiteInDarkMode,
                                     fontSize = 10.sp,
@@ -1291,7 +1296,7 @@ private fun ExpandableOwnerReviewCard(
                         if (owner.isCompany) {
                             // Company Information Section
                             Text(
-                                text = "بيانات الشركة",
+                                text = if (isAr) "بيانات الشركة" else "Company Data",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -1310,14 +1315,14 @@ private fun ExpandableOwnerReviewCard(
 
                             if (owner.companyType.isNotEmpty()) {
                                 OwnerDetailRow(
-                                    label = "نوع الشركة",
+                                    label = if (isAr) "نوع الشركة" else "Company Type",
                                     value = owner.companyType
                                 )
                             }
                         } else {
                             // Individual Information Section
                             Text(
-                                text = "بيانات المالك",
+                                text = if (isAr) "بيانات المالك" else "Owner Data",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,
@@ -1346,7 +1351,7 @@ private fun ExpandableOwnerReviewCard(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "معلومات الملكية",
+                            text = if (isAr) "معلومات الملكية" else "Ownership Information",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.startServiceButton,
@@ -1362,7 +1367,7 @@ private fun ExpandableOwnerReviewCard(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "معلومات الاتصال",
+                            text = if (isAr) "معلومات الاتصال" else "Contact Information",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.startServiceButton,
@@ -1383,7 +1388,7 @@ private fun ExpandableOwnerReviewCard(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "معلومات العنوان",
+                            text = if (isAr) "معلومات العنوان" else "Address Information",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = extraColors.startServiceButton,
@@ -1397,21 +1402,21 @@ private fun ExpandableOwnerReviewCard(
 
                         if (owner.city.isNotEmpty()) {
                             OwnerDetailRow(
-                                label = "المدينة",
+                                label = if (isAr) "المدينة" else "City",
                                 value = owner.city
                             )
                         }
 
                         if (owner.country.isNotEmpty()) {
                             OwnerDetailRow(
-                                label = "الدولة",
+                                label = if (isAr) "الدولة" else "Country",
                                 value = owner.country
                             )
                         }
 
                         if (owner.postalCode.isNotEmpty()) {
                             OwnerDetailRow(
-                                label = "الرمز البريدي",
+                                label = if (isAr) "الرمز البريدي" else "Postal Code",
                                 value = owner.postalCode
                             )
                         }
@@ -1421,7 +1426,7 @@ private fun ExpandableOwnerReviewCard(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = "المستندات",
+                                text = if (isAr) "المستندات" else "Documents",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = extraColors.startServiceButton,

@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.informatique.mtcit.common.util.LocalAppLocale
 
 /**
  * Error Banner Component - Matching Design from Image
@@ -93,6 +94,7 @@ fun ErrorBanner(
 
             // ✅ NEW: Show refresh token button for 401 errors
             if (showRefreshButton && onRefreshToken != null) {
+                val isAr = LocalAppLocale.current.language == "ar"
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
@@ -111,7 +113,7 @@ fun ErrorBanner(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "تحديث الرمز",
+                        text = if (isAr) "تحديث الرمز" else "Refresh Token",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium

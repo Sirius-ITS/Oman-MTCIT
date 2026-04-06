@@ -10,6 +10,7 @@ import com.informatique.mtcit.data.model.InspectionFileUpload
 import com.informatique.mtcit.data.repository.LookupRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Manager for handling inspection request submission with documents
@@ -68,7 +69,7 @@ class InspectionRequestManager @Inject constructor(
                     } else {
                         println("❌ No shipInfoId, requestId, or shipId found in formData")
                         println("❌ Available keys: ${formData.keys.joinToString(", ")}")
-                        return InspectionSubmitResult.Error("لم يتم العثور على معرف السفينة")
+                        return InspectionSubmitResult.Error(if (AppLanguage.isArabic) "لم يتم العثور على معرف السفينة" else "Ship ID not found")
                     }
                 }
             } else {
@@ -77,7 +78,7 @@ class InspectionRequestManager @Inject constructor(
 
             // ✅ Extract crNumber (commercial registration number if company, else empty string)
             val personType = formData["selectionPersonType"]
-            val crNumber = if (personType == "شركة") {
+            val crNumber = if (personType == "شركة" || personType == "Company") {
                 formData["selectionData"]
                     ?: formData["crNumber"]
                     ?: formData["commercialNumber"]
@@ -107,7 +108,7 @@ class InspectionRequestManager @Inject constructor(
             if (purposeId == null) {
                 println("❌ ERROR: Could not resolve inspection purpose ID for value: '$inspectionPurposeValue'")
                 println("   Available keys: ${formData.keys}")
-                return InspectionSubmitResult.Error("تعذر تحديد معرف الغرض من المعاينة")
+                return InspectionSubmitResult.Error(if (AppLanguage.isArabic) "تعذر تحديد معرف الغرض من المعاينة" else "Could not determine inspection purpose ID")
             }
             println("   ✅ Resolved purposeId: $purposeId (from: $inspectionPurposeValue)")
 
@@ -125,7 +126,7 @@ class InspectionRequestManager @Inject constructor(
 
             if (placeId == null) {
                 println("❌ ERROR: Could not resolve place ID for value: '$inspectionPlaceValue'")
-                return InspectionSubmitResult.Error("تعذر تحديد معرف موقع المعاينة")
+                return InspectionSubmitResult.Error(if (AppLanguage.isArabic) "تعذر تحديد معرف موقع المعاينة" else "Could not determine inspection location ID")
             }
             println("   ✅ Resolved placeId: $placeId (from: $inspectionPlaceValue)")
 
@@ -136,7 +137,7 @@ class InspectionRequestManager @Inject constructor(
 
             if (authorityAndEntityValue.isNullOrBlank()) {
                 println("❌ No authority and entity selected")
-                return InspectionSubmitResult.Error("يرجى اختيار الجهة والهيئة المعتمدة")
+                return InspectionSubmitResult.Error(if (AppLanguage.isArabic) "يرجى اختيار الجهة والهيئة المعتمدة" else "Please select the authority and approved entity")
             }
 
             // Try extracting ID from "id|name" format first
@@ -145,7 +146,7 @@ class InspectionRequestManager @Inject constructor(
 
             if (authorityId == null) {
                 println("❌ ERROR: Could not resolve authority ID for value: '$authorityAndEntityValue'")
-                return InspectionSubmitResult.Error("تعذر تحديد معرف الجهة المعتمدة للمعاينة")
+                return InspectionSubmitResult.Error(if (AppLanguage.isArabic) "تعذر تحديد معرف الجهة المعتمدة للمعاينة" else "Could not determine approved inspection authority ID")
             }
             println("   ✅ Resolved authorityId: $authorityId (from: $authorityAndEntityValue)")
 
@@ -289,7 +290,7 @@ class InspectionRequestManager @Inject constructor(
                     println("=".repeat(80))
 
                     InspectionSubmitResult.Error(
-                        message = error.message ?: "فشل في إرسال طلب المعاينة"
+                        message = error.message ?: if (AppLanguage.isArabic) "فشل في إرسال طلب المعاينة" else "Failed to submit inspection request"
                     )
                 }
             )
@@ -299,7 +300,7 @@ class InspectionRequestManager @Inject constructor(
             println("=".repeat(80))
 
             InspectionSubmitResult.Error(
-                message = "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}"
+                message = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال طلب المعاينة: ${e.message}" else "An error occurred while submitting the inspection request: ${e.message}"
             )
         }
     }

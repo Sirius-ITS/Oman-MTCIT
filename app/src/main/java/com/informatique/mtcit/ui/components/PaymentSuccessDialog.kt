@@ -3,7 +3,7 @@ package com.informatique.mtcit.ui.components
 import androidx.compose.runtime.Composable
 import java.util.Locale
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
+import com.informatique.mtcit.R
 
 /**
  * Payment Success Dialog - Wrapper around unified SuccessDialog
@@ -24,17 +24,17 @@ fun PaymentSuccessDialog(
     // Build items list for payment details
     val items = listOf(
         SuccessDialogItem(
-            label = stringResource(R.string.receipt_number),
+            label = localizedApp(R.string.receipt_number),
             value = receiptNumber,
             icon = "📄"
         ),
         SuccessDialogItem(
-            label = stringResource(R.string.paid_amount),
+            label = localizedApp(R.string.paid_amount),
             value = paidAmount,
             icon = "💰"
         ),
         SuccessDialogItem(
-            label = stringResource(R.string.date_time),
+            label = localizedApp(R.string.date_time),
             value = timestamp,
             icon = "⏰"
         )

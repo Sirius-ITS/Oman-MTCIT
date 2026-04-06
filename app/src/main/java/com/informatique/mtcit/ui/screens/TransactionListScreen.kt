@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.models.Transaction
@@ -229,7 +231,7 @@ fun TransactionListCard(
     mainCategoryIconRes: Int? = null
 ) {
     val extraColors = LocalExtraColors.current
-
+    val isAr = LocalAppLocale.current.language == "ar"
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -356,7 +358,7 @@ fun TransactionListCard(
                     )
                     val stepsCount = if (transaction.steps.isNotEmpty()) transaction.steps.size else transaction.stepCount
                     Text(
-                        text = "$stepsCount خطوات",
+                        text = if (isAr) "$stepsCount خطوات" else "$stepsCount steps",
                         fontSize = 11.sp,
                         color = Color.Gray
                     )

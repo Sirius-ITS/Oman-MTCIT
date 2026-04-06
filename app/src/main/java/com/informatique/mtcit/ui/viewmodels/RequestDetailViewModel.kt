@@ -17,6 +17,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Represents one affected certificate for change transactions (types 10/11/12/13).
@@ -238,7 +239,7 @@ class RequestDetailViewModel @Inject constructor(
 
                     if (endpointPath == null) {
                         println("❌ RequestDetailViewModel: Unsupported request type ID: $requestTypeId")
-                        _appError.value = AppError.Unknown("نوع الطلب غير مدعوم")
+                        _appError.value = AppError.Unknown("نوع الطلب غير مدعوم", "Unsupported request type")
                         _isLoading.value = false
                         return@launch
                     }
@@ -272,25 +273,30 @@ class RequestDetailViewModel @Inject constructor(
                             is ApiException -> {
                                 when (error.code) {
                                     401 -> _appError.value = AppError.Unauthorized(
-                                        error.message ?: "انتهت صلاحية الجلسة"
+                                        error.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                                        error.message ?: "Session has expired. Please refresh the token to continue"
                                     )
                                     403 -> _appError.value = AppError.ApiError(
                                         error.code,
-                                        "ليس لديك صلاحية للوصول"
+                                        "ليس لديك صلاحية للوصول",
+                                        "You do not have access permission"
                                     )
                                     404 -> _appError.value = AppError.ApiError(
                                         error.code,
-                                        "الطلب غير موجود"
+                                        "الطلب غير موجود",
+                                        "Request not found"
                                     )
                                     else -> _appError.value = AppError.ApiError(
                                         error.code,
-                                        error.message ?: "حدث خطأ في الخادم"
+                                        error.message ?: "حدث خطأ في الخادم",
+                                        error.message ?: "A server error occurred"
                                     )
                                 }
                             }
                             else -> {
                                 _appError.value = AppError.Unknown(
-                                    error.message ?: "حدث خطأ غير متوقع"
+                                    error.message ?: "حدث خطأ غير متوقع",
+                                    error.message ?: "An unexpected error occurred"
                                 )
                             }
                         }
@@ -298,7 +304,7 @@ class RequestDetailViewModel @Inject constructor(
                 )
             } catch (e: Exception) {
                 println("❌ RequestDetailViewModel: Exception: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع")
+                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع", e.message ?: "An unexpected error occurred")
             } finally {
                 _isLoading.value = false
             }
@@ -367,16 +373,16 @@ class RequestDetailViewModel @Inject constructor(
                                     if (fallback.isNotEmpty()) {
                                         _affectedCertificatesList.value = fallback
                                     } else {
-                                        _appError.value = AppError.Unknown("لم يتم العثور على الشهادات في الرد")
+                                        _appError.value = AppError.Unknown("لم يتم العثور على الشهادات في الرد", "Certificates not found in the response")
                                     }
                                 } else {
-                                    _appError.value = AppError.Unknown("لم يتم العثور على الشهادات في الرد")
+                                    _appError.value = AppError.Unknown("لم يتم العثور على الشهادات في الرد", "Certificates not found in the response")
                                 }
                             }
                         },
                         onFailure = { error ->
                             println("❌ issue-affected-certificates failed: ${error.message}")
-                            _appError.value = AppError.Unknown(error.message ?: "فشل إصدار الشهادات")
+                            _appError.value = AppError.Unknown(error.message ?: "فشل إصدار الشهادات", error.message ?: "Failed to issue certificates")
                         }
                     )
                     _isIssuingCertificate.value = false
@@ -403,7 +409,7 @@ class RequestDetailViewModel @Inject constructor(
 
                     if (certificationNumber == null) {
                         println("❌ Could not find certificate number for type: $certificateTypeId, requestId: $requestId")
-                        _appError.value = AppError.Unknown("لم يتم العثور على الشهادة")
+                        _appError.value = AppError.Unknown("لم يتم العثور على الشهادة", "Certificate not found")
                         _isIssuingCertificate.value = false
                         return@launch
                     }
@@ -418,7 +424,7 @@ class RequestDetailViewModel @Inject constructor(
                         },
                         onFailure = { error ->
                             println("❌ Failed to fetch certificate: ${error.message}")
-                            _appError.value = AppError.Unknown(error.message ?: "فشل في جلب الشهادة")
+                            _appError.value = AppError.Unknown(error.message ?: "فشل في جلب الشهادة", error.message ?: "Failed to fetch certificate")
                         }
                     )
 
@@ -433,7 +439,7 @@ class RequestDetailViewModel @Inject constructor(
 
                 if (issuanceEndpoint == null) {
                     println("❌ RequestDetailViewModel: Issuance not supported for type ID: $requestTypeId")
-                    _appError.value = AppError.Unknown("إصدار الشهادة غير مدعوم لهذا النوع")
+                    _appError.value = AppError.Unknown("إصدار الشهادة غير مدعوم لهذا النوع", "Certificate issuance not supported for this type")
                     _isIssuingCertificate.value = false
                     return@launch
                 }
@@ -454,19 +460,19 @@ class RequestDetailViewModel @Inject constructor(
                         when (error) {
                             is ApiException -> {
                                 when (error.code) {
-                                    401 -> _appError.value = AppError.Unauthorized(error.message ?: "انتهت صلاحية الجلسة")
-                                    403 -> _appError.value = AppError.ApiError(error.code, "ليس لديك صلاحية لإصدار هذه الشهادة")
-                                    404 -> _appError.value = AppError.ApiError(error.code, "الطلب غير موجود")
-                                    else -> _appError.value = AppError.ApiError(error.code, error.message ?: "حدث خطأ في إصدار الشهادة")
+                                    401 -> _appError.value = AppError.Unauthorized(error.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة", error.message ?: "Session has expired. Please refresh the token to continue")
+                                    403 -> _appError.value = AppError.ApiError(error.code, "ليس لديك صلاحية لإصدار هذه الشهادة", "You do not have permission to issue this certificate")
+                                    404 -> _appError.value = AppError.ApiError(error.code, "الطلب غير موجود", "Request not found")
+                                    else -> _appError.value = AppError.ApiError(error.code, error.message ?: "حدث خطأ في إصدار الشهادة", error.message ?: "An error occurred while issuing the certificate")
                                 }
                             }
-                            else -> _appError.value = AppError.Unknown(error.message ?: "حدث خطأ غير متوقع")
+                            else -> _appError.value = AppError.Unknown(error.message ?: "حدث خطأ غير متوقع", error.message ?: "An unexpected error occurred")
                         }
                     }
                 )
             } catch (e: Exception) {
                 println("❌ RequestDetailViewModel: Exception during issuance: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع")
+                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع", e.message ?: "An unexpected error occurred")
             } finally {
                 _isIssuingCertificate.value = false
             }
@@ -683,7 +689,7 @@ class RequestDetailViewModel @Inject constructor(
             )
         } catch (e: Exception) {
             println("❌ Error parsing certificate data: ${e.message}")
-            _appError.value = AppError.Unknown("خطأ في معالجة بيانات الشهادة")
+            _appError.value = AppError.Unknown("خطأ في معالجة بيانات الشهادة", "Error processing certificate data")
         }
     }
 
@@ -881,12 +887,12 @@ class RequestDetailViewModel @Inject constructor(
                     },
                     onFailure = { error ->
                         println("❌ RequestDetailViewModel: Error submitting work order result: ${error.message}")
-                        _appError.value = AppError.Unknown(error.message ?: "فشل في حفظ نتيجة الفحص")
+                        _appError.value = AppError.Unknown(error.message ?: "فشل في حفظ نتيجة الفحص", error.message ?: "Failed to save inspection result")
                     }
                 )
             } catch (e: Exception) {
                 println("❌ RequestDetailViewModel: Exception: ${e.message}")
-                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع")
+                _appError.value = AppError.Unknown(e.message ?: "حدث خطأ غير متوقع", e.message ?: "An unexpected error occurred")
             } finally {
                 _isLoading.value = false
             }
@@ -941,7 +947,7 @@ class RequestDetailViewModel @Inject constructor(
                         }
 
                         // ✅ Show success toast
-                        _toastMessage.value = "✅ تم حفظ المسودة بنجاح"
+                        _toastMessage.value = if (AppLanguage.isArabic) "✅ تم حفظ المسودة بنجاح" else "✅ Draft saved successfully"
 
                         // ✅ Reload request details to show updated draft status
                         _requestDetail.value?.let { currentDetail ->
@@ -954,7 +960,7 @@ class RequestDetailViewModel @Inject constructor(
                     },
                     onFailure = { error ->
                         println("❌ Error creating draft: ${error.message}")
-                        _toastMessage.value = "❌ ${error.message ?: "فشل في إنشاء المسودة"}"
+                        _toastMessage.value = "❌ ${error.message ?: if (AppLanguage.isArabic) "فشل في إنشاء المسودة" else "Failed to create draft"}"
                     }
                 )
                 } else {
@@ -982,7 +988,7 @@ class RequestDetailViewModel @Inject constructor(
                             println("✅ Draft updated successfully")
 
                             // ✅ Show success toast (will be handled in UI)
-                            _toastMessage.value = "✅ تم حفظ المسودة بنجاح"
+                            _toastMessage.value = if (AppLanguage.isArabic) "✅ تم حفظ المسودة بنجاح" else "✅ Draft saved successfully"
 
                             // ✅ Reload request details to show updated draft status
                             _requestDetail.value?.let { currentDetail ->
@@ -995,13 +1001,13 @@ class RequestDetailViewModel @Inject constructor(
                         },
                         onFailure = { error ->
                             println("❌ Error updating draft: ${error.message}")
-                            _toastMessage.value = "❌ ${error.message ?: "فشل في تحديث المسودة"}"
+                            _toastMessage.value = "❌ ${error.message ?: if (AppLanguage.isArabic) "فشل في تحديث المسودة" else "Failed to update draft"}"
                         }
                     )
                 }
             } catch (e: Exception) {
                 println("❌ RequestDetailViewModel: Exception saving draft: ${e.message}")
-                _toastMessage.value = "❌ ${e.message ?: "حدث خطأ غير متوقع"}"
+                _toastMessage.value = "❌ ${e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred"}"
             } finally {
                 _isLoading.value = false
             }
@@ -1067,7 +1073,7 @@ class RequestDetailViewModel @Inject constructor(
                         },
                         onFailure = { error ->
                             println("   ❌ Failed to save draft: ${error.message}")
-                            _toastMessage.value = "❌ ${error.message ?: "فشل في حفظ المسودة"}"
+                            _toastMessage.value = "❌ ${error.message ?: if (AppLanguage.isArabic) "فشل في حفظ المسودة" else "Failed to save draft"}"
                             _isLoading.value = false
                             return@launch
                         }
@@ -1100,7 +1106,7 @@ class RequestDetailViewModel @Inject constructor(
                         },
                         onFailure = { error ->
                             println("   ❌ Failed to update draft: ${error.message}")
-                            _toastMessage.value = "❌ ${error.message ?: "فشل في تحديث المسودة"}"
+                            _toastMessage.value = "❌ ${error.message ?: if (AppLanguage.isArabic) "فشل في تحديث المسودة" else "Failed to update draft"}"
                             _isLoading.value = false
                             return@launch
                         }
@@ -1129,7 +1135,7 @@ class RequestDetailViewModel @Inject constructor(
                             println("      Message: ${response.message}")
 
                             // ✅ Show success toast
-                            _toastMessage.value = "✅ تم تنفيذ الفحص بنجاح"
+                            _toastMessage.value = if (AppLanguage.isArabic) "✅ تم تنفيذ الفحص بنجاح" else "✅ Inspection executed successfully"
 
                             // ✅ Refresh request detail to show updated status
                             val currentDetail = _requestDetail.value
@@ -1143,16 +1149,16 @@ class RequestDetailViewModel @Inject constructor(
                         },
                         onFailure = { error ->
                             println("   ❌ Failed to execute inspection: ${error.message}")
-                            _toastMessage.value = "❌ ${error.message ?: "فشل في تنفيذ الفحص"}"
+                            _toastMessage.value = "❌ ${error.message ?: if (AppLanguage.isArabic) "فشل في تنفيذ الفحص" else "Failed to execute inspection"}"
                         }
                     )
                 } else {
                     println("   ❌ No work order result ID available for execution")
-                    _toastMessage.value = "❌ فشل في الحصول على معرف نتيجة الفحص"
+                    _toastMessage.value = if (AppLanguage.isArabic) "❌ فشل في الحصول على معرف نتيجة الفحص" else "❌ Failed to get inspection result ID"
                 }
             } catch (e: Exception) {
                 println("❌ RequestDetailViewModel: Exception executing inspection: ${e.message}")
-                _toastMessage.value = "❌ ${e.message ?: "حدث خطأ غير متوقع"}"
+                _toastMessage.value = "❌ ${e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred"}"
             } finally {
                 _isLoading.value = false
             }
@@ -1247,7 +1253,7 @@ class RequestDetailViewModel @Inject constructor(
                 val rawResponse = _rawResponse.value
                 if (rawResponse == null) {
                     println("❌ No raw response available")
-                    _toastMessage.value = "❌ لا توجد تفاصيل للطلب"
+                    _toastMessage.value = if (AppLanguage.isArabic) "❌ لا توجد تفاصيل للطلب" else "❌ No request details found"
                     _isLoading.value = false
                     _isViewingCertificate.value = false
                     return@launch
@@ -1257,7 +1263,7 @@ class RequestDetailViewModel @Inject constructor(
                 val requestId = _requestDetail.value?.requestId
                 if (requestId == null) {
                     println("❌ No request ID available")
-                    _toastMessage.value = "❌ معرف الطلب غير متاح"
+                    _toastMessage.value = if (AppLanguage.isArabic) "❌ معرف الطلب غير متاح" else "❌ Request ID not available"
                     _isLoading.value = false
                     _isViewingCertificate.value = false
                     return@launch
@@ -1326,20 +1332,20 @@ class RequestDetailViewModel @Inject constructor(
                         }
                     } else {
                         println("❌ No certificate URL mapping for request type: $requestTypeId")
-                        _toastMessage.value = "❌ لا يمكن عرض الشهادة لهذا النوع من الطلبات"
+                        _toastMessage.value = if (AppLanguage.isArabic) "❌ لا يمكن عرض الشهادة لهذا النوع من الطلبات" else "❌ Cannot display certificate for this request type"
                         _isLoading.value = false
                         _isViewingCertificate.value = false
                     }
                 } else {
                     println("❌ No certificate found for request type: $requestTypeId")
-                    _toastMessage.value = "❌ لا توجد شهادة لهذا الطلب"
+                    _toastMessage.value = if (AppLanguage.isArabic) "❌ لا توجد شهادة لهذا الطلب" else "❌ No certificate found for this request"
                     _isLoading.value = false
                     _isViewingCertificate.value = false
                 }
             } catch (e: Exception) {
                 println("❌ Error viewing certificate: ${e.message}")
                 e.printStackTrace()
-                _toastMessage.value = "❌ حدث خطأ أثناء عرض الشهادة"
+                _toastMessage.value = if (AppLanguage.isArabic) "❌ حدث خطأ أثناء عرض الشهادة" else "❌ An error occurred while displaying the certificate"
                 _isLoading.value = false
                 _isViewingCertificate.value = false
             }

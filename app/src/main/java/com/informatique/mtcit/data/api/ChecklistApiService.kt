@@ -13,6 +13,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * API Service for Checklist Settings
@@ -63,7 +64,7 @@ class ChecklistApiService @Inject constructor(
                             Result.success(checklistResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في جلب قائمة الفحص"
+                                ?: if (AppLanguage.isArabic) "فشل في جلب قائمة الفحص" else "Failed to fetch checklist"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -126,7 +127,7 @@ class ChecklistApiService @Inject constructor(
                             Result.success(decisionsResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في جلب قرارات الفحص"
+                                ?: if (AppLanguage.isArabic) "فشل في جلب قرارات الفحص" else "Failed to fetch inspection decisions"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -196,7 +197,7 @@ class ChecklistApiService @Inject constructor(
                             Result.success(resultResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في حفظ نتيجة الفحص"
+                                ?: if (AppLanguage.isArabic) "فشل في حفظ نتيجة الفحص" else "Failed to save inspection result"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -265,7 +266,7 @@ class ChecklistApiService @Inject constructor(
                             Result.success(resultResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في حفظ المسودة"
+                                ?: if (AppLanguage.isArabic) "فشل في حفظ المسودة" else "Failed to save draft"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -335,7 +336,7 @@ class ChecklistApiService @Inject constructor(
                             Result.success(resultResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في تحديث المسودة"
+                                ?: if (AppLanguage.isArabic) "فشل في تحديث المسودة" else "Failed to update draft"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -429,7 +430,7 @@ class ChecklistApiService @Inject constructor(
                             Result.success(resultResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في تنفيذ الفحص"
+                                ?: if (AppLanguage.isArabic) "فشل في تنفيذ الفحص" else "Failed to execute inspection"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))

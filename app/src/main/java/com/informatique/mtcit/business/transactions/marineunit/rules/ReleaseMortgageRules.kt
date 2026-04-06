@@ -6,6 +6,8 @@ import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import com.informatique.mtcit.data.repository.MortgageRepository
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 
 /**
  * Business rules for Release Mortgage transaction
@@ -45,8 +47,8 @@ class ReleaseMortgageRules @Inject constructor(
         if (!mortgageStatus.isApprovedBank) {
             return MarineUnitValidationResult.Ineligible.CustomError(
                 unit = unit,
-                reason = "الرهن الحالي غير مسجل لدى بنك معتمد",
-                suggestion = "يرجى التواصل مع الجهات المختصة لتحديث بيانات الرهن"
+                reason = if (isArabic) "الرهن الحالي غير مسجل لدى بنك معتمد" else "Current mortgage is not registered with an approved bank",
+                suggestion = if (isArabic) "يرجى التواصل مع الجهات المختصة لتحديث بيانات الرهن" else "Please contact the competent authorities to update mortgage data"
             )
         }
 
@@ -78,11 +80,11 @@ class ReleaseMortgageRules @Inject constructor(
             is MarineUnitValidationResult.Ineligible.NotMortgaged -> {
                 // Suggest Mortgage Certificate transaction instead
                 MarineUnitNavigationAction.ShowError(
-                    title = "الوحدة البحرية غير مرهونة",
-                    message = "${result.reason}\n\nلا يمكن فك رهن وحدة غير مرهونة",
+                    title = if (isArabic) "الوحدة البحرية غير مرهونة" else "Marine unit is not mortgaged",
+                    message = if (AppLanguage.isArabic) "${result.reason}\n\nلا يمكن فك رهن وحدة غير مرهونة" else "${result.reason}\n\nCannot release mortgage on a non-mortgaged unit",
                     actions = listOf(
                         ErrorAction(
-                            label = "الانتقال إلى إصدار شهادة رهن",
+                            label = if (isArabic) "الانتقال إلى إصدار شهادة رهن" else "Go to Mortgage Certificate Issuance",
                             action = MarineUnitNavigationAction.RedirectToTransaction(
                                 transactionType = TransactionType.MORTGAGE_CERTIFICATE,
                                 reason = "Unit not mortgaged",
@@ -90,7 +92,7 @@ class ReleaseMortgageRules @Inject constructor(
                             )
                         ),
                         ErrorAction(
-                            label = "اختيار وحدة أخرى",
+                            label = if (isArabic) "اختيار وحدة أخرى" else "Select Another Unit",
                             action = MarineUnitNavigationAction.ShowError(
                                 title = "",
                                 message = "",
@@ -103,7 +105,7 @@ class ReleaseMortgageRules @Inject constructor(
 
             is MarineUnitValidationResult.Ineligible -> {
                 MarineUnitNavigationAction.ShowError(
-                    title = "الوحدة البحرية غير مؤهلة",
+                    title = if (isArabic) "الوحدة البحرية غير مؤهلة" else "Marine Unit Not Eligible",
                     message = "${result.reason}\n\n${result.suggestion ?: ""}",
                     actions = emptyList()
                 )
@@ -113,8 +115,8 @@ class ReleaseMortgageRules @Inject constructor(
 
     override fun allowMultipleSelection(): Boolean = false
 
-    override fun getStepTitle(): String = "اختيار الوحدة البحرية لفك الرهن"
+    override fun getStepTitle(): String = if (isArabic) "اختيار الوحدة البحرية لفك الرهن" else "Select Marine Unit for Mortgage Release"
 
-    override fun getStepDescription(): String = "اختر الوحدة البحرية المرهونة التي ترغب في فك رهنها"
+    override fun getStepDescription(): String = if (isArabic) "اختر الوحدة البحرية المرهونة التي ترغب في فك رهنها" else "Select the mortgaged marine unit you want to release"
 }
 

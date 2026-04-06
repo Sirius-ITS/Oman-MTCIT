@@ -1,11 +1,13 @@
 package com.informatique.mtcit.data.model
 
-import java.util.Locale
 import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Request Status Enum
- * Maps API statusId to readable status names in both Arabic and English
+ * Maps API statusId to readable status names in both Arabic and English.
+ * arabicName and englishName are always the literal strings — never conditional —
+ * so reactive display in Composables (using LocalAppLocale.current) works correctly
+ * regardless of what language the app was in when the enum was first loaded.
  */
 enum class RequestStatus(val statusId: Int, val arabicName: String, val englishName: String) {
     DRAFT(1, "مسودة", "Draft"),
@@ -15,60 +17,48 @@ enum class RequestStatus(val statusId: Int, val arabicName: String, val englishN
     PENDING(5, "قيد الانتظار", "Pending"),
     SCHEDULED(6, "مجدول", "Scheduled"),
     ACCEPTED(7, "مقبول", "Accepted"),
-    IN_REVIEW(8, "قيد المراجعة", "In Review"),
+    IN_REVIEW(8, "قيد المراجعة", "Under Review"),
     REVIEW_RTA(9, "مراجعة RTA", "RTA Review"),
-    REJECT_AUTHORITIES(10, "رفض من الجهات", "Rejected by Authorities"),
-    APPROVED_AUTHORITIES(11, "موافقة الجهات", "Approved by Authorities"),
+    REJECT_AUTHORITIES(10, "رفض من الجهات", "Auth. Rejected"),
+    APPROVED_AUTHORITIES(11, "موافقة الجهات", "Auth. Approved"),
     APPROVED_FINAL(12, "الموافقة النهائية", "Final Approval"),
     ACTION_TAKEN(13, "تم اتخاذ الإجراء", "Action Taken"),
     ISSUED(14, "مصدر", "Issued"),
     UNDER_INVESTIGATION(15, "قيد التحقيق", "Under Investigation"),
-    WAITING_INSPECTION_RESULT(16, "في انتظار نتائج الفحص", "Waiting for Inspection Result");
+    WAITING_INSPECTION_RESULT(16, "في انتظار نتائج الفحص", "Waiting Inspection");
 
     companion object {
         /**
          * Get status from API statusId
          */
         fun fromStatusId(statusId: Int): RequestStatus? {
-            return values().find { it.statusId == statusId }
+            return entries.find { it.statusId == statusId }
         }
 
         /**
-         * Get localized status name based on current locale
-         * @param statusId The status ID from the API
-         * @return Localized status name (Arabic or English based on current locale)
+         * Get localized status name based on current default locale.
+         * NOTE: Call this only from non-Composable code.
+         * In Composables use: RequestStatus.fromStatusId(id)?.let { if (isAr) it.arabicName else it.englishName }
          */
         fun getStatusName(statusId: Int): String {
-            val status = fromStatusId(statusId)
-            return if (status != null) {
-                val currentLanguage = AppLanguage.code
-                if (currentLanguage == "ar") status.arabicName else status.englishName
-            } else {
-                // Return "Unknown" in the appropriate language
-                if (AppLanguage.isArabic) "غير معروف" else "Unknown"
-            }
+            val status = fromStatusId(statusId) ?: return if (AppLanguage.isArabic) "غير معروف" else "Unknown"
+            return if (AppLanguage.isArabic) status.arabicName else status.englishName
         }
 
         /**
-         * Get status name in specific language
-         * @param statusId The status ID from the API
-         * @param isArabic True for Arabic, false for English
+         * Get status name in a specific language
          */
         fun getStatusName(statusId: Int, isArabic: Boolean): String {
-            val status = fromStatusId(statusId)
-            return if (status != null) {
-                if (isArabic) status.arabicName else status.englishName
-            } else {
-                if (AppLanguage.isArabic) "غير معروف" else "Unknown"
-            }
+            val status = fromStatusId(statusId) ?: return if (isArabic) "غير معروف" else "Unknown"
+            return if (isArabic) status.arabicName else status.englishName
         }
     }
 
     /**
-     * Get localized name based on current locale
+     * Get localized name based on current default locale.
+     * For reactive Composable display, read arabicName / englishName directly with LocalAppLocale.current.
      */
     fun getLocalizedName(): String {
-        val currentLanguage = AppLanguage.code
-        return if (currentLanguage == "ar") arabicName else englishName
+        return if (AppLanguage.isArabic) arabicName else englishName
     }
 }

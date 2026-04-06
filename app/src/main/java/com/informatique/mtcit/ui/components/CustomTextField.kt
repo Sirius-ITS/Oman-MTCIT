@@ -11,7 +11,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
@@ -40,13 +45,15 @@ fun CustomTextField(
     placeholder: String? = null,
     enabled: Boolean = true,
     maxLength: Int? = null, // ✅ NEW: Maximum character length
-    minLength: Int? = null // ✅ NEW: Minimum character length (for validation only)
+    minLength: Int? = null, // ✅ NEW: Minimum character length (for validation only)
+    onFocusLost: ((String) -> Unit)? = null // ✅ NEW: Optional focus-loss callback for inline dialog validation
 ) {
     val extraColors = LocalExtraColors.current
 
     // Treat messages starting with a check mark as success messages (green)
     val isSuccess = error?.trimStart()?.startsWith("✔") == true
     val successColor = Color(0xFF2E7D32) // Green 700
+    var wasFocused by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -120,7 +127,14 @@ fun CustomTextField(
                     else -> KeyboardType.Text
                 }
             ),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onFocusLost != null) Modifier.onFocusChanged { focusState ->
+                        if (wasFocused && !focusState.isFocused) onFocusLost(value)
+                        wasFocused = focusState.isFocused
+                    } else Modifier
+                ),
             isError = error != null && !isSuccess,
             singleLine = true,
             enabled = enabled

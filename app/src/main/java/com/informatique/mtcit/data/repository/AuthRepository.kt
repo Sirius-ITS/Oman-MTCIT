@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Repository for handling OAuth authentication with Keycloak
@@ -63,10 +64,10 @@ class AuthRepository @Inject constructor(
                     Log.e(TAG, "❌ Token exchange failed with status ${httpResponse.status.value}: $errorBody")
                     val errorMessage = when {
                         errorBody.contains("Code not valid") || errorBody.contains("invalid_grant") ->
-                            "رمز التفويض غير صالح أو منتهي الصلاحية. يرجى تسجيل الدخول مرة أخرى"
+                            if (AppLanguage.isArabic) "رمز التفويض غير صالح أو منتهي الصلاحية. يرجى تسجيل الدخول مرة أخرى" else "Invalid or expired authorization code. Please log in again"
                         errorBody.contains("PKCE verification failed") ->
-                            "فشل التحقق من PKCE. يرجى المحاولة مرة أخرى"
-                        else -> "فشل تبادل الرمز. يرجى تسجيل الدخول مرة أخرى"
+                            if (AppLanguage.isArabic) "فشل التحقق من PKCE. يرجى المحاولة مرة أخرى" else "PKCE verification failed. Please try again"
+                        else -> if (AppLanguage.isArabic) "فشل تبادل الرمز. يرجى تسجيل الدخول مرة أخرى" else "Token exchange failed. Please log in again"
                     }
                     return@withContext Result.failure(Exception(errorMessage))
                 }
@@ -129,7 +130,7 @@ class AuthRepository @Inject constructor(
                 val refreshToken = TokenManager.getRefreshToken(context)
                 if (refreshToken.isNullOrEmpty()) {
                     Log.e(TAG, "❌ No refresh token available")
-                    return@withContext Result.failure(Exception("لا يوجد رمز تحديث متاح. يرجى تسجيل الدخول مرة أخرى"))
+                    return@withContext Result.failure(Exception(if (AppLanguage.isArabic) "لا يوجد رمز تحديث متاح. يرجى تسجيل الدخول مرة أخرى" else "No refresh token available. Please log in again"))
                 }
 
                 val httpResponse = httpClient.submitForm(
@@ -152,8 +153,8 @@ class AuthRepository @Inject constructor(
 
                     val errorMessage = when {
                         errorBody.contains("Token is not active") || errorBody.contains("invalid_grant") ->
-                            "انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى"
-                        else -> "فشل تحديث الرمز. يرجى تسجيل الدخول مرة أخرى"
+                            if (AppLanguage.isArabic) "انتهت صلاحية رمز التحديث. يرجى تسجيل الدخول مرة أخرى" else "Refresh token expired. Please log in again"
+                        else -> if (AppLanguage.isArabic) "فشل تحديث الرمز. يرجى تسجيل الدخول مرة أخرى" else "Token refresh failed. Please log in again"
                     }
 
                     return@withContext Result.failure(Exception(errorMessage))
@@ -177,7 +178,7 @@ class AuthRepository @Inject constructor(
                 Result.success(response)
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Token refresh failed: ${e.message}", e)
-                Result.failure(Exception("فشل تحديث الرمز. يرجى تسجيل الدخول مرة أخرى"))
+                Result.failure(Exception(if (AppLanguage.isArabic) "فشل تحديث الرمز. يرجى تسجيل الدخول مرة أخرى" else "Token refresh failed. Please log in again"))
             }
         }
     }

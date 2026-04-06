@@ -29,6 +29,7 @@ import com.informatique.mtcit.business.transactions.shared.ShipType
 import com.informatique.mtcit.business.transactions.shared.StepType
 import com.informatique.mtcit.data.model.requests.StatusCountResponse
 import kotlinx.coroutines.delay
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Validation state sealed class for marine unit selection
@@ -360,7 +361,7 @@ class MarineRegistrationViewModel @Inject constructor(
             // Set success dialog data
             _requestSubmissionSuccess.value = RequestSubmissionResult(
                 requestNumber = requestNumber,
-                message = successMessage?.toString() ?: "تم إرسال الطلب بنجاح"
+                message = successMessage?.toString() ?: if (AppLanguage.isArabic) "تم إرسال الطلب بنجاح" else "Request submitted successfully"
             )
 
             println("✅ _requestSubmissionSuccess.value set to: ${_requestSubmissionSuccess.value}")
@@ -486,7 +487,7 @@ class MarineRegistrationViewModel @Inject constructor(
                 val customerId = com.informatique.mtcit.util.UserHelper.getOwnerCivilId(appContext)
                 if (customerId == null) {
                     println("❌ No customerId found in token")
-                    _statusCountsError.value = "لم يتم العثور على معرف المستخدم"
+                    _statusCountsError.value = if (AppLanguage.isArabic) "لم يتم العثور على معرف المستخدم" else "User ID not found"
                     _statusCountsLoading.value = false
                     return@launch
                 }
@@ -501,13 +502,13 @@ class MarineRegistrationViewModel @Inject constructor(
                     _statusCountsLoading.value = false
                 }.onFailure { exception ->
                     println("❌ Failed to fetch status counts: ${exception.message}")
-                    _statusCountsError.value = exception.message ?: "فشل في جلب الإحصائيات"
+                    _statusCountsError.value = exception.message ?: if (AppLanguage.isArabic) "فشل في جلب الإحصائيات" else "Failed to fetch statistics"
                     _statusCountsLoading.value = false
                 }
             } catch (e: Exception) {
                 println("❌ Exception in getStatusCounts: ${e.message}")
                 e.printStackTrace()
-                _statusCountsError.value = "حدث خطأ غير متوقع"
+                _statusCountsError.value = if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred"
                 _statusCountsLoading.value = false
             }
         }
@@ -553,7 +554,7 @@ class MarineRegistrationViewModel @Inject constructor(
                     val strategy = currentStrategy
                     if (strategy == null) {
                         println("❌ Strategy is null, cannot resume")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل في استعادة المعاملة")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل في استعادة المعاملة", "Failed to restore transaction")
                         _isResuming.value = false
                         _pendingResumeRequestId = null
                         return@launch
@@ -632,7 +633,7 @@ class MarineRegistrationViewModel @Inject constructor(
                         else -> {
                             // Error: resume step beyond total steps
                             println("❌ Resume step $resumeStep exceeds total steps $totalSteps")
-                            _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة")
+                            _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة", "Error restoring transaction")
                             -1
                         }
                     }
@@ -658,7 +659,8 @@ class MarineRegistrationViewModel @Inject constructor(
                 result.onFailure { error ->
                     println("❌ Failed to complete resume: ${error.message}")
                     _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                        error.message ?: "فشل في استعادة المعاملة"
+                        error.message ?: "فشل في استعادة المعاملة",
+                        error.message ?: "Failed to restore transaction"
                     )
                     _pendingResumeRequestId = null
                     _isResuming.value = false
@@ -668,7 +670,8 @@ class MarineRegistrationViewModel @Inject constructor(
                 println("❌ Exception completing resume: ${e.message}")
                 e.printStackTrace()
                 _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                    e.message ?: "حدث خطأ أثناء استعادة الطلب"
+                    e.message ?: "حدث خطأ أثناء استعادة الطلب",
+                    e.message ?: "An error occurred while restoring the request"
                 )
                 _pendingResumeRequestId = null
                 _isResuming.value = false
@@ -723,7 +726,7 @@ class MarineRegistrationViewModel @Inject constructor(
                     val strategy = currentStrategy
                     if (strategy == null) {
                         println("❌ Strategy is null, cannot resume")
-                        _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل في استعادة المعاملة")
+                        _error.value = com.informatique.mtcit.common.AppError.Unknown("فشل في استعادة المعاملة", "Failed to restore transaction")
                         _isResuming.value = false
                         _pendingResumeRequestId = null
                         return@launch
@@ -874,7 +877,7 @@ class MarineRegistrationViewModel @Inject constructor(
                         else -> {
                             // Error: resume step beyond total steps
                             println("❌ Resume step $resumeStep exceeds total steps $totalSteps")
-                            _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة")
+                            _error.value = com.informatique.mtcit.common.AppError.Unknown("خطأ في استعادة المعاملة", "Error restoring transaction")
                             -1
                         }
                     }
@@ -896,7 +899,8 @@ class MarineRegistrationViewModel @Inject constructor(
                 result.onFailure { error ->
                     println("❌ Failed to fetch request data: ${error.message}")
                     _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                        error.message ?: "فشل في استعادة المعاملة"
+                        error.message ?: "فشل في استعادة المعاملة",
+                        error.message ?: "Failed to restore transaction"
                     )
                     _pendingResumeRequestId = null
                     _isResuming.value = false
@@ -906,7 +910,8 @@ class MarineRegistrationViewModel @Inject constructor(
                 println("❌ Exception in direct resume: ${e.message}")
                 e.printStackTrace()
                 _error.value = com.informatique.mtcit.common.AppError.Unknown(
-                    e.message ?: "حدث خطأ أثناء استعادة الطلب"
+                    e.message ?: "حدث خطأ أثناء استعادة الطلب",
+                    e.message ?: "An error occurred while restoring the request"
                 )
                 _pendingResumeRequestId = null
                 _isResuming.value = false
@@ -1179,7 +1184,7 @@ class MarineRegistrationViewModel @Inject constructor(
     private fun createPlaceholderUnit(): MarineUnit {
         return MarineUnit(
             id = "placeholder",
-            shipName = "وحدة بحرية",
+            shipName = if (AppLanguage.isArabic) "وحدة بحرية" else "Marine Unit",
             callSign = "",
             mmsiNumber = "",
             portOfRegistry = com.informatique.mtcit.business.transactions.shared.PortOfRegistry("")
@@ -1282,7 +1287,7 @@ class MarineRegistrationViewModel @Inject constructor(
                 // Show error to user
                 updateUiState { currentState ->
                     val updatedFormData = currentState.formData.toMutableMap()
-                    updatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+                    updatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل تحميل بيانات المعاينة: ${e.message}" else "Failed to load inspection data: ${e.message}"
                     currentState.copy(formData = updatedFormData)
                 }
             }
@@ -1919,7 +1924,7 @@ class MarineRegistrationViewModel @Inject constructor(
                     }
                     .onFailure { error ->
                         println("❌ saveSailorImmediate failed: ${error.message}")
-                        _showToastEvent.value = error.message ?: "فشل في حفظ بيانات فرد الطاقم"
+                        _showToastEvent.value = error.message ?: if (AppLanguage.isArabic) "فشل في حفظ بيانات فرد الطاقم" else "Failed to save crew member data"
                     }
             } catch (e: Exception) {
                 println("❌ Exception in saveSailorImmediate: ${e.message}")
@@ -1947,7 +1952,7 @@ class MarineRegistrationViewModel @Inject constructor(
                     }
                     .onFailure { error ->
                         println("❌ deleteSailorImmediate failed: ${error.message}")
-                        _showToastEvent.value = error.message ?: "فشل في حذف فرد الطاقم"
+                        _showToastEvent.value = error.message ?: if (AppLanguage.isArabic) "فشل في حذف فرد الطاقم" else "Failed to delete crew member"
                     }
             } catch (e: Exception) {
                 println("❌ Exception in deleteSailorImmediate: ${e.message}")

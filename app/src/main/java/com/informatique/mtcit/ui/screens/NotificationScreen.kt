@@ -1,13 +1,13 @@
 package com.informatique.mtcit.ui.screens
 
 import android.app.Activity
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,7 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +32,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.data.datastorehelper.TokenManager
 import com.informatique.mtcit.data.model.notification.NotificationResDto
 import com.informatique.mtcit.ui.components.CustomToolbar
@@ -50,10 +52,13 @@ fun NotificationScreen(
     val notifications  by notificationViewModel.notifications.collectAsStateWithLifecycle()
     val isLoading      by notificationViewModel.isLoading.collectAsStateWithLifecycle()
     val unreadCount    by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
+    val isAr = LocalAppLocale.current.language == "ar"
 
     // Dialog & snackbar state
     var showTestDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    // Show the swipe-hint animation only once per screen visit
+    var swipeHintShown by remember { mutableStateOf(false) }
 
 
     // Make status bar transparent
@@ -139,7 +144,7 @@ fun NotificationScreen(
                                 modifier = Modifier.size(72.dp)
                             )
                             Text(
-                                text = "لا توجد إشعارات",
+                                text = if (isAr) "لا توجد إشعارات" else "No notifications",
                                 fontSize = 16.sp,
                                 color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
                             )
@@ -164,10 +169,10 @@ fun NotificationScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "الإشعارات",
+                                    text = if (isAr) "الإشعارات" else "Notifications",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = extraColors.whiteInDarkMode
+                                    color = Color.White
                                 )
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -176,12 +181,12 @@ fun NotificationScreen(
                                     if (unreadCount > 0) {
                                         Surface(
                                             shape = RoundedCornerShape(12.dp),
-                                            color = Color(0xFFE53935).copy(alpha = 0.15f)
+                                            color = Color.White.copy(alpha = 0.15f)
                                         ) {
                                             Text(
-                                                text = "$unreadCount غير مقروء",
+                                                text = if (isAr) "$unreadCount غير مقروء" else "$unreadCount unread",
                                                 fontSize = 12.sp,
-                                                color = Color(0xFFE53935),
+                                                color = Color.White,
                                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                             )
                                         }
@@ -190,9 +195,14 @@ fun NotificationScreen(
                             }
                         }
 
-                        items(items = notifications, key = { it.id }) { notification ->
+                        itemsIndexed(
+                            items = notifications,
+                            key = { _, n -> n.id }
+                        ) { index, notification ->
                             SwipeableNotificationCard(
-                                notification = notification,
+                                notification  = notification,
+                                showSwipeHint = index == 0 && !swipeHintShown,
+                                onHintShown   = { swipeHintShown = true },
                                 onTap    = { notificationViewModel.markAsRead(notification.id) },
                                 onDelete = { notificationViewModel.deleteNotification(notification.id) }
                             )
@@ -225,6 +235,8 @@ fun NotificationScreen(
 @Composable
 private fun SwipeableNotificationCard(
     notification: NotificationResDto,
+    showSwipeHint: Boolean = false,
+    onHintShown: () -> Unit = {},
     onTap: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -239,46 +251,63 @@ private fun SwipeableNotificationCard(
         }
     )
 
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = { DeleteBackground(dismissState) },
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        NotificationCard(notification = notification, onTap = onTap)
+    // Peek animation: slide left enough to clearly reveal the red delete background + icon
+    val peekOffset = remember { Animatable(0f) }
+    LaunchedEffect(showSwipeHint) {
+        if (!showSwipeHint) return@LaunchedEffect
+        delay(700)
+        peekOffset.animateTo(-100f, animationSpec = tween(durationMillis = 380))
+        onHintShown() // mark as done — won't replay even if user swipes back
+    }
+
+    // Once the user actually starts swiping, snap the hint offset away so
+    // the SwipeToDismissBox takes over with a clean starting position
+    LaunchedEffect(dismissState.targetValue) {
+        if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) {
+            peekOffset.snapTo(0f)
+        }
+    }
+
+    // Only compose the red layer when it will actually be visible
+    val isDeleteRevealed = peekOffset.value < -1f ||
+                           dismissState.targetValue != SwipeToDismissBoxValue.Settled
+
+    val isAr = LocalAppLocale.current.language == "ar"
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // ── Red delete layer — matchParentSize ties its height to the card ────
+        if (isDeleteRevealed) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE53935))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = if (isAr) "حذف" else "Delete",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        // ── Card — moves left to reveal the layer above ───────────────────────
+        SwipeToDismissBox(
+            state = dismissState,
+            backgroundContent = {},
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(x = peekOffset.value.dp.roundToPx(), y = 0) }
+        ) {
+            NotificationCard(notification = notification, onTap = onTap)
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DeleteBackground(dismissState: SwipeToDismissBoxState) {
-    val color by animateColorAsState(
-        targetValue = when (dismissState.targetValue) {
-            SwipeToDismissBoxValue.Settled -> Color.Transparent
-            else -> Color(0xFFE53935)
-        },
-        label = "swipe_bg"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) 0.75f else 1f,
-        label = "swipe_scale"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(16.dp))
-            .background(color)
-            .padding(horizontal = 20.dp),
-        contentAlignment = Alignment.CenterEnd
-    ) {
-        Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "حذف",
-            tint = Color.White,
-            modifier = Modifier.scale(scale)
-        )
-    }
-}
+// ── Delete background composable removed — inlined above with matchParentSize ─
 
 @Composable
 private fun NotificationCard(
@@ -286,6 +315,7 @@ private fun NotificationCard(
     onTap: () -> Unit
 ) {
     // ...existing code...
+    val isAr = LocalAppLocale.current.language == "ar"
     val extraColors = LocalExtraColors.current
     val isUnread = notification.isRead == 0
 
@@ -295,13 +325,10 @@ private fun NotificationCard(
             .clickable { if (isUnread) onTap() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isUnread)
-                extraColors.cardBackground
-            else
-                extraColors.cardBackground.copy(alpha = 0.6f)
+            containerColor = extraColors.cardBackground          // same for read & unread
         ),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isUnread) 3.dp else 1.dp
+            defaultElevation = 2.dp                              // same for read & unread
         )
     ) {
         Row(
@@ -317,14 +344,14 @@ private fun NotificationCard(
                     .clip(CircleShape)
                     .background(
                         if (isUnread) extraColors.blue1.copy(alpha = 0.15f)
-                        else Color.Gray.copy(alpha = 0.08f)
+                        else extraColors.blue1.copy(alpha = 0.06f)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = if (isUnread) extraColors.blue1 else Color.Gray.copy(alpha = 0.5f),
+                    tint = if (isUnread) extraColors.blue1 else extraColors.blue1.copy(alpha = 0.4f),
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -335,7 +362,7 @@ private fun NotificationCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = notification.title ?: "إشعار",
+                        text = notification.title ?: if (isAr) "إشعار" else "Notification",
                         fontSize = 14.sp,
                         fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
                         color = extraColors.whiteInDarkMode,
@@ -357,15 +384,13 @@ private fun NotificationCard(
                     Text(
                         text = notification.body,
                         fontSize = 13.sp,
-                        color = extraColors.whiteInDarkMode.copy(alpha = 0.65f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                        color = extraColors.whiteInDarkMode.copy(alpha = 0.65f)
                     )
                 }
                 if (isUnread) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "اضغط للتعليم كمقروء",
+                        text = if (isAr) "اضغط للتعليم كمقروء" else "Tap to mark as read",
                         fontSize = 11.sp,
                         color = extraColors.blue1.copy(alpha = 0.7f)
                     )

@@ -27,9 +27,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.util.Base64
-import java.util.Locale
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
+import com.informatique.mtcit.R
 
 /**
  * Unified Success Dialog - Used for payment, certificate issuance, and other success scenarios
@@ -138,7 +137,7 @@ fun SuccessDialog(
                     // QR Code (if provided)
                     if (!qrCode.isNullOrEmpty()) {
                         Text(
-                            text = stringResource(R.string.qr_code),
+                            text = localizedApp(R.string.qr_code),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = extraColors.whiteInDarkMode.copy(alpha = 0.7f)
@@ -175,7 +174,7 @@ fun SuccessDialog(
                         } else {
                             // If QR code decoding fails, show error message
                             Text(
-                                text = stringResource(R.string.error_loading_qr_code),
+                                text = localizedApp(R.string.error_loading_qr_code),
                                 fontSize = 12.sp,
                                 color = extraColors.whiteInDarkMode.copy(alpha = 0.5f)
                             )
@@ -223,7 +222,7 @@ fun SuccessDialog(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.close),
+                                text = localizedApp(R.string.close),
                                 color = extraColors.blue1,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -253,7 +252,7 @@ fun SuccessDialog(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.view_certificate),
+                                text = localizedApp(R.string.view_certificate),
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -270,7 +269,7 @@ fun SuccessDialog(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.close),
+                                text = localizedApp(R.string.close),
                                 color = extraColors.blue1,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -291,7 +290,7 @@ fun SuccessDialog(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.ok),
+                            text = localizedApp(R.string.ok),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold

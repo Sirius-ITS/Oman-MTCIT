@@ -15,7 +15,8 @@ fun localizedApp(@StringRes resId: Int): String {
     val context = LocalContext.current
     val locale = LocalAppLocale.current
 
-    val config = context.resources.configuration.apply {
+    // ✅ FIX: Create a COPY of the configuration instead of mutating the shared one
+    val config = android.content.res.Configuration(context.resources.configuration).apply {
         setLocale(locale)
     }
     val localizedContext: Context = context.createConfigurationContext(config)
@@ -29,7 +30,8 @@ fun localizedApp(@StringRes resId: Int, vararg formatArgs: Any): String {
     val context = LocalContext.current
     val locale = LocalAppLocale.current
 
-    val config = context.resources.configuration.apply {
+    // ✅ FIX: Create a COPY of the configuration instead of mutating the shared one
+    val config = android.content.res.Configuration(context.resources.configuration).apply {
         setLocale(locale)
     }
     val localizedContext: Context = context.createConfigurationContext(config)
@@ -43,7 +45,8 @@ fun localizedPluralsApp(@PluralsRes resId: Int, quantity: Int, vararg formatArgs
     val context = LocalContext.current
     val locale = LocalAppLocale.current
 
-    val config = context.resources.configuration.apply {
+    // ✅ FIX: Create a COPY of the configuration instead of mutating the shared one
+    val config = android.content.res.Configuration(context.resources.configuration).apply {
         setLocale(locale)
     }
     val localizedContext: Context = context.createConfigurationContext(config)

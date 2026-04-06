@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Login/Registration ViewModel
@@ -186,7 +187,7 @@ class LoginViewModel @Inject constructor(
                 println("❌ OAuth token exchange failed: ${error.message}")
 
                 // Show error toast to user
-                _showToastEvent.value = error.message ?: "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى"
+                _showToastEvent.value = error.message ?: if (AppLanguage.isArabic) "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى" else "Login failed. Please try again"
 
                 // Navigate back or show error in UI
                 // The user can try again from the login screen

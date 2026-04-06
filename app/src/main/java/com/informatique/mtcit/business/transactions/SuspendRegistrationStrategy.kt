@@ -9,6 +9,7 @@ import com.informatique.mtcit.data.repository.ShipRegistrationRepository
 import com.informatique.mtcit.data.repository.LookupRepository
 import com.informatique.mtcit.ui.viewmodels.StepData
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Suspend Permanent Registration
@@ -77,11 +78,11 @@ class SuspendRegistrationStrategy @Inject constructor(
                         labelRes = R.string.reason_for_suspension,
                         mandatory = true,
                         options = listOf(
-                            "تحت الصيانة",
-                            "عدم الاستخدام المؤقت",
-                            "نزاع قانوني",
-                            "أسباب مالية",
-                            "أخرى"
+                            if (AppLanguage.isArabic) "تحت الصيانة" else "Under Maintenance",
+                            if (AppLanguage.isArabic) "عدم الاستخدام المؤقت" else "Temporary Non-Use",
+                            if (AppLanguage.isArabic) "نزاع قانوني" else "Legal Dispute",
+                            if (AppLanguage.isArabic) "أسباب مالية" else "Financial Reasons",
+                            if (AppLanguage.isArabic) "أخرى" else "Other"
                         )
                     ),
                     FormField.TextField(

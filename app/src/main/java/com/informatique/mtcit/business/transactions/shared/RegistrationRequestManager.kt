@@ -1171,7 +1171,8 @@ class RegistrationRequestManager @Inject constructor(
                                     "unitType", "unitClassification", "callSign", "imoNumber", "mmsi",
                                     "registrationPort", "manufacturerYear", "maritimeactivity",
                                     "proofType", "constructionEndDate", "firstRegistrationDate",
-                                    "registrationCountry", "officialNumber", "buildingMaterial"
+                                    "registrationCountry", "officialNumber", "buildingMaterial",
+                                    "agricultureRequestNumber"
                                 )
 
                                 val currentStepData = formData.filterKeys { key ->
@@ -1227,7 +1228,8 @@ class RegistrationRequestManager @Inject constructor(
                                             "unitType", "unitClassification", "callSign", "imoNumber", "mmsi",
                                             "registrationPort", "manufacturerYear", "maritimeactivity",
                                             "proofType", "constructionEndDate", "firstRegistrationDate",
-                                            "registrationCountry", "officialNumber", "buildingMaterial"
+                                            "registrationCountry", "officialNumber", "buildingMaterial",
+                                            "agricultureRequestNumber"
                                         )
                                         val currentStepData = formData.filterKeys { key ->
                                             key in relevantFields

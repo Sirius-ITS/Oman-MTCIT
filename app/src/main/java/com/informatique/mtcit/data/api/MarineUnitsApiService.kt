@@ -24,6 +24,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * ✅ Pagination result for a single page of ships (used by infinite scroll)
@@ -950,7 +951,7 @@ class MarineUnitsApiService @Inject constructor(
                     // Parse message from response data if present, otherwise use defaults
                     val message = dataObj?.get("message")?.jsonPrimitive?.content
                         ?: response.response.jsonObject["message"]?.jsonPrimitive?.content
-                        ?: if (needInspection) "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني" else "تم إرسال الطلب بنجاح"
+                        ?: if (needInspection) "تم إرسال الطلب بنجاح. في انتظار نتيجة الفحص الفني" else if (AppLanguage.isArabic) "تم إرسال الطلب بنجاح" else "Request submitted successfully"
 
                     println("   Message: $message")
                     println("   Need Inspection: $needInspection")
@@ -965,7 +966,7 @@ class MarineUnitsApiService @Inject constructor(
                 is RepoServiceState.Error -> {
                     val errorCode = response.code ?: 0
                     val errorMsg: String = when (errorCode) {
-                        401 -> "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                        401 -> if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
                         else -> response.error?.toString() ?: "Failed to send $transactionType request (code: $errorCode)"
                     }
                     println("❌ $errorMsg")
@@ -1082,7 +1083,7 @@ class MarineUnitsApiService @Inject constructor(
                             Result.success(proceedResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في متابعة طلب $transactionType"
+                                ?: if (AppLanguage.isArabic) "فشل في متابعة طلب $transactionType" else "Failed to follow up request for $transactionType"
                             println("❌ API returned error: $message (Status: $statusCode)")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -1101,9 +1102,9 @@ class MarineUnitsApiService @Inject constructor(
                     } else {
                         // ✅ Special message for 401 errors
                         if (response.code == 401) {
-                            "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة"
+                            if (AppLanguage.isArabic) "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة" else "Session has expired. Please refresh the token to continue"
                         } else {
-                            "فشل في متابعة طلب $transactionType (code: ${response.code})"
+                            if (AppLanguage.isArabic) "فشل في متابعة طلب $transactionType (code: ${response.code})" else "Failed to follow up $transactionType request (code: ${response.code})"
                         }
                     }
 

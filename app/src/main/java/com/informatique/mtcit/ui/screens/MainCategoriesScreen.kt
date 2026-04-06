@@ -54,6 +54,7 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.MainCategoriesViewModel
 import com.informatique.mtcit.ui.viewmodels.SubCategoriesUiState
 import java.util.Locale
+import com.informatique.mtcit.common.util.AppLanguage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -299,11 +300,12 @@ fun MainCategoriesScreen(
 
                 // ✅ MOVED: Show error banner directly under the gradient box
                 apiError?.let { error ->
+                    val isAr = LocalAppLocale.current.language == "ar"
                     when (error) {
                         is com.informatique.mtcit.common.AppError.Unauthorized -> {
                             // 401 - Show banner WITH refresh button
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 showRefreshButton = true,
                                 onRefreshToken = {
                                     viewModel.refreshToken()
@@ -314,14 +316,14 @@ fun MainCategoriesScreen(
                         is com.informatique.mtcit.common.AppError.ApiError -> {
                             // Other API errors - Show banner WITHOUT refresh button
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 onDismiss = { viewModel.clearApiError() }
                             )
                         }
                         is com.informatique.mtcit.common.AppError.Unknown -> {
                             // ✅ Token refresh failed - Show with "Go to Login" button
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 showRefreshButton = true,
                                 onRefreshToken = {
                                     // Navigate to login when refresh token is expired
@@ -333,7 +335,7 @@ fun MainCategoriesScreen(
                         else -> {
                             // Other error types
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = "حدث خطأ",
+                                message = if (isAr) "حدث خطأ" else "An error occurred",
                                 onDismiss = { viewModel.clearApiError() }
                             )
                         }

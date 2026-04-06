@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
+import com.informatique.mtcit.common.util.LocalAppLocale
 
 /**
  * OAuth WebView Screen for Keycloak authentication
@@ -52,17 +53,19 @@ fun OAuthWebViewScreen(
         }
     }
 
+    val isAr = LocalAppLocale.current.language == "ar"
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("تسجيل الدخول") },
+                title = { Text(if (isAr) "تسجيل الدخول" else "Login") },
                 navigationIcon = {
                     IconButton(onClick = {
                         navController.popBackStack()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "رجوع"
+                            contentDescription = if (isAr) "رجوع" else "Back"
                         )
                     }
                 }
@@ -175,7 +178,7 @@ fun OAuthWebViewScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "حدث خطأ",
+                            text = if (isAr) "حدث خطأ" else "An error occurred",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -184,7 +187,7 @@ fun OAuthWebViewScreen(
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Button(onClick = { navController.popBackStack() }) {
-                            Text("رجوع")
+                            Text(if (isAr) "رجوع" else "Back")
                         }
                     }
                 }
@@ -192,4 +195,3 @@ fun OAuthWebViewScreen(
         }
     }
 }
-

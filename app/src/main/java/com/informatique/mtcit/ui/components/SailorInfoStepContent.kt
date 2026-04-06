@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.serialization.Serializable
 import java.util.UUID
@@ -40,6 +41,7 @@ fun SailorFormBottomSheet(
     onSave: (SailorData) -> Unit
 ) {
     val extraColors = LocalExtraColors.current
+    val isAr = LocalAppLocale.current.language == "ar"
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     var job by remember { mutableStateOf(sailor?.job ?: "") }
@@ -48,6 +50,33 @@ fun SailorFormBottomSheet(
     var identityNumber by remember { mutableStateOf(sailor?.identityNumber ?: "") }
     var seamanPassportNumber by remember { mutableStateOf(sailor?.seamanPassportNumber ?: "") }
     var nationality by remember { mutableStateOf(sailor?.nationality ?: "") }
+
+    // ── Inline format-validation errors ────────────────────────────
+    var nameArError by remember { mutableStateOf<String?>(null) }
+    var nameEnError by remember { mutableStateOf<String?>(null) }
+    var identityNumberError by remember { mutableStateOf<String?>(null) }
+    var seamanPassportError by remember { mutableStateOf<String?>(null) }
+
+    fun validateNameAr(v: String) {
+        nameArError = if (v.isNotBlank() && !v.matches(Regex("^[\u0600-\u06FF\\s]+$")))
+            if (isAr) "يجب أن يحتوي على أحرف عربية فقط" else "Must contain Arabic letters only"
+        else null
+    }
+    fun validateNameEn(v: String) {
+        nameEnError = if (v.isNotBlank() && !v.matches(Regex("^[a-zA-Z0-9\\s]+$")))
+            if (isAr) "يجب أن يحتوي على أحرف إنجليزية وأرقام فقط" else "Must contain English letters and digits only"
+        else null
+    }
+    fun validateIdentityNumber(v: String) {
+        identityNumberError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
+    fun validateSeamanPassport(v: String) {
+        seamanPassportError = if (v.isNotBlank() && !v.matches(Regex("^\\d+$")))
+            if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
+        else null
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -91,9 +120,11 @@ fun SailorFormBottomSheet(
             CustomTextField(
                 value = nameAr,
                 onValueChange = { nameAr = it },
+                onFocusLost = { validateNameAr(it) },
                 label = localizedApp(R.string.name_ar_label),
                 mandatory = true,
                 placeholder = localizedApp(R.string.name_ar_label),
+                error = nameArError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -102,9 +133,11 @@ fun SailorFormBottomSheet(
             CustomTextField(
                 value = nameEn,
                 onValueChange = { nameEn = it },
+                onFocusLost = { validateNameEn(it) },
                 label = localizedApp(R.string.name_en_label),
                 mandatory = true,
                 placeholder = localizedApp(R.string.name_en_label),
+                error = nameEnError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -132,10 +165,12 @@ fun SailorFormBottomSheet(
             CustomTextField(
                 value = identityNumber,
                 onValueChange = { if (!editNameOnly) identityNumber = it },
+                onFocusLost = { validateIdentityNumber(it) },
                 label = localizedApp(R.string.sailor_identity_number_title),
                 mandatory = true,
                 placeholder = localizedApp(R.string.sailor_identity_number_title),
-                enabled = !editNameOnly
+                enabled = !editNameOnly,
+                error = identityNumberError
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -144,11 +179,13 @@ fun SailorFormBottomSheet(
             CustomTextField(
                 value = seamanPassportNumber,
                 onValueChange = { if (!editNameOnly) seamanPassportNumber = it },
+                onFocusLost = { validateSeamanPassport(it) },
                 label = localizedApp(R.string.sailor_seaman_passport_number_title),
                 isNumeric = true,
                 mandatory = true,
                 placeholder = localizedApp(R.string.sailor_seaman_passport_number_title),
-                enabled = !editNameOnly
+                enabled = !editNameOnly,
+                error = seamanPassportError
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -162,21 +199,31 @@ fun SailorFormBottomSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(localizedApp(R.string.cancel_button) , color = extraColors.whiteInDarkMode)
+                    Text(localizedApp(R.string.cancel_button), color = extraColors.whiteInDarkMode)
                 }
 
                 Button(
                     onClick = {
+                        // Re-validate all fields on save
+                        validateNameAr(nameAr)
+                        validateNameEn(nameEn)
+                        validateIdentityNumber(identityNumber)
+                        validateSeamanPassport(seamanPassportNumber)
+
+                        val hasErrors = nameArError != null || nameEnError != null ||
+                                identityNumberError != null || seamanPassportError != null
+                        if (hasErrors) return@Button
+
                         val sailorData = SailorData(
                             id = sailor?.id ?: UUID.randomUUID().toString(),
-                            apiId = sailor?.apiId,  // ✅ Preserve API ID for existing sailors
+                            apiId = sailor?.apiId,
                             job = job,
                             nameAr = nameAr,
                             nameEn = nameEn,
                             identityNumber = identityNumber,
                             seamanPassportNumber = seamanPassportNumber,
                             nationality = nationality,
-                            fullName = nameEn // Backward compatibility
+                            fullName = nameEn
                         )
                         onSave(sailorData)
                     },
@@ -185,7 +232,7 @@ fun SailorFormBottomSheet(
                         containerColor = extraColors.startServiceButton
                     )
                 ) {
-                    Text(localizedApp(R.string.save_button) , color = Color.White)
+                    Text(localizedApp(R.string.save_button), color = Color.White)
                 }
             }
 

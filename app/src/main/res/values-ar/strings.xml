@@ -596,11 +596,12 @@
     <!-- Service requirements -->
     <string name="requirements_duration_title">مدة الطلب</string>
     <plurals name="requirements_duration_value">
+        <item quantity="zero">لم يحدد وقت</item>
         <item quantity="one">يوم واحد</item>
         <item quantity="two">يومان</item>
-        <item quantity="many">%d أيام</item>
         <item quantity="few">%d أيام</item>
-        <item quantity="zero">لم يحدد وقت</item>
+        <item quantity="many">%d أيام</item>
+        <item quantity="other">%d أيام</item>
     </plurals>
     <string name="requirements_steps_title">الخطوات</string>
     <string name="requirements_steps_heading">خطوات طلب الخدمة</string>
@@ -927,6 +928,7 @@
     <string name="sailing_regions_description">يُرجى توفير معلومات كاملة عن البخارة لتسهيل دراسة الطلب واتخاذ الإجراءات اللازمة.</string>
     <string name="sailing_regions_selection">مناطق الإبحار</string>
     <string name="select_sailing_regions_placeholder">اختر مناطق الإبحار</string>
+    <string name="passengers_no_label">عدد الأفراد المصرح لهم بما فيهم الطاقم</string>
 
     <!-- Multi-Select Dropdown -->
     <string name="clear_all">مسح الكل</string>
@@ -1097,8 +1099,6 @@
     <string name="result_status">حالة النتيجة</string>
     <string name="inspection_decision">قرار المعاينة</string>
     <string name="inspection_checklist_answers">إجابات قائمة الفحص</string>
-    <string name="true">نعم</string>
-    <string name="false">لا</string>
     <string name="write_here">اكتب هنا...</string>
     <string name="enter_answer">أدخل الإجابة</string>
     <string name="enter_number">أدخل رقم</string>
@@ -1110,7 +1110,6 @@
     <string name="certificate_no_cert_number">رقم الشهادة: ${cert.number}</string>
     <string name="view_certificate">عرض الشهادة</string>
     <string name="payment_in_progress">عملية دفع قيد التنفيذ</string>
-    <string name="continue">متابعة</string>
     <string name="date_time">التاريخ والوقت</string>
     <string name="qr_code">رمز QR</string>
     <string name="error_loading_qr_code">خطأ في تحميل رمز QR</string>

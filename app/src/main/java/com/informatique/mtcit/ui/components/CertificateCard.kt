@@ -12,6 +12,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.business.transactions.shared.Certificate
+import com.informatique.mtcit.common.util.AppLanguage
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 
 /**
@@ -44,7 +45,7 @@ fun CertificateCard(
         ) {
             // Certificate Number (Top Right)
             Text(
-                text = "رقم الشهادة: ${certificate.certificateNumber}",
+                text = if (AppLanguage.isArabic) "رقم الشهادة: ${certificate.certificateNumber}" else "Certificate No: ${certificate.certificateNumber}",
                 fontSize = 12.sp,
                 color = extraColors.textSubTitle.copy(alpha = 0.7f),
                 textAlign = TextAlign.Start,
@@ -77,7 +78,7 @@ fun CertificateCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "الانتهاء:",
+                        text = if (AppLanguage.isArabic) "الانتهاء:" else "Expiry:",
                         fontSize = 12.sp,
                         color = extraColors.textSubTitle.copy(alpha = 0.7f),
                         modifier = Modifier.padding(end = 4.dp)
@@ -103,7 +104,7 @@ fun CertificateCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "الإصدار:",
+                        text = if (AppLanguage.isArabic) "الإصدار:" else "Issued:",
                         fontSize = 12.sp,
                         color = extraColors.textSubTitle.copy(alpha = 0.7f),
                         modifier = Modifier.padding(end = 4.dp)

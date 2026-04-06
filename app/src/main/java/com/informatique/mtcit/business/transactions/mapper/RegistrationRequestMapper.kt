@@ -35,7 +35,7 @@ class RegistrationRequestMapper @Inject constructor(
     ): CreateRegistrationRequest {
 
         // Extract isCompany from person type selection
-        val isCompany = if (formData["selectionPersonType"] == "شركة") 1 else 0
+        val isCompany = if (formData["selectionPersonType"] == "شركة" || formData["selectionPersonType"] == "Company") 1 else 0
 
         // Get current date in ISO format
         val currentDate = LocalDate.now().format(outputDateFormatter)
@@ -85,7 +85,8 @@ class RegistrationRequestMapper @Inject constructor(
                     ship = ship,
                     isCurrent = 0
                 ),
-                requestType = RequestType(id = requestTypeId)
+                requestType = RequestType(id = requestTypeId),
+                mafwReqNum = formData["agricultureRequestNumber"]?.takeIf { it.isNotBlank() }
             ),
             isCompany = isCompany
         )

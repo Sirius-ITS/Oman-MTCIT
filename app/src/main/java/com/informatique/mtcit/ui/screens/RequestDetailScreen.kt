@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.navigation.NavRoutes
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
@@ -63,10 +64,10 @@ sealed interface RequestDetail {
 @Composable
 fun RequestDetailScreen(navController: NavController, requestDetail: RequestDetail) {
     val extraColors = LocalExtraColors.current
-
+    val isAr = LocalAppLocale.current.language == "ar"
     // Parse the data based on request type
     val parsedData = remember(requestDetail) {
-        parseRequestDetailData(requestDetail)
+        parseRequestDetailData(isAr, requestDetail)
     }
 
     BackHandler {
@@ -379,17 +380,17 @@ data class DataItem(
  * Parses the request detail data into structured sections
  * Handles formatted strings from compliance checks or any other source
  */
-private fun parseRequestDetailData(requestDetail: RequestDetail): ParsedRequestData {
+private fun parseRequestDetailData(isAr: Boolean, requestDetail: RequestDetail): ParsedRequestData {
     return when (requestDetail) {
         is RequestDetail.CheckShipCondition -> {
-            parseShipComplianceData(requestDetail.shipData)
+            parseShipComplianceData(isAr, requestDetail.shipData)
         }
         is RequestDetail.Attachments -> {
-            parseAttachmentsData(requestDetail.requestData)
+            parseAttachmentsData(isAr, requestDetail.requestData)
         }
 
         is RequestDetail.AcceptedAndPayment -> {
-            parseAttachmentsData("")
+            parseAttachmentsData(isAr, "")
         }
     }
 }
@@ -397,7 +398,7 @@ private fun parseRequestDetailData(requestDetail: RequestDetail): ParsedRequestD
 /**
  * Parse ship compliance data (from compliance check)
  */
-private fun parseShipComplianceData(data: String): ParsedRequestData {
+private fun parseShipComplianceData(isAr: Boolean, data: String): ParsedRequestData {
     val sections = mutableListOf<DataSection>()
     val lines = data.lines()
 
@@ -448,7 +449,7 @@ private fun parseShipComplianceData(data: String): ParsedRequestData {
     }
 
     // Detect if it's pending or rejected based on content
-    val isPending = data.contains("قيد المعالجة") ||
+    val isPending = data.contains(if (isAr) "قيد المعالجة" else "Under Processing") ||
             data.contains("قيد المراجعة") ||
             data.contains("PENDING") ||
             data.contains("الطلب قيد المعالجة")
@@ -458,23 +459,23 @@ private fun parseShipComplianceData(data: String): ParsedRequestData {
         isPending -> {
             // Extract pending message
             lines.find {
-                it.contains("قيد المعالجة") ||
+                it.contains(if (isAr) "قيد المعالجة" else "Under Processing") ||
                         it.contains("قيد المراجعة")
-            }?.trim() ?: "الطلب قيد المعالجة. يرجى الانتظار حتى اكتمال عملية التحقق من الفحص"
+            }?.trim() ?: if (isAr) "الطلب قيد المعالجة. يرجى الانتظار حتى اكتمال عملية التحقق من الفحص" else "Request is being processed. Please wait until the inspection verification is complete"
         }
         else -> {
             // Extract rejection reason
-            lines.find { it.contains("📌 سبب الرفض:") }?.let { line ->
+            lines.find { it.contains(if (isAr) "📌 سبب الرفض:" else "📌 Rejection Reason:") }?.let { line ->
                 val index = lines.indexOf(line)
                 lines.drop(index + 1).joinToString("\n").trim()
-            } ?: "تم رفض الطلب بسبب مشاكل في البيانات المقدمة"
+            } ?: if (isAr) "تم رفض الطلب بسبب مشاكل في البيانات المقدمة" else "Request was rejected due to issues in the submitted data"
         }
     }
 
     return ParsedRequestData(
-        title = "تفاصيل الطلب",
+        title = if (isAr) "تفاصيل الطلب" else "Request Details",
         status = if (isPending) RequestStatus.PENDING else RequestStatus.REJECTED,
-        statusTitle = if (isPending) "طلب قيد المعالجة" else "تم رفض الطلب",
+        statusTitle = if (isPending) if (isAr) "طلب قيد المعالجة" else "Request Under Processing" else if (isAr) "تم رفض الطلب" else "Request Rejected",
         statusMessage = statusMessage,
         sections = sections.filter { it.items.isNotEmpty() }
     )
@@ -483,7 +484,7 @@ private fun parseShipComplianceData(data: String): ParsedRequestData {
 /**
  * Parse attachments/general request data
  */
-private fun parseAttachmentsData(data: String): ParsedRequestData {
+private fun parseAttachmentsData(isAr: Boolean, data: String): ParsedRequestData {
     // Simple key-mortgageValue parsing
     val items = data.lines()
         .filter { it.contains(":") }
@@ -495,12 +496,12 @@ private fun parseAttachmentsData(data: String): ParsedRequestData {
         }
 
     return ParsedRequestData(
-        title = "تفاصيل الطلب",
+        title = if (isAr) "تفاصيل الطلب" else "Request Details",
         status = RequestStatus.PENDING,
-        statusTitle = "قيد المراجعة",
-        statusMessage = "طلبك قيد المراجعة من قبل الجهات المختصة",
+        statusTitle = if (isAr) "قيد المراجعة" else "Under Review",
+        statusMessage = if (isAr) "طلبك قيد المراجعة من قبل الجهات المختصة" else "Your request is under review by the competent authorities",
         sections = listOf(
-            DataSection("بيانات الطلب", items)
+            DataSection(if (isAr) "بيانات الطلب" else "Request Data", items)
         )
     )
 }

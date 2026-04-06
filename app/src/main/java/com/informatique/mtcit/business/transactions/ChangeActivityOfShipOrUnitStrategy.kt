@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for "Change Activity of Ship or Unit" transaction
@@ -114,13 +115,13 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
                 ?: accumulatedFormData["shipInfoId"]
                 ?: run {
                     println("❌ No shipInfoId found in formData")
-                    accumulatedFormData["apiError"] = "لم يتم العثور على معرف السفينة"
+                    accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "لم يتم العثور على معرف السفينة" else "Ship ID not found"
                     return
                 }
 
             val shipInfoId = shipInfoIdStr.toIntOrNull() ?: run {
                 println("❌ Invalid shipInfoId: $shipInfoIdStr")
-                accumulatedFormData["apiError"] = "معرف السفينة غير صالح"
+                accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "معرف السفينة غير صالح" else "Invalid ship ID"
                 return
             }
 
@@ -155,7 +156,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
         } catch (e: Exception) {
             println("❌ Failed to load inspection lookups: ${e.message}")
             e.printStackTrace()
-            accumulatedFormData["apiError"] = "فشل تحميل بيانات المعاينة: ${e.message}"
+            accumulatedFormData["apiError"] = if (AppLanguage.isArabic) "فشل تحميل بيانات المعاينة: ${e.message}" else "Failed to load inspection data: ${e.message}"
         }
     }
 
@@ -227,12 +228,12 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         // For individuals, use ownerCivilId from token
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد", "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
 
-            "شركة" -> {
+            "شركة", "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(
                     ownerCivilIdFromToken,
@@ -315,7 +316,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (فقط للشركات)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -565,7 +566,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
 
                     apiResponses["changeActivity"] = changeActivityResponse ?: Any()
                 } else {
-                    val error = response.exceptionOrNull()?.message ?: "فشل تغيير نشاط السفينة"
+                    val error = response.exceptionOrNull()?.message ?: if (AppLanguage.isArabic) "فشل تغيير نشاط السفينة" else "Failed to change ship activity"
                     println("❌ Activity change failed: $error")
                     lastApiError = error
                     throw ApiException(500, error)
@@ -654,7 +655,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
                             // Prepare inspection dialog with parent transaction info
                             // Request Type: 13 = Change Ship Activity
                             inspectionFlowManager.prepareInspectionDialog(
-                                message = "تم إرسال طلب تغيير نشاط السفينة بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة.",
+                                message = if (AppLanguage.isArabic) "تم إرسال طلب تغيير نشاط السفينة بنجاح (رقم الطلب: $requestNumber).\n\nالسفينة تحتاج إلى معاينة لإكمال الإجراءات. يرجى الاستمرار لتقديم طلب معاينة." else "Ship activity change request submitted successfully (Request No: $requestNumber).\n\nThe ship requires an inspection to complete procedures. Please continue to submit an inspection request.",
                                 formData = accumulatedFormData,
                                 parentRequestId = requestIdInt,
                                 parentRequestType = 13  // Change Ship Activity
@@ -700,8 +701,8 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()
-                lastApiError = e.message ?: "حدث خطأ أثناء إرسال الطلب"
-                throw ApiException(500, e.message ?: "حدث خطأ أثناء إرسال الطلب")
+                lastApiError = e.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب" else "An error occurred while submitting the request"
+                throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب" else "An error occurred while submitting the request")
             }
         }
 
@@ -766,17 +767,17 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits")
         }
 
         return try {
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
-                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
+                .catch { throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${it.message}" else "An error occurred while searching for the company: ${it.message}") }
                 .first()
 
             when (result) {
@@ -790,14 +791,14 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
                 is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 
@@ -870,7 +871,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
 
                     onStepsNeedRebuild?.invoke()
                 } else {
-                    val error = certificates.exceptionOrNull()?.message ?: "فشل تحميل الشهادات المتأثرة"
+                    val error = certificates.exceptionOrNull()?.message ?: if (AppLanguage.isArabic) "فشل تحميل الشهادات المتأثرة" else "Failed to load affected certificates"
                     println("❌ Failed to load certificates: $error")
                 }
             } catch (e: Exception) {
@@ -923,7 +924,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
 
             if (selectedUnit == null) {
                 println("❌ Unit not found with id: $unitId")
-                return ValidationResult.Error("الوحدة البحرية المختارة غير موجودة")
+                return ValidationResult.Error(if (AppLanguage.isArabic) "الوحدة البحرية المختارة غير موجودة" else "Selected marine unit not found")
             }
 
             println("✅ Found unit: ${selectedUnit.name}, id: ${selectedUnit.id}")
@@ -942,7 +943,7 @@ class ChangeActivityOfShipOrUnitStrategy @Inject constructor(
         } catch (e: Exception) {
             println("❌ Validation error: ${e.message}")
             e.printStackTrace()
-            ValidationResult.Error(e.message ?: "فشل التحقق من حالة الفحص")
+            ValidationResult.Error(e.message ?: if (AppLanguage.isArabic) "فشل التحقق من حالة الفحص" else "Failed to verify inspection status")
         }
     }
 

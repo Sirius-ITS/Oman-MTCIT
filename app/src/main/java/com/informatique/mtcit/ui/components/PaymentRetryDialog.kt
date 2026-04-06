@@ -19,7 +19,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.util.*
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
+import com.informatique.mtcit.R
 
 /**
  * Dialog shown when payment is in progress (paymentStatus = 1)
@@ -33,14 +33,14 @@ fun PaymentRetryDialog(
     val extraColors = LocalExtraColors.current
     val isArabic = LocalAppLocale.current.language == "ar"
 
-    val title = stringResource(R.string.payment_in_progress)
+    val title = localizedApp(R.string.payment_in_progress)
     val message = if (isArabic) {
-        "هذه المعاملة قيد التنفيذ حالياً. هل تريد محاولة الدفع مرة أخرى؟"
+        if (isArabic) "هذه المعاملة قيد التنفيذ حالياً. هل تريد محاولة الدفع مرة أخرى؟" else "This transaction is being processed. Would you like to retry the payment?"
     } else {
         "This transaction is in progress. Do you want to attempt payment again?"
     }
-    val continueText = stringResource(R.string.continue)
-    val closeText = stringResource(R.string.close)
+    val continueText = localizedApp(R.string.continue_button)
+    val closeText = localizedApp(R.string.close)
 
     Dialog(
         onDismissRequest = onClose,

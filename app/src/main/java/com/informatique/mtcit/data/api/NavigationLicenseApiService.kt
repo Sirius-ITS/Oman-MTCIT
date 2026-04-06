@@ -398,13 +398,21 @@ class NavigationLicenseApiService @Inject constructor(
      */
     suspend fun updateNavigationAreasRenew(
         requestId: Long,
-        areaIds: List<Int>
+        areaIds: List<Int>,
+        lastNavLicId: Long? = null,
+        passengersNo: Int? = null
     ): Result<NavigationRequestResDto> {
         return try {
-            val requestJson = """{"areaIds":${json.encodeToString(areaIds)}}"""
-            println("📤 Updating navigation areas (Renew): $requestJson")
+            val bodyMap = buildString {
+                append("{")
+                append("\"areaIds\":${json.encodeToString(areaIds)}")
+                if (lastNavLicId != null) append(",\"lastNavLicId\":$lastNavLicId")
+                if (passengersNo != null) append(",\"passengersNo\":$passengersNo")
+                append("}")
+            }
+            println("📤 Updating navigation areas (Renew): $bodyMap")
 
-            when (val response = repo.onPutAuth("navigation-license-renewal-request/$requestId/navigation-areas", requestJson)) {
+            when (val response = repo.onPutAuth("navigation-license-renewal-request/$requestId/navigation-areas", bodyMap)) {
                 is RepoServiceState.Success -> {
                     val responseJson = response.response
                     val data = responseJson.jsonObject.getValue("data").jsonObject

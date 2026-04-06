@@ -4,6 +4,7 @@ import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Review Manager - Handles review step API calls for all transaction strategies
@@ -94,7 +95,7 @@ class ReviewManager @Inject constructor(
                 } else {
                     println("❌ Review API returned null response")
                     println("=" .repeat(80))
-                    ReviewResult.Error("لم يتم استلام رد من الخادم")
+                    ReviewResult.Error(if (AppLanguage.isArabic) "لم يتم استلام رد من الخادم" else "No response received from server")
                 }
             } else {
                 val cause = result.exceptionOrNull()
@@ -115,7 +116,7 @@ class ReviewManager @Inject constructor(
             println("❌ Exception in ReviewManager.processReviewStep: ${e.message}")
             e.printStackTrace()
             println("=" .repeat(80))
-            ReviewResult.Error(e.message ?: "حدث خطأ غير متوقع")
+            ReviewResult.Error(e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 }

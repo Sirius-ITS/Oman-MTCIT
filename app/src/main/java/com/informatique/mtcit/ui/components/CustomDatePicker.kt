@@ -157,6 +157,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import java.text.SimpleDateFormat
 import java.util.*
@@ -325,12 +326,12 @@ fun DatePickerModal(
                     }
                 }
             ) {
-                Text("موافق")
+                Text(if (isArabic) "موافق" else "OK")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("إلغاء")
+                Text(if (isArabic) "إلغاء" else "Cancel")
             }
         }
     ) {

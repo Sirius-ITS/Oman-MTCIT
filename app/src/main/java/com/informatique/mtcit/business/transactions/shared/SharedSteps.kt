@@ -7,6 +7,7 @@ import com.informatique.mtcit.ui.components.DropdownSection
 import com.informatique.mtcit.ui.components.PersonType
 import com.informatique.mtcit.ui.components.SelectableItem
 import com.informatique.mtcit.ui.viewmodels.StepData
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Reusable Step Library for Ship Category Transactions
@@ -186,8 +187,7 @@ object SharedSteps {
         includeConstructionDates: Boolean = true,
         includeRegistrationCountry: Boolean = true,
         additionalFields: List<FormField> = emptyList(),
-        isFishingBoat: Boolean = false,
-        fishingBoatDataLoaded: Boolean = false
+        isFishingBoat: Boolean = false
     ): StepData {
         val fields = mutableListOf<FormField>()
 
@@ -225,24 +225,25 @@ object SharedSteps {
                     labelRes = R.string.agriculture_request_number,
                     mandatory = true,
                     enabled = true,
+                    isNumeric = true,
                     placeholder = R.string.enter_agriculture_request_number.toString()
                 )
             )
         }
 
-        // Call Sign - DISABLED if fishing boat data loaded
+        // Call Sign
         fields.add(
             FormField.TextField(
                 id = "callSign",
                 labelRes = R.string.enter_call_sign,
                 mandatory = true,
-                enabled = !fishingBoatDataLoaded,
+                enabled = true,
                 placeholder = R.string.enter_call_sign.toString(),
                 maxLength = 10
             )
         )
 
-        // Optional: IMO Number - DISABLED if fishing boat data loaded
+        // Optional: IMO Number
         if (includeIMO) {
             fields.add(
                 FormField.TextField(
@@ -250,7 +251,7 @@ object SharedSteps {
                     labelRes = R.string.enter_imo_number,
                     isNumeric = true,
                     mandatory = false,
-                    enabled = !fishingBoatDataLoaded,
+                    enabled = true,
                     maxLength = 7
                 )
             )
@@ -267,7 +268,7 @@ object SharedSteps {
             )
         )
 
-        // Optional: MMSI Number - DISABLED if fishing boat data loaded
+        // Optional: MMSI Number
         if (includeMMSI) {
             fields.add(
                 FormField.TextField(
@@ -275,13 +276,13 @@ object SharedSteps {
                     labelRes = R.string.mmsi_number,
                     isNumeric = true,
                     mandatory = false,
-                    enabled = !fishingBoatDataLoaded,
+                    enabled = true,
                     maxLength = 9
                 )
             )
         }
 
-        // Optional: Manufacturer Information - DISABLED if fishing boat data loaded
+        // Optional: Manufacturer Information
         if (includeManufacturer) {
             fields.addAll(
                 listOf(
@@ -290,7 +291,7 @@ object SharedSteps {
                         labelRes = R.string.ship_manufacture_year,
                         isNumeric = true,
                         mandatory = true,
-                        enabled = !fishingBoatDataLoaded,
+                        enabled = true,
                         maxLength = 4
                     )
                 )
@@ -627,7 +628,7 @@ object SharedSteps {
         )
 
         return StepData(
-            titleRes = R.string.upload_documents_title, // "رفع المستندات"
+            titleRes = R.string.upload_documents_title, // if (isArabic) "رفع المستندات" else "Upload Documents"
             descriptionRes = R.string.upload_documents_description, // "تحميل المستندات المطلوبة بصيغ (رسمية ومعتمدة) ، حيث سيتم استخدامها في مراجعة الطلب واتخاذ الإجراءات اللازمة."
             fields = fields
         )
@@ -1396,6 +1397,16 @@ object SharedSteps {
             )
         )
 
+        // Number of authorized persons including crew
+        fields.add(
+            FormField.TextField(
+                id = "passengersNo",
+                labelRes = R.string.passengers_no_label,
+                isNumeric = true,
+                mandatory = true
+            )
+        )
+
         return StepData(
             stepType = StepType.NAVIGATION_AREAS,  // ✅ Added
             titleRes = R.string.sailing_regions_title, // "بيانات البخارة"
@@ -1765,7 +1776,7 @@ data class MarineUnit(
      val isOwned: Boolean get() = true
      val registrationStatus: String get() = if (isTemp == "1" || isTemp == "true") "TEMPORARY" else "PERMANENT"
      val registrationType: String get() = if (isTemp == "1" || isTemp == "true") "TEMPORARY" else "PERMANENT"
-     val totalCapacity: String get() = if (grossTonnage.isNotEmpty()) "${grossTonnage} طن" else ""
+     val totalCapacity: String get() = if (grossTonnage.isNotEmpty()) if (AppLanguage.isArabic) "${grossTonnage} طن" else "${grossTonnage} tons" else ""
  }
 
 // Nested data classes

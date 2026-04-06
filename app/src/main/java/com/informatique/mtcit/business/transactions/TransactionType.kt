@@ -20,7 +20,7 @@ enum class TransactionType(
         typeId = 1,
         context = TransactionContext(
             inspectionPreviewBaseContext = "registration-requests",
-            displayName = "شهادة تسجيل مؤقتة",
+            displayName = if (AppLanguage.isArabic) "شهادة تسجيل مؤقتة" else "Temporary Registration Certificate",
             createEndpoint = "registration-requests",
             updateStatusEndpoint = "registration-requests/{requestId}/update-status",
             sendRequestEndpoint = "registration-requests/{requestId}/send-request",
@@ -36,7 +36,7 @@ enum class TransactionType(
         typeId = 2,
         context = TransactionContext(
             inspectionPreviewBaseContext = "perm-registration-requests",
-            displayName = "شهادة تسجيل دائمة",
+            displayName = if (AppLanguage.isArabic) "شهادة تسجيل دائمة" else "Permanent Registration Certificate",
             createEndpoint = "perm-registration-requests/create-permanent",
             updateStatusEndpoint = "perm-registration-requests/{requestId}/update-status",
             sendRequestEndpoint = "perm-registration-requests/{requestId}/send-request",
@@ -52,7 +52,7 @@ enum class TransactionType(
         typeId = 0,
         context = TransactionContext(
             inspectionPreviewBaseContext = "registration",
-            displayName = "تعليق تسجيل دائم",
+            displayName = if (AppLanguage.isArabic) "تعليق تسجيل دائم" else "Suspend Permanent Registration",
             createEndpoint = "registration/suspend",
             updateStatusEndpoint = "registration/{requestId}/update-status",
             sendRequestPostOrPut = "POST",
@@ -65,7 +65,7 @@ enum class TransactionType(
         typeId = 7,
         context = TransactionContext(
             inspectionPreviewBaseContext = "deletion-requests",
-            displayName = "إلغاء تسجيل دائم",
+            displayName = if (AppLanguage.isArabic) "إلغاء تسجيل دائم" else "Cancel Permanent Registration",
             createEndpoint = "deletion-requests/cancel",
             updateStatusEndpoint = "deletion-requests/{requestId}/update-status",
             sendRequestEndpoint = "deletion-requests/{requestId}/send-request",
@@ -81,7 +81,7 @@ enum class TransactionType(
         typeId = 4,
         context = TransactionContext(
             inspectionPreviewBaseContext = "mortgage-request",
-            displayName = "طلب شهادة رهن",
+            displayName = if (AppLanguage.isArabic) "طلب شهادة رهن" else "Mortgage Certificate Request",
             createEndpoint = "mortgage-request/create-mortgage-request",
             updateStatusEndpoint = "mortgage-request/{requestId}/update-status",
             sendRequestEndpoint = "mortgage-request/{requestId}/send-request",
@@ -97,7 +97,7 @@ enum class TransactionType(
         typeId = 5,
         context = TransactionContext(
             inspectionPreviewBaseContext = "mortgage-redemption-requests",
-            displayName = "طلب فك رهن",
+            displayName = if (AppLanguage.isArabic) "طلب فك رهن" else "Mortgage Release Request",
             createEndpoint = "mortgage-redemption-request/create-mortgage-redemption-request",
             updateStatusEndpoint = "mortgage-redemption-request/{requestId}/update-status",
             sendRequestEndpoint = "mortgage-redemption-request/{requestId}/send-request",
@@ -113,7 +113,7 @@ enum class TransactionType(
         typeId = 8,
         context = TransactionContext(
             inspectionPreviewBaseContext = "inspection-requests",
-            displayName = "طلب معاينة",
+            displayName = if (AppLanguage.isArabic) "طلب معاينة" else "Inspection Request",
             createEndpoint = "inspection-requests/create",
             updateStatusEndpoint = "inspection-requests/{requestId}/update-status",
             sendRequestEndpoint = "inspection-requests/{requestId}/send",
@@ -129,7 +129,7 @@ enum class TransactionType(
         typeId = 11,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
-            displayName = "تغيير اسم السفينة",
+            displayName = if (AppLanguage.isArabic) "تغيير اسم السفينة" else "Change Ship Name",
             createEndpoint = "ship-modifications/name-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "general-request/11/{requestId}/send-request",
@@ -143,7 +143,7 @@ enum class TransactionType(
         typeId = 10,
         context = TransactionContext(
             inspectionPreviewBaseContext = "change-captain",
-            displayName = "تغيير الربان",
+            displayName = if (AppLanguage.isArabic) "تغيير الربان" else "Change Captain",
             createEndpoint = "change-captain/{shipInfoId}/add-request",  // ✅ CDD §4.1.6
             updateStatusEndpoint = "change-captain/{requestId}/update-status",
             sendRequestEndpoint = "general-request/10/{requestId}/send-request", // ✅ CDD §4.1.9
@@ -157,7 +157,7 @@ enum class TransactionType(
         typeId = 13,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
-            displayName = "تغيير نشاط السفينة",
+            displayName = if (AppLanguage.isArabic) "تغيير نشاط السفينة" else "Change Ship Activity",
             createEndpoint = "ship-modifications/activity-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "general-request/13/{requestId}/send-request",
@@ -171,7 +171,7 @@ enum class TransactionType(
         typeId = 0,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
-            displayName = "تغيير أبعاد السفينة",
+            displayName = if (AppLanguage.isArabic) "تغيير أبعاد السفينة" else "Change Ship Dimensions",
             createEndpoint = "ship-modifications/dimensions-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
@@ -184,7 +184,7 @@ enum class TransactionType(
         typeId = 0,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
-            displayName = "تغيير محرك السفينة",
+            displayName = if (AppLanguage.isArabic) "تغيير محرك السفينة" else "Change Ship Engine",
             createEndpoint = "ship-modifications/engine-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
@@ -197,7 +197,7 @@ enum class TransactionType(
         typeId = 12,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
-            displayName = "تغيير ميناء السفينة",
+            displayName = if (AppLanguage.isArabic) "تغيير ميناء السفينة" else "Change Ship Port",
             createEndpoint = "ship-modifications/port-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "general-request/12/{requestId}/send-request", // ✅ Updated to use general-request
@@ -211,7 +211,7 @@ enum class TransactionType(
         typeId = 0,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-modifications",
-            displayName = "تغيير ملكية السفينة",
+            displayName = if (AppLanguage.isArabic) "تغيير ملكية السفينة" else "Change Ship Ownership",
             createEndpoint = "ship-modifications/ownership-change",
             updateStatusEndpoint = "ship-modifications/{requestId}/update-status",
             sendRequestEndpoint = "ship-modifications/{requestId}/send-request",
@@ -226,7 +226,7 @@ enum class TransactionType(
         typeId = 3,
         context = TransactionContext(
             inspectionPreviewBaseContext = "ship-navigation-license-request",
-            displayName = "إصدار تصريح إبحار",
+            displayName = if (AppLanguage.isArabic) "إصدار تصريح إبحار" else "Issue Navigation Permit",
             createEndpoint = "ship-navigation-license-request/issue",
             updateStatusEndpoint = "ship-navigation-license-request/{requestId}/update-status",
             sendRequestEndpoint = "ship-navigation-license-request/{requestId}/send-request",
@@ -240,7 +240,7 @@ enum class TransactionType(
         typeId = 6,
         context = TransactionContext(
             inspectionPreviewBaseContext = "navigation-license-renewal-request",
-            displayName = "تجديد تصريح إبحار",
+            displayName = if (AppLanguage.isArabic) "تجديد تصريح إبحار" else "Renew Navigation Permit",
             createEndpoint = "navigation-license-renewal-request/renew",
             updateStatusEndpoint = "navigation-license-renewal-request/{requestId}/update-status",
             sendRequestEndpoint = "navigation-license-renewal-request/{requestId}/send-request",

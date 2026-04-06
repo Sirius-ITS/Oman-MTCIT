@@ -5,6 +5,7 @@ import com.informatique.mtcit.data.api.MarineUnitsApiService
 import com.informatique.mtcit.data.model.ProceedRequestResponse
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * ✅ Ship Selection Manager
@@ -61,7 +62,7 @@ class ShipSelectionManager @Inject constructor(
         if (shipId.isNullOrBlank() || shipId == "[]") {
             println("❌ No ship selected")
             return ShipSelectionResult.Error(
-                message = "يرجى اختيار سفينة",
+                message = if (AppLanguage.isArabic) "يرجى اختيار سفينة" else "Please select a ship",
                 shouldBlockNavigation = true
             )
         }
@@ -75,7 +76,7 @@ class ShipSelectionManager @Inject constructor(
         if (proceedEndpoint.isNullOrBlank()) {
             println("❌ No proceed endpoint configured for this transaction")
             return ShipSelectionResult.Error(
-                message = "خطأ في إعدادات المعاملة - لا يوجد endpoint",
+                message = if (AppLanguage.isArabic) "خطأ في إعدادات المعاملة - لا يوجد endpoint" else "Transaction settings error - no endpoint found",
                 shouldBlockNavigation = true
             )
         }
@@ -147,7 +148,7 @@ class ShipSelectionManager @Inject constructor(
                     println("=".repeat(80))
 
                     ShipSelectionResult.Error(
-                        message = error.message ?: "فشل في متابعة الطلب",
+                        message = error.message ?: if (AppLanguage.isArabic) "فشل في متابعة الطلب" else "Failed to follow up on the request",
                         shouldBlockNavigation = true,
                         originalException = error  // ✅ Preserve original exception for error code handling
                     )
@@ -159,7 +160,7 @@ class ShipSelectionManager @Inject constructor(
             println("=".repeat(80))
 
             ShipSelectionResult.Error(
-                message = e.message ?: "حدث خطأ غير متوقع",
+                message = e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred",
                 shouldBlockNavigation = true,
                 originalException = e  // ✅ Preserve original exception
             )

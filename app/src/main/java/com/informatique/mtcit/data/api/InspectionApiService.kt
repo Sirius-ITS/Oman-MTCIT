@@ -18,6 +18,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * API Service for Inspection Requests
@@ -94,7 +95,7 @@ class InspectionApiService @Inject constructor(
                             Result.success(apiResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في جلب طلبات المعاينة"
+                                ?: if (AppLanguage.isArabic) "فشل في جلب طلبات المعاينة" else "Failed to fetch inspection requests"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -157,7 +158,7 @@ class InspectionApiService @Inject constructor(
                             Result.success(detailResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في جلب تفاصيل الطلب"
+                                ?: if (AppLanguage.isArabic) "فشل في جلب تفاصيل الطلب" else "Failed to fetch request details"
                             println("❌ API returned error: $message")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -303,7 +304,7 @@ class InspectionApiService @Inject constructor(
                             Result.success(inspectionResponse)
                         } else {
                             val message = responseJson.jsonObject["message"]?.jsonPrimitive?.content
-                                ?: "فشل في إنشاء طلب المعاينة"
+                                ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب المعاينة" else "Failed to create inspection request"
                             println("❌ API returned error: $message (Status: $statusCode)")
                             println("=".repeat(80))
                             Result.failure(Exception(message))
@@ -319,7 +320,7 @@ class InspectionApiService @Inject constructor(
                     val errorMsg = if (errorMessage.isNotBlank() && errorMessage != "Unknown error") {
                         errorMessage
                     } else {
-                        "فشل في إنشاء طلب المعاينة (code: ${response.code})"
+                        if (AppLanguage.isArabic) "فشل في إنشاء طلب المعاينة (code: ${response.code})" else "Failed to create inspection request (code: ${response.code})"
                     }
 
                     println("❌ $errorMsg")

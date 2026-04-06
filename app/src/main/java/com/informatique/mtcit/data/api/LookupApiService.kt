@@ -16,6 +16,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Lookup API Service for fetching dropdown options from real APIs
@@ -866,13 +867,13 @@ class LookupApiService @Inject constructor(
         val data = listOf(
             PersonType(
                 id = "PT-2024-001",
-                title = "فرد",
+                title = if (AppLanguage.isArabic) "فرد" else "Individual",
                 code = "PT-2024-001",
                 icon = { DefaultBusinessIcon(false) }
             ),
             PersonType(
                 id = "PT-2024-002",
-                title = "شركة",
+                title = if (AppLanguage.isArabic) "شركة" else "Company",
                 code = "PT-2024-002"
             )
         )

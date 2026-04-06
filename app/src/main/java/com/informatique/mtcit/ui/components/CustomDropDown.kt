@@ -512,7 +512,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -521,6 +520,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.informatique.mtcit.common.util.AppLanguage.isArabic
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import kotlinx.coroutines.launch
@@ -543,7 +543,7 @@ fun CustomDropdown(
     leadingIcon: ImageVector? = null,
     placeholder: String? = null,
     isLoading: Boolean = false,
-    loadingMessage: String? = "جاري التحميل...",
+    loadingMessage: String? = if (isArabic) "جاري التحميل..." else "Loading...",
     maxLength: Int? = null,
     minLength: Int? = null,
     enableSections: Boolean = false,
@@ -746,7 +746,7 @@ fun CustomDropdown(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "تم",
+                            text = if (isArabic) "تم" else "Done",
                             color = extraColors.iconBlueBackground,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
@@ -993,7 +993,7 @@ private fun EmptyStateBox() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            "لا توجد نتائج",
+            if (isArabic) "لا توجد نتائج" else "No results",
             color = extraColors.whiteInDarkMode.copy(alpha = 0.5f),
             fontSize = 16.sp
         )

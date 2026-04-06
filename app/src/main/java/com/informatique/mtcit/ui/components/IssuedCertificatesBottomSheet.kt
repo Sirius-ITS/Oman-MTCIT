@@ -19,9 +19,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
-import java.util.Locale
+import com.informatique.mtcit.R
 import com.informatique.mtcit.common.util.LocalAppLocale
-import androidx.compose.ui.res.stringResource
 
 /**
  * Data class representing a single issued certificate item for the bottom sheet.
@@ -109,7 +108,7 @@ fun IssuedCertificatesBottomSheet(
 
             // ── Disclaimer note ────────────────────────────────────────────
             Text(
-                text = stringResource(R.string.previous_certificates_have_been_cancelled_expired_and_are_only_available_in_the),
+                text = localizedApp(R.string.previous_certificates_have_been_cancelled_expired_and_are_only_available_in_the),
                 fontSize = 12.sp,
                 color = extraColors.textSubTitle.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
@@ -129,7 +128,7 @@ fun IssuedCertificatesBottomSheet(
                 border = BorderStroke(1.dp, extraColors.blue1)
             ) {
                 Text(
-                    text = stringResource(R.string.close),
+                    text = localizedApp(R.string.close),
                     color = extraColors.blue1,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -170,7 +169,7 @@ private fun IssuedCertCard(
         ) {
             // ── Certificate number (top) ────────────────────────────────
             Text(
-                text = stringResource(R.string.certificate_no_cert_number),
+                text = localizedApp(R.string.certificate_no_cert_number),
                 fontSize = 12.sp,
                 color = extraColors.textSubTitle.copy(alpha = 0.7f),
                 textAlign = TextAlign.Start,
@@ -204,7 +203,7 @@ private fun IssuedCertCard(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.view_certificate),
+                    text = localizedApp(R.string.view_certificate),
                     color = Color.White,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold

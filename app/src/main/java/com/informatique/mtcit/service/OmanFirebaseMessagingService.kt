@@ -15,6 +15,7 @@ import com.informatique.mtcit.ui.LandingActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Firebase Cloud Messaging Service.
@@ -47,7 +48,7 @@ class OmanFirebaseMessagingService : FirebaseMessagingService() {
 
         val title = message.notification?.title
             ?: message.data["title"]
-            ?: "إشعار جديد"
+            ?: if (AppLanguage.isArabic) "إشعار جديد" else "New Notification"
         val body  = message.notification?.body
             ?: message.data["body"]
             ?: ""

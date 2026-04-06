@@ -31,6 +31,7 @@ import com.informatique.mtcit.data.model.RedemptionRequestData
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * API Service for Mortgage Requests
@@ -709,7 +710,7 @@ class MortgageApiService @Inject constructor(
                     println("=".repeat(80))
 
                     val errorMsg = if (response.code == 400) {
-                        "خطأ في البيانات المرسلة (400): $errorDetails"
+                        if (AppLanguage.isArabic) "خطأ في البيانات المرسلة (400): $errorDetails" else "Error in sent data (400): $errorDetails"
                     } else {
                         "API Error: ${response.code} - $errorDetails"
                     }

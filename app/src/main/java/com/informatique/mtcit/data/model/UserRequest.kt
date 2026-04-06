@@ -2,6 +2,7 @@ package com.informatique.mtcit.data.model
 
 import com.informatique.mtcit.business.transactions.TransactionType
 import com.informatique.mtcit.business.transactions.shared.MarineUnit
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Represents a user's transaction request saved in their profile (الاستمارات)
@@ -35,13 +36,13 @@ data class UserRequest(
      */
     fun getDisplayTitle(): String {
         return when (type) {
-            TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE -> "شهادة التسجيل المؤقت"
-            TransactionType.PERMANENT_REGISTRATION_CERTIFICATE -> "شهادة التسجيل الدائم"
-            TransactionType.MORTGAGE_CERTIFICATE -> "شهادة الرهن"
-            TransactionType.RELEASE_MORTGAGE -> "فك الرهن"
-            TransactionType.SUSPEND_PERMANENT_REGISTRATION -> "إيقاف التسجيل الدائم"
-            TransactionType.CANCEL_PERMANENT_REGISTRATION -> "إلغاء التسجيل الدائم"
-            else -> "طلب"
+            TransactionType.TEMPORARY_REGISTRATION_CERTIFICATE -> if (AppLanguage.isArabic) "شهادة التسجيل المؤقت" else "Temporary Registration Certificate"
+            TransactionType.PERMANENT_REGISTRATION_CERTIFICATE -> if (AppLanguage.isArabic) "شهادة التسجيل الدائم" else "Permanent Registration Certificate"
+            TransactionType.MORTGAGE_CERTIFICATE -> if (AppLanguage.isArabic) "شهادة الرهن" else "Mortgage Certificate"
+            TransactionType.RELEASE_MORTGAGE -> if (AppLanguage.isArabic) "فك الرهن" else "Mortgage Release"
+            TransactionType.SUSPEND_PERMANENT_REGISTRATION -> if (AppLanguage.isArabic) "إيقاف التسجيل الدائم" else "Suspend Permanent Registration"
+            TransactionType.CANCEL_PERMANENT_REGISTRATION -> if (AppLanguage.isArabic) "إلغاء التسجيل الدائم" else "Cancel Permanent Registration"
+            else -> if (AppLanguage.isArabic) "طلب" else "Request"
         }
     }
 
@@ -52,21 +53,21 @@ data class UserRequest(
         return when (statusId) {
             1 -> "مسودة"                    // Draft
             2 -> "مرفوض"                    // Rejected
-            3 -> "مؤكد"                     // Confirmed
+            3 -> if (AppLanguage.isArabic) "مؤكد" else "Confirmed"                     // Confirmed
             4 -> "تم الإرسال"               // Sent
             5 -> "قيد الانتظار"             // Pending
             6 -> "مجدول"                    // Scheduled
             7 -> "مقبول"                    // Accepted
-            8 -> "قيد المراجعة"             // In Review
-            9 -> "مراجعة RTA"               // RTA Review
-            10 -> "رفض من الجهات"          // Rejected by Authorities
-            11 -> "موافقة الجهات"           // Approved by Authorities
-            12 -> "الموافقة النهائية"      // Final Approval
-            13 -> "تم اتخاذ الإجراء"        // Action Taken
+            8 -> if (AppLanguage.isArabic) "قيد المراجعة" else "Under Review"             // In Review
+            9 -> if (AppLanguage.isArabic) "مراجعة RTA" else "RTA Review"               // RTA Review
+            10 -> if (AppLanguage.isArabic) "رفض من الجهات" else "Auth. Rejected"          // Rejected by Authorities
+            11 -> if (AppLanguage.isArabic) "موافقة الجهات" else "Auth. Approved"           // Approved by Authorities
+            12 -> if (AppLanguage.isArabic) "الموافقة النهائية" else "Final Approval"      // Final Approval
+            13 -> if (AppLanguage.isArabic) "تم اتخاذ الإجراء" else "Action Taken"        // Action Taken
             14 -> "مصدر"              // Issued
-            15 -> "قيد التحقيق"             // Under Investigation
-            16 -> "في انتظار نتائج المعاينة" // Waiting for Inspection
-            else -> "غير معروف"             // Unknown
+            15 -> if (AppLanguage.isArabic) "قيد التحقيق" else "Under Investigation"             // Under Investigation
+            16 -> if (AppLanguage.isArabic) "في انتظار نتائج المعاينة" else "Waiting Inspection Results" // Waiting for Inspection
+            else -> if (AppLanguage.isArabic) "غير معروف" else "Unknown"             // Unknown
         }
     }
 

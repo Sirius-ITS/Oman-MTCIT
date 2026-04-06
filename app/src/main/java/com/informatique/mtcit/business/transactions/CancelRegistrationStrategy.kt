@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Cancel Permanent Registration (Deletion/Removal)
@@ -85,7 +86,10 @@ class CancelRegistrationStrategy @Inject constructor(
         val ports = lookupRepository.getPorts().getOrNull() ?: emptyList()
         val countries = lookupRepository.getCountries().getOrNull() ?: emptyList()
         val shipTypes = lookupRepository.getShipTypes().getOrNull() ?: emptyList()
-        val commercialRegistrations = lookupRepository.getCommercialRegistrations("12345678901234").getOrNull() ?: emptyList()
+        val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
+        val commercialRegistrations = if (ownerCivilId != null)
+            lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
+        else emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
 
         // ✅ NEW: Fetch deletion reasons from API
@@ -94,7 +98,7 @@ class CancelRegistrationStrategy @Inject constructor(
             deletionReasonsResult.onSuccess { reasonsResponse ->
                 // Create map of name -> id for later lookup
                 val reasonsList = reasonsResponse.data?.content?.mapNotNull { item ->
-                    val name = item?.nameAr
+                    val name = if (AppLanguage.isArabic) item?.nameAr else (item?.nameEn ?: item?.nameAr)
                     val id = item?.id
                     if (name != null && id != null) {
                         println("🗑️ Loaded reason: '$name' -> ID: $id")
@@ -116,7 +120,7 @@ class CancelRegistrationStrategy @Inject constructor(
             }.onFailure { error ->
                 println("❌ Failed to fetch deletion reasons: ${error.message}")
                 val msg = when (error) {
-                    is ApiException -> error.message ?: "فشل في جلب أسباب الحذف"
+                    is ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في جلب أسباب الحذف" else "Failed to fetch deletion reasons"
                     else -> ErrorMessageExtractor.extract(error.message)
                 }
 
@@ -142,7 +146,7 @@ class CancelRegistrationStrategy @Inject constructor(
 
         println("✅ Fetched ${requiredDocumentsList.size} required documents:")
         requiredDocumentsList.forEach { docItem ->
-            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            val mandatoryText = if (docItem.document.isMandatory == 1) if (AppLanguage.isArabic) "إلزامي" else "Mandatory" else if (AppLanguage.isArabic) "اختياري" else "Optional"
             println("   - ${docItem.document.nameAr} ($mandatoryText)")
         }
 
@@ -181,11 +185,11 @@ class CancelRegistrationStrategy @Inject constructor(
 
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد", "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة", "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -247,7 +251,7 @@ class CancelRegistrationStrategy @Inject constructor(
     }
 
     override fun getContext(): TransactionContext {
-        TODO("Not yet implemented")
+        return transactionContext
     }
 
     override fun getSteps(): List<StepData> {
@@ -258,7 +262,7 @@ class CancelRegistrationStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (only for companies)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -287,6 +291,12 @@ class CancelRegistrationStrategy @Inject constructor(
         if (hasRequestId) {
             // Payment Details Step - Shows payment breakdown
             steps.add(SharedSteps.paymentDetailsStep(accumulatedFormData))
+
+            // Payment Success Step - Only show if payment was successful
+            val paymentSuccessful = accumulatedFormData["paymentSuccessful"]?.toBoolean() == true
+            if (paymentSuccessful) {
+                steps.add(SharedSteps.paymentSuccessStep())
+            }
         }
 
         return steps
@@ -323,12 +333,19 @@ class CancelRegistrationStrategy @Inject constructor(
                 }
             }
         }
+
+        onStepsNeedRebuild?.invoke()
     }
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
         val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = emptyList()
+        )
     }
 
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
@@ -447,8 +464,8 @@ class CancelRegistrationStrategy @Inject constructor(
                     println("❌ Failed to add crew: ${error.message}")
                     // Store API error for UI / debugging
                     val msg = when (error) {
-                        is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إضافة الطاقم"
-                        else -> error.message ?: "فشل في إضافة الطاقم"
+                        is com.informatique.mtcit.common.ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إضافة الطاقم" else "Failed to add crew"
+                        else -> error.message ?: if (AppLanguage.isArabic) "فشل في إضافة الطاقم" else "Failed to add crew"
                     }
                     accumulatedFormData["apiError"] = msg
                     lastApiError = msg
@@ -465,7 +482,7 @@ class CancelRegistrationStrategy @Inject constructor(
                 println("❌ Exception while creating deletion request: ${e.message}")
                 e.printStackTrace()
 
-                lastApiError = e.message ?: "حدث خطأ غير متوقع"
+                lastApiError = e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred"
                 apiCallSucceeded = false
             }
 
@@ -486,7 +503,7 @@ class CancelRegistrationStrategy @Inject constructor(
             if (requestIdInt == null) {
                 println("❌ No requestId available for review step")
                 println("❌ accumulatedFormData keys: ${accumulatedFormData.keys}")
-                lastApiError = "لم يتم العثور على رقم الطلب"
+                lastApiError = if (AppLanguage.isArabic) "لم يتم العثور على رقم الطلب" else "Request number not found"
                 return -1
             }
 
@@ -565,7 +582,7 @@ class CancelRegistrationStrategy @Inject constructor(
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()
-                lastApiError = e.message ?: "حدث خطأ أثناء مراجعة الطلب"
+                lastApiError = e.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء مراجعة الطلب" else "An error occurred while reviewing the request"
                 return -1
             }
         }
@@ -696,15 +713,15 @@ class CancelRegistrationStrategy @Inject constructor(
 
             // Extract deletion reason ID
             val deletionReasonName = data["cancellationReason"]
-                ?: return Result.failure(Exception("سبب الشطب مطلوب"))
+                ?: return Result.failure(Exception(if (AppLanguage.isArabic) "سبب الشطب مطلوب" else "Cancellation reason is required"))
 
             val deletionReasonId = deletionReasonMap[deletionReasonName]
-                ?: return Result.failure(Exception("سبب الشطب غير صحيح"))
+                ?: return Result.failure(Exception(if (AppLanguage.isArabic) "سبب الشطب غير صحيح" else "Invalid cancellation reason"))
 
             // ✅ FIX: Extract ship info ID from correct field
             // The marine unit selection field stores data in "selectedMarineUnits" (JSON array)
             val selectedUnitsJson = data["selectedMarineUnits"]
-                ?: return Result.failure(Exception("السفينة مطلوبة"))
+                ?: return Result.failure(Exception(if (AppLanguage.isArabic) "السفينة مطلوبة" else "Ship is required"))
 
             println("🔍 Selected units JSON: $selectedUnitsJson")
 
@@ -757,7 +774,7 @@ class CancelRegistrationStrategy @Inject constructor(
 
             if (files.isEmpty()) {
                 println("❌ ERROR: No files provided!")
-                return Result.failure(Exception("يجب إرفاق مستند واحد على الأقل"))
+                return Result.failure(Exception(if (AppLanguage.isArabic) "يجب إرفاق مستند واحد على الأقل" else "At least one document must be attached"))
             }
 
             println("📤 Submitting: reasonId=$deletionReasonId, shipId=$shipInfoId, files=${files.size}")
@@ -782,14 +799,14 @@ class CancelRegistrationStrategy @Inject constructor(
         if (fieldId == "owner_type") {
             val mutableFormData = formData.toMutableMap()
             when (value) {
-                "فرد" -> {
+                "فرد", "Individual" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
-                "شركة" -> {
+                "شركة", "Company" -> {
                     // Company fields will be shown and are required
                 }
-                "شراكة" -> {
+                "شراكة", "Partnership" -> {
                     mutableFormData.remove("companyName")
                     mutableFormData.remove("companyRegistrationNumber")
                 }
@@ -808,13 +825,13 @@ class CancelRegistrationStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
         if (registrationNumber.length < 3) {
             return FieldFocusResult.Error(
                 "companyRegistrationNumber",
-                "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام"
+                if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits"
             )
         }
 
@@ -822,7 +839,7 @@ class CancelRegistrationStrategy @Inject constructor(
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
                 .catch { throwable ->
-                    throw Exception("حدث خطأ أثناء البحث عن الشركة: ${throwable.message}")
+                    throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${throwable.message}" else "An error occurred while searching for the company: ${throwable.message}")
                 }
                 .first()
 
@@ -837,7 +854,7 @@ class CancelRegistrationStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> {
@@ -848,7 +865,7 @@ class CancelRegistrationStrategy @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 

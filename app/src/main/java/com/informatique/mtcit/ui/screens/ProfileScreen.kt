@@ -77,7 +77,6 @@ import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.viewmodels.MarineRegistrationViewModel
 import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.data.model.RequestStatus
-import androidx.compose.ui.res.stringResource
 
 @Composable
 fun ProfileScreen(
@@ -566,10 +565,10 @@ fun FormsSectionWithLazyColumn(
                 when (selectedFilter) {
                     FilterType.COMPLETED -> request.statusName.contains("مكتمل", ignoreCase = true) ||
                             request.statusName.contains("completed", ignoreCase = true)
-                    FilterType.IN_PROGRESS -> request.statusName.contains("قيد المعالجة", ignoreCase = true) ||
+                    FilterType.IN_PROGRESS -> request.statusName.contains(if (isArabic) "قيد المعالجة" else "Under Processing", ignoreCase = true) ||
                             request.statusName.contains("in progress", ignoreCase = true) ||
                             request.statusName.contains("processing", ignoreCase = true)
-                    FilterType.NEEDS_ACTION -> request.statusName.contains("يحتاج إجراء", ignoreCase = true) ||
+                    FilterType.NEEDS_ACTION -> request.statusName.contains(if (isArabic) "يحتاج إجراء" else "Needs Action", ignoreCase = true) ||
                             request.statusName.contains("needs action", ignoreCase = true) ||
                             request.statusName.contains("action needed", ignoreCase = true)
                     FilterType.DRAFT -> request.statusName.contains("مسودة", ignoreCase = true) ||
@@ -580,7 +579,7 @@ fun FormsSectionWithLazyColumn(
                             request.statusName.contains("pending", ignoreCase = true)
                     FilterType.ACCEPTED -> request.statusName.contains("مقبول", ignoreCase = true) ||
                             request.statusName.contains("accepted", ignoreCase = true)
-                    FilterType.CONFIRMED -> request.statusName.contains("مؤكد", ignoreCase = true) ||
+                    FilterType.CONFIRMED -> request.statusName.contains(if (isArabic) "مؤكد" else "Confirmed", ignoreCase = true) ||
                             request.statusName.contains("confirmed", ignoreCase = true)
                     FilterType.SEND -> request.statusName.contains("تم الإرسال", ignoreCase = true) ||
                             request.statusName.contains("sent", ignoreCase = true)
@@ -691,10 +690,11 @@ fun FormsSectionWithLazyColumn(
 
                 // Error banner
                 appError?.let { error ->
+                    val isAr = LocalAppLocale.current.language == "ar"
                     when (error) {
                         is com.informatique.mtcit.common.AppError.Unauthorized -> {
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 onDismiss = { requestsViewModel.clearAppError() },
                                 showRefreshButton = true,
                                 onRefreshToken = { requestsViewModel.refreshToken() }
@@ -702,13 +702,13 @@ fun FormsSectionWithLazyColumn(
                         }
                         is com.informatique.mtcit.common.AppError.ApiError -> {
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = "${stringResource(R.string.error)} ${error.code}: ${error.message}",
+                                message = "${localizedApp(R.string.error)} ${error.code}: ${error.getMessage(isAr)}",
                                 onDismiss = { requestsViewModel.clearAppError() }
                             )
                         }
                         is com.informatique.mtcit.common.AppError.Unknown -> {
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = error.message,
+                                message = error.getMessage(isAr),
                                 showRefreshButton = true,
                                 onRefreshToken = {
                                     requestsViewModel.navigateToLogin()
@@ -718,7 +718,7 @@ fun FormsSectionWithLazyColumn(
                         }
                         else -> {
                             com.informatique.mtcit.ui.components.ErrorBanner(
-                                message = stringResource(R.string.an_error_occurred),
+                                message = localizedApp(R.string.an_error_occurred),
                                 onDismiss = { requestsViewModel.clearAppError() }
                             )
                         }
@@ -766,7 +766,7 @@ fun FormsSectionWithLazyColumn(
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = if (searchQuery.isNotBlank() || selectedFilter != null) {
-                                stringResource(R.string.no_results_found)
+                                localizedApp(R.string.no_results_found)
                             } else {
                                 localizedApp(R.string.no_forms_available)
                             },
@@ -777,7 +777,7 @@ fun FormsSectionWithLazyColumn(
                         )
                         Text(
                             text = if (searchQuery.isNotBlank() || selectedFilter != null) {
-                                stringResource(R.string.try_different_search_terms)
+                                localizedApp(R.string.try_different_search_terms)
                             } else {
                                 localizedApp(R.string.forms_will_appear_here)
                             },
@@ -1261,7 +1261,7 @@ fun NewRequestCard(
                         modifier = Modifier.size(12.dp)
                     )
                     Text(
-                        text = stringResource(R.string.last_update),
+                        text = localizedApp(R.string.last_update),
                         fontWeight = FontWeight.Normal,
                         fontSize = 10.sp,
                         color = Color(0xFF757575)
@@ -1280,7 +1280,7 @@ fun NewRequestCard(
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.view_details),
+                        text = localizedApp(R.string.view_details),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF5BA3E8)
@@ -1612,7 +1612,6 @@ fun Search(
 ){
     var searchQuery by remember { mutableStateOf("") }
     val extraColors = LocalExtraColors.current
-    val isArabic = LocalAppLocale.current.language == "ar"
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // Search Bar with Filter Icon - Functional TextField
@@ -1665,7 +1664,7 @@ fun Search(
                         decorationBox = { innerTextField ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    text = stringResource(R.string.search_by_request_number_or_ship_name),
+                                    text = localizedApp(R.string.search_by_request_number_or_ship_name),
                                     fontSize = 14.sp,
                                     color = Color(0xFFBDBDBD)
                                 )
@@ -1740,7 +1739,6 @@ fun UserProfileHeader(
     val acceptedCount = statusCounts?.data?.statusCounts?.find { it.statusId == 7 }?.count ?: 0
     val sendCount = statusCounts?.data?.statusCounts?.find { it.statusId == 4 }?.count ?: 0
     val rejectedCount = statusCounts?.data?.statusCounts?.find { it.statusId == 2 }?.count ?: 0
-    val isArabic = LocalAppLocale.current.language == "ar"
 
     // ✅ REMOVED: LaunchedEffect that was resetting filter on recomposition
 
@@ -1798,7 +1796,7 @@ fun UserProfileHeader(
         ) {
             StatCard(
                 number = if (isLoading) "..." else totalCount.toString(),
-                label = stringResource(R.string.total),
+                label = localizedApp(R.string.total),
                 numberColor = Color(0xFFE91E63),
                 accentColor = Color(0xFFE91E63),
                 isSelected = selectedFilter == FilterType.ALL,
@@ -1810,7 +1808,7 @@ fun UserProfileHeader(
             )
             StatCard(
                 number = if (isLoading) "..." else acceptedCount.toString(),
-                label = stringResource(R.string.accepted),
+                label = localizedApp(R.string.accepted),
                 numberColor = Color(0xFF4CAF50),
                 accentColor = Color(0xFF4CAF50),
                 isSelected = selectedFilter == FilterType.ACCEPTED,
@@ -1830,7 +1828,7 @@ fun UserProfileHeader(
         ) {
             StatCard(
                 number = if (isLoading) "..." else sendCount.toString(),
-                label = stringResource(R.string.sent),
+                label = localizedApp(R.string.sent),
                 numberColor = Color(0xFF2196F3),
                 accentColor = Color(0xFF2196F3),
                 isSelected = selectedFilter == FilterType.SEND,
@@ -1842,7 +1840,7 @@ fun UserProfileHeader(
             )
             StatCard(
                 number = if (isLoading) "..." else rejectedCount.toString(),
-                label = stringResource(R.string.rejected),
+                label = localizedApp(R.string.rejected),
                 numberColor = Color(0xFFFF9800),
                 accentColor = Color(0xFFFF9800),
                 isSelected = selectedFilter == FilterType.REJECTED,
@@ -1865,7 +1863,6 @@ fun FilterBottomSheetContent(
     onClearFilter: () -> Unit
 ) {
     val extraColors = LocalExtraColors.current
-    val isArabic = LocalAppLocale.current.language == "ar"
 
     Column(
         modifier = Modifier
@@ -1880,7 +1877,7 @@ fun FilterBottomSheetContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.filter_sort),
+                text = localizedApp(R.string.filter_sort),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = extraColors.whiteInDarkMode
@@ -1888,7 +1885,7 @@ fun FilterBottomSheetContent(
 
             TextButton(onClick = onClearFilter) {
                 Text(
-                    text = stringResource(R.string.clear_all),
+                    text = localizedApp(R.string.clear_all),
                     fontSize = 14.sp,
                     color = Color(0xFF2196F3)
                 )
@@ -1899,7 +1896,7 @@ fun FilterBottomSheetContent(
 
         // Sort Order Section
         Text(
-            text = stringResource(R.string.sort_order),
+            text = localizedApp(R.string.sort_order),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = extraColors.whiteInDarkMode
@@ -1913,7 +1910,7 @@ fun FilterBottomSheetContent(
         ) {
             // Ascending Card
             SortOrderCard(
-                label = stringResource(R.string.ascending),
+                label = localizedApp(R.string.ascending),
                 icon = "↑",
                 isSelected = currentSortOrder == SortOrder.ASCENDING,
                 onClick = { onSortOrderChanged(SortOrder.ASCENDING) },
@@ -1922,7 +1919,7 @@ fun FilterBottomSheetContent(
 
             // Descending Card
             SortOrderCard(
-                label = stringResource(R.string.descending),
+                label = localizedApp(R.string.descending),
                 icon = "↓",
                 isSelected = currentSortOrder == SortOrder.DESCENDING,
                 onClick = { onSortOrderChanged(SortOrder.DESCENDING) },
@@ -1934,7 +1931,7 @@ fun FilterBottomSheetContent(
 
         // Status Filter Section
         Text(
-            text = stringResource(R.string.filter_by_status),
+            text = localizedApp(R.string.filter_by_status),
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold,
             color = extraColors.whiteInDarkMode
@@ -1944,19 +1941,19 @@ fun FilterBottomSheetContent(
 
         // All Status Cards in Grid
         val statusList = listOf(
-            StatusFilterItem(FilterType.ALL, stringResource(R.string.all_requests), "671", Color(0xFFE91E63)),
-//            StatusFilterItem(FilterType.DRAFT, stringResource(R.string.draft), "0", Color(0xFF9E9E9E)),
-            StatusFilterItem(FilterType.REJECTED, stringResource(R.string.rejected), "0", Color(0xFFF44336)),
-            StatusFilterItem(FilterType.SEND, stringResource(R.string.sent_2), "0", Color(0xFFFF9800)),
-            StatusFilterItem(FilterType.SCHEDULED, stringResource(R.string.scheduled), "0", Color(0xFF2196F3)),
-            StatusFilterItem(FilterType.ACCEPTED, stringResource(R.string.accepted), "0", Color(0xFF4CAF50)),
-            StatusFilterItem(FilterType.COMPLETED, stringResource(R.string.completed), "52", Color(0xFF4CAF50)),
-            StatusFilterItem(FilterType.IN_REVIEW, stringResource(R.string.in_review), "0", Color(0xFF4A90E2)),
-            StatusFilterItem(FilterType.REVIEW_RTA, stringResource(R.string.rta_review), "0", Color(0xFF673AB7)),
-            StatusFilterItem(FilterType.REJECT_AUTHORITIES, stringResource(R.string.auth_rejected), "0", Color(0xFFE91E63)),
-            StatusFilterItem(FilterType.APPROVED_FINAL, stringResource(R.string.final_approval), "0", Color(0xFF4CAF50)),
-            StatusFilterItem(FilterType.ISSUED, stringResource(R.string.issued), "0", Color(0xFF4CAF50)),
-            StatusFilterItem(FilterType.WAITING_INSPECTION, stringResource(R.string.waiting_inspection), "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.ALL, localizedApp(R.string.all_requests), "671", Color(0xFFE91E63)),
+//            StatusFilterItem(FilterType.DRAFT, localizedApp(R.string.draft), "0", Color(0xFF9E9E9E)),
+            StatusFilterItem(FilterType.REJECTED, localizedApp(R.string.rejected), "0", Color(0xFFF44336)),
+            StatusFilterItem(FilterType.SEND, localizedApp(R.string.sent_2), "0", Color(0xFFFF9800)),
+            StatusFilterItem(FilterType.SCHEDULED, localizedApp(R.string.scheduled), "0", Color(0xFF2196F3)),
+            StatusFilterItem(FilterType.ACCEPTED, localizedApp(R.string.accepted), "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.COMPLETED, localizedApp(R.string.completed), "52", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.IN_REVIEW, localizedApp(R.string.in_review), "0", Color(0xFF4A90E2)),
+            StatusFilterItem(FilterType.REVIEW_RTA, localizedApp(R.string.rta_review), "0", Color(0xFF673AB7)),
+            StatusFilterItem(FilterType.REJECT_AUTHORITIES, localizedApp(R.string.auth_rejected), "0", Color(0xFFE91E63)),
+            StatusFilterItem(FilterType.APPROVED_FINAL, localizedApp(R.string.final_approval), "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.ISSUED, localizedApp(R.string.issued), "0", Color(0xFF4CAF50)),
+            StatusFilterItem(FilterType.WAITING_INSPECTION, localizedApp(R.string.waiting_inspection), "0", Color(0xFF4CAF50)),
         )
 
         LazyColumn(

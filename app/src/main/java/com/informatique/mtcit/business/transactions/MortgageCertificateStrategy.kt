@@ -25,6 +25,8 @@ import com.informatique.mtcit.business.transactions.marineunit.usecases.GetEligi
 import com.informatique.mtcit.data.repository.MarineUnitRepository
 import android.content.Context
 import com.informatique.mtcit.business.transactions.shared.StepProcessResult
+import com.informatique.mtcit.business.validation.rules.FormatValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.ApiException
 import com.informatique.mtcit.data.api.MarineUnitsApiService
 import com.informatique.mtcit.data.helpers.FileUploadHelper
@@ -35,6 +37,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.format.ResolverStyle
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Strategy for Mortgage Certificate Issuance
@@ -227,7 +230,7 @@ class MortgageCertificateStrategy @Inject constructor(
 
         println("✅ Fetched ${requiredDocumentsList.size} required documents:")
         requiredDocumentsList.forEach { docItem ->
-            val mandatoryText = if (docItem.document.isMandatory == 1) "إلزامي" else "اختياري"
+            val mandatoryText = if (docItem.document.isMandatory == 1) if (AppLanguage.isArabic) "إلزامي" else "Mandatory" else if (AppLanguage.isArabic) "اختياري" else "Optional"
             println("   - ${docItem.document.nameAr} ($mandatoryText)")
         }
 
@@ -275,11 +278,11 @@ class MortgageCertificateStrategy @Inject constructor(
 
         // ✅ UPDATED: For companies, use commercialReg (crNumber) from selectionData
         val (ownerCivilId, commercialRegNumber) = when (personType) {
-            "فرد" -> {
+            "فرد", "Individual" -> {
                 println("✅ Individual: Using ownerCivilId from token")
                 Pair(ownerCivilIdFromToken, null)
             }
-            "شركة" -> {
+            "شركة", "Company" -> {
                 println("✅ Company: Using commercialRegNumber from selectionData = $commercialReg")
                 Pair(ownerCivilIdFromToken, commercialReg) // ✅ Use civilId from token + commercialReg
             }
@@ -354,7 +357,7 @@ class MortgageCertificateStrategy @Inject constructor(
 
         // Step 2: Commercial Registration (only for companies)
         val selectedPersonType = accumulatedFormData["selectionPersonType"]
-        if (selectedPersonType == "شركة") {
+        if (selectedPersonType == "شركة" || selectedPersonType == "Company") {
             steps.add(
                 SharedSteps.commercialRegistrationStep(
                     options = commercialOptions
@@ -475,7 +478,7 @@ class MortgageCertificateStrategy @Inject constructor(
 
     suspend fun validateMarineUnitSelection(unitId: String, userId: String): ValidationResult {
         val unit = marineUnits.find { it.id.toString() == unitId }
-            ?: return ValidationResult.Error("الوحدة البحرية غير موجودة")
+            ?: return ValidationResult.Error(if (AppLanguage.isArabic) "الوحدة البحرية غير موجودة" else "Marine unit not found")
 
         println("=".repeat(80))
         println("🚢 validateMarineUnitSelection: Validating ship selection (no API call here)")
@@ -494,121 +497,30 @@ class MortgageCertificateStrategy @Inject constructor(
         return ValidationResult.Success(validationResult, navigationAction)
     }
 
-    /**
-     * SIMULATION: Simulates calling "استدعاء بيانات السفينة ومراجعة سجل الالتزام"
-     * This represents the API that retrieves full marine unit data and checks compliance record
-     */
-    private fun simulateComplianceRecordCheck(
-        unit: MarineUnit,
-        userId: String
-    ): ComplianceCheckResult {
-        // SIMULATION SCENARIOS - Using EXACT maritime IDs to avoid false positives:
-        // 1. Maritime ID "470123456" (first unit) - simulate violations found
-        // 2. Maritime ID "OMN000123" - simulate debts found
-        // 3. Maritime ID "OMN000999" - simulate detention found
-        // 4. All others - proceed normally (NO ISSUES)
-
-        val issues = mutableListOf<com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue>()
-
-        // Scenario 1: Violations - ONLY for exact maritime ID "470123456"
-        if (unit.maritimeId == "470123456") {
-            issues.add(
-                com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                    category = "المخالفات",
-                    title = "وجود مخالفات نشطة",
-                    description = "تم رصد 3 مخالفات نشطة على هذه الوحدة البحرية تمنع استكمال المعاملة",
-                    severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
-                    details = mapOf(
-                        "عدد المخالفات" to "3",
-                        "تاريخ آخر مخالفة" to "2024-10-15",
-                        "نوع المخالفة" to "مخالفة سلامة بحرية"
-                    )
-                )
-            )
-        }
-
-        // Scenario 2: Debts - for maritime IDs containing "OMN000123"
-        if (unit.maritimeId == "OMN000123") {
-            issues.add(
-                com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-                    category = "الديون والمستحقات",
-                    title = "وجود ديون مستحقة",
-                    description = "يوجد مبلغ مستحق غير مسدد يجب تسديده قبل المتابعة",
-                    severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
-                    details = mapOf(
-                        "المبلغ المستحق" to "2,500 ريال عماني",
-                        "نوع المستحق" to "رسوم تجديد سنوية",
-                        "تاريخ الاستحقاق" to "2024-09-01"
-                    )
-                )
-            )
-        }
-
-        // Scenario 3: Detention - for maritime ID "OMN000999"
-//        if (unit.maritimeId == "OMN000999") {
-//            issues.add(
-//                com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue(
-//                    category = "الاحتجازات",
-//                    title = "الوحدة محتجزة",
-//                    description = "الوحدة البحرية محتجزة حالياً ولا يمكن استغلالها",
-//                    severity = com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING,
-//                    details = mapOf(
-//                        "سبب الاحتجاز" to "مخالفة أمنية",
-//                        "تاريخ الاحتجاز" to "2024-11-01",
-//                        "الجهة المحتجزة" to "خفر السواحل"
-//                    )
-//                )
-//            )
-//        }
-
-        // Build rejection reason
-        val rejectionReason = if (issues.isNotEmpty()) {
-            buildString {
-                append("تم رفض طلبكم بسبب: ")
-                issues.forEach { issue ->
-                    append("\n• ${issue.title}")
-                }
-                append("\n\nيرجى حل هذه المشاكل أولاً ثم المحاولة مرة أخرى.")
-            }
-        } else {
-            ""
-        }
-
-        return ComplianceCheckResult(
-            issues = issues,
-            rejectionReason = rejectionReason,
-            validationResult = if (issues.isEmpty()) {
-                com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult.Eligible(
-                    unit = unit,
-                    additionalData = emptyMap()
-                )
-            } else {
-                com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult.Ineligible.CustomError(
-                    unit = unit,
-                    reason = rejectionReason,
-                    suggestion = "يرجى حل المشاكل المذكورة أعلاه قبل المتابعة"
-                )
-            }
+    override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
+        val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
+        val formData = data.mapValues { it.value.toString() }
+        val rules = getValidationRulesForStep(step, stepData)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = rules
         )
     }
 
     /**
-     * Result of compliance record check
+     * Get validation rules based on step content
      */
-    private data class ComplianceCheckResult(
-        val issues: List<com.informatique.mtcit.business.transactions.marineunit.ComplianceIssue>,
-        val rejectionReason: String,
-        val validationResult: com.informatique.mtcit.business.transactions.marineunit.MarineUnitValidationResult
-    ) {
-        fun hasBlockingIssues(): Boolean {
-            return issues.any { it.severity == com.informatique.mtcit.business.transactions.marineunit.IssueSeverity.BLOCKING }
-        }
-    }
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        val fieldIds = stepData.fields.map { it.id }
+        val rules = mutableListOf<ValidationRule>()
 
-    override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
-        val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
-        val formData = data.mapValues { it.value.toString() }
-        return validationUseCase.validateStep(stepData, formData)
+        if (fieldIds.contains("mortgageContractNumber")) {
+            rules.add(FormatValidationRules.englishAlphanumeric("mortgageContractNumber"))
+        }
+
+        return rules
     }
 
     override suspend fun processStepData(step: Int, data: Map<String, String>): Int {
@@ -719,8 +631,8 @@ class MortgageCertificateStrategy @Inject constructor(
                     println("❌ Failed to add crew: ${error.message}")
                     // Store API error for UI / debugging
                     val msg = when (error) {
-                        is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إضافة الطاقم"
-                        else -> error.message ?: "فشل في إضافة الطاقم"
+                        is com.informatique.mtcit.common.ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إضافة الطاقم" else "Failed to add crew"
+                        else -> error.message ?: if (AppLanguage.isArabic) "فشل في إضافة الطاقم" else "Failed to add crew"
                     }
                     accumulatedFormData["apiError"] = msg
                     lastApiError = msg
@@ -738,7 +650,7 @@ class MortgageCertificateStrategy @Inject constructor(
                 e.printStackTrace()
 
                 // Store error for Toast display
-                lastApiError = e.message ?: "حدث خطأ غير متوقع"
+                lastApiError = e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred"
                 apiCallSucceeded = false
             }
 
@@ -759,7 +671,7 @@ class MortgageCertificateStrategy @Inject constructor(
                 ?: accumulatedFormData["mortgageRequestId"]?.toIntOrNull()
             if (requestIdInt == null) {
                 println("❌ No mortgageRequestId available for review step")
-                lastApiError = "لم يتم العثور على رقم طلب الرهن"
+                lastApiError = if (AppLanguage.isArabic) "لم يتم العثور على رقم طلب الرهن" else "Mortgage request number not found"
                 return -1
             }
 
@@ -887,7 +799,7 @@ class MortgageCertificateStrategy @Inject constructor(
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()
-                lastApiError = "حدث خطأ أثناء إرسال الطلب: ${e.message}"
+                lastApiError = if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب: ${e.message}" else "An error occurred while submitting the request: ${e.message}"
                 return -1
             }
         }
@@ -1149,7 +1061,7 @@ class MortgageCertificateStrategy @Inject constructor(
             println("❌ Create mortgage request failed: ${error.message}")
             // Build friendly message
             val msg = when (error) {
-                is com.informatique.mtcit.common.ApiException -> error.message ?: "فشل في إنشاء طلب الرهن"
+                is com.informatique.mtcit.common.ApiException -> error.message ?: if (AppLanguage.isArabic) "فشل في إنشاء طلب الرهن" else "Failed to create mortgage request"
                 else -> com.informatique.mtcit.common.ErrorMessageExtractor.extract(error.message)
             }
             // Store for UI and debugging
@@ -1202,17 +1114,17 @@ class MortgageCertificateStrategy @Inject constructor(
 
     private suspend fun handleCompanyRegistrationLookup(registrationNumber: String): FieldFocusResult {
         if (registrationNumber.isBlank()) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري مطلوب")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري مطلوب" else "Commercial registration number is required")
         }
 
         if (registrationNumber.length < 3) {
-            return FieldFocusResult.Error("companyRegistrationNumber", "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام")
+            return FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "رقم السجل التجاري يجب أن يكون أكثر من 3 أرقام" else "Commercial registration number must be more than 3 digits")
         }
 
         return try {
             val result = companyRepository.fetchCompanyLookup(registrationNumber)
                 .flowOn(Dispatchers.IO)
-                .catch { throw Exception("حدث خطأ أثناء البحث عن الشركة: ${it.message}") }
+                .catch { throw Exception(if (AppLanguage.isArabic) "حدث خطأ أثناء البحث عن الشركة: ${it.message}" else "An error occurred while searching for the company: ${it.message}") }
                 .first()
 
             when (result) {
@@ -1226,14 +1138,14 @@ class MortgageCertificateStrategy @Inject constructor(
                             )
                         )
                     } else {
-                        FieldFocusResult.Error("companyRegistrationNumber", "لم يتم العثور على الشركة")
+                        FieldFocusResult.Error("companyRegistrationNumber", if (AppLanguage.isArabic) "لم يتم العثور على الشركة" else "Company not found")
                     }
                 }
                 is BusinessState.Error -> FieldFocusResult.Error("companyRegistrationNumber", result.message)
                 is BusinessState.Loading -> FieldFocusResult.NoAction
             }
         } catch (e: Exception) {
-            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: "حدث خطأ غير متوقع")
+            FieldFocusResult.Error("companyRegistrationNumber", e.message ?: if (AppLanguage.isArabic) "حدث خطأ غير متوقع" else "An unexpected error occurred")
         }
     }
 

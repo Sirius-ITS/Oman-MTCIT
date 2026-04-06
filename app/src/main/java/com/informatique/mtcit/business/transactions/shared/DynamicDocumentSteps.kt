@@ -4,6 +4,7 @@ import com.informatique.mtcit.R
 import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.data.model.RequiredDocumentItem
 import com.informatique.mtcit.ui.viewmodels.StepData
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Helper object to create dynamic document upload steps
@@ -159,7 +160,7 @@ object DynamicDocumentSteps {
                 val uploadedValue = formData[fieldId]
 
                 if (uploadedValue.isNullOrBlank()) {
-                    errors[fieldId] = "يجب رفع ${docItem.document.nameAr}"
+                    errors[fieldId] = if (AppLanguage.isArabic) "يجب رفع ${docItem.document.nameAr}" else "Must upload ${docItem.document.nameAr}"
                 }
             }
 

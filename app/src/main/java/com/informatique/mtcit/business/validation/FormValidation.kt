@@ -4,6 +4,7 @@ import com.informatique.mtcit.business.validation.rules.ValidationRule
 import com.informatique.mtcit.common.FormField
 import io.ktor.client.request.forms.formData
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 class FormValidator @Inject constructor(
     private val crossFieldValidator: CrossFieldValidator
@@ -143,7 +144,7 @@ class FormValidator @Inject constructor(
                 // Simple validation - detailed validation is in FormValidationUseCase
                 val error = when {
                     field.value == "[]" || field.value.isBlank() -> {
-                        if (field.mandatory) "يجب إضافة بحارة أو رفع ملف Excel" else null
+                        if (field.mandatory) if (AppLanguage.isArabic) "يجب إضافة بحارة أو رفع ملف Excel" else "Must add sailors or upload an Excel file" else null
                     }
                     else -> null
                 }

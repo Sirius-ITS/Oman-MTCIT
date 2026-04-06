@@ -1030,43 +1030,43 @@ object ShipDataExtractor {
             "weights_tonnage" -> if (AppLanguage.isArabic) "الأوزان والحمولة" else "Weights & Tonnage"
             "engines" -> if (AppLanguage.isArabic) "المحركات" else "Engines"
             "owners" -> if (AppLanguage.isArabic) "المالكون" else "Owners"
-            "documents" -> if (AppLanguage.isArabic) "رفع المستندات" else "Documents"
+            "documents" -> if (AppLanguage.isArabic) "رفع المستندات" else "Upload Documents"
 
             // Ship Basic Info
             "imo_number" -> if (AppLanguage.isArabic) "رقم IMO" else "IMO Number"
             "call_sign" -> if (AppLanguage.isArabic) "رمز النداء" else "Call Sign"
             "mmsi_number" -> if (AppLanguage.isArabic) "رقم الهوية البحرية (MMSI)" else "Maritime ID (MMSI)"
             "official_number" -> if (AppLanguage.isArabic) "الرقم الرسمي" else "Official Number"
-            "port_of_registry" -> if (AppLanguage.isArabic) "ميناء التسجيل" else "Port of Registry"
-            "marine_activity" -> if (AppLanguage.isArabic) "النشاط البحري" else "Marine Activity"
+            "port_of_registry" -> if (AppLanguage.isArabic) "ميناء التسجيل" else "Registration Port"
+            "marine_activity" -> if (AppLanguage.isArabic) "النشاط البحري" else "Maritime Activity"
             "ship_category" -> if (AppLanguage.isArabic) "فئة السفينة" else "Ship Category"
             "ship_type" -> if (AppLanguage.isArabic) "نوع السفينة" else "Ship Type"
             "build_country" -> if (AppLanguage.isArabic) "بلد الصنع" else "Build Country"
             "build_material" -> if (AppLanguage.isArabic) "مادة البناء" else "Build Material"
-            "build_year" -> if (AppLanguage.isArabic) "سنة الصنع" else "Build Year"
-            "build_end_date" -> if (AppLanguage.isArabic) "تاريخ انتهاء البناء" else "Build End Date"
+            "build_year" -> if (AppLanguage.isArabic) "سنة الصنع" else "Year of Manufacture"
+            "build_end_date" -> if (AppLanguage.isArabic) "تاريخ انتهاء البناء" else "Construction End Date"
             "first_registration_date" -> if (AppLanguage.isArabic) "تاريخ أول تسجيل" else "First Registration Date"
             "decks_number" -> if (AppLanguage.isArabic) "عدد الطوابق" else "Number of Decks"
 
             // Dimensions
-            "length_overall" -> if (AppLanguage.isArabic) "الطول الإجمالي" else "Length Overall"
-            "beam_width" -> if (AppLanguage.isArabic) "العرض" else "Beam (Width)"
+            "length_overall" -> if (AppLanguage.isArabic) "الطول الإجمالي" else "Overall Length"
+            "beam_width" -> if (AppLanguage.isArabic) "العرض" else "Width"
             "draft" -> if (AppLanguage.isArabic) "الغاطس" else "Draft"
             "height" -> if (AppLanguage.isArabic) "الارتفاع" else "Height"
-            "meters" -> if (AppLanguage.isArabic) "متر" else "m"
+            "meters" -> if (AppLanguage.isArabic) "متر" else "meter"
 
             // Weights
-            "gross_tonnage" -> if (AppLanguage.isArabic) "الحمولة الإجمالية (طن)" else "Gross Tonnage (tons)"
-            "net_tonnage" -> if (AppLanguage.isArabic) "الحمولة الصافية (طن)" else "Net Tonnage (tons)"
-            "deadweight_tonnage" -> if (AppLanguage.isArabic) "حمولة الوزن الساكن" else "Deadweight Tonnage"
-            "max_load_capacity" -> if (AppLanguage.isArabic) "أقصى سعة تحميل" else "Max Load Capacity"
-            "tons" -> if (AppLanguage.isArabic) "طن" else "tons"
+            "gross_tonnage" -> if (AppLanguage.isArabic) "الحمولة الإجمالية (طن)" else "Gross Tonnage (ton)"
+            "net_tonnage" -> if (AppLanguage.isArabic) "الحمولة الصافية (طن)" else "Net Tonnage (ton)"
+            "deadweight_tonnage" -> if (AppLanguage.isArabic) "حمولة الوزن الساكن" else "Dead Weight Tonnage"
+            "max_load_capacity" -> if (AppLanguage.isArabic) "أقصى سعة تحميل" else "Maximum Loading Capacity"
+            "tons" -> if (AppLanguage.isArabic) "طن" else "ton"
 
             // Engines
             "engine_serial" -> if (AppLanguage.isArabic) "الرقم التسلسلي" else "Serial Number"
             "engine_type" -> if (AppLanguage.isArabic) "نوع المحرك" else "Engine Type"
             "engine_power" -> if (AppLanguage.isArabic) "قوة المحرك (حصان)" else "Engine Power (HP)"
-            "cylinders" -> if (AppLanguage.isArabic) "عدد الأسطوانات" else "Cylinders"
+            "cylinders" -> if (AppLanguage.isArabic) "عدد الأسطوانات" else "Number of Cylinders"
             "engine_model" -> if (AppLanguage.isArabic) "الموديل" else "Model"
             "manufacturer" -> if (AppLanguage.isArabic) "الشركة المصنعة" else "Manufacturer"
             "manufacturing_country" -> if (AppLanguage.isArabic) "بلد التصنيع" else "Manufacturing Country"
@@ -1075,11 +1075,11 @@ object ShipDataExtractor {
             // Owners
             "owner_name_ar" -> if (AppLanguage.isArabic) "اسم المالك (بالعربية)" else "Owner Name (Arabic)"
             "owner_name_en" -> if (AppLanguage.isArabic) "اسم المالك (بالانجليزية)" else "Owner Name (English)"
-            "civil_id" -> if (AppLanguage.isArabic) "الرقم المدني" else "Civil ID"
-            "ownership_percentage" -> if (AppLanguage.isArabic) "نسبة الملكية" else "Ownership %"
+            "civil_id" -> if (AppLanguage.isArabic) "الرقم المدني" else "Civil Number"
+            "ownership_percentage" -> if (AppLanguage.isArabic) "نسبة الملكية" else "Ownership Percentage"
             "address" -> if (AppLanguage.isArabic) "العنوان" else "Address"
             "phone" -> if (AppLanguage.isArabic) "الهاتف" else "Phone"
-            "email" -> if (AppLanguage.isArabic) "أدخل البريد الإلكتروني" else "Email:"
+            "email" -> if (AppLanguage.isArabic) "أدخل البريد الإلكتروني" else "Enter Email"
             "is_representative" -> if (AppLanguage.isArabic) "الممثل القانوني" else "Legal Representative"
 
             // Documents
@@ -1087,14 +1087,14 @@ object ShipDataExtractor {
 
             // Navigation Areas (change transactions)
             "navigation_areas" -> if (AppLanguage.isArabic) "مناطق الإبحار" else "Navigation Areas"
-            "area" -> if (AppLanguage.isArabic) "منطقة" else "Area"
+            "area" -> if (AppLanguage.isArabic) "منطقة" else "Zone"
 
             // Crew List
-            "crew_list" -> if (AppLanguage.isArabic) "قائمة طاقم الملاحة" else "Crew List"
+            "crew_list" -> if (AppLanguage.isArabic) "قائمة طاقم الملاحة" else "Navigation Crew List"
             "crew_name_ar" -> if (AppLanguage.isArabic) "الاسم (عربي)" else "Name (Arabic)"
             "crew_name_en" -> if (AppLanguage.isArabic) "الاسم (إنجليزي)" else "Name (English)"
-            "seamen_book_no" -> if (AppLanguage.isArabic) "رقم كتيب البحار" else "Seaman Book No."
-            "nationality" -> if (AppLanguage.isArabic) "الجنسية" else "Nationality:"
+            "seamen_book_no" -> if (AppLanguage.isArabic) "رقم كتيب البحار" else "Seaman Booklet Number"
+            "nationality" -> if (AppLanguage.isArabic) "الجنسية" else "Nationality"
 
             // Common
             "yes" -> if (AppLanguage.isArabic) "نعم" else "Yes"
@@ -1102,19 +1102,19 @@ object ShipDataExtractor {
 
             // ✅ Scheduled Inspection Fields
             "scheduled_inspection_info" -> if (AppLanguage.isArabic) "معلومات الجدولة" else "Scheduling Information"
-            "scheduled_date" -> if (AppLanguage.isArabic) "موعد المعاينة المجدول" else "Scheduled Date"
+            "scheduled_date" -> if (AppLanguage.isArabic) "موعد المعاينة المجدول" else "Scheduled Inspection Appointment"
             "inspection_request_details" -> if (AppLanguage.isArabic) "تفاصيل طلب المعاينة" else "Inspection Request Details"
             "request_number" -> if (AppLanguage.isArabic) "رقم الطلب" else "Request Number"
             "inspection_purpose" -> if (AppLanguage.isArabic) "الغرض من المعاينة" else "Inspection Purpose"
             "authority" -> if (AppLanguage.isArabic) "الجهة" else "Authority"
             "request_status" -> if (AppLanguage.isArabic) "حالة الطلب" else "Request Status"
             "inspection_date" -> if (AppLanguage.isArabic) "تاريخ المعاينة" else "Inspection Date"
-            "inspection_place" -> if (AppLanguage.isArabic) "مكان المعاينة" else "Inspection Place"
-            "place_port" -> if (AppLanguage.isArabic) "ميناء المكان" else "Place Port"
+            "inspection_place" -> if (AppLanguage.isArabic) "مكان المعاينة" else "Inspection Location"
+            "place_port" -> if (AppLanguage.isArabic) "ميناء المكان" else "Location Port"
             "assigned_engineers" -> if (AppLanguage.isArabic) "المهندسون المعينون" else "Assigned Engineers"
             "engineer" -> if (AppLanguage.isArabic) "مهندس" else "Engineer"
             "engineer_name" -> if (AppLanguage.isArabic) "اسم المهندس" else "Engineer Name"
-            "national_id" -> if (AppLanguage.isArabic) "الرقم القومي" else "National ID:"
+            "national_id" -> if (AppLanguage.isArabic) "الرقم القومي" else "National ID"
             "job_title" -> if (AppLanguage.isArabic) "المسمى الوظيفي" else "Job Title"
             "engineer_port" -> if (AppLanguage.isArabic) "الميناء" else "Port"
             "work_orders" -> if (AppLanguage.isArabic) "أوامر العمل" else "Work Orders"
@@ -1124,7 +1124,7 @@ object ShipDataExtractor {
             "work_order_result" -> if (AppLanguage.isArabic) "نتيجة أمر العمل" else "Work Order Result"
             "result_status" -> if (AppLanguage.isArabic) "حالة النتيجة" else "Result Status"
             "inspection_decision" -> if (AppLanguage.isArabic) "قرار المعاينة" else "Inspection Decision"
-            "inspection_answers" -> if (AppLanguage.isArabic) "إجابات قائمة الفحص" else "Inspection Checklist Answers"
+            "inspection_answers" -> if (AppLanguage.isArabic) "إجابات قائمة الفحص" else "Checklist Answers"
 
             else -> key
         }

@@ -7,6 +7,7 @@ import com.informatique.mtcit.common.FormField
 import com.informatique.mtcit.common.ResourceProvider
 import com.informatique.mtcit.ui.viewmodels.StepData
 import javax.inject.Inject
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Use case for validating form fields
@@ -121,15 +122,15 @@ class FormValidationUseCase @Inject constructor(
                     }
                     // Email validation
                     field.id.contains("email", ignoreCase = true) && value.isNotEmpty() && !isValidEmail(value) -> {
-                        "البريد الإلكتروني غير صالح"
+                        if (AppLanguage.isArabic) "البريد الإلكتروني غير صالح" else "Invalid email address"
                     }
                     // Phone validation
                     field.id.contains("mobile", ignoreCase = true) || field.id.contains("phone", ignoreCase = true) -> {
-                        if (!isValidPhone(value)) "رقم الهاتف غير صالح" else null
+                        if (!isValidPhone(value)) if (AppLanguage.isArabic) "رقم الهاتف غير صالح" else "Invalid phone number" else null
                     }
                     // Numeric field validation
                     field is FormField.TextField && field.isNumeric && value.isNotEmpty() && !value.all { it.isDigit() } -> {
-                        "يجب أن يحتوي على أرقام فقط"
+                        if (AppLanguage.isArabic) "يجب أن يحتوي على أرقام فقط" else "Must contain numbers only"
                     }
                     else -> null
                 }

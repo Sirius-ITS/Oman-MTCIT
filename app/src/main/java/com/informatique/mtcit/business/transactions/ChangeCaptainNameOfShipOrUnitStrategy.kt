@@ -21,6 +21,9 @@ import com.informatique.mtcit.ui.viewmodels.StepData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import com.informatique.mtcit.util.UserHelper
+import com.informatique.mtcit.common.util.AppLanguage
+import com.informatique.mtcit.business.validation.rules.FormatValidationRules
+import com.informatique.mtcit.business.validation.rules.ValidationRule
 
 /**
  * Strategy for Change Captain transaction (CDD §4, requestTypeId = 10)
@@ -75,13 +78,13 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
 
     override suspend fun loadDynamicOptions(): Map<String, List<*>> {
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
-        // ✅ Use raw countries with ID so nationality is stored as "id|name" (e.g. "UG|أوغندا")
+        // ✅ Use raw countries with ID so nationality is stored as "id|name" (localized)
         val countriesRaw = lookupRepository.getCountriesRaw()
         val commercialRegistrations = if (ownerCivilId != null)
             lookupRepository.getCommercialRegistrations(ownerCivilId).getOrNull() ?: emptyList()
         else emptyList()
         val personTypes = lookupRepository.getPersonTypes().getOrNull() ?: emptyList()
-        countryOptions = countriesRaw.map { "${it.id}|${it.nameAr}" }
+        countryOptions = countriesRaw.map { "${it.id}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}" }
         commercialOptions = commercialRegistrations
         typeOptions = personTypes
         return mapOf(
@@ -102,7 +105,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
             // 1. Load job titles if not yet loaded
             if (crewJobTitles.isEmpty()) {
                 val jobs = lookupRepository.getCrewJobTitlesRaw()
-                crewJobTitles = jobs.map { "${it.id}|${it.nameAr}" }
+                crewJobTitles = jobs.map { "${it.id}|${if (AppLanguage.isArabic) it.nameAr else it.nameEn}" }
                 println("✅ Loaded ${crewJobTitles.size} crew job titles for Change Captain")
                 needsRebuild = true
             }
@@ -120,11 +123,11 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
                             // Convert to SailorData JSON format that SailorList field understands
                             val sailorsJson = captains.joinToString(prefix = "[", postfix = "]") { c ->
                                 val jobId = c.jobTitle.id
-                                val jobNameAr = c.jobTitle.nameAr
+                                val jobName = if (AppLanguage.isArabic) c.jobTitle.nameAr else c.jobTitle.nameEn
                                 val natId = c.nationality?.id ?: ""
-                                val natNameAr = c.nationality?.nameAr ?: ""
+                                val natName = if (AppLanguage.isArabic) c.nationality?.nameAr ?: "" else c.nationality?.nameEn ?: ""
                                 // SailorData format: job = "ID|Name", nationality = "ID|Name", apiId = real ID
-                                """{"apiId":${c.id},"nameAr":"${c.nameAr}","nameEn":"${c.nameEn}","job":"$jobId|$jobNameAr","identityNumber":"${c.civilNo ?: ""}","seamanPassportNumber":"${c.seamenBookNo}","nationality":"$natId|$natNameAr"}"""
+                                """{"apiId":${c.id},"nameAr":"${c.nameAr}","nameEn":"${c.nameEn}","job":"$jobId|$jobName","identityNumber":"${c.civilNo ?: ""}","seamanPassportNumber":"${c.seamenBookNo}","nationality":"$natId|$natName"}"""
                             }
                             accumulatedFormData["sailors"] = sailorsJson
                             println("✅ Pre-populated ${captains.size} existing captains into sailors field")
@@ -185,8 +188,8 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
         val commercialReg = formData["selectionData"]
         val ownerCivilId = UserHelper.getOwnerCivilId(appContext)
         val (civilId, crNumber) = when (personType) {
-            "فرد" -> Pair(ownerCivilId, null)
-            "شركة" -> Pair(ownerCivilId, commercialReg)
+            "فرد", "Individual" -> Pair(ownerCivilId, null)
+            "شركة", "Company" -> Pair(ownerCivilId, commercialReg)
             else -> Pair(null, null)
         }
         println("🔍 Loading first page for Change Captain (requestTypeId=$requestTypeId)")
@@ -239,7 +242,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
         steps.add(SharedSteps.personTypeStep(typeOptions))
 
         // Step 2: Commercial Registration (companies only)
-        if (accumulatedFormData["selectionPersonType"] == "شركة") {
+        if (accumulatedFormData["selectionPersonType"] == "شركة" || accumulatedFormData["selectionPersonType"] == "Company") {
             steps.add(SharedSteps.commercialRegistrationStep(commercialOptions))
         }
 
@@ -259,7 +262,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
                 includeDownloadFile = true,  // ✅ Show manual SailorList entry form
                 jobs = crewJobTitles,
                 nationalities = countryOptions,
-                editNameOnly = true          // ✅ In edit mode, only allow changing name fields
+                editNameOnly = false         // Allow editing all captain/crew fields freely
             )
         )
 
@@ -300,7 +303,22 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
 
     override fun validateStep(step: Int, data: Map<String, Any>): Pair<Boolean, Map<String, String>> {
         val stepData = getSteps().getOrNull(step) ?: return Pair(false, emptyMap())
-        return validationUseCase.validateStep(stepData, data.mapValues { it.value.toString() })
+        val formData = data.mapValues { it.value.toString() }
+        val rules = getValidationRulesForStep(step, stepData)
+        return validationUseCase.validateStepWithAccumulatedData(
+            stepData = stepData,
+            currentStepData = formData,
+            allAccumulatedData = accumulatedFormData,
+            crossFieldRules = rules
+        )
+    }
+
+    /**
+     * Get validation rules based on step content.
+     * Captain name fields are inside SailorList dialog — validated inline there (File 10).
+     */
+    private fun getValidationRulesForStep(stepIndex: Int, stepData: StepData): List<ValidationRule> {
+        return emptyList()
     }
 
     override fun setHasAcceptanceFromApi(hasAcceptanceValue: Int?) {
@@ -371,7 +389,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
         if (stepData?.stepType == StepType.CREW_MANAGEMENT) {
             val shipInfoId = selectedShipInfoId
                 ?: accumulatedFormData["shipInfoId"]?.toIntOrNull()
-                ?: throw ApiException(400, "معرف السفينة غير موجود")
+                ?: throw ApiException(400, if (AppLanguage.isArabic) "معرف السفينة غير موجود" else "Ship ID not found")
 
             try {
                 // Parse crew from form, converting Map<String,Any> → Map<String,String>
@@ -388,7 +406,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
                             }
                         }
                 }
-                if (crewList.isEmpty()) throw ApiException(400, "يرجى إضافة بيانات الربان")
+                if (crewList.isEmpty()) throw ApiException(400, if (AppLanguage.isArabic) "يرجى إضافة بيانات الربان" else "Please add captain data")
 
                 println("📤 POST change-captain/$shipInfoId/add-request (${crewList.size} crew)")
 
@@ -403,7 +421,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
                     println("✅ Change captain request created, id=${dto.id}")
                 }
                 result.onFailure { err ->
-                    val msg = err.message ?: "فشل إنشاء طلب تغيير الربان"
+                    val msg = err.message ?: if (AppLanguage.isArabic) "فشل إنشاء طلب تغيير الربان" else "Failed to create captain change request"
                     lastApiError = msg; throw ApiException(500, msg)
                 }
             } catch (e: ApiException) { lastApiError = e.message ?: "error"; throw e }
@@ -417,7 +435,7 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
         if (stepData?.stepType == StepType.REVIEW) {
             val requestIdInt = createdRequestId?.toInt()
                 ?: accumulatedFormData["requestId"]?.toIntOrNull()
-                ?: throw ApiException(400, "معرف الطلب غير موجود")
+                ?: throw ApiException(400, if (AppLanguage.isArabic) "معرف الطلب غير موجود" else "Request ID not found")
 
             try {
                 val reviewResult = reviewManager.processReviewStep(
@@ -455,8 +473,8 @@ class ChangeCaptainNameOfShipOrUnitStrategy @Inject constructor(
             } catch (e: Exception) {
                 println("❌ Exception in review step: ${e.message}")
                 e.printStackTrace()
-                lastApiError = e.message ?: "حدث خطأ أثناء إرسال الطلب"
-                throw ApiException(500, e.message ?: "حدث خطأ أثناء إرسال الطلب")
+                lastApiError = e.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب" else "An error occurred while submitting the request"
+                throw ApiException(500, e.message ?: if (AppLanguage.isArabic) "حدث خطأ أثناء إرسال الطلب" else "An error occurred while submitting the request")
             }
         }
 

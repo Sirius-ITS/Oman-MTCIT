@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
+import com.informatique.mtcit.common.util.LocalAppLocale
 import com.informatique.mtcit.data.datastorehelper.TokenManager
 import com.informatique.mtcit.ui.components.localizedApp
 import com.informatique.mtcit.ui.theme.LocalExtraColors
@@ -54,6 +55,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val notificationsEnabled by notificationViewModel.notificationsEnabled.collectAsState()
+    val isAr = LocalAppLocale.current.language == "ar"
 
     Box(
         modifier = Modifier
@@ -122,7 +124,7 @@ fun SettingsScreen(
 
             // Arabic Language Card
             LanguageCardEnhanced(
-                languageName = "العربية",
+                languageName = if (isAr) "العربية" else "Arabic",
                 flagEmoji = "🇴🇲",
                 isSelected = currentLanguage == "ar",
                 onClick = { languageViewModel.saveLanguage("ar") }
@@ -327,7 +329,7 @@ fun SettingsScreen(
                 )
             ) {
                 Text(
-                    text = "تسجيل الخروج / Logout",
+                    text = if (isAr) "تسجيل الخروج / Logout" else "Logout / تسجيل الخروج",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp,
