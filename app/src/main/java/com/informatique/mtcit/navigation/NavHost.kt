@@ -137,7 +137,11 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
     ) {
 
         composable(NavRoutes.HomeRoute.route) {
-            HomePageScreen(navController = navController, notificationViewModel = notificationViewModel)
+            HomePageScreen(
+                navController = navController,
+                notificationViewModel = notificationViewModel,
+                sharedUserViewModel = sharedUserViewModel
+            )
         }
 
         // ✅ Login Screen - handles authentication before accessing transactions
@@ -181,6 +185,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
             val isFromLoginScreen = parentRoute.startsWith("login/")
             val isFromMainCategories = parentRoute.startsWith("mainCategoriesScreen")
             val isFromProfileScreen = parentRoute == "profileScreen"
+            val isFromHomePage = parentRoute == "homepage"
 
             println("🔍 OAuth WebView - Parent route: $parentRoute")
             println("🔍 OAuth WebView - isFromLoginScreen: $isFromLoginScreen")
@@ -206,16 +211,33 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                 LaunchedEffect(loginViewModel) {
                     loginViewModel.loginComplete.collect { isComplete ->
                         if (isComplete) {
-                            println("✅ OAuth + Login complete! Setting navigation flag...")
-                            shouldNavigateBack = true
+                            println("✅ OAuth + Login complete!")
 
-                            // ✅ Register FCM token and load notifications after login
+                            // ✅ Get role and propagate to ViewModel (updates bottom bar reactively)
+                            val userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+                            sharedUserViewModel.setUserRole(userRole)
+
+                            // ✅ Register FCM + load notifications
                             registerFcmAndLoadNotifications(context, notificationViewModel)
 
-                            // ✅ CRITICAL: Set flag in savedStateHandle so LoginScreen can detect it
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("oauth_login_completed", true)
+                            if (userRole?.equals("engineer", ignoreCase = true) == true) {
+                                // 🔧 ENGINEER: navigate directly to Profile from here.
+                                // Do NOT pop back to LoginScreen — the DisposableEffect there
+                                // is unreliable (async LiveData races with fresh composition).
+                                println("🔧 Engineer login via transaction flow — navigating directly to Profile")
+                                navController.navigate(NavRoutes.ProfileScreenRoute.route) {
+                                    popUpTo(NavRoutes.HomeRoute.route) { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            } else {
+                                // 👤 CLIENT: pop back to LoginScreen which will then
+                                // navigate to the target transaction via savedStateHandle
+                                println("👤 Client login — popping back to LoginScreen for transaction routing")
+                                shouldNavigateBack = true
+                                navController.previousBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set("oauth_login_completed", true)
+                            }
                         }
                     }
                 }
@@ -256,7 +278,7 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
                                 navController.popBackStack()
                             }
                             // ✅ If success, the loginComplete event will trigger navigation via shouldNavigateBack
-                        } else if (isFromMainCategories || isFromProfileScreen) {
+                        } else if (isFromMainCategories || isFromProfileScreen || isFromHomePage) {
                             // ✅ MAIN CATEGORIES / PROFILE SCREEN FLOW: Just exchange token and navigate back
                             println("🔄 OAuth from ${if (isFromMainCategories) "MainCategoriesScreen" else "ProfileScreen"} - exchanging token directly")
 

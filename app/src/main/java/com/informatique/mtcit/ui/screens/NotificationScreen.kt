@@ -54,6 +54,13 @@ fun NotificationScreen(
     val unreadCount    by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
     val isAr = LocalAppLocale.current.language == "ar"
 
+    // ✅ Check engineer role to hide Home tab from bottom bar
+    var isEngineer by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val role = TokenManager.getUserRole(context)
+        isEngineer = role?.equals("engineer", ignoreCase = true) == true
+    }
+
     // Dialog & snackbar state
     var showTestDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -200,9 +207,11 @@ fun NotificationScreen(
                             key = { _, n -> n.id }
                         ) { index, notification ->
                             SwipeableNotificationCard(
-                                notification  = notification,
-                                showSwipeHint = index == 0 && !swipeHintShown,
-                                onHintShown   = { swipeHintShown = true },
+                                notification      = notification,
+                                modifier          = Modifier.animateItem(),
+                                showSwipeHint     = index == 0 && !swipeHintShown,
+                                onHintShown       = { swipeHintShown = true },
+                                snackbarHostState = snackbarHostState,
                                 onTap    = { notificationViewModel.markAsRead(notification.id) },
                                 onDelete = { notificationViewModel.deleteNotification(notification.id) }
                             )
@@ -223,7 +232,8 @@ fun NotificationScreen(
             CustomToolbar(
                 navController = navController,
                 currentRoute = "notificationScreen",
-                unreadNotificationCount = unreadCount
+                unreadNotificationCount = unreadCount,
+                hideHome = isEngineer
             )
         }
     }
@@ -235,21 +245,48 @@ fun NotificationScreen(
 @Composable
 private fun SwipeableNotificationCard(
     notification: NotificationResDto,
+    modifier: Modifier = Modifier,
     showSwipeHint: Boolean = false,
     onHintShown: () -> Unit = {},
     onTap: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    snackbarHostState: SnackbarHostState
 ) {
+    val isAr = LocalAppLocale.current.language == "ar"
+
+    // Set to true when the user fully completes a swipe; cleared after snackbar resolves
+    var pendingDelete by remember { mutableStateOf(false) }
+
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart ||
                 value == SwipeToDismissBoxValue.StartToEnd
             ) {
-                onDelete()
-                true
+                pendingDelete = true   // signal the LaunchedEffect below
+                true                   // keep the card in dismissed position
             } else false
         }
     )
+
+    // Show an "Undo" snackbar when a swipe is confirmed.
+    // • Undo  → reset the card back to resting position (no API call)
+    // • Dismiss/timeout → actually delete (triggers smooth list exit via animateItem)
+    LaunchedEffect(pendingDelete) {
+        if (!pendingDelete) return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message      = if (isAr) "تم حذف الإشعار" else "Notification deleted",
+            actionLabel  = if (isAr) "تراجع" else "Undo",
+            duration     = SnackbarDuration.Short
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            // Undo — animate the card back; nothing is deleted
+            dismissState.reset()
+        } else {
+            // Confirmed — remove from ViewModel; LazyColumn animateItem() handles exit
+            onDelete()
+        }
+        pendingDelete = false
+    }
 
     // Peek animation: slide left enough to clearly reveal the red delete background + icon
     val peekOffset = remember { Animatable(0f) }
@@ -272,9 +309,7 @@ private fun SwipeableNotificationCard(
     val isDeleteRevealed = peekOffset.value < -1f ||
                            dismissState.targetValue != SwipeToDismissBoxValue.Settled
 
-    val isAr = LocalAppLocale.current.language == "ar"
-
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(modifier = modifier.fillMaxWidth()) {
         // ── Red delete layer — matchParentSize ties its height to the card ────
         if (isDeleteRevealed) {
             Box(

@@ -126,17 +126,32 @@ fun MarineRegistrationScreen(
     }
 
     // ✅ NEW: Trigger resume if requestId is provided
+    // ✅ FIX: Guard against re-running resume after OAuth re-login (401 → refresh-token expired →
+    //   OAuthWebView → popBackStack).  When the composable re-enters composition after the OAuth
+    //   round-trip the ViewModel is the *same* instance (scoped to the back-stack entry) and
+    //   isInitialized is already true.  Calling resumeDirectlyWithStep again would fetch the
+    //   request from the API, receive an empty shipInfoEngines list (the engine POST never
+    //   succeeded because it was the one that got the 401) and overwrite _uiState.formData,
+    //   silently discarding all engine data the user had entered.
     LaunchedEffect(requestId, lastCompletedStep) {
         if (requestId != null) {
-            println("🎬 MarineRegistrationScreen mounted with requestId: $requestId, lastCompletedStep: $lastCompletedStep")
-
-            // ✅ If lastCompletedStep is provided, use direct resume (no API call)
-            if (lastCompletedStep != null) {
-                println("✅ Using direct resume with lastCompletedStep from navigation (avoiding API call)")
-                viewModel.resumeDirectlyWithStep(requestId, lastCompletedStep, transactionType)
+            // Skip if the ViewModel already has an initialised state – this happens when
+            // the composable re-enters composition after the OAuth re-authentication flow
+            // (navigate to OAuthWebView → popBackStack).  The existing formData (including
+            // the in-progress engine data) must be preserved.
+            if (viewModel.uiState.value.isInitialized) {
+                println("⏭️ MarineRegistrationScreen: Skipping resume – ViewModel already initialised (returning from OAuth re-auth). formData preserved.")
             } else {
-                println("⚠️ No lastCompletedStep provided, falling back to API call")
-                viewModel.setRequestIdAndCompleteResume(requestId, transactionType)
+                println("🎬 MarineRegistrationScreen mounted with requestId: $requestId, lastCompletedStep: $lastCompletedStep")
+
+                // ✅ If lastCompletedStep is provided, use direct resume (no API call)
+                if (lastCompletedStep != null) {
+                    println("✅ Using direct resume with lastCompletedStep from navigation (avoiding API call)")
+                    viewModel.resumeDirectlyWithStep(requestId, lastCompletedStep, transactionType)
+                } else {
+                    println("⚠️ No lastCompletedStep provided, falling back to API call")
+                    viewModel.setRequestIdAndCompleteResume(requestId, transactionType)
+                }
             }
         } else {
             println("🎬 MarineRegistrationScreen mounted - no requestId provided")

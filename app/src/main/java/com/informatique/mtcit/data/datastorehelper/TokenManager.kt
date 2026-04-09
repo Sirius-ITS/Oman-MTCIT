@@ -321,9 +321,14 @@ object TokenManager {
                 val rolesArray = realmAccess.optJSONArray("roles")
                 if (rolesArray != null && rolesArray.length() > 0) {
                     // Return the first role (typically "client" or "engineer")
-                    val role = rolesArray.getString(0)
-                    Log.d("TokenManager", "✅ Found user role: $role")
-                    return role
+                    var foundRole = ""
+                    for (i in 0 until rolesArray.length()) {
+                        Log.d("TokenManager", "🔍 Found role in JWT: ${rolesArray.getString(i)}")
+                        if (rolesArray.getString(i) != null) foundRole = rolesArray.getString(i)
+                        if (foundRole.equals("engineer", ignoreCase = true)) break
+                    }
+                    Log.d("TokenManager", "✅ Found user role: $foundRole")
+                    return foundRole
                 }
             }
 

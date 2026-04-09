@@ -77,13 +77,15 @@ import com.informatique.mtcit.ui.providers.LocalCategories
 import com.informatique.mtcit.ui.theme.LocalExtraColors
 import com.informatique.mtcit.ui.theme.fontTypography
 import com.informatique.mtcit.ui.viewmodels.NotificationViewModel
+import com.informatique.mtcit.ui.viewmodels.SharedUserViewModel
 import android.graphics.Color as AndroidColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePageScreen(
     navController: NavController,
-    notificationViewModel: NotificationViewModel
+    notificationViewModel: NotificationViewModel,
+    sharedUserViewModel: SharedUserViewModel
 ) {
     val categories = LocalCategories.current
     val extraColors = LocalExtraColors.current
@@ -93,11 +95,19 @@ fun HomePageScreen(
     // Collect unread notification count for the bottom bar badge
     val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
 
-    // ✅ NEW: Check user role to hide bottom bar for engineers
-    var userRole by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    // ✅ Reactive auth state — updates automatically after login/logout without restart
+    val vmUserRole by sharedUserViewModel.userRole.collectAsStateWithLifecycle()
+
+    // ✅ No-flash strategy: assume logged-in until the token check completes.
+    // This prevents a visual flash of the login button for already-logged-in users.
+    var hasCheckedLoginStatus by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var localTokenExists by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        userRole = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
+        val token = com.informatique.mtcit.data.datastorehelper.TokenManager.getAccessToken(context)
+        val expired = if (token != null) com.informatique.mtcit.data.datastorehelper.TokenManager.isTokenExpired(context) else true
+        localTokenExists = token != null && !expired
+        hasCheckedLoginStatus = true
         // Load notifications so the badge shows on the bottom bar
         val userId = com.informatique.mtcit.data.datastorehelper.TokenManager.getCivilId(context)
         if (!userId.isNullOrBlank()) {
@@ -105,7 +115,9 @@ fun HomePageScreen(
         }
     }
 
-    val isEngineer = userRole?.equals("engineer", ignoreCase = true) == true
+    // isLoggedIn: true until check finishes; after check, true if token exists OR VM has a role
+    val isLoggedIn = if (!hasCheckedLoginStatus) true else vmUserRole != null || localTokenExists
+    val isEngineer = vmUserRole?.equals("engineer", ignoreCase = true) == true
 
     // Allow drawing behind system bars and make status bar transparent so the gradient can extend into it
     LaunchedEffect(window) {
@@ -179,7 +191,11 @@ fun HomePageScreen(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 // TopProfileBar will include statusBarsPadding to avoid overlap with status bar
-                TopProfileBar(navController = navController)
+                TopProfileBar(
+                    navController = navController,
+                    isLoggedIn = isLoggedIn,
+                    onLoginClick = { navController.navigate(NavRoutes.OAuthWebViewRoute.route) }
+                )
             },
 //            floatingActionButton = {
 //                CustomToolbar(
@@ -217,8 +233,8 @@ fun HomePageScreen(
                 }
             }
         }
-        // ✅ UPDATED: Only show bottom bar if user is NOT an engineer
-        if (!isEngineer) {
+        // ✅ Show bottom bar when logged in; engineers see Profile + Notifications only (no Home)
+        if (isLoggedIn) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -230,9 +246,10 @@ fun HomePageScreen(
                 contentAlignment = Alignment.Center
             ) {
                 CustomToolbar(
-                    navController = navController ,
+                    navController = navController,
                     currentRoute = "homepage",
-                    unreadNotificationCount = unreadCount
+                    unreadNotificationCount = unreadCount,
+                    hideHome = isEngineer
                 )
             }
         }
@@ -241,7 +258,9 @@ fun HomePageScreen(
 
 @Composable
 fun TopProfileBar(
-    navController: NavController
+    navController: NavController,
+    isLoggedIn: Boolean = true,
+    onLoginClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     // Observe the app locale from the composition provider - updates reactively when language changes
@@ -312,7 +331,7 @@ fun TopProfileBar(
                 val welcomeText = if (!userName.isNullOrEmpty()) {
                     "$userName"
                 } else {
-                    localizedApp(R.string.empty)
+                    if (isAr) "ضيف" else "guest"
                 }
                 Text(
                     text = localizedApp(R.string.hello_label),
@@ -329,33 +348,77 @@ fun TopProfileBar(
             }
 
         }
-        // Settings and Notifications
+        // Settings (logged in) or Login (logged out) icon
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFF4A7BA7 ),
-                        shape = CircleShape
+            if (isLoggedIn) {
+                // ── Logged-in: circular settings button (existing design) ──
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFF4A7BA7),
+                            shape = CircleShape
+                        )
+                        .shadow(
+                            elevation = 20.dp,
+                            shape = CircleShape,
+                            ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
+                            spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
+                        )
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = if (isAr) "الإعدادات" else "Settings",
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(24.dp)
                     )
-                    .shadow(
-                        elevation = 20.dp,
-                        shape = CircleShape,
-                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
-                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
-                    )
-                    .background( Color.White.copy(alpha = 0.2f))
-                    .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = if (isAr) "الإعدادات" else "Settings",
-                    tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(24.dp)
-                )
+                }
+            } else {
+                // ── Logged-out: pill login button ──
+                Box(
+                    modifier = Modifier
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(21.dp))
+                        .border(1.dp, Color(0xFF4A7BA7), RoundedCornerShape(21.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .clickable { onLoginClick() }
+                        .padding(horizontal = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Person icon circle — leading side (right in RTL)
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.9f),
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                        // Label — same size as hello label (14.sp), single line
+                        Text(
+                            text = if (isAr) "تسجيل الدخول" else "Login",
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Light,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
         }
     }

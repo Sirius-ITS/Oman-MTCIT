@@ -2,6 +2,7 @@ package com.informatique.mtcit.business.validation.rules
 
 
 import com.informatique.mtcit.common.FormField
+import com.informatique.mtcit.common.util.AppLanguage
 
 /**
  * Validation rules specific to marine unit dimensions
@@ -16,53 +17,48 @@ object DimensionValidationRules {
         field2Id = "overallWidth",
         comparison = Comparison.GREATER_THAN,
         errorFieldId = "overallWidth",
-        errorMessage = "Width cannot exceed length"
+        errorMessage = if (AppLanguage.isArabic) "العرض لا يمكن أن يتجاوز الطول" else "Width cannot exceed length"
     )
 
     /**
-     * ✅ NEW: Validate dimension fields don't exceed 99.99 meters
-     * Format: Maximum 2 digits before decimal point, 2 digits after (XX.XX)
+     * ✅ Per-field dimension max value validation (≤ 99.99).
+     * Use one rule per field so the error appears on the correct field.
+     * Non-numeric values are skipped here — numericDecimal() handles that separately.
+     */
+    fun dimensionMaxValueRule(fieldId: String) = ValidationRule.CustomValidation(
+        fieldIds = listOf(fieldId),
+        errorFieldId = fieldId,
+        errorMessage = if (AppLanguage.isArabic) "القيمة يجب ألا تتجاوز 99.99 متر" else "Value must not exceed 99.99 meters"
+    ) { fields ->
+        val value = (fields.find { it.id == fieldId } as? FormField.TextField)?.value
+            ?: return@CustomValidation true
+        if (value.isBlank()) return@CustomValidation true
+        // If not a valid number, let numericDecimal() handle the format error
+        val num = value.toDoubleOrNull() ?: return@CustomValidation true
+        println("🔍 dimensionMaxValueRule: $fieldId = $num")
+        num <= 99.99
+    }
+
+    /**
+     * @deprecated Use dimensionMaxValueRule(fieldId) per-field instead.
+     * Kept for backward compatibility — PermanentRegistration / RequestInspection still reference it.
+     * BUG: always attaches error to "overallLength" regardless of which field fails.
      */
     fun dimensionMaxValueValidation() = ValidationRule.CustomValidation(
         fieldIds = listOf("overallLength", "overallWidth", "depth", "height"),
-        errorFieldId = "overallLength", // Default, will be overridden in loop
-        errorMessage = "القيمة يجب ألا تتجاوز 99.99 متر" // Value must not exceed 99.99 meters
+        errorFieldId = "overallLength",
+        errorMessage = if (AppLanguage.isArabic) "القيمة يجب ألا تتجاوز 99.99 متر" else "Value must not exceed 99.99 meters"
     ) { fields ->
         for (fieldId in listOf("overallLength", "overallWidth", "depth", "height")) {
             val field = fields.find { it.id == fieldId } as? FormField.TextField
             val valueStr = field?.value
-
-            // Skip empty optional fields
             if (valueStr.isNullOrBlank()) continue
-
-            println("🔍 Validating dimension field: $fieldId with mortgageValue: $valueStr")
-
-            // Parse mortgageValue
-            val value = valueStr.toDoubleOrNull()
-
-            // Check if mortgageValue is invalid
-            if (value == null) {
-                println("❌ Invalid mortgageValue for $fieldId: $valueStr")
-                return@CustomValidation false
-            }
-
-            // Check if mortgageValue exceeds 99.99
+            val value = valueStr.toDoubleOrNull() ?: continue // skip non-numeric (handled by numericDecimal)
             if (value > 99.99) {
                 println("❌ Value $value exceeds 99.99 for field $fieldId")
                 return@CustomValidation false
             }
-
-            // ✅ Check integer part doesn't exceed 2 digits (prevents 100, 9999, etc.)
-            val integerPart = value.toInt()
-            if (integerPart > 99) {
-                println("❌ Integer part $integerPart exceeds 99 for field $fieldId (mortgageValue: $value)")
-                return@CustomValidation false
-            }
-
-            println("✅ Field $fieldId passed validation with mortgageValue: $value")
         }
-
-        println("✅ All dimension fields passed validation")
         true
     }
 

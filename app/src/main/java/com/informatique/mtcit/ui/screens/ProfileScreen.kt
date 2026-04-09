@@ -242,9 +242,11 @@ fun ProfileScreen(
                         currentSortOrder = sortOrder,
                         selectedFilter = selectedFilter,
                         onSearchQueryChanged = { query ->
-                        searchQuery = query
-                        println("Search query: $query")
-                    }, )
+                            searchQuery = query
+                            println("Search query: $query")
+                        },
+                        showFilter = !isEngineer
+                    )
                 }
                 },
             containerColor = Color.Transparent
@@ -263,28 +265,29 @@ fun ProfileScreen(
                     println("Selected filter: $filterType")
                 },
                 statusCounts = statusCounts,
-                statusCountsLoading = statusCountsLoading
+                statusCountsLoading = statusCountsLoading,
+                isEngineer = isEngineer
             )
         }
         // ✅ UPDATED: Only show bottom bar if user is NOT an engineer
-        if (!isEngineer) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(
-                        bottom = WindowInsets.navigationBars
-                            .asPaddingValues()
-                            .calculateBottomPadding() + 4.dp
-                    )
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                CustomToolbar(
-                    navController = navController,
-                    currentRoute = "profileScreen",
-                    unreadNotificationCount = unreadNotificationCount
+        // ✅ Always show bottom bar; engineers see Profile + Notifications only (no Home)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    bottom = WindowInsets.navigationBars
+                        .asPaddingValues()
+                        .calculateBottomPadding() + 4.dp
                 )
-            }
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            CustomToolbar(
+                navController = navController,
+                currentRoute = "profileScreen",
+                unreadNotificationCount = unreadNotificationCount,
+                hideHome = isEngineer
+            )
         }
     }
 }
@@ -518,7 +521,8 @@ fun FormsSectionWithLazyColumn(
     sortOrder: SortOrder = SortOrder.DESCENDING,
     onFilterSelected: (FilterType?) -> Unit = {},
     statusCounts: com.informatique.mtcit.data.model.requests.StatusCountResponse?,
-    statusCountsLoading: Boolean
+    statusCountsLoading: Boolean,
+    isEngineer: Boolean = false
 ) {
     val extraColors = LocalExtraColors.current
     val isArabic = LocalAppLocale.current.language == "ar"
@@ -654,9 +658,10 @@ fun FormsSectionWithLazyColumn(
         item {
             UserProfileHeader(
                 onFilterSelected = onFilterSelected,
-                selectedFilter = selectedFilter,  // ✅ Pass selected filter from parent
+                selectedFilter = selectedFilter,
                 statusCounts = statusCounts,
-                isLoading = statusCountsLoading
+                isLoading = statusCountsLoading,
+                isEngineer = isEngineer
             )
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -673,7 +678,7 @@ fun FormsSectionWithLazyColumn(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_documentation),
                         contentDescription = null,
-                        tint = extraColors.whiteInDarkMode,
+                        tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -682,7 +687,7 @@ fun FormsSectionWithLazyColumn(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         letterSpacing = 1.sp,
-                        color = extraColors.whiteInDarkMode
+                        color = Color.White
                     )
                 }
 
@@ -1608,7 +1613,8 @@ fun Search(
     onSortOrderChanged: (SortOrder) -> Unit = {},
     onFilterSelected: (FilterType?) -> Unit = {},
     currentSortOrder: SortOrder = SortOrder.DESCENDING,
-    selectedFilter: FilterType? = FilterType.ALL,  // ✅ NEW: Receive selected filter from parent
+    selectedFilter: FilterType? = FilterType.ALL,
+    showFilter: Boolean = true,   // ✅ hide filter icon for engineers
 ){
     var searchQuery by remember { mutableStateOf("") }
     val extraColors = LocalExtraColors.current
@@ -1674,50 +1680,52 @@ fun Search(
                     )
                 }
             }
-            // Filter Icon Button
-            IconButton(
-                onClick = { showFilterBottomSheet = true },
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.FilterList,
-                    contentDescription = "Filter",
-                    tint = Color(0xFF2196F3),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            // Filter Bottom Sheet
-            if (showFilterBottomSheet) {
-                ModalBottomSheet(
-                    onDismissRequest = { showFilterBottomSheet = false },
-                    sheetState = sheetState,
-                    containerColor = extraColors.background,
-                    dragHandle = {
-                        Box(
-                            modifier = Modifier
-                                .padding(vertical = 12.dp)
-                                .width(40.dp)
-                                .height(4.dp)
-                                .background(Color(0xFFE0E0E0), RoundedCornerShape(2.dp))
+            // Filter Icon Button — hidden for engineers
+            if (showFilter) {
+                IconButton(
+                    onClick = { showFilterBottomSheet = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.FilterList,
+                        contentDescription = "Filter",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                // Filter Bottom Sheet
+                if (showFilterBottomSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showFilterBottomSheet = false },
+                        sheetState = sheetState,
+                        containerColor = extraColors.background,
+                        dragHandle = {
+                            Box(
+                                modifier = Modifier
+                                    .padding(vertical = 12.dp)
+                                    .width(40.dp)
+                                    .height(4.dp)
+                                    .background(Color(0xFFE0E0E0), RoundedCornerShape(2.dp))
+                            )
+                        }
+                    ) {
+                        FilterBottomSheetContent(
+                            selectedFilter = selectedFilter,
+                            currentSortOrder = currentSortOrder,
+                            onFilterSelected = { filter ->
+                                onFilterSelected(filter)
+                                showFilterBottomSheet = false
+                            },
+                            onSortOrderChanged = { order ->
+                                onSortOrderChanged(order)
+                                showFilterBottomSheet = false
+                            },
+                            onClearFilter = {
+                                onFilterSelected(null)
+                                showFilterBottomSheet = false
+                            }
                         )
                     }
-                ) {
-                    FilterBottomSheetContent(
-                        selectedFilter = selectedFilter,
-                        currentSortOrder = currentSortOrder,
-                        onFilterSelected = { filter ->
-                            onFilterSelected(filter)
-                            showFilterBottomSheet = false
-                        },
-                        onSortOrderChanged = { order ->
-                            onSortOrderChanged(order)
-                            showFilterBottomSheet = false
-                        },
-                        onClearFilter = {
-                            onFilterSelected(null)
-                            showFilterBottomSheet = false
-                        }
-                    )
                 }
             }
         }
@@ -1730,23 +1738,23 @@ fun Search(
 @Composable
 fun UserProfileHeader(
     onFilterSelected: (FilterType?) -> Unit = {},
-    selectedFilter: FilterType? = FilterType.ALL,  // ✅ NEW: Receive selected filter from parent
+    selectedFilter: FilterType? = FilterType.ALL,
     statusCounts: com.informatique.mtcit.data.model.requests.StatusCountResponse? = null,
-    isLoading: Boolean = false
+    isLoading: Boolean = false,
+    isEngineer: Boolean = false
 ) {
-    // ✅ Extract counts from API response
     val totalCount = statusCounts?.data?.totalCount ?: 0
     val acceptedCount = statusCounts?.data?.statusCounts?.find { it.statusId == 7 }?.count ?: 0
     val sendCount = statusCounts?.data?.statusCounts?.find { it.statusId == 4 }?.count ?: 0
     val rejectedCount = statusCounts?.data?.statusCounts?.find { it.statusId == 2 }?.count ?: 0
-
-    // ✅ REMOVED: LaunchedEffect that was resetting filter on recomposition
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
     ) {
+        // ✅ Hide 4 status cards for engineers
+        if (!isEngineer) {
 //        // User Info Row
 //        Row(
 //            modifier = Modifier.fillMaxWidth(),
@@ -1851,6 +1859,7 @@ fun UserProfileHeader(
                 }
             )
         }
+        } // end if (!isEngineer)
     }
 }
 

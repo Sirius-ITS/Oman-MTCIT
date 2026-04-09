@@ -309,6 +309,8 @@ class MarineUnitRepositoryImpl @Inject constructor(
             pageSize = pageSize
         ).getOrElse { e ->
             println("⚠️ loadShipsPage failed: ${e.message}")
+            // ✅ Re-throw ApiException (e.g. 401) so the ViewModel can show the refresh-token banner
+            if (e is com.informatique.mtcit.common.ApiException) throw e
             com.informatique.mtcit.data.api.ShipsPage(
                 ships = emptyList(),
                 currentPage = page,

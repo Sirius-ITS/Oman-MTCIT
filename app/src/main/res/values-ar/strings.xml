@@ -658,7 +658,7 @@
     <string name="engine_title">بيانات المحركات الخاصة بالوحدة البحرية</string>
     <string name="engine_description">يرجي توفير معلومات كاملة عن السفينة والوحدة البحرية لتسهيل دراسة الطلب واتخاذ الاجراءات اللازمة</string>
     <string name="engine_info">بيانات المحركات</string>
-    <string name="engine_count">أدخل إجمالي المحركات</string>
+    <string name="engine_count">العدد الإجمالي للمحركات</string>
     <string name="engine_add_title">إضافة محرك</string>
     <string name="engine_added_title">المحركات المضافة</string>
     <string name="engine_edit_title">تعديل محرك</string>

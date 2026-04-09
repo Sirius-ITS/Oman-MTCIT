@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,13 +19,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.informatique.mtcit.R
 import com.informatique.mtcit.ui.theme.LocalExtraColors
-import com.informatique.mtcit.ui.components.localizedApp
 
 @Composable
 fun CustomToolbar(
     navController: NavController,
     currentRoute: String? = null,
-    unreadNotificationCount: Int = 0
+    unreadNotificationCount: Int = 0,
+    hideHome: Boolean = false          // ✅ Hide Home tab for engineers
 ) {
     val selectedTab = when (currentRoute) {
         "homepage" -> 0
@@ -51,22 +50,23 @@ fun CustomToolbar(
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = if (hideHome) Arrangement.SpaceEvenly else Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Home Tab
-                TabItem(
-                    icon = Icons.Rounded.Home,
-                    label = localizedApp(R.string.home),
-                    isSelected = selectedTab == 0,
-                    onClick = {
-                        navController.navigate("homepage") {
-                            // تجنب إنشاء نسخ متعددة من نفس الصفحة
-                            popUpTo("homepage") { inclusive = true }
-                            launchSingleTop = true
+                // Home Tab — hidden for engineers
+                if (!hideHome) {
+                    TabItem(
+                        icon = Icons.Rounded.Home,
+                        label = localizedApp(R.string.home),
+                        isSelected = selectedTab == 0,
+                        onClick = {
+                            navController.navigate("homepage") {
+                                popUpTo("homepage") { inclusive = true }
+                                launchSingleTop = true
+                            }
                         }
-                    }
-                )
+                    )
+                }
                 // Profile Tab
                 TabItem(
                     icon = Icons.Default.Person,
@@ -107,9 +107,8 @@ fun TabItem(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) Color(0xFFE3F2FD) else Color.Transparent
-    val iconColor = if (isSelected) Color(0xFF2196F3) else LocalExtraColors.current.whiteInDarkMode
-    val textColor = if (isSelected) Color(0xFF2196F3) else LocalExtraColors.current.whiteInDarkMode
+    val contentColor = LocalExtraColors.current.viewAllText
+    val backgroundColor = if (isSelected) LocalExtraColors.current.viewAll else Color.Transparent
 
     Surface(
         onClick = onClick,
@@ -126,13 +125,13 @@ fun TabItem(
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = iconColor.copy(alpha = 0.9f),
+                tint = contentColor,
                 modifier = Modifier.size(32.dp)
             )
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = textColor.copy(alpha = 0.9f),
+                color = contentColor,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
             )
@@ -148,9 +147,8 @@ fun TabItemWithBadge(
     badgeCount: Int = 0,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) Color(0xFFE3F2FD) else Color.Transparent
-    val iconColor = if (isSelected) Color(0xFF2196F3) else LocalExtraColors.current.whiteInDarkMode
-    val textColor = if (isSelected) Color(0xFF2196F3) else LocalExtraColors.current.whiteInDarkMode
+    val contentColor = LocalExtraColors.current.viewAllText
+    val backgroundColor = if (isSelected) LocalExtraColors.current.viewAll else Color.Transparent
 
     Surface(
         onClick = onClick,
@@ -183,14 +181,14 @@ fun TabItemWithBadge(
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
-                    tint = iconColor.copy(alpha = 0.9f),
+                    tint = contentColor,
                     modifier = Modifier.size(32.dp)
                 )
             }
             Text(
                 text = label,
                 fontSize = 12.sp,
-                color = textColor.copy(alpha = 0.9f),
+                color = contentColor,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
             )

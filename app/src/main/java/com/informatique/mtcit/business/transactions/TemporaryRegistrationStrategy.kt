@@ -649,28 +649,23 @@ class TemporaryRegistrationStrategy @Inject constructor(
             rules.add(MarineUnitValidationRules.maxPermittedLoadValidation())
         }
 
-        // Dimension Rules
-        // ✅ Check dimension fields don't exceed 99.99 meters
-        if (fieldIds.any { it in listOf("overallLength", "overallWidth", "depth", "height") }) {
-            rules.add(DimensionValidationRules.dimensionMaxValueValidation())
+        // ── Dimension Rules ───────────────────────────────────────────────────
+        // Per-field: numericDecimal format check THEN per-field 99.99 max check.
+        // Each rule targets its own fieldId so the error appears on the correct field.
+        listOf("overallLength", "overallWidth", "depth", "height").filter { it in fieldIds }.forEach { fieldId ->
+            rules.add(FormatValidationRules.numericDecimal(fieldId))
+            rules.add(DimensionValidationRules.dimensionMaxValueRule(fieldId))
         }
 
-        // ✅ Numeric format for decimal dimension fields
-        listOf("overallLength", "overallWidth", "depth", "height").filter { it in fieldIds }.forEach {
-            rules.add(FormatValidationRules.numericDecimal(it))
+        // Integer-only for deck count
+        if (fieldIds.contains("decksCount")) {
+            rules.add(FormatValidationRules.numericOnly("decksCount"))
         }
 
         if (fieldIds.containsAll(listOf("overallLength", "overallWidth"))) {
             rules.add(DimensionValidationRules.lengthGreaterThanWidth())
         }
 
-        if (fieldIds.containsAll(listOf("height", "grossTonnage"))) {
-            rules.add(DimensionValidationRules.heightValidation())
-        }
-
-        if (fieldIds.containsAll(listOf("decksCount", "grossTonnage"))) {
-            rules.add(DimensionValidationRules.deckCountValidation())
-        }
 
         // Date Rules
         if (fieldIds.contains("manufacturerYear")) {

@@ -261,7 +261,7 @@ fun OwnerListManager(
                 isNumeric = true,
                 mandatory = false,
                 placeholder = R.string.total_owners_count.toString(),
-                enabled = true
+                enabled = false
             )
         }
 

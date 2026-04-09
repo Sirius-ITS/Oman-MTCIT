@@ -68,7 +68,7 @@ fun EngineListManager(
             isNumeric = true,
             mandatory = false,
             placeholder = localizedApp(R.string.engine_count),
-            enabled = true
+            enabled = false
         )
 
 

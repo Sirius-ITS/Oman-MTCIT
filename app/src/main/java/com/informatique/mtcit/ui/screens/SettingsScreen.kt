@@ -296,6 +296,10 @@ fun SettingsScreen(
                                 delay(100) // Ensure write completes
                             }
 
+                            // Step 3: Clear user role in ViewModel so HomePageScreen
+                            // reactively updates without needing an app restart
+                            sharedUserViewModel.setUserRole(null)
+
                             // Step 3: Verify token was cleared
                             val tokenAfter = withContext(Dispatchers.IO) {
                                 TokenManager.getAccessToken(context)

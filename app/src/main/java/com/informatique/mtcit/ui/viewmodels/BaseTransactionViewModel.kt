@@ -516,6 +516,22 @@ abstract class BaseTransactionViewModel(
                                     strategy.loadShipsForSelectedType(mergedFormData)
                                 }
                                 println("✅ Loaded ${loadedShips.size} ships successfully")
+                            } catch (e: ApiException) {
+                                // ✅ Propagate API errors (e.g. 401) as the refresh-token banner
+                                println("❌ ApiException while loading ships: ${e.code} - ${e.message}")
+                                if (e.code == 401) {
+                                    _error.value = AppError.Unauthorized(
+                                        e.message ?: "انتهت صلاحية الجلسة. الرجاء تحديث الرمز للمتابعة",
+                                        e.message ?: "Session has expired. Please refresh the token to continue"
+                                    )
+                                } else {
+                                    _error.value = AppError.ApiError(
+                                        e.code,
+                                        e.message ?: "حدث خطأ في الخادم",
+                                        e.message ?: "A server error occurred"
+                                    )
+                                }
+                                return@launch
                             } catch (e: Exception) {
                                 println("❌ Failed to load ships: ${e.message}")
                                 e.printStackTrace()

@@ -368,10 +368,14 @@ class RegistrationRequestManager @Inject constructor(
                 println("✅ Dimensions updated successfully!")
                 UpdateResult.Success
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                val ex = result.exceptionOrNull()
+                if (ex is ApiException) throw ex  // ✅ Re-throw to preserve 401 code for banner display
+                val errorMessage = ex?.message ?: "Unknown error"
                 println("❌ Failed to update dimensions: $errorMessage")
                 UpdateResult.Error(errorMessage)
             }
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in updateDimensions: ${e.message}")
             e.printStackTrace()
@@ -411,10 +415,14 @@ class RegistrationRequestManager @Inject constructor(
                 println("✅ Weights updated successfully!")
                 UpdateResult.Success
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                val ex = result.exceptionOrNull()
+                if (ex is ApiException) throw ex  // ✅ Re-throw to preserve 401 code for banner display
+                val errorMessage = ex?.message ?: "Unknown error"
                 println("❌ Failed to update weights: $errorMessage")
                 UpdateResult.Error(errorMessage)
             }
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in updateWeights: ${e.message}")
             e.printStackTrace()
@@ -453,10 +461,14 @@ class RegistrationRequestManager @Inject constructor(
                 println("✅ Engines updated successfully!")
                 UpdateResult.Success
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                val ex = result.exceptionOrNull()
+                if (ex is ApiException) throw ex  // ✅ Re-throw to preserve 401 code for banner display
+                val errorMessage = ex?.message ?: "Unknown error"
                 println("❌ Failed to update engines: $errorMessage")
                 UpdateResult.Error(errorMessage)
             }
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in updateEngines: ${e.message}")
             e.printStackTrace()
@@ -495,10 +507,14 @@ class RegistrationRequestManager @Inject constructor(
                 println("✅ Owners updated successfully!")
                 UpdateResult.Success
             } else {
-                val errorMessage = result.exceptionOrNull()?.message ?: "Unknown error"
+                val ex = result.exceptionOrNull()
+                if (ex is ApiException) throw ex  // ✅ Re-throw to preserve 401 code for banner display
+                val errorMessage = ex?.message ?: "Unknown error"
                 println("❌ Failed to update owners: $errorMessage")
                 UpdateResult.Error(errorMessage)
             }
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in updateOwners: ${e.message}")
             e.printStackTrace()
@@ -549,9 +565,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to submit engines: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     UpdateResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in submitEnginesWithFiles: ${e.message}")
             e.printStackTrace()
@@ -578,6 +597,8 @@ class RegistrationRequestManager @Inject constructor(
             val files = parseEngineFilesFromFormData(context, formData)
 
             submitEnginesWithFiles(context, requestId, engines, files)
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in submitEngine: ${e.message}")
             e.printStackTrace()
@@ -604,6 +625,8 @@ class RegistrationRequestManager @Inject constructor(
             val files = parseOwnerFilesFromFormData(context, formData)
 
             submitOwnersWithFiles(context, requestId, owners, files)
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in submitOwner: ${e.message}")
             e.printStackTrace()
@@ -654,9 +677,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to submit owners: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     UpdateResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in submitOwnersWithFiles: ${e.message}")
             e.printStackTrace()
@@ -735,9 +761,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to update engine: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     UpdateResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in updateEngineImmediate: ${e.message}")
             e.printStackTrace()
@@ -772,9 +801,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to delete engine: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     UpdateResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in deleteEngineImmediate: ${e.message}")
             e.printStackTrace()
@@ -869,9 +901,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to update owner: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     UpdateResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in updateOwnerImmediate: ${e.message}")
             e.printStackTrace()
@@ -906,9 +941,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to delete owner: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     UpdateResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in deleteOwnerImmediate: ${e.message}")
             e.printStackTrace()
@@ -997,9 +1035,12 @@ class RegistrationRequestManager @Inject constructor(
                 onFailure = { exception ->
                     println("❌ Failed to validate build status: ${exception.message}")
                     exception.printStackTrace()
+                    if (exception is ApiException) throw exception  // ✅ Re-throw to preserve 401 code for banner display
                     DocumentValidationResult.Error(exception.message ?: "Unknown error")
                 }
             )
+        } catch (e: ApiException) {
+            throw e  // ✅ Don't swallow ApiException — let it propagate to BaseTransactionViewModel
         } catch (e: Exception) {
             println("❌ Exception in validateBuildStatusDocuments: ${e.message}")
             e.printStackTrace()

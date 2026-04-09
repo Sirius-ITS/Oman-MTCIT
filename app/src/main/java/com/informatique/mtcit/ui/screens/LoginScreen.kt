@@ -109,16 +109,14 @@ fun LoginScreen(
         }
     }
 
-    // ✅ NEW: Detect when user returns from OAuth without completing login
+    // Detect when user returns from OAuth without completing login
     DisposableEffect(navController.currentBackStackEntry) {
         val handle = navController.currentBackStackEntry?.savedStateHandle
 
         val observer = androidx.lifecycle.Observer<Boolean> { cancelled ->
             if (cancelled == true) {
                 println("🔙 User returned from OAuth without completing login")
-                // Reset OAuth trigger flags
                 viewModel.resetOAuthFlags()
-                // Clear the flag
                 handle?.set("oauth_cancelled", false)
             }
         }
@@ -130,39 +128,6 @@ fun LoginScreen(
         }
     }
 
-    // Handle login completion - Navigate to target transaction
-    LaunchedEffect(Unit) {
-        viewModel.loginComplete.collect { isComplete ->
-            if (isComplete) {
-                println("✅ Login complete! Navigating to transaction: $targetTransactionType")
-
-                // Navigate to the target transaction screen
-                val route = when (targetTransactionType) {
-                    "TEMPORARY_REGISTRATION_CERTIFICATE", "SHIP_REGISTRATION" -> NavRoutes.ShipRegistrationRoute.route
-                    "PERMANENT_REGISTRATION_CERTIFICATE", "PERMANENT_REGISTRATION" -> NavRoutes.PermanentRegistrationRoute.route
-                    "REQUEST_FOR_INSPECTION", "REQUEST_INSPECTION" -> NavRoutes.RequestForInspection.route
-                    "SUSPEND_REGISTRATION", "SUSPEND_PERMANENT_REGISTRATION" -> NavRoutes.SuspendRegistrationRoute.route
-                    "CANCEL_REGISTRATION", "CANCEL_PERMANENT_REGISTRATION" -> NavRoutes.CancelRegistrationRoute.route
-                    "MORTGAGE_CERTIFICATE" -> NavRoutes.MortgageCertificateRoute.route
-                    "RELEASE_MORTGAGE" -> NavRoutes.ReleaseMortgageRoute.route
-                    "ISSUE_NAVIGATION_PERMIT" -> NavRoutes.IssueNavigationPermitRoute.route
-                    "RENEW_NAVIGATION_PERMIT" -> NavRoutes.RenewNavigationPermitRoute.route
-                    "SUSPEND_NAVIGATION_PERMIT" -> NavRoutes.SuspendNavigationPermitRoute.route
-                    "SHIP_NAME_CHANGE" -> NavRoutes.ShipNameChangeRoute.route
-                    "CAPTAIN_NAME_CHANGE" -> NavRoutes.CaptainNameChangeRoute.route
-                    "SHIP_ACTIVITY_CHANGE" -> NavRoutes.ShipActivityChangeRoute.route
-                    "SHIP_PORT_CHANGE" -> NavRoutes.ShipPortChangeRoute.route
-                    "SHIP_OWNERSHIP_CHANGE" -> NavRoutes.ShipOwnershipChangeRoute.route
-                    else -> NavRoutes.ShipRegistrationRoute.route
-                }
-
-                navController.navigate(route) {
-                    // Remove login screen from back stack
-                    popUpTo(NavRoutes.LoginRoute.route) { inclusive = true }
-                }
-            }
-        }
-    }
 
 
     // Show loading during initialization

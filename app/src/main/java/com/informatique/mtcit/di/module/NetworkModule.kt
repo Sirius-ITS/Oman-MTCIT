@@ -2,6 +2,7 @@ package com.informatique.mtcit.di.module
 
 import com.abanoub.myapp.di.security.Environment
 import com.abanoub.myapp.di.security.EnvironmentConfig
+import com.informatique.mtcit.common.util.AppLanguage
 import com.informatique.mtcit.data.datastorehelper.TokenManager
 import dagger.Module
 import dagger.Provides
@@ -98,6 +99,7 @@ class NetworkModule {
 //                header("X-API-Key", environment.apiKey)
                 header("X-Client-Version", "BuildConfig.VERSION_NAME")
                 header("X-Platform", "Android")
+                header("Accept-Language", AppLanguage.code)
 
                 // ✅ Dynamic OAuth token from TokenManager as Bearer token
                 val token = runBlocking {

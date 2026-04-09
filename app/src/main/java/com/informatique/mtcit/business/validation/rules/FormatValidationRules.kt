@@ -237,6 +237,25 @@ object FormatValidationRules {
                     if (isAr) "يجب أن يحتوي على أرقام فقط" else "Must contain digits only"
                 else null
 
+            // ── Dimension fields (overallLength, overallWidth, depth, height) ──────
+            "overallLength", "overallWidth", "depth", "height" ->
+                when {
+                    !value.matches(Regex("^\\d+(\\.\\d+)?$")) ->
+                        if (isAr) "يجب أن يحتوي على أرقام صحيحة أو عشرية فقط"
+                        else "Must be a valid number (e.g. 12 or 12.5)"
+                    (value.toDoubleOrNull() ?: 0.0) > 99.99 ->
+                        if (isAr) "القيمة يجب ألا تتجاوز 99.99 متر"
+                        else "Value must not exceed 99.99 meters"
+                    else -> null
+                }
+
+            // ── Weight / tonnage fields ───────────────────────────────────────────
+            "grossTonnage", "netTonnage", "staticLoad", "maxPermittedLoad" ->
+                if (!value.matches(Regex("^\\d+(\\.\\d+)?$")))
+                    if (isAr) "يجب أن يحتوي على أرقام صحيحة أو عشرية فقط"
+                    else "Must be a valid number (e.g. 12 or 12.5)"
+                else null
+
             else -> null
         }
     }
