@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Apps
@@ -302,7 +303,7 @@ fun TopProfileBar(
         ) {
             Box(
                 modifier = Modifier
-                    .size(50.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .border(
                         width = 1.dp,
@@ -323,7 +324,7 @@ fun TopProfileBar(
                     imageVector = Icons.Default.Person,
                     contentDescription = if (isAr) "الملف الشخصي" else "Profile",
                     tint = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
             Column(horizontalAlignment = Alignment.Start) {
@@ -423,97 +424,6 @@ fun TopProfileBar(
         }
     }
 }
-//@Composable
-//fun TopProfileBar(
-//    navController: NavController
-//) {
-//    Row(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .statusBarsPadding() // ensure content is placed below the status bar
-//            .padding(horizontal = 20.dp, vertical = 16.dp),
-//        horizontalArrangement = Arrangement.SpaceBetween,
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//        val extraColors = LocalExtraColors.current
-//        // Profile Section
-//        Row(
-//            horizontalArrangement = Arrangement.spacedBy(12.dp),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Box(
-//                modifier = Modifier
-//                    .size(50.dp)
-//                    .clip(CircleShape)
-//                    .border(
-//                        width = 1.dp,
-//                        color = Color(0xFF4A7BA7 ),
-//                        shape = CircleShape
-//                    )
-//                    .shadow(
-//                        elevation = 20.dp,
-//                        shape = CircleShape,
-//                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
-//                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
-//                    )
-//                    .background( Color.White.copy(alpha = 0.4f))
-//                    .clickable { },
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Default.Person,
-//                    contentDescription = "الملف الشخصي",
-//                    tint = Color.White,
-//                    modifier = Modifier.size(30.dp)
-//                )
-//            }
-//            Column(horizontalAlignment = Alignment.Start) {
-//                Text(
-//                    text = localizedApp(R.string.hello_label),
-//                    fontSize = 14.sp,
-//                    color = Color.White.copy(alpha = 0.9f),
-//                    fontWeight = FontWeight.Light
-//                )
-//                Text(
-//                    text = localizedApp(R.string.user_name),
-//                    fontSize = 16.sp,
-//                    fontWeight = FontWeight.Normal,
-//                    color = Color.White
-//                )
-//            }
-//
-//        }
-//        // Settings and Notifications
-//        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-//            Box(
-//                modifier = Modifier
-//                    .size(42.dp)
-//                    .clip(CircleShape)
-//                    .border(
-//                        width = 1.dp,
-//                        color = Color(0xFF4A7BA7 ),
-//                        shape = CircleShape
-//                    )
-//                    .shadow(
-//                        elevation = 20.dp,
-//                        shape = CircleShape,
-//                        ambientColor = Color(0xFF4A7BA7).copy(alpha = 0.3f),
-//                        spotColor = Color(0xFF4A7BA7).copy(alpha = 0.3f)
-//                    )
-//                    .background( Color.White.copy(alpha = 0.4f))
-//                    .clickable { navController.navigate(NavRoutes.SettingsRoute.route) },
-//                contentAlignment = Alignment.Center
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Default.Settings,
-//                    contentDescription = "الإعدادات",
-//                    tint = Color.White,
-//                    modifier = Modifier.size(24.dp)
-//                )
-//            }
-//        }
-//    }
-//}
 
 @Composable
 fun WelcomeSection() {
@@ -580,7 +490,7 @@ fun QuickStatsCircular() {
                 label = localizedApp(R.string.transaction),
                 progress = 0.65f,
                 color = Color(0xFF0EBD48),
-                icon = Icons.Default.TrendingUp
+                icon = Icons.AutoMirrored.Filled.TrendingUp
             )
             Divider(
                 color = Color.Gray,

@@ -65,6 +65,11 @@ fun NavHost(themeViewModel: ThemeViewModel, navigationManager: NavigationManager
     val navController = rememberNavController()
     val unreadCount by notificationViewModel.unreadCount.collectAsStateWithLifecycle()
 
+    // ✅ Keep app-icon badge in sync with unread notification count
+    LaunchedEffect(unreadCount) {
+        com.informatique.mtcit.common.util.BadgeManager.update(context, unreadCount)
+    }
+
     // ✅ Check user role on app start + register FCM token if already logged in
     LaunchedEffect(Unit) {
         val role = com.informatique.mtcit.data.datastorehelper.TokenManager.getUserRole(context)
